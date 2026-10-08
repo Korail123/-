@@ -28,7 +28,6 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             text-align: center;
         }
-        /* 로고 이미지 스타일 */
         .logo {
             width: 100%;
             max-width: 220px;
@@ -38,12 +37,7 @@
         h1 {
             font-size: 22px;
             color: #333333;
-            margin-bottom: 6px;
-        }
-        .subtitle {
-            font-size: 13px;
-            color: #777777;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
         .input-group {
             margin-bottom: 14px;
@@ -67,6 +61,21 @@
         .input-group input:focus {
             border-color: #0066ff;
         }
+        /* 로그인 정보 저장 영역 스타일 */
+        .login-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 12px 0 16px 0;
+            font-size: 13px;
+            color: #555555;
+        }
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
         .btn {
             width: 100%;
             padding: 12px;
@@ -77,27 +86,28 @@
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 10px;
             transition: background-color 0.2s;
         }
         .btn:hover {
             background-color: #0052cc;
         }
-        .sub-links {
-            margin-top: 16px;
-            font-size: 13px;
-        }
-        .sub-links a {
-            color: #666666;
-            text-decoration: none;
+        /* 하단 회원가입 버튼 스타일 */
+        .signup-link-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #f1f3f5;
+            color: #333333;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
             cursor: pointer;
-            transition: color 0.2s;
+            margin-top: 10px;
+            transition: background-color 0.2s;
         }
-        .sub-links a:hover {
-            color: #0066ff;
-            text-decoration: underline;
+        .signup-link-btn:hover {
+            background-color: #e2e6ea;
         }
-        /* 화면 전환용 클래스 */
         .hidden {
             display: none;
         }
@@ -106,13 +116,12 @@
 <body>
 
     <div class="container">
-        <!-- 철도비서 로고 이미지 (이미지 파일명을 logo.png로 저장하거나 경로를 맞춰주세요) -->
+        <!-- 철도비서 로고 이미지 -->
         <img src="logo.png" alt="철도비서 로고" class="logo" onerror="this.style.display='none'">
 
         <!-- [1] 로그인 화면 -->
         <div id="login-view">
-            <h1>환영합니다! 👋</h1>
-            <p class="subtitle">사원번호로 로그인해 주세요.</p>
+            <h1>나만의 철도비서</h1>
             
             <form onsubmit="handleLogin(event)">
                 <div class="input-group">
@@ -125,67 +134,21 @@
                     <input type="password" id="login-pw" placeholder="비밀번호를 입력하세요" required>
                 </div>
                 
-                <button type="submit" class="btn">로그인</button>
-
-                <div class="sub-links">
-                    <a onclick="switchView('signup')">계정이 없으신가요? <strong>회원가입</strong></a>
+                <div class="login-options">
+                    <label class="remember-me">
+                        <input type="checkbox" id="remember"> 로그인 정보 저장
+                    </label>
                 </div>
+                
+                <button type="submit" class="btn">로그인</button>
+                <button type="button" class="signup-link-btn" onclick="switchView('signup')">회원가입</button>
             </form>
         </div>
 
         <!-- [2] 회원가입 화면 (초기엔 숨겨져 있음) -->
         <div id="signup-view" class="hidden">
             <h1>회원가입 📝</h1>
-            <p class="subtitle">정보를 입력하여 가입해 주세요.</p>
             
             <form onsubmit="handleSignup(event)">
                 <div class="input-group">
-                    <label for="signup-id">사원번호</label>
-                    <input type="text" id="signup-id" placeholder="사원번호를 입력하세요" required>
-                </div>
-
-                <div class="input-group">
-                    <label for="signup-name">이름</label>
-                    <input type="text" id="signup-name" placeholder="이름을 입력하세요" required>
-                </div>
-                
-                <div class="input-group">
-                    <label for="signup-pw">비밀번호</label>
-                    <input type="password" id="signup-pw" placeholder="사용할 비밀번호를 입력하세요" required>
-                </div>
-                
-                <button type="submit" class="btn">가입 완료</button>
-
-                <div class="sub-links">
-                    <a onclick="switchView('login')">이미 계정이 있으신가요? <strong>로그인하기</strong></a>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        // 화면 전환 함수
-        function switchView(viewName) {
-            const loginView = document.getElementById('login-view');
-            const signupView = document.getElementById('signup-view');
-
-            if (viewName === 'signup') {
-                loginView.classList.add('hidden');
-                signupView.classList.remove('hidden');
-            } else {
-                signupView.classList.add('hidden');
-                loginView.classList.remove('hidden');
-            }
-        }
-
-        // 로그인 처리 (임시)
-        function handleLogin(event) {
-            event.preventDefault();
-            alert('로그인 시도 중입니다.');
-        }
-
-        // 회원가입 처리 (임시)
-        function handleSignup(event) {
-            event.preventDefault();
-            alert('회원가입이 완료되었습니다!');
-            switchView('login'); //
+                    <label for="signup-id">사원번호</label
