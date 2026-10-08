@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>철도비서 - 로그인</title>
+    <title>철도비서</title>
     <style>
         * {
             box-sizing: border-box;
@@ -45,9 +45,9 @@
             margin-bottom: 20px;
         }
         h1 {
-            font-size: 22px;
+            font-size: 20px;
             color: #333333;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
         .input-group {
             margin-bottom: 14px;
@@ -95,7 +95,7 @@
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            transition: background-color: 0.2s;
+            transition: background-color 0.2s;
         }
         .btn:hover {
             background-color: #0052cc;
@@ -116,6 +116,49 @@
         .signup-link-btn:hover {
             background-color: #e2e6ea;
         }
+
+        /* 메인 화면 메뉴 버튼 스타일 */
+        .menu-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .menu-btn {
+            width: 100%;
+            padding: 14px;
+            background-color: #f8f9fa;
+            color: #333333;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: left;
+            padding-left: 20px;
+            transition: all 0.2s;
+        }
+        .menu-btn:hover {
+            background-color: #e9ecef;
+            border-color: #ced4da;
+        }
+        .logout-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.2s;
+        }
+        .logout-btn:hover {
+            background-color: #cc0000;
+        }
+
         /* 화면 전환용 클래스 */
         .page-view {
             display: none;
@@ -146,125 +189,11 @@
 <body>
 
     <div class="container">
-        <!-- ⏰ 상단 실시간 날짜 및 시간 (접속하자마자 바로 출력되도록 스크립트 즉시 실행) -->
+        <!-- ⏰ 상단 실시간 날짜 및 시간 (접속하자마자 바로 출력) -->
         <div id="liveClock" class="live-clock"><script>document.write(getKSTString());</script></div>
 
         <!-- 철도비서 로고 이미지 -->
         <img src="logo.png" alt="철도비서 로고" class="logo" onerror="this.style.display='none'">
 
         <!-- [1] 로그인 화면 -->
-        <div id="login-section" class="page-view active">
-            <form id="login-form" onsubmit="handleLogin(event)">
-                <div class="input-group">
-                    <label for="login-id">사원번호</label>
-                    <input type="text" id="login-id" placeholder="사원번호를 입력하세요" required>
-                </div>
-                
-                <div class="input-group">
-                    <label for="login-pw">비밀번호</label>
-                    <input type="password" id="login-pw" placeholder="비밀번호를 입력하세요" required>
-                </div>
-                
-                <div class="login-options">
-                    <label class="remember-me">
-                        <input type="checkbox" id="remember"> 로그인 정보 저장
-                    </label>
-                </div>
-                
-                <button type="submit" class="btn">로그인</button>
-                <button type="button" class="signup-link-btn" onclick="switchSection('signup-section')">회원가입</button>
-            </form>
-        </div>
-
-        <!-- [2] 회원가입 화면 -->
-        <div id="signup-section" class="page-view">
-            <h1>회원가입</h1>
-            
-            <form id="signup-form" onsubmit="handleSignup(event)">
-                <div class="input-group">
-                    <label for="signup-id">사원번호</label>
-                    <input type="text" id="signup-id" placeholder="사원번호를 입력하세요" required>
-                </div>
-
-                <div class="input-group">
-                    <label for="signup-name">이름</label>
-                    <input type="text" id="signup-name" placeholder="이름을 입력하세요" required>
-                </div>
-                
-                <div class="input-group">
-                    <label for="signup-pw">비밀번호</label>
-                    <input type="password" id="signup-pw" placeholder="사용할 비밀번호를 입력하세요" required>
-                </div>
-                
-                <button type="submit" class="btn">가입 완료</button>
-                <button type="button" class="signup-link-btn" onclick="switchSection('login-section')">돌아가기</button>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        // 🚨 구글 시트 웹 앱 URL을 아래에 넣어주세요!
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzNXcKpOMeIaiOD8XZacs6pM2xjRYlytjbr9pF7SwKWMdYU5GRpl9BOsnV5YRhcxD8GpQ/exec';
-
-        // 1초마다 시계 갱신
-        setInterval(() => {
-            const clockElement = document.getElementById('liveClock');
-            if (clockElement) {
-                clockElement.textContent = getKSTString();
-            }
-        }, 1000);
-
-        // 화면 전환 함수
-        function switchSection(sectionId) {
-            const loginSec = document.getElementById('login-section');
-            const signupSec = document.getElementById('signup-section');
-
-            if (sectionId === 'signup-section') {
-                loginSec.classList.remove('active');
-                signupSec.classList.add('active');
-            } else {
-                signupSec.classList.remove('active');
-                loginSec.classList.add('active');
-            }
-        }
-
-        // 회원가입 제출 (구글 시트 연동)
-        function handleSignup(e) {
-            e.preventDefault();
-
-            if (SCRIPT_URL === '여기에_웹앱_URL을_넣으세요') {
-                alert('구글 시트 웹 앱 URL을 코드에 입력해 주세요!');
-                return;
-            }
-
-            const employeeId = document.getElementById('signup-id').value;
-            const name = document.getElementById('signup-name').value;
-            const password = document.getElementById('signup-pw').value;
-
-            const targetUrl = `${SCRIPT_URL}?employeeId=${encodeURIComponent(employeeId)}&name=${encodeURIComponent(name)}&password=${encodeURIComponent(password)}`;
-
-            fetch(targetUrl, {
-                method: 'GET',
-                mode: 'no-cors'
-            })
-            .then(() => {
-                alert('회원가입이 완료되었습니다!');
-                document.getElementById('signup-form').reset();
-                switchSection('login-section');
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-                alert('회원가입 요청 중 문제가 발생했습니다.');
-            });
-        }
-
-        // 로그인 제출
-        function handleLogin(e) {
-            e.preventDefault();
-            const loginId = document.getElementById('login-id').value;
-            alert(`사원번호 ${loginId}님, 로그인 시도 중입니다.`);
-        }
-    </script>
-
-</body>
-</html>
+        <div id="login-section" class="page-
