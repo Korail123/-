@@ -23,10 +23,20 @@
             width: 100%;
             max-width: 400px;
             background: #ffffff;
-            padding: 30px 20px;
+            padding: 25px 20px;
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             text-align: center;
+        }
+        /* 실시간 날짜/시간 상단바 스타일 */
+        .live-clock {
+            font-size: 13px;
+            color: #666666;
+            background-color: #f1f3f5;
+            padding: 6px 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-weight: 500;
         }
         .logo {
             width: 100%;
@@ -117,6 +127,9 @@
 <body>
 
     <div class="container">
+        <!-- ⏰ 상단 실시간 날짜 및 시간 (GMT+9 KST) -->
+        <div id="liveClock" class="live-clock">시간을 불러오는 중...</div>
+
         <!-- 철도비서 로고 이미지 -->
         <img src="logo.png" alt="철도비서 로고" class="logo" onerror="this.style.display='none'">
 
@@ -163,3 +176,41 @@
                     <label for="signup-pw">비밀번호</label>
                     <input type="password" id="signup-pw" placeholder="사용할 비밀번호를 입력하세요" required>
                 </div>
+                
+                <button type="submit" class="btn">가입 완료</button>
+                <button type="button" id="go-to-login" class="signup-link-btn">돌아가기</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 🚨 구글 시트 웹 앱 URL을 아래에 넣어주세요!
+        const SCRIPT_URL = '여기에_웹앱_URL을_넣으세요';
+
+        // ⏰ 대한민국 실시간 날짜 및 시간 표시 함수 (GMT+9)
+        function updateClock() {
+            const clockElement = document.getElementById('liveClock');
+            const now = new Date();
+
+            // Intl.DateTimeFormat을 사용하여 확실한 대한민국(KST) 시간대 추출
+            const options = {
+                timeZone: 'Asia/Seoul',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                weekday: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            };
+
+            const formatter = new Intl.DateTimeFormat('ko-KR', options);
+            clockElement.textContent = formatter.format(now) + ' (KST)';
+        }
+
+        // 페이지 로드 시 즉시 실행 및 1초마다 갱신
+        setInterval(updateClock, 1000);
+
+        document.addEventListener('DOMContentLoaded', function() {
+            updateClock(); // 첫
