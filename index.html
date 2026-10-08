@@ -38,10 +38,10 @@
             margin-bottom: 20px;
             font-weight: 500;
         }
-        .logo {
-            width: 100%;
-            max-width: 220px;
-            height: auto;
+        .logo-text {
+            font-size: 24px;
+            font-weight: bold;
+            color: #0066ff;
             margin-bottom: 20px;
         }
         h1 {
@@ -140,3 +140,282 @@
         }
         .menu-btn:hover {
             background-color: #e9ecef;
+            border-color: #ced4da;
+        }
+        .logout-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.2s;
+        }
+        .logout-btn:hover {
+            background-color: #cc0000;
+        }
+
+        /* 세부 화면 내부 콘텐츠 스타일 */
+        .sub-content {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            font-size: 14px;<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>철도비서</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+        }
+        body {
+            background-color: #f7f9fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background: #ffffff;
+            padding: 25px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+        /* 실시간 날짜/시간 상단바 스타일 */
+        .live-clock {
+            font-size: 13px;
+            color: #666666;
+            background-color: #f1f3f5;
+            padding: 6px 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .logo-text {
+            font-size: 24px;
+            font-weight: bold;
+            color: #0066ff;
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 20px;
+            color: #333333;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            margin-bottom: 14px;
+            text-align: left;
+        }
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            color: #555555;
+            margin-bottom: 6px;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .input-group input:focus {
+            border-color: #0066ff;
+        }
+        .login-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 12px 0 16px 0;
+            font-size: 13px;
+            color: #555555;
+        }
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #0066ff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn:hover {
+            background-color: #0052cc;
+        }
+        .signup-link-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #f1f3f5;
+            color: #333333;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.2s;
+        }
+        .signup-link-btn:hover {
+            background-color: #e2e6ea;
+        }
+
+        /* 메인 화면 메뉴 버튼 스타일 */
+        .menu-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .menu-btn {
+            width: 100%;
+            padding: 14px;
+            background-color: #f8f9fa;
+            color: #333333;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: left;
+            padding-left: 20px;
+            transition: all 0.2s;
+        }
+        .menu-btn:hover {
+            background-color: #e9ecef;
+            border-color: #ced4da;
+        }
+        .logout-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.2s;
+        }
+        .logout-btn:hover {
+            background-color: #cc0000;
+        }
+
+        /* 세부 화면 내부 콘텐츠 스타일 */
+        .sub-content {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #555555;
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .back-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .back-btn:hover {
+            background-color: #5a6268;
+        }
+
+        /* 화면 전환용 클래스 */
+        .page-view {
+            display: none;
+        }
+        .page-view.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- ⏰ 상단 실시간 날짜 및 시간 -->
+        <div id="liveClock" class="live-clock">시간을 불러오는 중...</div>
+
+        <!-- 로고 (이미지가 없을 경우 깔끔한 텍스트로 대체되어 화면이 안 뜨는 오류 원천 차단) -->
+        <div class="logo-text">🚄 철도비서</div>
+
+        <!-- [1] 로그인 화면 -->
+        <div id="login
+            color: #555555;
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .back-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .back-btn:hover {
+            background-color: #5a6268;
+        }
+
+        /* 화면 전환용 클래스 */
+        .page-view {
+            display: none;
+        }
+        .page-view.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- ⏰ 상단 실시간 날짜 및 시간 -->
+        <div id="liveClock" class="live-clock">시간을 불러오는 중...</div>
+
+        <!-- 로고 (이미지가 없을 경우 깔끔한 텍스트로 대체되어 화면이 안 뜨는 오류 원천 차단) -->
+        <div class="logo-text">🚄 철도비서</div>
+
+        <!-- [1] 로그인 화면 -->
+        <div id="login
