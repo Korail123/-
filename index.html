@@ -106,7 +106,6 @@
         .signup-link-btn:hover {
             background-color: #e2e6ea;
         }
-        /* 화면 전환용 클래스 제어 */
         .page-view {
             display: none;
         }
@@ -143,3 +142,24 @@
                 <button type="submit" class="btn">로그인</button>
                 <button type="button" id="go-to-signup" class="signup-link-btn">회원가입</button>
             </form>
+        </div>
+
+        <!-- [2] 회원가입 화면 -->
+        <div id="signup-section" class="page-view">
+            <h1>회원가입</h1>
+            
+            <form id="signup-form">
+                <div class="input-group">
+                    <label for="signup-id">사원번호</label>
+                    <input type="text" id="signup-id" placeholder="사원번호를 입력하세요" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="signup-name">이름</label>
+                    <input type="text" id="signup-name" placeholder="이름을 입력하세요" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="signup-pw">비밀번호</label>
+                    <input type="password" id="signup-pw" placeholder="사용할 비밀번호를 입력하세요" required>
+                </div>
