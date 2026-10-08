@@ -243,8 +243,6 @@ button{
   width:30px
 }
 
-/* 근무표 */
-
 .sch-card{
   padding:10px 0 0;
   background:transparent;
@@ -386,8 +384,6 @@ button{
   margin-top:7px
 }
 
-/* 팝업 */
-
 .modal-bg{
   position:fixed;
   z-index:1000;
@@ -488,8 +484,6 @@ button{
   color:#e33f3f
 }
 
-/* 환경설정 */
-
 .settings-item{
   display:flex;
   align-items:center;
@@ -521,8 +515,6 @@ button{
   font-size:23px;
   color:#9aa5b1
 }
-
-/* 근무그룹 */
 
 .group-card{
   padding:0;
@@ -640,8 +632,6 @@ button{
   color:#697686
 }
 
-/* 하단 메뉴 */
-
 .bottom-nav{
   position:fixed;
   z-index:500;
@@ -725,7 +715,11 @@ button{
 
 <div class="container">
 
-<!-- 로그인 -->
+
+<!-- =================================================
+     LOGIN
+================================================= -->
+
 <div id="login-section">
 
   <div class="login-wrap">
@@ -739,48 +733,56 @@ button{
       id="login-id"
       class="input"
       inputmode="numeric"
-      placeholder="사원번호"
-    >
+      placeholder="사원번호">
 
     <input
       id="login-pw"
       class="input"
       type="password"
-      placeholder="비밀번호"
-    >
+      placeholder="비밀번호">
 
     <label class="checkrow">
-      <input id="remember-login" type="checkbox">
+      <input
+        id="remember-login"
+        type="checkbox">
       로그인 정보 저장
     </label>
 
-    <button class="primary" onclick="handleLogin()">
+    <button
+      class="primary"
+      onclick="handleLogin()">
       로그인
     </button>
 
     <button
       class="secondary"
-      onclick="switchSection('signup-section')"
-    >
+      onclick="switchSection('signup-section')">
       회원가입
     </button>
 
-    <div id="login-msg" class="msg"></div>
+    <div
+      id="login-msg"
+      class="msg">
+    </div>
 
   </div>
 
 </div>
 
 
-<!-- 회원가입 -->
-<div id="signup-section" class="hidden">
+<!-- =================================================
+     SIGNUP
+================================================= -->
+
+<div
+  id="signup-section"
+  class="hidden">
 
   <div class="page-head">
 
     <button
       class="back"
-      onclick="switchSection('login-section')"
-    >
+      onclick="switchSection('login-section')">
       ‹
     </button>
 
@@ -800,37 +802,35 @@ button{
         id="signup-id"
         class="input"
         inputmode="numeric"
-        placeholder="사원번호"
-      >
+        placeholder="사원번호">
 
       <input
         id="signup-name"
         class="input"
-        placeholder="이름"
-      >
+        placeholder="이름">
 
       <input
         id="signup-pw"
         class="input"
         type="password"
-        placeholder="비밀번호"
-      >
+        placeholder="비밀번호">
 
       <input
         id="signup-pw2"
         class="input"
         type="password"
-        placeholder="비밀번호 확인"
-      >
+        placeholder="비밀번호 확인">
 
       <button
         class="primary"
-        onclick="handleSignup()"
-      >
+        onclick="handleSignup()">
         가입하기
       </button>
 
-      <div id="signup-msg" class="msg"></div>
+      <div
+        id="signup-msg"
+        class="msg">
+      </div>
 
     </div>
 
@@ -839,15 +839,19 @@ button{
 </div>
 
 
-<!-- 메인 -->
-<div id="main-section" class="hidden">
+<!-- =================================================
+     MAIN
+================================================= -->
+
+<div
+  id="main-section"
+  class="hidden">
 
   <div class="topbar">
 
     <button
       class="top-refresh"
-      onclick="refreshAll()"
-    >
+      onclick="refreshAll()">
       ↻
     </button>
 
@@ -857,20 +861,18 @@ button{
 
       <div
         id="top-time"
-        class="top-time"
-      ></div>
+        class="top-time">
+      </div>
 
     </div>
 
     <button
       class="top-group"
-      onclick="openGroup()"
-    >
+      onclick="openGroup()">
       📍 근무그룹
     </button>
 
   </div>
-
 
   <div class="section">
 
@@ -878,8 +880,8 @@ button{
 
       <div
         id="welcome"
-        class="welcome"
-      ></div>
+        class="welcome">
+      </div>
 
       <div class="subtle">
         원하는 기능을 선택해주세요.
@@ -887,64 +889,67 @@ button{
 
     </div>
 
-
     <div class="menu-grid">
 
       <button
         class="menu-btn"
-        onclick="openSchedule()"
-      >
+        onclick="openSchedule()">
+
         <span>📅</span>
         근무표
+
       </button>
 
       <button
         class="menu-btn"
-        onclick="openGroup()"
-      >
+        onclick="openGroup()">
+
         <span>👥</span>
         근무그룹
+
       </button>
 
       <button
         class="menu-btn"
-        onclick="openPattern()"
-      >
+        onclick="openPattern()">
+
         <span>🔄</span>
         근무패턴
+
       </button>
 
       <button
         class="menu-btn"
-        onclick="openVacation()"
-      >
+        onclick="openVacation()">
+
         <span>🏖️</span>
         휴가관리
+
       </button>
 
       <button
         class="menu-btn"
-        onclick="openSettings()"
-      >
+        onclick="openSettings()">
+
         <span>⚙️</span>
         환경설정
+
       </button>
 
       <button
         class="menu-btn"
-        onclick="alert('사이트 기능은 다음 업데이트에서 연결됩니다.')"
-      >
+        onclick="alert('사이트 기능은 다음 업데이트에서 연결됩니다.')">
+
         <span>🌐</span>
         사이트
+
       </button>
 
     </div>
 
-
     <button
       class="secondary logout"
-      onclick="logout()"
-    >
+      onclick="logout()">
       로그아웃
     </button>
 
@@ -953,15 +958,19 @@ button{
 </div>
 
 
-<!-- 근무표 -->
-<div id="schedule-section" class="hidden">
+<!-- =================================================
+     SCHEDULE
+================================================= -->
+
+<div
+  id="schedule-section"
+  class="hidden">
 
   <div class="page-head">
 
     <button
       class="back"
-      onclick="switchSection('main-section')"
-    >
+      onclick="switchSection('main-section')">
       ‹
     </button>
 
@@ -973,37 +982,35 @@ button{
 
   </div>
 
-
   <div class="section">
 
     <div class="sch-card">
 
       <div class="sch-nav">
 
-        <button onclick="moveScheduleMonth(-1)">
+        <button
+          onclick="moveScheduleMonth(-1)">
           ‹
         </button>
 
         <div
           id="sch-range"
-          class="sch-range"
-        ></div>
+          class="sch-range">
+        </div>
 
-        <button onclick="moveScheduleMonth(1)">
+        <button
+          onclick="moveScheduleMonth(1)">
           ›
         </button>
 
       </div>
 
-
       <div id="calendar"></div>
-
 
       <div
         id="day-detail"
-        class="card detail"
-      ></div>
-
+        class="card detail">
+      </div>
 
       <div class="note">
         ※ 날짜를 길게 누르면 근무를 직접 변경할 수 있습니다.<br>
@@ -1017,15 +1024,19 @@ button{
 </div>
 
 
-<!-- 근무그룹 -->
-<div id="group-section" class="hidden">
+<!-- =================================================
+     GROUP
+================================================= -->
+
+<div
+  id="group-section"
+  class="hidden">
 
   <div class="page-head">
 
     <button
       class="back"
-      onclick="switchSection('main-section')"
-    >
+      onclick="switchSection('main-section')">
       ‹
     </button>
 
@@ -1037,48 +1048,47 @@ button{
 
   </div>
 
-
   <div class="section">
 
     <div class="group-card card">
 
       <div class="group-toolbar">
 
-        <button onclick="moveGroupWeek(-7)">
+        <button
+          onclick="moveGroupWeek(-7)">
           ‹
         </button>
 
         <div
           id="group-range"
-          class="group-range"
-        ></div>
+          class="group-range">
+        </div>
 
-        <button onclick="moveGroupWeek(7)">
+        <button
+          onclick="moveGroupWeek(7)">
           ›
         </button>
 
       </div>
 
-
       <div
         id="group-sync"
-        class="group-sync"
-      >
+        class="group-sync">
         서버 연결 중...
       </div>
 
-
       <div
         id="group-table-wrap"
-        class="group-table-wrap"
-      ></div>
+        class="group-table-wrap">
+      </div>
 
     </div>
 
-
     <div class="note">
+
       ※ 회원정보 시트에 현재 등록된 회원만 표시됩니다.<br>
       ※ 각 회원의 DIA와 직접 수정한 근무가 서버 기준으로 반영됩니다.
+
     </div>
 
   </div>
@@ -1086,15 +1096,19 @@ button{
 </div>
 
 
-<!-- 근무패턴 -->
-<div id="pattern-section" class="hidden">
+<!-- =================================================
+     PATTERN
+================================================= -->
+
+<div
+  id="pattern-section"
+  class="hidden">
 
   <div class="page-head">
 
     <button
       class="back"
-      onclick="switchSection('main-section')"
-    >
+      onclick="switchSection('main-section')">
       ‹
     </button>
 
@@ -1105,7 +1119,6 @@ button{
     <div class="head-spacer"></div>
 
   </div>
-
 
   <div class="section">
 
@@ -1118,15 +1131,19 @@ button{
 </div>
 
 
-<!-- 휴가관리 -->
-<div id="vacation-section" class="hidden">
+<!-- =================================================
+     VACATION
+================================================= -->
+
+<div
+  id="vacation-section"
+  class="hidden">
 
   <div class="page-head">
 
     <button
       class="back"
-      onclick="switchSection('main-section')"
-    >
+      onclick="switchSection('main-section')">
       ‹
     </button>
 
@@ -1137,7 +1154,6 @@ button{
     <div class="head-spacer"></div>
 
   </div>
-
 
   <div class="section">
 
@@ -1150,15 +1166,19 @@ button{
 </div>
 
 
-<!-- 환경설정 -->
-<div id="settings-section" class="hidden">
+<!-- =================================================
+     SETTINGS
+================================================= -->
+
+<div
+  id="settings-section"
+  class="hidden">
 
   <div class="page-head">
 
     <button
       class="back"
-      onclick="switchSection('main-section')"
-    >
+      onclick="switchSection('main-section')">
       ‹
     </button>
 
@@ -1170,14 +1190,16 @@ button{
 
   </div>
 
-
   <div class="section">
 
-    <!-- 근무 설정 -->
+    <!--
+      ★ 현재 선택된 DIA 표시 카드는 삭제
+      ★ 근무설정은 팝업으로 열림
+    -->
+
     <button
       class="settings-item"
-      onclick="openDiaSelector()"
-    >
+      onclick="openDiaSelector()">
 
       <div class="left">
 
@@ -1191,16 +1213,16 @@ button{
 
       </div>
 
-      <b>›</b>
+      <b>
+        ›
+      </b>
 
     </button>
 
 
-    <!-- 출근알람 -->
     <button
       class="settings-item"
-      onclick="alert('출근알람 설정 팝업은 다음 통합 단계에서 연결됩니다.')"
-    >
+      onclick="alert('출근알람 설정 팝업은 다음 통합 단계에서 연결됩니다.')">
 
       <div class="left">
 
@@ -1214,16 +1236,16 @@ button{
 
       </div>
 
-      <b>›</b>
+      <b>
+        ›
+      </b>
 
     </button>
 
 
-    <!-- 글꼴 -->
     <button
       class="settings-item"
-      onclick="alert('글꼴크기 설정 팝업은 다음 통합 단계에서 연결됩니다.')"
-    >
+      onclick="alert('글꼴크기 설정 팝업은 다음 통합 단계에서 연결됩니다.')">
 
       <div class="left">
 
@@ -1237,16 +1259,16 @@ button{
 
       </div>
 
-      <b>›</b>
+      <b>
+        ›
+      </b>
 
     </button>
 
 
-    <!-- 비밀번호 -->
     <button
       class="settings-item"
-      onclick="alert('비밀번호 변경 기능은 기존 서버 인증과 연결해 사용할 수 있습니다.')"
-    >
+      onclick="alert('비밀번호 변경 기능은 기존 서버 인증과 연결해 사용할 수 있습니다.')">
 
       <div class="left">
 
@@ -1260,16 +1282,16 @@ button{
 
       </div>
 
-      <b>›</b>
+      <b>
+        ›
+      </b>
 
     </button>
 
 
-    <!-- 초기화 -->
     <button
       class="settings-item"
-      onclick="resetAppSettings()"
-    >
+      onclick="resetAppSettings()">
 
       <div class="left">
 
@@ -1283,7 +1305,9 @@ button{
 
       </div>
 
-      <b>›</b>
+      <b>
+        ›
+      </b>
 
     </button>
 
@@ -1292,11 +1316,13 @@ button{
 </div>
 
 
-<!-- 근무설정 팝업 -->
+<!-- =================================================
+     DIA MODAL
+================================================= -->
+
 <div
   id="dia-modal"
-  class="modal-bg hidden"
->
+  class="modal-bg hidden">
 
   <div class="modal">
 
@@ -1306,29 +1332,28 @@ button{
 
     <div
       class="note"
-      style="margin-bottom:10px"
-    >
+      style="margin-bottom:10px">
+
       ※ 최초 1회 오늘의 다이아를 설정해주세요.
+
     </div>
 
     <div
       id="dia-grid"
-      class="dia-grid"
-    ></div>
+      class="dia-grid">
+    </div>
 
     <div class="modal-actions">
 
       <button
         class="cancel"
-        onclick="closeModal('dia-modal')"
-      >
+        onclick="closeModal('dia-modal')">
         취소
       </button>
 
       <button
         class="ok"
-        onclick="saveSelectedDia()"
-      >
+        onclick="saveSelectedDia()">
         저장
       </button>
 
@@ -1339,11 +1364,13 @@ button{
 </div>
 
 
-<!-- 근무 변경 팝업 -->
+<!-- =================================================
+     EDIT MODAL
+================================================= -->
+
 <div
   id="edit-modal"
-  class="modal-bg hidden"
->
+  class="modal-bg hidden">
 
   <div class="modal">
 
@@ -1355,27 +1382,24 @@ button{
       id="edit-dia"
       class="input"
       inputmode="numeric"
-      placeholder="DIA 번호 입력"
-    >
+      placeholder="DIA 번호 입력">
 
     <div
       id="status-grid"
-      class="status-grid"
-    ></div>
+      class="status-grid">
+    </div>
 
     <div class="modal-actions">
 
       <button
         class="cancel"
-        onclick="closeModal('edit-modal')"
-      >
+        onclick="closeModal('edit-modal')">
         취소
       </button>
 
       <button
         class="ok"
-        onclick="saveScheduleEdit()"
-      >
+        onclick="saveScheduleEdit()">
         저장
       </button>
 
@@ -1383,9 +1407,10 @@ button{
 
     <button
       class="secondary"
-      onclick="restoreOriginalSchedule()"
-    >
+      onclick="restoreOriginalSchedule()">
+
       원래 근무로 되돌리기
+
     </button>
 
   </div>
@@ -1393,79 +1418,88 @@ button{
 </div>
 
 
-<!-- 하단 메뉴 -->
+<!-- =================================================
+     BOTTOM NAV
+================================================= -->
+
 <div
   class="bottom-nav hidden"
-  id="bottom-nav"
->
+  id="bottom-nav">
 
   <button
     id="nav-main"
     class="nav-btn active"
-    onclick="switchSection('main-section')"
-  >
+    onclick="switchSection('main-section')">
+
     <span class="ico">🏠</span>
     <span>메인화면</span>
+
   </button>
 
 
   <button
     id="nav-schedule"
     class="nav-btn"
-    onclick="openSchedule()"
-  >
+    onclick="openSchedule()">
+
     <span class="ico">🗓️</span>
     <span>근무표</span>
+
   </button>
 
 
   <button
     id="nav-group"
     class="nav-btn"
-    onclick="openGroup()"
-  >
+    onclick="openGroup()">
+
     <span class="ico">👥</span>
     <span>근무그룹</span>
+
   </button>
 
 
   <button
     id="nav-pattern"
     class="nav-btn"
-    onclick="openPattern()"
-  >
+    onclick="openPattern()">
+
     <span class="ico">🔄</span>
     <span>근무패턴</span>
+
   </button>
 
 
   <button
     id="nav-vacation"
     class="nav-btn"
-    onclick="openVacation()"
-  >
+    onclick="openVacation()">
+
     <span class="ico">🏖️</span>
     <span>휴가관리</span>
+
   </button>
 
 
   <button
     id="nav-site"
     class="nav-btn"
-    onclick="alert('사이트 기능은 다음 업데이트에서 연결됩니다.')"
-  >
+    onclick="alert('사이트 기능은 다음 업데이트에서 연결됩니다.')">
+
     <span class="ico">🌐</span>
     <span>사이트</span>
+
   </button>
 
 
   <button
     id="nav-settings"
     class="nav-btn"
-    onclick="openSettings()"
-  >
+    onclick="openSettings()">
+
     <span class="ico">⚙️</span>
     <span>환경설정</span>
+
   </button>
 
 </div>
@@ -1475,8 +1509,13 @@ button{
 
 <script>
 
+/* =================================================
+   SERVER
+================================================= */
+
 const GAS_URL =
 'https://script.google.com/macros/s/AKfycbzNXcKpOMeIaiOD8XZacs6pM2xjRYlytjbr9pF7SwKWMdYU5GRpl9BOsnV5YRhcxD8GpQ/exec';
+
 
 const USER_KEY =
 'railwaySecretaryUser';
@@ -1491,7 +1530,15 @@ const OVERRIDE_LOCAL_PREFIX =
 'railwaySecretaryScheduleOverrides_';
 
 const DAY_NAMES =
-['일','월','화','수','목','금','토'];
+[
+  '일',
+  '월',
+  '화',
+  '수',
+  '목',
+  '금',
+  '토'
+];
 
 const STATUS_LIST =
 [
@@ -1530,149 +1577,162 @@ let groupTimer = null;
 let syncBusy = false;
 
 
-/* =========================
-   저장소
-========================= */
+/* =================================================
+   STORAGE
+================================================= */
 
 function lsGet(k){
 
   try{
-    return localStorage.getItem(k);
+    return localStorage.getItem(k)
   }catch(e){
-    return null;
+    return null
   }
-
 }
 
 
 function lsSet(k,v){
 
   try{
-    localStorage.setItem(k,v);
+    localStorage.setItem(k,v)
   }catch(e){}
-
 }
 
 
 function lsRemove(k){
 
   try{
-    localStorage.removeItem(k);
+    localStorage.removeItem(k)
   }catch(e){}
-
 }
 
 
 function ssGet(k){
 
   try{
-    return sessionStorage.getItem(k);
+    return sessionStorage.getItem(k)
   }catch(e){
-    return null;
+    return null
   }
-
 }
 
 
 function ssSet(k,v){
 
   try{
-    sessionStorage.setItem(k,v);
+    sessionStorage.setItem(k,v)
   }catch(e){}
-
 }
 
 
 function ssRemove(k){
 
   try{
-    sessionStorage.removeItem(k);
+    sessionStorage.removeItem(k)
   }catch(e){}
-
 }
 
 
-/* =========================
-   날짜
-========================= */
+/* =================================================
+   DATE
+================================================= */
 
 function todayStr(){
 
   const d = new Date();
 
-  return d.getFullYear()+
-    '-'+
-    String(d.getMonth()+1).padStart(2,'0')+
-    '-'+
-    String(d.getDate()).padStart(2,'0');
-
+  return (
+    d.getFullYear() +
+    '-' +
+    String(
+      d.getMonth()+1
+    ).padStart(2,'0') +
+    '-' +
+    String(
+      d.getDate()
+    ).padStart(2,'0')
+  );
 }
 
 
 function parseDate(s){
 
-  const p = s.split('-').map(Number);
+  const p =
+    s.split('-').map(Number);
 
   return new Date(
     p[0],
     p[1]-1,
     p[2]
   );
-
 }
 
 
 function dateStr(d){
 
-  return d.getFullYear()+
-    '-'+
-    String(d.getMonth()+1).padStart(2,'0')+
-    '-'+
-    String(d.getDate()).padStart(2,'0');
-
+  return (
+    d.getFullYear() +
+    '-' +
+    String(
+      d.getMonth()+1
+    ).padStart(2,'0') +
+    '-' +
+    String(
+      d.getDate()
+    ).padStart(2,'0')
+  );
 }
 
 
 function addDays(s,n){
 
-  const d = parseDate(s);
+  const d =
+    parseDate(s);
 
-  d.setDate(d.getDate()+n);
+  d.setDate(
+    d.getDate()+n
+  );
 
   return dateStr(d);
-
 }
 
 
 function diffDays(a,b){
 
   return Math.round(
-    (parseDate(b)-parseDate(a))/86400000
+    (
+      parseDate(b) -
+      parseDate(a)
+    ) / 86400000
   );
-
 }
 
 
 function esc(v){
 
-  return String(v==null?'':v)
-    .replace(
-      /[&<>"']/g,
-      m=>({
+  return String(
+    v == null ? '' : v
+  ).replace(
+    /[&<>"']/g,
+    function(m){
+
+      return {
+
         '&':'&amp;',
         '<':'&lt;',
         '>':'&gt;',
         '"':'&quot;',
         "'":'&#39;'
-      }[m])
-    );
 
+      }[m];
+    }
+  );
 }
 
 
-/* =========================
+/* =================================================
    JSONP
-========================= */
+================================================= */
 
 function jsonp(
   action,
@@ -1681,31 +1741,41 @@ function jsonp(
 ){
 
   return new Promise(
-    (resolve,reject)=>{
+    function(resolve,reject){
 
       const cb =
-        'railwayCb_'+
-        Date.now()+
-        '_'+
-        Math.floor(Math.random()*100000);
+        'railwayCb_' +
+        Date.now() +
+        '_' +
+        Math.floor(
+          Math.random()*100000
+        );
 
       const script =
-        document.createElement('script');
+        document.createElement(
+          'script'
+        );
 
       let done=false;
 
       const timer =
         setTimeout(
-          ()=>finish(
-            new Error(
-              '서버 응답 시간 초과'
-            )
-          ),
+          function(){
+
+            finish(
+              new Error(
+                '서버 응답 시간 초과'
+              )
+            );
+
+          },
           timeout
         );
 
-
-      function finish(err,data){
+      function finish(
+        err,
+        data
+      ){
 
         if(done)return;
 
@@ -1714,62 +1784,73 @@ function jsonp(
         clearTimeout(timer);
 
         try{
+
           delete window[cb];
+
         }catch(e){
+
           window[cb]=undefined;
         }
 
         script.remove();
 
         if(err){
+
           reject(err);
+
         }else{
+
           resolve(data);
         }
-
       }
 
-
       window[cb] =
-        data=>finish(null,data);
+        function(data){
 
+          finish(
+            null,
+            data
+          );
+        };
 
       const q =
-        new URLSearchParams(
-          {
-            ...params,
-            action,
-            callback:cb,
-            _t:Date.now()
-          }
-        );
+        new URLSearchParams({
 
+          ...params,
+
+          action,
+
+          callback:cb,
+
+          _t:Date.now()
+        });
 
       script.src =
-        GAS_URL+
-        '?'+
+        GAS_URL +
+        '?' +
         q.toString();
 
-
       script.onerror =
-        ()=>finish(
-          new Error(
-            '서버 연결에 실패했습니다.'
-          )
-        );
+        function(){
 
+          finish(
+            new Error(
+              '서버 연결에 실패했습니다.'
+            )
+          );
+        };
 
-      document.body.appendChild(script);
-
+      document.body.appendChild(
+        script
+      );
     }
   );
-
 }
 
 
-/* =========================
-   화면 전환
-========================= */
+/* =================================================
+   SECTION
+================================================= */
 
 function switchSection(id){
 
@@ -1783,98 +1864,132 @@ function switchSection(id){
     'vacation-section',
     'settings-section'
   ].forEach(
-    x=>{
+    function(x){
+
       document
         .getElementById(x)
-        .classList
-        .toggle(
+        .classList.toggle(
           'hidden',
-          x!==id
+          x !== id
         );
     }
   );
 
-
   const logged =
     !!currentUser &&
-    id!=='login-section' &&
-    id!=='signup-section';
-
+    id !== 'login-section' &&
+    id !== 'signup-section';
 
   document
-    .getElementById('bottom-nav')
-    .classList
-    .toggle(
+    .getElementById(
+      'bottom-nav'
+    )
+    .classList.toggle(
       'hidden',
       !logged
     );
 
-
   document
-    .querySelectorAll('.nav-btn')
+    .querySelectorAll(
+      '.nav-btn'
+    )
     .forEach(
-      b=>b.classList.remove('active')
+      function(b){
+
+        b.classList.remove(
+          'active'
+        );
+      }
     );
 
+  const map = {
 
-  const map={
-    'main-section':'nav-main',
-    'schedule-section':'nav-schedule',
-    'group-section':'nav-group',
-    'pattern-section':'nav-pattern',
-    'vacation-section':'nav-vacation',
-    'settings-section':'nav-settings'
+    'main-section':
+      'nav-main',
+
+    'schedule-section':
+      'nav-schedule',
+
+    'group-section':
+      'nav-group',
+
+    'pattern-section':
+      'nav-pattern',
+
+    'vacation-section':
+      'nav-vacation',
+
+    'settings-section':
+      'nav-settings'
   };
 
-
   if(map[id]){
+
     document
-      .getElementById(map[id])
-      .classList
-      .add('active');
+      .getElementById(
+        map[id]
+      )
+      .classList.add(
+        'active'
+      );
   }
 
+  if(
+    id === 'main-section'
+  ){
 
-  if(id==='main-section'){
     document
-      .getElementById('nav-main')
-      .classList
-      .add('active');
+      .getElementById(
+        'nav-main'
+      )
+      .classList.add(
+        'active'
+      );
   }
-
 }
 
 
-/* =========================
-   시계
-========================= */
+/* =================================================
+   CLOCK
+================================================= */
 
 function updateClock(){
 
-  const d=new Date();
+  const d =
+    new Date();
 
   document
-    .getElementById('top-date')
+    .getElementById(
+      'top-date'
+    )
     .textContent =
-      d.getFullYear()+
-      '년 '+
-      (d.getMonth()+1)+
-      '월 '+
-      String(d.getDate()).padStart(2,'0')+
-      '일 ('+
-      DAY_NAMES[d.getDay()]+
+      d.getFullYear() +
+      '년 ' +
+      (d.getMonth()+1) +
+      '월 ' +
+      String(
+        d.getDate()
+      ).padStart(2,'0') +
+      '일 (' +
+      DAY_NAMES[d.getDay()] +
       ')';
 
-
   document
-    .getElementById('top-time')
+    .getElementById(
+      'top-time'
+    )
     .textContent =
-      String(d.getHours()).padStart(2,'0')+
-      ':'+
-      String(d.getMinutes()).padStart(2,'0')+
-      ':'+
-      String(d.getSeconds()).padStart(2,'0');
-
+      String(
+        d.getHours()
+      ).padStart(2,'0') +
+      ':' +
+      String(
+        d.getMinutes()
+      ).padStart(2,'0') +
+      ':' +
+      String(
+        d.getSeconds()
+      ).padStart(2,'0');
 }
 
 setInterval(
@@ -1885,48 +2000,66 @@ setInterval(
 updateClock();
 
 
-/* =========================
+/* =================================================
    DIA
-========================= */
+================================================= */
 
-function normalizeDia(x,i){
+function normalizeDia(
+  x,
+  i
+){
 
   return {
-    order:Number(
-      x.order||i+1
-    ),
 
-    seq:String(
-      x.seq||
-      x.order||
-      i+1
-    ),
+    order:
+      Number(
+        x.order ||
+        i+1
+      ),
 
-    dia:String(
-      x.dia||''
-    ),
+    seq:
+      String(
+        x.seq ||
+        x.order ||
+        i+1
+      ),
 
-    type:String(
-      x.type||''
-    ),
+    dia:
+      String(
+        x.dia ||
+        ''
+      ),
 
-    start:String(
-      x.start||''
-    ),
+    type:
+      String(
+        x.type ||
+        ''
+      ),
 
-    end:String(
-      x.end||''
-    ),
+    start:
+      String(
+        x.start ||
+        ''
+      ),
 
-    train1:String(
-      x.train1||''
-    ),
+    end:
+      String(
+        x.end ||
+        ''
+      ),
 
-    train2:String(
-      x.train2||''
-    )
+    train1:
+      String(
+        x.train1 ||
+        ''
+      ),
+
+    train2:
+      String(
+        x.train2 ||
+        ''
+      )
   };
-
 }
 
 
@@ -1934,9 +2067,10 @@ function saveDiaCache(){
 
   lsSet(
     DIA_CACHE_KEY,
-    JSON.stringify(diaData)
+    JSON.stringify(
+      diaData
+    )
   );
-
 }
 
 
@@ -1946,21 +2080,23 @@ function loadDiaCache(){
 
     const a =
       JSON.parse(
-        lsGet(DIA_CACHE_KEY)||'[]'
+        lsGet(
+          DIA_CACHE_KEY
+        ) || '[]'
       );
 
     if(
-      Array.isArray(a)&&
+      Array.isArray(a) &&
       a.length
     ){
 
       diaData =
-        a.map(normalizeDia);
-
+        a.map(
+          normalizeDia
+        );
     }
 
   }catch(e){}
-
 }
 
 
@@ -1969,41 +2105,51 @@ async function loadDiaFromServer(){
   try{
 
     const r =
-      await jsonp('getDia');
+      await jsonp(
+        'getDia'
+      );
 
     if(
-      r&&
-      r.success&&
-      Array.isArray(r.list)
+      r &&
+      r.success &&
+      Array.isArray(
+        r.list
+      )
     ){
 
       diaData =
-        r.list.map(normalizeDia);
+        r.list.map(
+          normalizeDia
+        );
 
       saveDiaCache();
 
       return true;
-
     }
 
   }catch(e){}
 
   return false;
-
 }
 
 
-/* =========================
-   로그인
-========================= */
+/* =================================================
+   USER
+================================================= */
 
 function loadUserFromStorage(){
 
   let raw =
-    lsGet(USER_KEY);
+    lsGet(
+      USER_KEY
+    );
 
   if(!raw){
-    raw=ssGet(USER_KEY);
+
+    raw =
+      ssGet(
+        USER_KEY
+      );
   }
 
   if(!raw){
@@ -2011,15 +2157,22 @@ function loadUserFromStorage(){
   }
 
   try{
-    return JSON.parse(raw);
+
+    return JSON.parse(
+      raw
+    );
+
   }catch(e){
+
     return null;
   }
-
 }
 
 
-function saveUser(u,remember){
+function saveUser(
+  u,
+  remember
+){
 
   const raw =
     JSON.stringify(u);
@@ -2031,7 +2184,9 @@ function saveUser(u,remember){
       raw
     );
 
-    ssRemove(USER_KEY);
+    ssRemove(
+      USER_KEY
+    );
 
   }else{
 
@@ -2040,53 +2195,62 @@ function saveUser(u,remember){
       raw
     );
 
-    lsRemove(USER_KEY);
-
+    lsRemove(
+      USER_KEY
+    );
   }
-
 }
 
 
 function clearUser(){
 
-  lsRemove(USER_KEY);
+  lsRemove(
+    USER_KEY
+  );
 
-  ssRemove(USER_KEY);
-
+  ssRemove(
+    USER_KEY
+  );
 }
 
+
+/* =================================================
+   LOGIN
+================================================= */
 
 async function handleLogin(){
 
   const id =
     document
-      .getElementById('login-id')
+      .getElementById(
+        'login-id'
+      )
       .value
       .trim();
 
   const pw =
     document
-      .getElementById('login-pw')
+      .getElementById(
+        'login-pw'
+      )
       .value;
 
   const msg =
     document
-      .getElementById('login-msg');
+      .getElementById(
+        'login-msg'
+      );
 
-
-  if(!id||!pw){
+  if(!id || !pw){
 
     msg.textContent =
       '사원번호와 비밀번호를 입력해주세요.';
 
     return;
-
   }
-
 
   msg.textContent =
     '로그인 중입니다...';
-
 
   try{
 
@@ -2099,24 +2263,26 @@ async function handleLogin(){
         }
       );
 
-
     if(!r.success){
 
       msg.textContent =
-        r.message||
+        r.message ||
         '로그인에 실패했습니다.';
 
       return;
-
     }
 
+    currentUser = {
 
-    currentUser={
-      employeeId:r.employeeId,
-      name:r.name,
-      token:r.token
+      employeeId:
+        r.employeeId,
+
+      name:
+        r.name,
+
+      token:
+        r.token
     };
-
 
     saveUser(
       currentUser,
@@ -2127,80 +2293,88 @@ async function handleLogin(){
         .checked
     );
 
-
     await afterLogin();
 
   }catch(e){
 
-    msg.textContent=e.message;
-
+    msg.textContent =
+      e.message;
   }
-
 }
 
+
+/* =================================================
+   SIGNUP
+================================================= */
 
 async function handleSignup(){
 
   const id =
     document
-      .getElementById('signup-id')
+      .getElementById(
+        'signup-id'
+      )
       .value
       .trim();
 
   const name =
     document
-      .getElementById('signup-name')
+      .getElementById(
+        'signup-name'
+      )
       .value
       .trim();
 
   const pw =
     document
-      .getElementById('signup-pw')
+      .getElementById(
+        'signup-pw'
+      )
       .value;
 
   const pw2 =
     document
-      .getElementById('signup-pw2')
+      .getElementById(
+        'signup-pw2'
+      )
       .value;
 
   const msg =
     document
-      .getElementById('signup-msg');
+      .getElementById(
+        'signup-msg'
+      );
 
-
-  if(!id||!name||!pw){
+  if(
+    !id ||
+    !name ||
+    !pw
+  ){
 
     msg.textContent =
       '모든 항목을 입력해주세요.';
 
     return;
-
   }
 
-
-  if(pw.length<4){
+  if(pw.length < 4){
 
     msg.textContent =
       '비밀번호는 4자 이상 입력해주세요.';
 
     return;
-
   }
 
-
-  if(pw!==pw2){
+  if(pw !== pw2){
 
     msg.textContent =
       '비밀번호가 일치하지 않습니다.';
 
     return;
-
   }
-
 
   msg.textContent =
     '회원가입 처리 중입니다...';
-
 
   try{
 
@@ -2209,57 +2383,62 @@ async function handleSignup(){
         'signup',
         {
           employeeId:id,
-          name:name,
+          name,
           password:pw
         }
       );
 
-
     if(!r.success){
 
       msg.textContent =
-        r.message||
+        r.message ||
         '회원가입에 실패했습니다.';
 
       return;
-
     }
-
 
     msg.textContent =
       '회원가입이 완료되었습니다. 로그인해주세요.';
 
-
     document
-      .getElementById('login-id')
-      .value=id;
-
+      .getElementById(
+        'login-id'
+      )
+      .value =
+      id;
 
     setTimeout(
-      ()=>switchSection(
-        'login-section'
-      ),
+      function(){
+
+        switchSection(
+          'login-section'
+        );
+
+      },
       700
     );
 
-
   }catch(e){
 
-    msg.textContent=e.message;
-
+    msg.textContent =
+      e.message;
   }
-
 }
 
+
+/* =================================================
+   AFTER LOGIN
+================================================= */
 
 async function afterLogin(){
 
   document
-    .getElementById('welcome')
+    .getElementById(
+      'welcome'
+    )
     .textContent =
-      currentUser.name+
+      currentUser.name +
       '님';
-
 
   loadDiaCache();
 
@@ -2272,7 +2451,6 @@ async function afterLogin(){
   );
 
   refreshAll();
-
 }
 
 
@@ -2285,7 +2463,6 @@ async function checkSavedLogin(){
     return;
   }
 
-
   try{
 
     const r =
@@ -2301,30 +2478,28 @@ async function checkSavedLogin(){
         10000
       );
 
-
     if(!r.success){
 
       clearUser();
 
-      currentUser=null;
+      currentUser =
+        null;
 
       return;
-
     }
 
   }catch(e){
 
     return;
-
   }
 
-
   document
-    .getElementById('welcome')
+    .getElementById(
+      'welcome'
+    )
     .textContent =
-      currentUser.name+
+      currentUser.name +
       '님';
-
 
   loadDiaCache();
 
@@ -2335,39 +2510,41 @@ async function checkSavedLogin(){
   switchSection(
     'main-section'
   );
-
 }
 
 
 function logout(){
 
   if(groupTimer){
-    clearInterval(groupTimer);
+
+    clearInterval(
+      groupTimer
+    );
   }
 
-  groupTimer=null;
+  groupTimer =
+    null;
 
-  currentUser=null;
+  currentUser =
+    null;
 
   clearUser();
 
   switchSection(
     'login-section'
   );
-
 }
 
 
-/* =========================
-   DIA 설정
-========================= */
+/* =================================================
+   SAVED DIA
+================================================= */
 
 async function loadSavedDia(){
 
   if(!currentUser){
     return;
   }
-
 
   try{
 
@@ -2384,22 +2561,25 @@ async function loadSavedDia(){
         10000
       );
 
-
     if(
-      r.success&&
+      r.success &&
       r.seq
     ){
 
-      selectedDia={
-        seq:String(r.seq),
+      selectedDia = {
+
+        seq:
+          String(
+            r.seq
+          ),
+
         anchor:
-          r.anchor||
+          r.anchor ||
           todayStr()
       };
 
-
       lsSet(
-        DIA_USER_PREFIX+
+        DIA_USER_PREFIX +
         currentUser.employeeId,
 
         JSON.stringify(
@@ -2408,39 +2588,39 @@ async function loadSavedDia(){
       );
 
       return;
-
     }
 
   }catch(e){}
-
 
   try{
 
     const raw =
       lsGet(
-        DIA_USER_PREFIX+
+        DIA_USER_PREFIX +
         currentUser.employeeId
       );
-
 
     if(raw){
 
       selectedDia =
-        JSON.parse(raw);
-
+        JSON.parse(
+          raw
+        );
     }
 
   }catch(e){}
-
 }
 
+
+/* =================================================
+   OPEN
+================================================= */
 
 function openSettings(){
 
   switchSection(
     'settings-section'
   );
-
 }
 
 
@@ -2455,19 +2635,23 @@ function openSchedule(){
   calendarMonth =
     d.getMonth()+1;
 
-  selectedDate={
-    y:calendarYear,
-    m:calendarMonth,
-    d:d.getDate()
-  };
+  selectedDate = {
 
+    y:
+      calendarYear,
+
+    m:
+      calendarMonth,
+
+    d:
+      d.getDate()
+  };
 
   renderCalendar();
 
   switchSection(
     'schedule-section'
   );
-
 }
 
 
@@ -2476,7 +2660,6 @@ function openPattern(){
   switchSection(
     'pattern-section'
   );
-
 }
 
 
@@ -2485,7 +2668,6 @@ function openVacation(){
   switchSection(
     'vacation-section'
   );
-
 }
 
 
@@ -2493,28 +2675,34 @@ function closeModal(id){
 
   document
     .getElementById(id)
-    .classList
-    .add('hidden');
-
+    .classList.add(
+      'hidden'
+    );
 }
 
+
+/* =================================================
+   DIA SETTINGS MODAL
+================================================= */
 
 function openDiaSelector(){
 
   pendingDiaSeq =
-    selectedDia?
-      String(selectedDia.seq):
-      '';
-
+    selectedDia
+      ? String(
+          selectedDia.seq
+        )
+      : '';
 
   renderDiaGrid();
 
-
   document
-    .getElementById('dia-modal')
-    .classList
-    .remove('hidden');
-
+    .getElementById(
+      'dia-modal'
+    )
+    .classList.remove(
+      'hidden'
+    );
 }
 
 
@@ -2522,33 +2710,41 @@ function renderDiaGrid(){
 
   const el =
     document
-      .getElementById('dia-grid');
-
+      .getElementById(
+        'dia-grid'
+      );
 
   el.innerHTML =
     diaData
       .map(
-        x=>`
+        function(x){
+
+          return `
           <button
             class="dia-item ${
-              String(x.seq)===pendingDiaSeq
+              String(x.seq) ===
+              pendingDiaSeq
                 ? 'on'
                 : ''
             }"
             onclick="
               pendingDiaSeq='${esc(x.seq)}';
-              renderDiaGrid()
-            "
-          >
+              renderDiaGrid();
+            ">
+
             <strong>
-              ${esc(x.dia||'-')}
+              ${esc(x.dia || '-')}
             </strong>
-            ${esc(x.type||'')}
+
+            ${esc(
+              x.type || ''
+            )}
+
           </button>
-        `
+          `;
+        }
       )
       .join('');
-
 }
 
 
@@ -2561,22 +2757,22 @@ async function saveSelectedDia(){
     );
 
     return;
-
   }
-
 
   const anchor =
     todayStr();
 
+  selectedDia = {
 
-  selectedDia={
-    seq:pendingDiaSeq,
-    anchor:anchor
+    seq:
+      pendingDiaSeq,
+
+    anchor:
+      anchor
   };
 
-
   lsSet(
-    DIA_USER_PREFIX+
+    DIA_USER_PREFIX +
     currentUser.employeeId,
 
     JSON.stringify(
@@ -2584,11 +2780,9 @@ async function saveSelectedDia(){
     )
   );
 
-
   closeModal(
     'dia-modal'
   );
-
 
   try{
 
@@ -2610,16 +2804,14 @@ async function saveSelectedDia(){
         }
       );
 
-
     if(!r.success){
 
       alert(
-        r.message||
+        r.message ||
         '서버 저장에 실패했습니다.'
       );
 
       return;
-
     }
 
   }catch(e){
@@ -2627,22 +2819,23 @@ async function saveSelectedDia(){
     alert(
       '서버 저장에 실패했습니다. 다시 시도해주세요.'
     );
-
   }
 
-
   renderCalendar();
-
 }
 
 
-/* =========================
-   공휴일
-========================= */
+/* =================================================
+   HOLIDAY
+================================================= */
 
-function holidayName(y,m,d){
+function holidayName(
+  y,
+  m,
+  d
+){
 
-  const fixed={
+  const fixed = {
 
     '1-1':'신정',
 
@@ -2659,20 +2852,16 @@ function holidayName(y,m,d){
     '10-9':'한글날',
 
     '12-25':'성탄절'
-
   };
 
-
   const k =
-    m+'-'+d;
-
+    m + '-' + d;
 
   if(fixed[k]){
     return fixed[k];
   }
 
-
-  const x={
+  const x = {
 
     '2026-2-16':'설날',
 
@@ -2697,85 +2886,114 @@ function holidayName(y,m,d){
     '2026-9-26':'추석',
 
     '2026-10-5':'대체'
-
   };
 
-
-  return x[
-    y+'-'+m+'-'+d
-  ]||'';
-
+  return (
+    x[
+      y +
+      '-' +
+      m +
+      '-' +
+      d
+    ] ||
+    ''
+  );
 }
 
 
-/* =========================
-   근무 계산
-========================= */
+/* =================================================
+   PATTERN
+================================================= */
 
-function getPatternDia(y,m,d){
+function getDiaBySeq(seq){
+
+  return diaData.find(
+    function(x){
+
+      return (
+        String(x.seq) ===
+        String(seq)
+      );
+    }
+  );
+}
+
+
+function getPatternDia(
+  y,
+  m,
+  d
+){
 
   if(
-    !selectedDia||
-    !selectedDia.seq||
-    !selectedDia.anchor||
+    !selectedDia ||
+    !selectedDia.seq ||
+    !selectedDia.anchor ||
     !diaData.length
   ){
+
     return null;
   }
-
 
   const idx =
     diaData.findIndex(
-      x=>
-        String(x.seq)===
-        String(selectedDia.seq)
+      function(x){
+
+        return (
+          String(x.seq) ===
+          String(
+            selectedDia.seq
+          )
+        );
+      }
     );
 
-
-  if(idx<0){
+  if(idx < 0){
     return null;
   }
-
 
   const diff =
     diffDays(
       selectedDia.anchor,
 
-      y+
-      '-'+
-      String(m).padStart(2,'0')+
-      '-'+
-      String(d).padStart(2,'0')
+      y +
+      '-' +
+      String(m)
+        .padStart(2,'0') +
+      '-' +
+      String(d)
+        .padStart(2,'0')
     );
-
 
   const i =
     (
-      (idx+diff)%
-      diaData.length+
+      (
+        idx +
+        diff
+      ) %
+      diaData.length +
       diaData.length
-    )%
+    ) %
     diaData.length;
 
-
   return diaData[i];
-
 }
 
 
-/* =========================
-   개인 근무표 직접수정
-========================= */
+/* =================================================
+   LOCAL OVERRIDE
+================================================= */
 
 function localOverrideKey(){
 
-  return OVERRIDE_LOCAL_PREFIX+
+  return (
+    OVERRIDE_LOCAL_PREFIX +
     (
-      currentUser?
-        currentUser.employeeId:
-        'guest'
-    );
-
+      currentUser
+        ? currentUser.employeeId
+        : 'guest'
+    )
+  );
 }
 
 
@@ -2786,15 +3004,13 @@ function getLocalOverrides(){
     return JSON.parse(
       lsGet(
         localOverrideKey()
-      )||'{}'
-    )||{};
+      ) || '{}'
+    ) || {};
 
   }catch(e){
 
     return {};
-
   }
-
 }
 
 
@@ -2804,28 +3020,29 @@ function setLocalOverrides(o){
     localOverrideKey(),
     JSON.stringify(o)
   );
-
 }
 
 
-function finalLocalDay(y,m,d){
+function finalLocalDay(
+  y,
+  m,
+  d
+){
 
   const ds =
-    y+
-    '-'+
-    String(m).padStart(2,'0')+
-    '-'+
+    y +
+    '-' +
+    String(m).padStart(2,'0') +
+    '-' +
     String(d).padStart(2,'0');
-
 
   const ov =
     getLocalOverrides()[ds];
 
-
   if(ov){
 
     if(
-      ov.type===
+      ov.type ===
       'status'
     ){
 
@@ -2848,23 +3065,23 @@ function finalLocalDay(y,m,d){
 
         status:
           ov.status
-
       };
-
     }
-
 
     const item =
       diaData.find(
-        x=>
-          String(x.dia)===
-          String(ov.dia)
-      );
+        function(x){
 
+          return (
+            String(x.dia) ===
+            String(ov.dia)
+          );
+        }
+      );
 
     return {
 
-      ...(item||{
+      ...(item || {
 
         dia:
           ov.dia,
@@ -2878,34 +3095,35 @@ function finalLocalDay(y,m,d){
         train1:'',
 
         train2:''
-
       }),
 
       manual:true
-
     };
-
   }
 
-
   return getPatternDia(
-    y,m,d
+    y,
+    m,
+    d
   );
-
 }
 
 
-/* =========================
-   근무 표시
-========================= */
+/* =================================================
+   WORK STYLE
+================================================= */
 
 function workClass(type){
 
-  if(type==='주간'){
+  if(
+    type === '주간'
+  ){
     return 'week';
   }
 
-  if(type==='야간'){
+  if(
+    type === '야간'
+  ){
     return 'night';
   }
 
@@ -2922,17 +3140,15 @@ function workClass(type){
   ){
 
     return 'rest';
-
   }
 
   return 'off';
-
 }
 
 
 function shortWork(type){
 
-  const map={
+  const map = {
 
     '주간':'주',
 
@@ -2953,20 +3169,19 @@ function shortWork(type){
     '공가':'휴',
 
     '비번':'비'
-
   };
 
-
-  return map[type]||
-    type||
-    '';
-
+  return (
+    map[type] ||
+    type ||
+    ''
+  );
 }
 
 
-/* =========================
-   근무표 렌더링
-========================= */
+/* =================================================
+   CALENDAR
+================================================= */
 
 function renderCalendar(){
 
@@ -2977,7 +3192,6 @@ function renderCalendar(){
       1
     );
 
-
   const last =
     new Date(
       calendarYear,
@@ -2985,47 +3199,49 @@ function renderCalendar(){
       0
     );
 
-
   const start =
     first.getDay();
-
 
   const days =
     last.getDate();
 
-
   const today =
     todayStr();
 
-
   document
-    .getElementById('sch-range')
+    .getElementById(
+      'sch-range'
+    )
     .textContent =
-      calendarYear+
-      '. '+
-      String(calendarMonth)
-        .padStart(2,'0');
-
+      calendarYear +
+      '. ' +
+      String(
+        calendarMonth
+      ).padStart(2,'0');
 
   let html =
-    '<div class="week-head">'+
+    '<div class="week-head">' +
     DAY_NAMES
       .map(
-        (n,i)=>
-          `<div class="${
+        function(n,i){
+
+          return `
+          <div class="${
             i===0
               ? 'sun'
               : i===6
                 ? 'sat'
                 : ''
-          }">${n}</div>`
+          }">
+            ${n}
+          </div>
+          `;
+        }
       )
-      .join('')+
+      .join('') +
     '</div>';
 
-
   let day=1;
-
 
   for(
     let r=0;
@@ -3036,7 +3252,6 @@ function renderCalendar(){
     let row =
       '<div class="week-row">';
 
-
     for(
       let c=0;
       c<7;
@@ -3044,17 +3259,18 @@ function renderCalendar(){
     ){
 
       if(
-        (r===0&&c<start)||
+        (
+          r===0 &&
+          c<start
+        ) ||
         day>days
       ){
 
-        row+=
+        row +=
           '<div class="day"></div>';
 
         continue;
-
       }
-
 
       const ds =
         dateStr(
@@ -3065,14 +3281,12 @@ function renderCalendar(){
           )
         );
 
-
       const h =
         holidayName(
           calendarYear,
           calendarMonth,
           day
         );
-
 
       const dow =
         new Date(
@@ -3081,7 +3295,6 @@ function renderCalendar(){
           day
         ).getDay();
 
-
       const item =
         finalLocalDay(
           calendarYear,
@@ -3089,46 +3302,44 @@ function renderCalendar(){
           day
         );
 
-
       const cls =
         [
           'day',
 
-          ds===today?
-            'today':'',
+          ds===today
+            ? 'today'
+            : '',
 
-          selectedDate&&
-          selectedDate.y===
-            calendarYear&&
-          selectedDate.m===
-            calendarMonth&&
-          selectedDate.d===
-            day?
-            'selected':'',
+          selectedDate &&
+          selectedDate.y===calendarYear &&
+          selectedDate.m===calendarMonth &&
+          selectedDate.d===day
+            ? 'selected'
+            : '',
 
-          dow===0?
-            'sun':
-            dow===6?
-              'sat':
-              ''
+          dow===0
+            ? 'sun'
+            : dow===6
+              ? 'sat'
+              : ''
 
         ]
         .filter(Boolean)
         .join(' ');
 
-
       const label =
-        item?
-          (
-            item.manual?
-              '*':
-              ''
-          )+
-          shortWork(item.type):
-          '';
+        item
+          ? (
+              item.manual
+                ? '*'
+                : ''
+            ) +
+            shortWork(
+              item.type
+            )
+          : '';
 
-
-      row+=`
+      row += `
 
         <div
           class="${cls}"
@@ -3152,8 +3363,7 @@ function renderCalendar(){
 
           onclick="
             calendarClick('${ds}')
-          "
-        >
+          ">
 
           <span class="num">
             ${day}
@@ -3161,53 +3371,53 @@ function renderCalendar(){
 
           ${
             h
-              ? `<span class="holiday">${h}</span>`
+              ? `
+                <span class="holiday">
+                  ${h}
+                </span>
+              `
               : ''
           }
 
           <span
-            class="work ${workClass(
-              item&&item.type
-            )}"
-          >
+            class="work ${
+              workClass(
+                item &&
+                item.type
+              )
+            }">
+
             ${esc(label)}
+
           </span>
 
         </div>
-
       `;
 
-
       day++;
-
     }
 
+    row +=
+      '</div>';
 
-    row+='</div>';
-
-    html+=row;
-
+    html +=
+      row;
 
     if(day>days){
       break;
     }
-
   }
 
-
   document
-    .getElementById('calendar')
-    .innerHTML=html;
-
+    .getElementById(
+      'calendar'
+    )
+    .innerHTML =
+    html;
 
   renderDayDetail();
-
 }
 
-
-/* =========================
-   길게 누르기
-========================= */
 
 let lpTimer=null;
 
@@ -3218,13 +3428,15 @@ let lpStartY=0;
 let longDate='';
 
 
-function lpStart(e,ds){
+function lpStart(
+  e,
+  ds
+){
 
   const p =
-    e.touches?
-      e.touches[0]:
-      e;
-
+    e.touches
+      ? e.touches[0]
+      : e;
 
   lpStartX =
     p.clientX;
@@ -3235,21 +3447,23 @@ function lpStart(e,ds){
   longDate =
     ds;
 
-
   clearTimeout(
     lpTimer
   );
 
-
   lpTimer =
     setTimeout(
-      ()=>{
-        openScheduleEdit(ds);
+      function(){
+
+        openScheduleEdit(
+          ds
+        );
+
         lpTimer=null;
+
       },
       900
     );
-
 }
 
 
@@ -3260,37 +3474,35 @@ function lpEnd(){
   );
 
   lpTimer=null;
-
 }
 
 
 function calendarClick(ds){
 
   if(
-    lpTimer===null&&
+    lpTimer===null &&
     longDate===ds
   ){
+
     return;
   }
-
 
   const d =
     parseDate(ds);
 
+  selectedDate = {
 
-  selectedDate={
+    y:
+      d.getFullYear(),
 
-    y:d.getFullYear(),
+    m:
+      d.getMonth()+1,
 
-    m:d.getMonth()+1,
-
-    d:d.getDate()
-
+    d:
+      d.getDate()
   };
 
-
   renderCalendar();
-
 }
 
 
@@ -3303,26 +3515,18 @@ function moveScheduleMonth(n){
       1
     );
 
-
   calendarYear =
     d.getFullYear();
-
 
   calendarMonth =
     d.getMonth()+1;
 
-
-  selectedDate=null;
-
+  selectedDate =
+    null;
 
   renderCalendar();
-
 }
 
-
-/* =========================
-   날짜 상세
-========================= */
 
 function renderDayDetail(){
 
@@ -3332,16 +3536,13 @@ function renderDayDetail(){
         'day-detail'
       );
 
-
   if(!selectedDate){
 
     el.innerHTML =
       '<div class="detail-title">날짜를 선택해주세요.</div>';
 
     return;
-
   }
-
 
   const ds =
     dateStr(
@@ -3352,7 +3553,6 @@ function renderDayDetail(){
       )
     );
 
-
   const item =
     finalLocalDay(
       selectedDate.y,
@@ -3360,10 +3560,9 @@ function renderDayDetail(){
       selectedDate.d
     );
 
-
   if(!item){
 
-    el.innerHTML=`
+    el.innerHTML = `
 
       <div class="detail-title">
         ${ds}
@@ -3376,11 +3575,9 @@ function renderDayDetail(){
     `;
 
     return;
-
   }
 
-
-  el.innerHTML=`
+  el.innerHTML = `
 
     <div class="detail-title">
       ${ds}
@@ -3392,34 +3589,38 @@ function renderDayDetail(){
     </div>
 
     <div class="detail-line">
-      DIA : ${esc(item.dia||'-')}
-      　근무 : ${esc(item.type||'-')}
+      DIA :
+      ${esc(item.dia || '-')}
+      　
+      근무 :
+      ${esc(item.type || '-')}
     </div>
 
     <div class="detail-line">
       시간 :
-      ${esc(item.start||'-')}
+      ${esc(item.start || '-')}
       ~
-      ${esc(item.end||'-')}
+      ${esc(item.end || '-')}
     </div>
 
     <div class="detail-line">
       열차 :
-      ${esc(item.train1||'-')}
+      ${esc(item.train1 || '-')}
       /
-      ${esc(item.train2||'-')}
+      ${esc(item.train2 || '-')}
     </div>
 
   `;
-
 }
 
 
-/* =========================
-   근무 변경 팝업
-========================= */
+/* =================================================
+   SCHEDULE EDIT
+================================================= */
 
-function openScheduleEdit(ds){
+function openScheduleEdit(
+  ds
+){
 
   editDate =
     ds;
@@ -3427,35 +3628,31 @@ function openScheduleEdit(ds){
   selectedEditStatus =
     '';
 
-
   const d =
     parseDate(ds);
-
 
   const item =
     finalLocalDay(
       d.getFullYear(),
       d.getMonth()+1,
       d.getDate()
-    )||{};
-
+    ) || {};
 
   document
     .getElementById(
       'edit-title'
     )
     .textContent =
-      ds+
+      ds +
       ' 근무 변경';
-
 
   document
     .getElementById(
       'edit-dia'
     )
     .value =
-      item.dia||'';
-
+      item.dia ||
+      '';
 
   document
     .getElementById(
@@ -3464,29 +3661,32 @@ function openScheduleEdit(ds){
     .innerHTML =
       STATUS_LIST
         .map(
-          s=>`
+          function(s){
 
-            <button
-              class="status-btn"
-              onclick="
-                selectEditStatus('${s}')
-              "
-            >
-              ${s}
-            </button>
+            return `
 
-          `
+              <button
+                class="status-btn"
+                onclick="
+                  selectEditStatus('${s}')
+                ">
+
+                ${s}
+
+              </button>
+
+            `;
+          }
         )
         .join('');
-
 
   document
     .getElementById(
       'edit-modal'
     )
-    .classList
-    .remove('hidden');
-
+    .classList.remove(
+      'hidden'
+    );
 }
 
 
@@ -3495,61 +3695,61 @@ function selectEditStatus(s){
   selectedEditStatus =
     s;
 
-
   document
     .getElementById(
       'edit-dia'
     )
-    .value='';
-
+    .value =
+      '';
 
   document
     .querySelectorAll(
       '.status-btn'
     )
     .forEach(
-      b=>
+      function(b){
+
         b.classList.toggle(
           'on',
-          b.textContent===s
-        )
+          b.textContent === s
+        );
+      }
     );
-
 }
 
 
 document.addEventListener(
   'input',
-  e=>{
+  function(e){
 
     if(
-      e.target.id===
+      e.target.id ===
       'edit-dia'
     ){
 
-      selectedEditStatus='';
-
+      selectedEditStatus =
+        '';
 
       document
         .querySelectorAll(
           '.status-btn'
         )
         .forEach(
-          b=>
+          function(b){
+
             b.classList.remove(
               'on'
-            )
+            );
+          }
         );
-
     }
-
   }
 );
 
 
-/* =========================
-   근무 저장
-========================= */
+/* =================================================
+   SAVE SCHEDULE OVERRIDE
+================================================= */
 
 async function saveScheduleEdit(){
 
@@ -3561,17 +3761,17 @@ async function saveScheduleEdit(){
       .value
       .trim();
 
-
   let type='';
 
   let status='';
-
 
   if(dia){
 
     type='dia';
 
-  }else if(selectedEditStatus){
+  }else if(
+    selectedEditStatus
+  ){
 
     type='status';
 
@@ -3585,33 +3785,33 @@ async function saveScheduleEdit(){
     );
 
     return;
-
   }
 
+  /*
+   * 로컬 즉시 반영
+   */
 
   const ovs =
     getLocalOverrides();
 
-
-  ovs[editDate]={
+  ovs[editDate] = {
 
     type,
-
     dia,
-
     status,
 
     updatedAt:
       new Date()
         .toISOString()
-
   };
-
 
   setLocalOverrides(
     ovs
   );
 
+  /*
+   * ★ 서버에도 저장
+   */
 
   try{
 
@@ -3619,6 +3819,7 @@ async function saveScheduleEdit(){
       await jsonp(
         'saveScheduleOverride',
         {
+
           employeeId:
             currentUser.employeeId,
 
@@ -3628,26 +3829,22 @@ async function saveScheduleEdit(){
           date:
             editDate,
 
-          type:
-            type,
+          type,
+          dia,
+          status
 
-          dia:
-            dia,
-
-          status:
-            status
         },
         15000
       );
 
-
     if(!r.success){
 
       alert(
-        r.message||
+        r.message ||
         '서버 저장에 실패했습니다.'
       );
 
+      return;
     }
 
   }catch(e){
@@ -3656,561 +3853,18 @@ async function saveScheduleEdit(){
       '서버 저장에 실패했습니다. 인터넷 연결을 확인해주세요.'
     );
 
+    return;
   }
-
 
   closeModal(
     'edit-modal'
   );
 
-
   renderCalendar();
 
-}
-
-
-/* =========================
-   원래 근무 복원
-========================= */
-
-async function restoreOriginalSchedule(){
-
-  const ovs =
-    getLocalOverrides();
-
-
-  delete ovs[editDate];
-
-
-  setLocalOverrides(
-    ovs
-  );
-
-
-  try{
-
-    const r =
-      await jsonp(
-        'deleteScheduleOverride',
-        {
-          employeeId:
-            currentUser.employeeId,
-
-          token:
-            currentUser.token,
-
-          date:
-            editDate
-        },
-        15000
-      );
-
-
-    if(!r.success){
-
-      alert(
-        r.message||
-        '서버 복원에 실패했습니다.'
-      );
-
-    }
-
-  }catch(e){
-
-    alert(
-      '서버 복원에 실패했습니다.'
-    );
-
-  }
-
-
-  closeModal(
-    'edit-modal'
-  );
-
-
-  renderCalendar();
-
-}
-
-
-/* =========================
-   근무그룹
-========================= */
-
-function openGroup(){
-
-  const t =
-    todayStr();
-
-
-  const d =
-    parseDate(t);
-
-
-  d.setDate(
-    d.getDate()-
-    d.getDay()
-  );
-
-
-  groupStartDate =
-    dateStr(d);
-
-
-  switchSection(
-    'group-section'
-  );
-
-
-  loadGroupSchedule();
-
-
-  if(groupTimer){
-
-    clearInterval(
-      groupTimer
-    );
-
-  }
-
-
-  groupTimer =
-    setInterval(
-      loadGroupSchedule,
-      15000
-    );
-
-}
-
-
-function moveGroupWeek(n){
-
-  groupStartDate =
-    addDays(
-      groupStartDate,
-      n
-    );
-
-
-  loadGroupSchedule();
-
-}
-
-
-function groupDates(){
-
-  return Array
-    .from(
-      {
-        length:7
-      },
-      (_,i)=>
-        addDays(
-          groupStartDate,
-          i
-        )
-    );
-
-}
-
-
-async function loadGroupSchedule(){
-
-  if(
-    !currentUser||
-    syncBusy
-  ){
-    return;
-  }
-
-
-  syncBusy=true;
-
-
-  const end =
-    addDays(
-      groupStartDate,
-      6
-    );
-
-
-  document
-    .getElementById(
-      'group-range'
-    )
-    .textContent =
-      groupStartDate
-        .slice(0,7)
-        .replace('-','. ')+
-      '. '+
-      parseDate(
-        groupStartDate
-      ).getDate()+
-      ' ~ '+
-      end
-        .slice(5,7)
-        .replace(/^0/,'')+
-      '. '+
-      parseDate(end)
-        .getDate();
-
-
-  try{
-
-    const r =
-      await jsonp(
-        'getGroupSchedule',
-        {
-          employeeId:
-            currentUser.employeeId,
-
-          token:
-            currentUser.token,
-
-          startDate:
-            groupStartDate,
-
-          endDate:
-            end
-        },
-        15000
-      );
-
-
-    if(!r.success){
-
-      document
-        .getElementById(
-          'group-sync'
-        )
-        .textContent =
-          r.message||
-          '근무그룹 조회 실패';
-
-      return;
-
-    }
-
-
-    renderGroupTable(r);
-
-
-    document
-      .getElementById(
-        'group-sync'
-      )
-      .textContent =
-        '마지막 동기화 '+
-        r.serverTime+
-        ' · 15초마다 자동 갱신';
-
-
-  }catch(e){
-
-    document
-      .getElementById(
-        'group-sync'
-      )
-      .textContent =
-        '서버 연결 실패 · '+
-        e.message;
-
-
-  }finally{
-
-    syncBusy=false;
-
-  }
-
-}
-
-
-/* =========================
-   근무그룹 표
-========================= */
-
-function renderGroupTable(data){
-
-  const dates =
-    groupDates();
-
-  const today =
-    todayStr();
-
-
-  if(
-    !data.members||
-    !data.members.length
-  ){
-
-    document
-      .getElementById(
-        'group-table-wrap'
-      )
-      .innerHTML =
-        '<div class="group-empty">현재 회원정보에 등록된 회원이 없습니다.</div>';
-
-    return;
-
-  }
-
-
-  let html =
-    '<table class="group-table">'+
-    '<thead>'+
-    '<tr>'+
-    '<th class="name-col">회원</th>';
-
-
-  dates.forEach(
-    ds=>{
-
-      const d =
-        parseDate(ds);
-
-      const dow =
-        d.getDay();
-
-      const cls =
-        ds===today?
-          'today-col':
-          '';
-
-
-      html+=`
-
-        <th class="${cls}">
-          ${DAY_NAMES[dow]}
-          <br>
-          ${d.getDate()}
-        </th>
-
-      `;
-
-    }
-  );
-
-
-  html+=
-    '</tr>'+
-    '</thead>'+
-    '<tbody>';
-
-
-  data.members.forEach(
-    m=>{
-
-      html+=`
-
-        <tr>
-
-          <td class="name-col">
-            ${esc(m.name)}
-          </td>
-
-      `;
-
-
-      dates.forEach(
-        ds=>{
-
-          const x =
-            (
-              m.days&&
-              m.days[ds]
-            )||{};
-
-
-          const cls =
-            ds===today?
-              'today-col':
-              '';
-
-
-          const label =
-            x.manual
-              ? '*'+
-                shortWork(
-                  x.status||
-                  x.type
-                )
-              :
-                shortWork(
-                  x.status||
-                  x.type
-                );
-
-
-          html+=`
-
-            <td
-              class="${cls}"
-              title="${esc(
-                x.dia||
-                x.type||
-                ''
-              )}"
-            >
-
-              <span
-                class="gwork ${
-                  workClass(
-                    x.status||
-                    x.type
-                  )
-                }"
-              >
-                ${esc(label)}
-              </span>
-
-            </td>
-
-          `;
-
-        }
-      );
-
-
-      html+='</tr>';
-
-    }
-  );
-
-
-  html+=
-    '</tbody>'+
-    '</table>';
-
-
-  let foot =
-    '<div class="group-footer">'+
-    '<div>휴무</div>';
-
-
-  dates.forEach(
-    ds=>{
-
-      let n=0;
-
-
-      data.members.forEach(
-        m=>{
-
-          const x =
-            m.days&&
-            m.days[ds];
-
-
-          if(
-            x&&
-            [
-              '휴무',
-              '연차',
-              '육아휴직',
-              '돌봄',
-              '출산휴가',
-              '병가',
-              '공가'
-            ].includes(
-              x.status||
-              x.type
-            )
-          ){
-
-            n++;
-
-          }
-
-        }
-      );
-
-
-      foot+=
-        `<div>${n}명</div>`;
-
-    }
-  );
-
-
-  foot+='</div>';
-
-
-  document
-    .getElementById(
-      'group-table-wrap'
-    )
-    .innerHTML =
-      html+
-      foot;
-
-}
-
-
-/* =========================
-   초기화
-========================= */
-
-function resetAppSettings(){
-
-  if(
-    !confirm(
-      '근무 설정과 저장된 앱 설정을 초기화할까요?\n로그인 정보는 유지됩니다.'
-    )
-  ){
-    return;
-  }
-
-
-  if(currentUser){
-
-    lsRemove(
-      DIA_USER_PREFIX+
-      currentUser.employeeId
-    );
-
-  }
-
-
-  selectedDia=null;
-
-
-  alert(
-    '앱 설정이 초기화되었습니다.'
-  );
-
-}
-
-
-/* =========================
-   새로고침
-========================= */
-
-async function refreshAll(){
-
-  if(!currentUser){
-    return;
-  }
-
-
-  await loadDiaFromServer();
-
-  await loadSavedDia();
-
-
-  if(
-    !document
-      .getElementById(
-        'schedule-section'
-      )
-      .classList
-      .contains('hidden')
-  ){
-
-    renderCalendar();
-
-  }
-
+  /*
+   * 근무그룹에도 즉시 반영
+   */
 
   if(
     !document
@@ -4222,19 +3876,594 @@ async function refreshAll(){
   ){
 
     loadGroupSchedule();
-
   }
-
 }
 
 
-/* =========================
-   오류
-========================= */
+/* =================================================
+   RESTORE
+================================================= */
+
+async function restoreOriginalSchedule(){
+
+  const ovs =
+    getLocalOverrides();
+
+  delete ovs[editDate];
+
+  setLocalOverrides(
+    ovs
+  );
+
+  try{
+
+    const r =
+      await jsonp(
+        'deleteScheduleOverride',
+        {
+
+          employeeId:
+            currentUser.employeeId,
+
+          token:
+            currentUser.token,
+
+          date:
+            editDate
+
+        },
+        15000
+      );
+
+    if(!r.success){
+
+      alert(
+        r.message ||
+        '서버 복원에 실패했습니다.'
+      );
+
+      return;
+    }
+
+  }catch(e){
+
+    alert(
+      '서버 복원에 실패했습니다.'
+    );
+
+    return;
+  }
+
+  closeModal(
+    'edit-modal'
+  );
+
+  renderCalendar();
+
+  if(
+    !document
+      .getElementById(
+        'group-section'
+      )
+      .classList
+      .contains('hidden')
+  ){
+
+    loadGroupSchedule();
+  }
+}
+
+
+/* =================================================
+   GROUP
+================================================= */
+
+function openGroup(){
+
+  const t =
+    todayStr();
+
+  const d =
+    parseDate(t);
+
+  /*
+   * 현재 주의 일요일부터 시작
+   */
+
+  d.setDate(
+    d.getDate() -
+    d.getDay()
+  );
+
+  groupStartDate =
+    dateStr(d);
+
+  switchSection(
+    'group-section'
+  );
+
+  loadGroupSchedule();
+
+  if(groupTimer){
+
+    clearInterval(
+      groupTimer
+    );
+  }
+
+  /*
+   * ★ 15초마다 서버에서
+   * 최신 회원 및 최신 근무표 조회
+   */
+
+  groupTimer =
+    setInterval(
+      loadGroupSchedule,
+      15000
+    );
+}
+
+
+function moveGroupWeek(n){
+
+  groupStartDate =
+    addDays(
+      groupStartDate,
+      n
+    );
+
+  loadGroupSchedule();
+}
+
+
+function groupDates(){
+
+  return Array.from(
+    {
+      length:7
+    },
+    function(_,i){
+
+      return addDays(
+        groupStartDate,
+        i
+      );
+    }
+  );
+}
+
+
+/* =================================================
+   GROUP SERVER LOAD
+================================================= */
+
+async function loadGroupSchedule(){
+
+  if(
+    !currentUser ||
+    syncBusy
+  ){
+    return;
+  }
+
+  syncBusy=true;
+
+  const end =
+    addDays(
+      groupStartDate,
+      6
+    );
+
+  const startDateObj =
+    parseDate(
+      groupStartDate
+    );
+
+  const endDateObj =
+    parseDate(
+      end
+    );
+
+  document
+    .getElementById(
+      'group-range'
+    )
+    .textContent =
+      (
+        startDateObj.getMonth()+1
+      ) +
+      '. ' +
+      startDateObj.getDate() +
+      ' ~ ' +
+      (
+        endDateObj.getMonth()+1
+      ) +
+      '. ' +
+      endDateObj.getDate();
+
+  try{
+
+    /*
+     * ★ 핵심 서버 요청
+     *
+     * Apps Script가 매번
+     * 회원정보 시트를 읽기 때문에
+     * 현재 실제 가입된 회원만 반환
+     */
+
+    const r =
+      await jsonp(
+        'getGroupSchedule',
+        {
+
+          employeeId:
+            currentUser.employeeId,
+
+          token:
+            currentUser.token,
+
+          startDate:
+            groupStartDate,
+
+          endDate:
+            end
+
+        },
+        15000
+      );
+
+    if(!r.success){
+
+      document
+        .getElementById(
+          'group-sync'
+        )
+        .textContent =
+          r.message ||
+          '근무그룹 조회 실패';
+
+      return;
+    }
+
+    renderGroupTable(
+      r
+    );
+
+    document
+      .getElementById(
+        'group-sync'
+      )
+      .textContent =
+        '마지막 동기화 ' +
+        r.serverTime +
+        ' · 15초마다 자동 갱신';
+
+  }catch(e){
+
+    document
+      .getElementById(
+        'group-sync'
+      )
+      .textContent =
+        '서버 연결 실패 · ' +
+        e.message;
+
+  }finally{
+
+    syncBusy=false;
+  }
+}
+
+
+/* =================================================
+   GROUP TABLE
+================================================= */
+
+function renderGroupTable(
+  data
+){
+
+  const dates =
+    groupDates();
+
+  const today =
+    todayStr();
+
+  /*
+   * 회원이 한 명도 없을 경우
+   */
+
+  if(
+    !data.members ||
+    !data.members.length
+  ){
+
+    document
+      .getElementById(
+        'group-table-wrap'
+      )
+      .innerHTML =
+        '<div class="group-empty">현재 회원정보에 등록된 회원이 없습니다.</div>';
+
+    return;
+  }
+
+  let html =
+    '<table class="group-table">' +
+    '<thead>' +
+    '<tr>' +
+    '<th class="name-col">회원</th>';
+
+  dates.forEach(
+    function(ds){
+
+      const d =
+        parseDate(ds);
+
+      const dow =
+        d.getDay();
+
+      const cls =
+        ds === today
+          ? 'today-col'
+          : '';
+
+      html += `
+
+        <th class="${cls}">
+
+          ${DAY_NAMES[dow]}
+
+          <br>
+
+          ${d.getDate()}
+
+        </th>
+
+      `;
+    }
+  );
+
+  html +=
+    '</tr>' +
+    '</thead>' +
+    '<tbody>';
+
+
+  /*
+   * ★ 서버가 반환한 members만 표시
+   *
+   * 이름/사원번호를
+   * HTML에서 직접 지정하지 않음
+   */
+
+  data.members.forEach(
+    function(m){
+
+      html += `
+
+        <tr>
+
+          <td class="name-col">
+
+            ${esc(
+              m.name
+            )}
+
+          </td>
+
+      `;
+
+      dates.forEach(
+        function(ds){
+
+          const x =
+            (
+              m.days &&
+              m.days[ds]
+            ) || {};
+
+          const cls =
+            ds === today
+              ? 'today-col'
+              : '';
+
+          const workType =
+            x.status ||
+            x.type ||
+            '';
+
+          const label =
+            x.manual
+              ? '*' +
+                shortWork(
+                  workType
+                )
+              :
+                shortWork(
+                  workType
+                );
+
+          html += `
+
+            <td
+              class="${cls}"
+              title="${esc(
+                x.dia ||
+                x.type ||
+                ''
+              )}">
+
+              <span
+                class="gwork ${
+                  workClass(
+                    workType
+                  )
+                }">
+
+                ${esc(
+                  label
+                )}
+
+              </span>
+
+            </td>
+
+          `;
+        }
+      );
+
+      html +=
+        '</tr>';
+    }
+  );
+
+  html +=
+    '</tbody>' +
+    '</table>';
+
+
+  /*
+   * 날짜별 휴무/휴가 인원
+   */
+
+  let foot =
+    '<div class="group-footer">' +
+    '<div>휴무</div>';
+
+  dates.forEach(
+    function(ds){
+
+      let n=0;
+
+      data.members.forEach(
+        function(m){
+
+          const x =
+            m.days &&
+            m.days[ds];
+
+          if(
+            x &&
+            [
+              '휴무',
+              '연차',
+              '육아휴직',
+              '돌봄',
+              '출산휴가',
+              '병가',
+              '공가'
+            ].includes(
+              x.status ||
+              x.type
+            )
+          ){
+
+            n++;
+          }
+        }
+      );
+
+      foot +=
+        '<div>' +
+        n +
+        '명</div>';
+    }
+  );
+
+  foot +=
+    '</div>';
+
+
+  document
+    .getElementById(
+      'group-table-wrap'
+    )
+    .innerHTML =
+      html +
+      foot;
+}
+
+
+/* =================================================
+   RESET
+================================================= */
+
+function resetAppSettings(){
+
+  if(
+    !confirm(
+      '근무 설정과 저장된 앱 설정을 초기화할까요?\n로그인 정보는 유지됩니다.'
+    )
+  ){
+
+    return;
+  }
+
+  if(currentUser){
+
+    lsRemove(
+      DIA_USER_PREFIX +
+      currentUser.employeeId
+    );
+  }
+
+  selectedDia =
+    null;
+
+  alert(
+    '앱 설정이 초기화되었습니다.'
+  );
+}
+
+
+/* =================================================
+   REFRESH
+================================================= */
+
+async function refreshAll(){
+
+  if(!currentUser){
+    return;
+  }
+
+  await loadDiaFromServer();
+
+  await loadSavedDia();
+
+  if(
+    !document
+      .getElementById(
+        'schedule-section'
+      )
+      .classList
+      .contains('hidden')
+  ){
+
+    renderCalendar();
+  }
+
+  if(
+    !document
+      .getElementById(
+        'group-section'
+      )
+      .classList
+      .contains('hidden')
+  ){
+
+    loadGroupSchedule();
+  }
+}
+
+
+/* =================================================
+   ERROR
+================================================= */
 
 window.addEventListener(
   'error',
-  e=>{
+  function(e){
 
     const m =
       document
@@ -4242,57 +4471,48 @@ window.addEventListener(
           'login-msg'
         );
 
-
     if(m){
 
       m.textContent =
-        '스크립트 오류: '+
+        '스크립트 오류: ' +
         e.message;
-
     }
-
   }
 );
 
 
-/* =========================
-   시작
-========================= */
+/* =================================================
+   INIT
+================================================= */
 
 async function init(){
 
   loadDiaCache();
 
-
   const u =
     loadUserFromStorage();
 
-
   if(u){
 
-    currentUser=u;
-
+    currentUser =
+      u;
 
     document
       .getElementById(
         'welcome'
       )
       .textContent =
-        u.name+
+        u.name +
         '님';
 
-
     await checkSavedLogin();
-
 
   }else{
 
     switchSection(
       'login-section'
     );
-
   }
-
 }
 
 
