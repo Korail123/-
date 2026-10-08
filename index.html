@@ -95,7 +95,7 @@
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: background-color: 0.2s;
         }
         .btn:hover {
             background-color: #0052cc;
@@ -124,12 +124,30 @@
             display: block;
         }
     </style>
+    <script>
+        // ⏰ 대한민국 실시간 날짜 및 시간 포맷팅 함수 (GMT+9)
+        function getKSTString() {
+            const now = new Date();
+            const options = {
+                timeZone: 'Asia/Seoul',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                weekday: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            };
+            return new Intl.DateTimeFormat('ko-KR', options).format(now) + ' (KST)';
+        }
+    </script>
 </head>
 <body>
 
     <div class="container">
-        <!-- ⏰ 상단 실시간 날짜 및 시간 (GMT+9 KST) -->
-        <div id="liveClock" class="live-clock">시간을 불러오는 중...</div>
+        <!-- ⏰ 상단 실시간 날짜 및 시간 (접속하자마자 바로 출력되도록 스크립트 즉시 실행) -->
+        <div id="liveClock" class="live-clock"><script>document.write(getKSTString());</script></div>
 
         <!-- 철도비서 로고 이미지 -->
         <img src="logo.png" alt="철도비서 로고" class="logo" onerror="this.style.display='none'">
@@ -154,7 +172,6 @@
                 </div>
                 
                 <button type="submit" class="btn">로그인</button>
-                <!-- onclick을 직접 사용하여 확실하게 동작하도록 수정 -->
                 <button type="button" class="signup-link-btn" onclick="switchSection('signup-section')">회원가입</button>
             </form>
         </div>
@@ -187,32 +204,17 @@
 
     <script>
         // 🚨 구글 시트 웹 앱 URL을 아래에 넣어주세요!
-        const SCRIPT_URL = '여기에_웹앱_URL을_넣으세요';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzNXcKpOMeIaiOD8XZacs6pM2xjRYlytjbr9pF7SwKWMdYU5GRpl9BOsnV5YRhcxD8GpQ/exec';
 
-        // ⏰ 대한민국 실시간 날짜 및 시간 표시 함수 (GMT+9)
-        function updateClock() {
+        // 1초마다 시계 갱신
+        setInterval(() => {
             const clockElement = document.getElementById('liveClock');
-            if (!clockElement) return;
-            const now = new Date();
-            const options = {
-                timeZone: 'Asia/Seoul',
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                weekday: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
-            };
-            const formatter = new Intl.DateTimeFormat('ko-KR', options);
-            clockElement.textContent = formatter.format(now) + ' (KST)';
-        }
+            if (clockElement) {
+                clockElement.textContent = getKSTString();
+            }
+        }, 1000);
 
-        setInterval(updateClock, 1000);
-        window.onload = updateClock;
-
-        // 화면 전환 함수 (전역 함수로 선언하여 버튼이 확실하게 인식함)
+        // 화면 전환 함수
         function switchSection(sectionId) {
             const loginSec = document.getElementById('login-section');
             const signupSec = document.getElementById('signup-section');
@@ -230,7 +232,7 @@
         function handleSignup(e) {
             e.preventDefault();
 
-            if (SCRIPT_URL === 'https://script.google.com/macros/s/AKfycbzNXcKpOMeIaiOD8XZacs6pM2xjRYlytjbr9pF7SwKWMdYU5GRpl9BOsnV5YRhcxD8GpQ/exec') {
+            if (SCRIPT_URL === '여기에_웹앱_URL을_넣으세요') {
                 alert('구글 시트 웹 앱 URL을 코드에 입력해 주세요!');
                 return;
             }
