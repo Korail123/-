@@ -61,7 +61,7 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 .cell-lbl.t-day{color:#e5a800}
 .cell-lbl.t-bi{color:#6c757d}
 .cell-lbl.t-off{color:#e53935}
-.cell-lbl.t-status{color:#e53935;font-size:12px}
+.cell-lbl.t-status{color:#e53935;font-size:15px}
 .cell.today{background:#bfe6fb;border-radius:14px;border-top-color:transparent}
 .cell.selected{background:#dfe5ee;border-radius:14px;border-top-color:transparent}
 .sch-note{margin:10px 4px 0;font-size:12px;color:#8a94a3;line-height:1.7;text-align:left}
@@ -100,6 +100,7 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 .dia-item.l-day .dia-number{color:#e5a800}
 .dia-item.l-bi .dia-number{color:#6c757d}
 .dia-item.l-off .dia-number{color:#e53935}
+.dia-item.dia-name .dia-number{font-size:12px}
 .dia-empty{grid-column:1/-1;padding:25px 10px;text-align:center;font-size:13px;color:#888}
 .dia-dialog-actions{display:flex;justify-content:flex-end;gap:28px;padding:26px 12px 8px}
 .dia-text-btn{border:none;background:none;font-size:16px;font-weight:bold;color:#222;cursor:pointer;padding:6px}
@@ -142,6 +143,10 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 .group-table td.g-status{color:#e53935;font-size:11px}
 .group-table th.g-today,.group-table td.g-today{background:#bfe6fb}
 .group-table tr.me td.name-col{background:#e8f3ff}
+.group-table th{line-height:1.5}
+.group-table td{font-size:15px}
+.group-table tfoot td{background:#fff7e6;color:#c2410c;font-size:13px;border-top:2px solid #f5c26b}
+.group-table tfoot td.name-col{background:#fff1d6;color:#c2410c;font-size:12px}
 </style>
 </head>
 
@@ -278,10 +283,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   </div>
 
   <div class="sch-note">
-    ※ 달력 년월 누르기 : 오늘 날짜로 이동<br>
-    ※ 날짜를 누르면 아래에 상세 근무 정보가 나옵니다.<br>
-    ※ 날짜를 약 1초간 길게 누르면 근무를 변경할 수 있습니다.<br>
-    ※ * 표시가 있는 근무는 직접 변경한 근무입니다.
+    ※ 날짜를 길게 누르면 근무를 변경할 수 있습니다.
   </div>
 
   <div id="day-detail" class="sch-card sch-detail"></div>
@@ -295,10 +297,10 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   <h1>👥 근무그룹</h1>
 
-  <div class="sch-head" style="justify-content:center;margin-bottom:10px;">
-    <button type="button" class="sch-nav" onclick="changeGroupMonth(-1)">◀</button>
-    <div id="group-calendar-title" class="sch-title" style="flex:none;padding:0 15px;font-size:16px;"></div>
-    <button type="button" class="sch-nav" onclick="changeGroupMonth(1)">▶</button>
+  <div class="sch-head" style="margin-bottom:10px;">
+    <button type="button" class="sch-nav" onclick="changeGroupWeek(-1)">◀</button>
+    <div id="group-calendar-title" class="sch-title" style="font-size:15px;" onclick="goGroupThisWeek()"></div>
+    <button type="button" class="sch-nav" onclick="changeGroupWeek(1)">▶</button>
   </div>
 
   <div id="group-status" class="status-message" style="margin-top:0"></div>
@@ -311,10 +313,15 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         </tr>
       </thead>
       <tbody id="group-table-body"></tbody>
+      <tfoot id="group-table-foot"></tfoot>
     </table>
   </div>
 
-  <button class="back-btn" onclick="switchSection('main-section')">돌아가기</button>
+  <div id="group-summary" class="current-dia-card" style="display:none"></div>
+
+  <div class="sch-note">※ 년월 부분을 누르면 이번 주로 이동합니다.</div>
+
+  <button class="back-btn" style="margin-top:14px" onclick="switchSection('main-section')">돌아가기</button>
 
 </div>
 
@@ -369,11 +376,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   </button>
 
-  <div id="current-dia-card" class="current-dia-card">
-    <div class="current-dia-label">현재 설정된 근무 순서</div>
-    <div id="current-dia-value" class="current-dia-value">선택되지 않음</div>
-  </div>
-
   <div id="dia-panel" class="dia-modal" onclick="if(event.target===this)closeDiaSelector()">
 
     <div class="dia-dialog">
@@ -381,7 +383,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <div class="dia-dialog-title">근무 설정</div>
 
       <div class="dia-dialog-note">
-        ※ 오늘의 근무 순서를 선택해주세요.<br>
+        ※ 오늘의 DIA를 선택해주세요.<br>
         ※ 오늘을 기준으로 이후 근무가 자동 계산됩니다.
       </div>
 
@@ -612,9 +614,8 @@ function mod(n, m) {
 function toneOf(label) {
 
   if (label === '주') return 'day';
-  if (label === '야') return 'night';
-  if (label === '비') return 'bi';
   if (label === '휴') return 'off';
+  if (label === '야' || label === '비' || label === 'X') return 'night';
 
   return 'status';
 
@@ -669,19 +670,25 @@ function api(params, cb) {
 }
 
 /* 한 달 근무표(전 회원) 조회 — 근무표/근무그룹 모두 이 함수 하나로 가져온다 */
-function fetchMonth(y, m, cb) {
+function fetchRange(startKey, endKey, cb) {
 
   var user = getCurrentUser();
-
-  var last = new Date(y, m + 1, 0).getDate();
 
   api({
     action: 'getGroupSchedule',
     employeeId: user.employeeId,
     token: user.token,
-    startDate: getDateKey(y, m, 1),
-    endDate: getDateKey(y, m, last)
+    startDate: startKey,
+    endDate: endKey
   }, cb);
+
+}
+
+function fetchMonth(y, m, cb) {
+
+  var last = new Date(y, m + 1, 0).getDate();
+
+  fetchRange(getDateKey(y, m, 1), getDateKey(y, m, last), cb);
 
 }
 
@@ -737,13 +744,6 @@ function switchSection(id) {
   var t = $(id);
 
   if (t) t.classList.add('active');
-
-  var mainContainer = $('main-container');
-
-  if (mainContainer) {
-    if (id === 'group-section') mainContainer.classList.add('wide');
-    else mainContainer.classList.remove('wide');
-  }
 
   if (id === 'login-section' && $('login-message')) $('login-message').textContent = '';
 
@@ -909,7 +909,7 @@ function renderCalendar() {
 
   var titleEl = $('calendar-title');
 
-  if (titleEl) titleEl.textContent = calendarYear + '년 ' + (calendarMonth + 1) + '월';
+  if (titleEl) titleEl.textContent = calendarYear + '년 ' + (calendarMonth + 1) + '월 (' + (getCurrentUser().name || '') + ')';
 
   var grid = $('calendar-grid');
 
@@ -947,6 +947,9 @@ function renderCalendar() {
 
     var info = getInfo(calendarYear, calendarMonth, d);
     var labelHtml = '';
+    var sideText = hName;
+
+    if (!hName && cell.classList.contains('today')) sideText = '오늘';
 
     if (info && info.label) {
 
@@ -954,13 +957,15 @@ function renderCalendar() {
       var tone = isStatus ? 'status' : toneOf(info.label);
       var cls = tone === 'day' ? ' t-day' : tone === 'bi' ? ' t-bi' : tone === 'off' ? ' t-off' : tone === 'status' ? ' t-status' : '';
 
-      labelHtml = '<div class="cell-lbl' + cls + '">' + esc(info.label) + (info.manual ? '*' : '') + '</div>';
+      var small = isStatus && info.label.length > 3 ? ' style="font-size:11px"' : '';
+
+      labelHtml = '<div class="cell-lbl' + cls + '"' + small + '>' + (info.manual ? '*' : '') + esc(info.label) + '</div>';
 
     }
 
     cell.innerHTML =
       '<div class="cell-top"><span class="cell-num">' + d + '</span><span class="cell-side">' +
-      esc(hName) + '</span></div>' + labelHtml;
+      esc(sideText) + '</span></div>' + labelHtml;
 
     if (selDate && selDate.y === calendarYear && selDate.m === calendarMonth && selDate.d === d) {
       cell.classList.add('selected');
@@ -1012,7 +1017,7 @@ function renderDayDetail() {
     return;
   }
 
-  var dateText = selDate.y + '년 ' + (selDate.m + 1) + '월 ' + selDate.d + '일';
+  var dateText = (selDate.m + 1) + '월 ' + selDate.d + '일 상세 근무 정보';
 
   var info = getInfo(selDate.y, selDate.m, selDate.d);
 
@@ -1023,22 +1028,35 @@ function renderDayDetail() {
 
   var isStatus = info.overrideType === 'status';
   var tone = isStatus ? 'off' : toneOf(info.label);
-  var cls = tone === 'day' ? ' t-day' : tone === 'bi' ? ' t-bi' : tone === 'off' || tone === 'status' ? ' t-off' : '';
+  var cls = tone === 'day' ? ' t-day' : (tone === 'off' || tone === 'status') ? ' t-off' : '';
+
+  var main;
+
+  if (!isStatus && info.dia && info.dia !== info.label) {
+    main = 'DIA : ' + esc(info.dia) + ' (' + esc(info.label) + ')';
+  } else {
+    main = esc(info.label);
+  }
+
+  var tag = '근무';
+
+  if (info.label === '휴' || isStatus) tag = '휴무';
+  else if (info.label === '비') tag = '비번';
+  else if (info.label === 'X') tag = '-';
 
   var html = '<div class="dd-date">' + dateText + '</div>';
 
-  html += '<div class="dd-main"><span class="dd-dia' + cls + '">' + esc(info.label) +
-          (info.manual ? ' (수동 변경됨)' : '') + '</span>' +
-          '<span class="dd-tag">' + (!isStatus && info.dia && info.dia !== info.label ? 'DIA ' + esc(info.dia) : '') + '</span></div>';
+  html += '<div class="dd-main"><span class="dd-dia' + cls + '">' + main + (info.manual ? ' *' : '') +
+          '</span><span class="dd-tag">[ ' + tag + ' ]</span></div>';
 
-  if (info.start || info.end) {
-    html += '<div class="dd-row">출퇴근: <span class="dd-chip">' +
-            esc(info.start || '-') + ' ~ ' + esc(info.end || '-') + '</span></div>';
-  }
+  if (info.start) html += '<div class="dd-row">⏰ 출근 시간 : ' + esc(info.start) + '</div>';
+
+  if (info.end) html += '<div class="dd-row">🏠 퇴근 시간 : ' + esc(info.end) + '</div>';
 
   if (info.train1 || info.train2) {
-    html += '<div class="dd-row">열차번호: <span class="dd-chip">' +
-            esc(info.train1 || '-') + (info.train2 ? ' / ' + esc(info.train2) : '') + '</span></div>';
+    html += '<div class="dd-row">🚂 <b>열차 번호 :</b>' +
+            (info.train1 ? '<span class="dd-chip">' + esc(info.train1) + '</span>' : '') +
+            (info.train2 ? '<span class="dd-chip">' + esc(info.train2) + '</span>' : '') + '</div>';
   }
 
   detail.innerHTML = html;
@@ -1262,15 +1280,48 @@ function restoreOriginalSchedule() {
 
 }
 
-/* ============ 근무그룹 표 (회원정보 DB 실시간 반영, 근무표와 동일 데이터) ============ */
+/* ============ 근무그룹 표 (7일 단위: 일요일 ~ 토요일, 근무표와 동일 데이터) ============ */
 
-var groupCalendarYear = calendarYear;
-var groupCalendarMonth = calendarMonth;
+var groupWeekStart = null;   // 표시 중인 주의 일요일 (Date)
 var groupData = null;
 var groupTimer = null;
 var GROUP_REFRESH_MS = 30000;   // 30초마다 자동 갱신
 
+function weekStartOf(dt) {
+  return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() - dt.getDay());
+}
+
+function thisWeekStart() {
+  var t = todayKST();
+  return weekStartOf(new Date(t.y, t.m, t.d));
+}
+
+function groupWeekDays() {
+
+  var list = [];
+
+  for (var i = 0; i < 7; i++) {
+
+    var dt = new Date(groupWeekStart.getFullYear(), groupWeekStart.getMonth(), groupWeekStart.getDate() + i);
+
+    list.push({
+      y: dt.getFullYear(),
+      m: dt.getMonth(),
+      d: dt.getDate(),
+      dow: i,
+      key: getDateKey(dt.getFullYear(), dt.getMonth(), dt.getDate())
+    });
+
+  }
+
+  return list;
+
+}
+
 function openGroupSection() {
+
+  groupWeekStart = thisWeekStart();
+  groupData = null;
 
   switchSection('group-section');
 
@@ -1299,18 +1350,18 @@ function stopGroupAutoRefresh() {
 
 }
 
-function changeGroupMonth(diff) {
+function changeGroupWeek(diff) {
 
-  groupCalendarMonth += diff;
+  groupWeekStart = new Date(groupWeekStart.getFullYear(), groupWeekStart.getMonth(), groupWeekStart.getDate() + diff * 7);
+  groupData = null;
 
-  if (groupCalendarMonth > 11) {
-    groupCalendarMonth = 0;
-    groupCalendarYear++;
-  } else if (groupCalendarMonth < 0) {
-    groupCalendarMonth = 11;
-    groupCalendarYear--;
-  }
+  loadGroupSchedule(false);
 
+}
+
+function goGroupThisWeek() {
+
+  groupWeekStart = thisWeekStart();
   groupData = null;
 
   loadGroupSchedule(false);
@@ -1329,14 +1380,16 @@ function loadGroupSchedule(silent) {
     return;
   }
 
-  var y = groupCalendarYear;
-  var m = groupCalendarMonth;
+  var days = groupWeekDays();
+  var startKey = days[0].key;
+  var endKey = days[6].key;
 
   if (!silent) status.textContent = '근무표를 불러오는 중...';
 
-  fetchMonth(y, m, function (r) {
+  fetchRange(startKey, endKey, function (r) {
 
-    if (y !== groupCalendarYear || m !== groupCalendarMonth) return;
+    // 불러오는 사이 다른 주로 이동했으면 무시
+    if (groupWeekDays()[0].key !== startKey) return;
 
     if (!r || !r.success) {
       status.textContent = (r && r.message) || '불러오지 못했습니다.';
@@ -1357,50 +1410,65 @@ function groupCellClass(label, isStatus) {
 
   if (isStatus) return 'g-status';
   if (label === '주') return 'g-day';
-  if (label === '야') return 'g-night';
-  if (label === '비') return 'g-bi';
   if (label === '휴') return 'g-off';
+  if (label === '야' || label === '비' || label === 'X') return 'g-night';
 
   return '';
 
 }
 
+/* 휴무를 포함한 모든 휴가(연차·육아휴직·돌봄·출산휴가·병가·공가·휴무·휴) */
+function isLeaveInfo(info) {
+  return !!(info && info.label && (info.overrideType === 'status' || info.label === '휴'));
+}
+
 function renderGroupTable() {
+
+  if (!groupWeekStart) groupWeekStart = thisWeekStart();
+
+  var days = groupWeekDays();
+  var today = todayKST();
+  var todayKey = getDateKey(today.y, today.m, today.d);
+
+  var first = days[0];
+  var last = days[6];
 
   var titleEl = $('group-calendar-title');
 
-  if (titleEl) titleEl.textContent = groupCalendarYear + '년 ' + (groupCalendarMonth + 1) + '월 근무표';
+  if (titleEl) {
+    titleEl.textContent = first.y + '년 ' + (first.m + 1) + '월 ' + first.d + '일 ~ ' +
+                          (last.y !== first.y ? last.y + '년 ' : '') + (last.m + 1) + '월 ' + last.d + '일';
+  }
 
   var headRow = $('group-table-head-row');
   var bodyEl = $('group-table-body');
+  var footEl = $('group-table-foot');
 
-  if (!headRow || !bodyEl) return;
+  if (!headRow || !bodyEl || !footEl) return;
 
-  var y = groupCalendarYear;
-  var m = groupCalendarMonth;
-  var lastDate = new Date(y, m + 1, 0).getDate();
-  var today = todayKST();
-
-  function isToday(day) {
-    return today.y === y && today.m === m && today.d === day;
-  }
+  var names = ['일', '월', '화', '수', '목', '금', '토'];
 
   var headHtml = '<th class="name-col">이름</th>';
 
-  for (var d = 1; d <= lastDate; d++) {
+  for (var i = 0; i < 7; i++) {
 
-    var dow = new Date(y, m, d).getDay();
+    var dd = days[i];
 
-    var style = dow === 0 ? ' style="color:#e53935;"' : (dow === 6 ? ' style="color:#1a73e8;"' : '');
+    var style = dd.dow === 0 || holidayName(dd.y, dd.m, dd.d) ? ' style="color:#e53935;"' : (dd.dow === 6 ? ' style="color:#1a73e8;"' : '');
 
-    headHtml += '<th' + (isToday(d) ? ' class="g-today"' : '') + style + '>' + d + '</th>';
+    headHtml += '<th' + (dd.key === todayKey ? ' class="g-today"' : '') + style + '>' +
+                names[dd.dow] + '<br>' + dd.d + '</th>';
 
   }
 
   headRow.innerHTML = headHtml;
 
+  var summary = $('group-summary');
+
   if (!groupData || !groupData.members) {
     bodyEl.innerHTML = '';
+    footEl.innerHTML = '';
+    if (summary) summary.style.display = 'none';
     return;
   }
 
@@ -1413,31 +1481,39 @@ function renderGroupTable() {
     return 0;
   });
 
+  var counts = [0, 0, 0, 0, 0, 0, 0];
+  var todayLeaveNames = [];
+
   var html = '';
 
-  for (var i = 0; i < members.length; i++) {
+  for (var k = 0; k < members.length; k++) {
 
-    var mem = members[i];
+    var mem = members[k];
 
     html += '<tr' + (mem.employeeId === me ? ' class="me"' : '') + '>';
     html += '<td class="name-col">' + esc(mem.name || mem.employeeId) + '</td>';
 
-    for (var day = 1; day <= lastDate; day++) {
+    for (var j = 0; j < 7; j++) {
 
-      var info = mem.days ? mem.days[getDateKey(y, m, day)] : null;
+      var info = mem.days ? mem.days[days[j].key] : null;
 
       var text = '-';
       var cls = '';
 
       if (info && info.label) {
 
-        text = info.label + (info.manual ? '*' : '');
+        text = (info.manual ? '*' : '') + info.label;
 
         cls = groupCellClass(info.label, info.overrideType === 'status');
 
       }
 
-      if (isToday(day)) cls += ' g-today';
+      if (isLeaveInfo(info)) {
+        counts[j]++;
+        if (days[j].key === todayKey) todayLeaveNames.push(mem.name || mem.employeeId);
+      }
+
+      if (days[j].key === todayKey) cls += ' g-today';
 
       cls = cls.replace(/^\s+/, '');
 
@@ -1450,6 +1526,44 @@ function renderGroupTable() {
   }
 
   bodyEl.innerHTML = html;
+
+  // 맨 아래: 날짜별 휴가·휴무 인원
+  var foot = '<tr><td class="name-col">휴가·휴무</td>';
+
+  for (var c = 0; c < 7; c++) {
+    foot += '<td>' + counts[c] + '명</td>';
+  }
+
+  foot += '</tr>';
+
+  footEl.innerHTML = foot;
+
+  // 오늘이 이 주에 있으면 요약 표시
+  var todayIdx = -1;
+
+  for (var q = 0; q < 7; q++) {
+    if (days[q].key === todayKey) todayIdx = q;
+  }
+
+  if (summary) {
+
+    if (todayIdx >= 0) {
+
+      summary.style.display = 'block';
+
+      summary.innerHTML =
+        '<div class="current-dia-label">오늘 휴가·휴무 인원 (전체 ' + members.length + '명 중)</div>' +
+        '<div class="current-dia-value">' + counts[todayIdx] + '명' +
+        (todayLeaveNames.length ? ' <span style="font-size:13px;color:#555;font-weight:normal">(' + esc(todayLeaveNames.join(', ')) + ')</span>' : '') +
+        '</div>';
+
+    } else {
+
+      summary.style.display = 'none';
+
+    }
+
+  }
 
 }
 
@@ -1535,28 +1649,7 @@ function openSettings() {
 
   switchSection('settings-section');
 
-  loadMeta(function () {
-    updateCurrentDiaCard();
-  });
-
-}
-
-function updateCurrentDiaCard() {
-
-  var el = $('current-dia-value');
-
-  var t = todayKST();
-  var idx = patternIndexFor(getDateKey(t.y, t.m, t.d));
-
-  if (idx < 0) {
-    el.textContent = '선택되지 않음';
-    return;
-  }
-
-  var cur = diaList[idx];
-
-  el.textContent = '오늘 ' + cur.seq + '번 · ' + (cur.type || '-') +
-                   ' (기준일 ' + mySettings.anchor + ')';
+  loadMeta(function () {});
 
 }
 
@@ -1602,10 +1695,10 @@ function renderDiaSelector() {
 
     var b = document.createElement('div');
 
-    b.className = 'dia-item' + lc + (String(it.seq) === tempSeq ? ' selected' : '');
+    b.className = 'dia-item dia-name' + lc + (String(it.seq) === tempSeq ? ' selected' : '');
 
     b.innerHTML = '<span class="dia-seq">' + esc(it.seq) + '</span>' +
-                  '<span class="dia-number">' + esc(it.type || '-') + '</span>';
+                  '<span class="dia-number">' + esc(it.dia || it.type || '-') + '</span>';
 
     b.onclick = function () {
       tempSeq = String(it.seq);
@@ -1631,7 +1724,7 @@ function saveSelectedDia() {
   var warn = $('dia-warning');
 
   if (!tempSeq) {
-    warn.textContent = '오늘의 근무 순서를 선택해주세요.';
+    warn.textContent = '오늘의 DIA를 선택해주세요.';
     return;
   }
 
@@ -1663,7 +1756,6 @@ function saveSelectedDia() {
     warn.textContent = '';
 
     closeDiaSelector();
-    updateCurrentDiaCard();
 
   });
 
