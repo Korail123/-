@@ -8,7 +8,7 @@
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
 body{background:#f7f9fa;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
 .container{width:100%;max-width:400px;background:#fff;padding:25px 20px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.05);text-align:center}
-.container.wide{max-width:720px} /* 근무그룹 표를 위해 가로 확장 지원 */
+.container.wide{max-width:720px}
 .live-clock{font-size:13px;color:#666;background:#f1f3f5;padding:6px 12px;border-radius:6px;margin-bottom:20px;font-weight:500}
 .logo{width:100%;max-width:220px;height:auto;margin-bottom:20px}
 h1{font-size:20px;color:#333;margin-bottom:20px}
@@ -58,17 +58,9 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 .cell.sat .cell-num{color:#1a73e8}
 .cell-side{font-size:8px;color:#e53935;line-height:1.3;white-space:nowrap}
 .cell.today .cell-side{color:#1a73e8}
-
-.cell-lbl{
-  margin-top:6px;
-  text-align:center;
-  font-size:15px;
-  font-weight:bold;
-  color:#1a73e8
-}
+.cell-lbl{margin-top:6px;text-align:center;font-size:15px;font-weight:bold;color:#1a73e8}
 .cell-lbl.t-day{color:#e5a800}
 .cell-lbl.t-off{color:#e53935}
-
 .cell.today{background:#bfe6fb;border-radius:14px;border-top-color:transparent}
 .cell.selected{background:#dfe5ee;border-radius:14px;border-top-color:transparent}
 .sch-note{margin:10px 4px 0;font-size:12px;color:#8a94a3;line-height:1.7;text-align:left}
@@ -115,157 +107,37 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 .current-dia-value{margin-top:4px;font-size:17px;font-weight:bold;color:#06f}
 
 /* 근무표 날짜 변경 팝업 */
-.schedule-edit-modal{
-  display:none;
-  position:fixed;
-  top:0;
-  right:0;
-  bottom:0;
-  left:0;
-  background:rgba(0,0,0,.5);
-  z-index:120;
-  align-items:center;
-  justify-content:center;
-  padding:16px
-}
+.schedule-edit-modal{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.5);z-index:120;align-items:center;justify-content:center;padding:16px}
 .schedule-edit-modal.active{display:flex}
-.schedule-edit-dialog{
-  width:100%;
-  max-width:380px;
-  max-height:92vh;
-  overflow-y:auto;
-  background:#fff;
-  border-radius:22px;
-  padding:20px 16px 14px;
-  text-align:left
-}
-.schedule-edit-title{
-  font-size:18px;
-  font-weight:bold;
-  color:#222;
-  padding:0 4px
-}
-.schedule-edit-date{
-  margin:7px 4px 16px;
-  font-size:13px;
-  color:#7a8696
-}
+.schedule-edit-dialog{width:100%;max-width:380px;max-height:92vh;overflow-y:auto;background:#fff;border-radius:22px;padding:20px 16px 14px;text-align:left}
+.schedule-edit-title{font-size:18px;font-weight:bold;color:#222;padding:0 4px}
+.schedule-edit-date{margin:7px 4px 16px;font-size:13px;color:#7a8696}
 .schedule-edit-input-group{margin-bottom:14px}
-.schedule-edit-label{
-  display:block;
-  margin-bottom:7px;
-  font-size:13px;
-  color:#555;
-  font-weight:bold
-}
-.schedule-edit-input{
-  width:100%;
-  padding:11px 12px;
-  border:1px solid #d9e0e8;
-  border-radius:9px;
-  font-size:15px;
-  outline:none
-}
+.schedule-edit-label{display:block;margin-bottom:7px;font-size:13px;color:#555;font-weight:bold}
+.schedule-edit-input{width:100%;padding:11px 12px;border:1px solid #d9e0e8;border-radius:9px;font-size:15px;outline:none}
 .schedule-edit-input:focus{border-color:#1a8fd8}
-.schedule-edit-options{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:7px
-}
-.schedule-edit-option{
-  padding:10px 5px;
-  border:1px solid #dfe5ec;
-  border-radius:9px;
-  background:#f7f9fb;
-  color:#444;
-  font-size:13px;
-  font-weight:bold;
-  cursor:pointer;
-  text-align:center
-}
-.schedule-edit-option.selected{
-  background:#bfe6fb;
-  border-color:#1a8fd8;
-  color:#126da5
-}
-.schedule-edit-help{
-  margin:5px 4px 12px;
-  font-size:11px;
-  color:#8a94a3;
-  line-height:1.6
-}
-.schedule-edit-actions{
-  display:flex;
-  justify-content:flex-end;
-  gap:20px;
-  padding:5px 4px 4px
-}
-.schedule-edit-reset-btn{
-  width:100%;
-  padding:11px 10px;
-  margin-top:4px;
-  border:1px solid #e53935;
-  border-radius:10px;
-  background:#fff;
-  color:#e53935;
-  font-size:14px;
-  font-weight:bold;
-  cursor:pointer
-}
+.schedule-edit-options{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.schedule-edit-option{padding:10px 5px;border:1px solid #dfe5ec;border-radius:9px;background:#f7f9fb;color:#444;font-size:13px;font-weight:bold;cursor:pointer;text-align:center}
+.schedule-edit-option.selected{background:#bfe6fb;border-color:#1a8fd8;color:#126da5}
+.schedule-edit-help{margin:5px 4px 12px;font-size:11px;color:#8a94a3;line-height:1.6}
+.schedule-edit-actions{display:flex;justify-content:flex-end;gap:20px;padding:5px 4px 4px}
+.schedule-edit-reset-btn{width:100%;padding:11px 10px;margin-top:4px;border:1px solid #e53935;border-radius:10px;background:#fff;color:#e53935;font-size:14px;font-weight:bold;cursor:pointer}
 .schedule-edit-reset-btn:active{background:#fff0f0}
 
-/* 그룹 근무표 테이블 스타일 */
-.group-table-container {
-  width: 100%;
-  overflow-x: auto;
-  margin-top: 15px;
-  margin-bottom: 20px;
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
-  background: #fff;
-}
-.group-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: center;
-  font-size: 12px;
-}
-.group-table th, .group-table td {
-  border: 1px solid #e2e8f0;
-  padding: 8px 4px;
-  white-space: nowrap;
-}
-.group-table th {
-  background: #f1f4f8;
-  color: #333;
-  font-weight: bold;
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
-.group-table th.name-col, .group-table td.name-col {
-  position: sticky;
-  left: 0;
-  background: #f8f9fa;
-  z-index: 3;
-  font-weight: bold;
-  color: #06f;
-  min-width: 80px;
-}
-.group-table th.name-col {
-  z-index: 4;
-}
-.group-table td {
-  color: #444;
-}
-.group-table td.holiday {
-  color: #e53935;
-  background: #fff5f5;
-}
-.group-table td.off-status {
-  color: #e53935;
-  font-weight: bold;
-}
+/* 그룹 근무표 테이블 */
+.group-table-container{width:100%;overflow-x:auto;margin-top:15px;margin-bottom:20px;border:1px solid #e9ecef;border-radius:8px;background:#fff}
+.group-table{width:100%;border-collapse:collapse;text-align:center;font-size:12px}
+.group-table th,.group-table td{border:1px solid #e2e8f0;padding:8px 4px;white-space:nowrap}
+.group-table th{background:#f1f4f8;color:#333;font-weight:bold;position:sticky;top:0;z-index:2}
+.group-table th.name-col,.group-table td.name-col{position:sticky;left:0;background:#f8f9fa;z-index:3;font-weight:bold;color:#06f;min-width:80px}
+.group-table th.name-col{z-index:4}
+.group-table td{color:#444;min-width:28px;font-weight:bold}
+.group-table td.g-day{color:#e5a800}
+.group-table td.g-night{color:#1a73e8}
+.group-table td.g-bi{color:#6c757d}
+.group-table td.g-off{color:#e53935}
+.group-table td.g-status{color:#e53935;font-size:11px}
+.group-table tr.me td.name-col{background:#e8f3ff}
 </style>
 </head>
 
@@ -306,15 +178,11 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
     <button type="submit" class="btn" id="login-btn">로그인</button>
 
-    <button type="button"
-            class="signup-link-btn"
-            onclick="switchSection('signup-section')">
+    <button type="button" class="signup-link-btn" onclick="switchSection('signup-section')">
       회원가입
     </button>
 
-    <div id="login-loading" class="loading">
-      로그인 확인 중...
-    </div>
+    <div id="login-loading" class="loading">로그인 확인 중...</div>
 
     <div id="login-message" class="status-message"></div>
 
@@ -348,19 +216,13 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <input type="password" id="signup-pw-confirm" placeholder="비밀번호를 다시 입력하세요" autocomplete="new-password" required>
     </div>
 
-    <button type="submit" class="btn" id="signup-btn">
-      회원가입
-    </button>
+    <button type="submit" class="btn" id="signup-btn">회원가입</button>
 
-    <button type="button"
-            class="signup-link-btn"
-            onclick="switchSection('login-section')">
+    <button type="button" class="signup-link-btn" onclick="switchSection('login-section')">
       로그인으로 돌아가기
     </button>
 
-    <div id="signup-loading" class="loading">
-      회원가입 처리 중...
-    </div>
+    <div id="signup-loading" class="loading">회원가입 처리 중...</div>
 
     <div id="signup-message" class="status-message"></div>
 
@@ -373,48 +235,20 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   <div class="login-success-card">
     <span class="login-success-check">✓</span>
-    <span class="login-success-name" id="welcome-name">송주영</span>님 환영합니다.
+    <span class="login-success-name" id="welcome-name"></span>님 환영합니다.
   </div>
 
   <div class="menu-grid">
 
-    <button type="button"
-            class="menu-btn"
-            onclick="openSchedule()">
-      📅 근무표
-    </button>
-
-    <button type="button"
-            class="menu-btn"
-            onclick="openGroupSection()">
-      👥 근무그룹
-    </button>
-
-    <button type="button"
-            class="menu-btn"
-            onclick="switchSection('pattern-section')">
-      🔄 근무패턴
-    </button>
-
-    <button type="button"
-            class="menu-btn"
-            onclick="switchSection('vacation-section')">
-      🏖️ 휴가관리
-    </button>
-
-    <button type="button"
-            class="menu-btn"
-            onclick="openSettings()">
-      ⚙️ 환경설정
-    </button>
+    <button type="button" class="menu-btn" onclick="openSchedule()">📅 근무표</button>
+    <button type="button" class="menu-btn" onclick="openGroupSection()">👥 근무그룹</button>
+    <button type="button" class="menu-btn" onclick="switchSection('pattern-section')">🔄 근무패턴</button>
+    <button type="button" class="menu-btn" onclick="switchSection('vacation-section')">🏖️ 휴가관리</button>
+    <button type="button" class="menu-btn" onclick="openSettings()">⚙️ 환경설정</button>
 
   </div>
 
-  <button type="button"
-          class="logout-btn"
-          onclick="logout()">
-    로그아웃
-  </button>
+  <button type="button" class="logout-btn" onclick="logout()">로그아웃</button>
 
 </div>
 
@@ -423,31 +257,17 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   <div class="sch-head">
 
-    <button type="button"
-            id="prev-month"
-            class="sch-nav"
-            onclick="changeMonth(-1)">
-      ◀
-    </button>
+    <button type="button" id="prev-month" class="sch-nav" onclick="changeMonth(-1)">◀</button>
 
-    <div id="calendar-title"
-         class="sch-title"
-         onclick="goToday()">
-    </div>
+    <div id="calendar-title" class="sch-title" onclick="goToday()"></div>
 
-    <button type="button"
-            id="next-month"
-            class="sch-nav"
-            onclick="changeMonth(1)">
-      ▶
-    </button>
+    <button type="button" id="next-month" class="sch-nav" onclick="changeMonth(1)">▶</button>
 
   </div>
 
   <div class="sch-card">
 
     <div class="sch-weekdays">
-
       <div class="wd sun">일</div>
       <div class="wd">월</div>
       <div class="wd">화</div>
@@ -455,12 +275,9 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <div class="wd">목</div>
       <div class="wd">금</div>
       <div class="wd sat">토</div>
-
     </div>
 
-    <div id="calendar-grid"
-         class="sch-grid">
-    </div>
+    <div id="calendar-grid" class="sch-grid"></div>
 
   </div>
 
@@ -471,13 +288,9 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     ※ * 표시가 있는 근무는 직접 변경한 근무입니다.
   </div>
 
-  <div id="day-detail"
-       class="sch-card sch-detail">
-  </div>
+  <div id="day-detail" class="sch-card sch-detail"></div>
 
-  <button type="button"
-          class="back-btn calendar-back"
-          onclick="switchSection('main-section')">
+  <button type="button" class="back-btn calendar-back" onclick="switchSection('main-section')">
     메인으로 돌아가기
   </button>
 
@@ -488,11 +301,13 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   <h1>👥 근무그룹</h1>
 
-  <div class="sch-head" style="justify-content: center; margin-bottom: 10px;">
+  <div class="sch-head" style="justify-content:center;margin-bottom:10px;">
     <button type="button" class="sch-nav" onclick="changeGroupMonth(-1)">◀</button>
-    <div id="group-calendar-title" class="sch-title" style="flex: none; padding: 0 15px; font-size:16px;"></div>
+    <div id="group-calendar-title" class="sch-title" style="flex:none;padding:0 15px;font-size:16px;"></div>
     <button type="button" class="sch-nav" onclick="changeGroupMonth(1)">▶</button>
   </div>
+
+  <div id="group-status" class="status-message" style="margin-top:0"></div>
 
   <div class="group-table-container">
     <table class="group-table" id="group-schedule-table">
@@ -501,16 +316,11 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
           <th class="name-col">이름</th>
         </tr>
       </thead>
-      <tbody id="group-table-body">
-        <!-- 동적으로 회원들의 날짜별 근무 데이터가 채워집니다 -->
-      </tbody>
+      <tbody id="group-table-body"></tbody>
     </table>
   </div>
 
-  <button class="back-btn"
-          onclick="openMainSection()">
-    돌아가기
-  </button>
+  <button class="back-btn" onclick="openMainSection()">돌아가기</button>
 
 </div>
 
@@ -523,10 +333,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     교대제 및 순환 근무 패턴을 설정하는 화면입니다.
   </div>
 
-  <button class="back-btn"
-          onclick="switchSection('main-section')">
-    돌아가기
-  </button>
+  <button class="back-btn" onclick="switchSection('main-section')">돌아가기</button>
 
 </div>
 
@@ -539,10 +346,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     연차, 휴가 신청 및 잔여 일수를 관리하는 화면입니다.
   </div>
 
-  <button class="back-btn"
-          onclick="switchSection('main-section')">
-    돌아가기
-  </button>
+  <button class="back-btn" onclick="switchSection('main-section')">돌아가기</button>
 
 </div>
 
@@ -551,138 +355,78 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   <h1>⚙️ 환경설정</h1>
 
-  <button type="button"
-          class="setting-card"
-          onclick="openDiaSelector()">
+  <button type="button" class="setting-card" onclick="openDiaSelector()">
 
     <span class="setting-icon">📋</span>
 
     <span class="setting-text">
-
-      <span class="setting-title">
-        근무 설정
-      </span>
-
-      <span class="setting-sub">
-        ※ 최초 1회 오늘의 다이아를 설정해주세요.
-      </span>
-
+      <span class="setting-title">근무 설정</span>
+      <span class="setting-sub">※ 최초 1회 오늘의 다이아를 설정해주세요.</span>
     </span>
 
-    <span class="setting-arrow">
-      ›
-    </span>
+    <span class="setting-arrow">›</span>
 
   </button>
 
-  <div id="current-dia-card"
-       class="current-dia-card">
-
-    <div class="current-dia-label">
-      현재 선택된 DIA
-    </div>
-
-    <div id="current-dia-value"
-         class="current-dia-value">
-      선택되지 않음
-    </div>
-
+  <div id="current-dia-card" class="current-dia-card">
+    <div class="current-dia-label">현재 선택된 DIA</div>
+    <div id="current-dia-value" class="current-dia-value">선택되지 않음</div>
   </div>
 
-  <div id="dia-panel"
-       class="dia-modal"
-       onclick="if(event.target===this)closeDiaSelector()">
+  <div id="dia-panel" class="dia-modal" onclick="if(event.target===this)closeDiaSelector()">
 
     <div class="dia-dialog">
 
-      <div class="dia-dialog-title">
-        근무 설정
-      </div>
+      <div class="dia-dialog-title">근무 설정</div>
 
       <div class="dia-dialog-note">
         ※ 최초 1회 오늘의 다이아를 설정해주세요.<br>
         ※ 한 번 확인하면 계속 유지됩니다.
       </div>
 
-      <div id="dia-warning"
-           class="status-message">
-      </div>
+      <div id="dia-warning" class="status-message"></div>
 
-      <div id="dia-list"
-           class="dia-list">
-        <div class="dia-empty">
-          DIA 목록을 불러오는 중...
-        </div>
+      <div id="dia-list" class="dia-list">
+        <div class="dia-empty">DIA 목록을 불러오는 중...</div>
       </div>
 
       <div class="dia-dialog-actions">
-
-        <button type="button"
-                class="dia-text-btn"
-                onclick="saveSelectedDia()">
-          확인
-        </button>
-
-        <button type="button"
-                class="dia-text-btn"
-                onclick="closeDiaSelector()">
-          닫기
-        </button>
-
+        <button type="button" class="dia-text-btn" onclick="saveSelectedDia()">확인</button>
+        <button type="button" class="dia-text-btn" onclick="closeDiaSelector()">닫기</button>
       </div>
 
     </div>
 
   </div>
 
-  <button class="back-btn"
-          onclick="switchSection('main-section')"
-          style="margin-top:15px;">
+  <button class="back-btn" onclick="switchSection('main-section')" style="margin-top:15px;">
     돌아가기
   </button>
 
 </div>
 
 <!-- 근무표 날짜 변경 팝업 -->
-<div id="schedule-edit-panel"
-     class="schedule-edit-modal"
-     onclick="if(event.target===this)closeScheduleEdit()">
+<div id="schedule-edit-panel" class="schedule-edit-modal" onclick="if(event.target===this)closeScheduleEdit()">
 
   <div class="schedule-edit-dialog">
 
-    <div class="schedule-edit-title">
-      근무 변경
-    </div>
+    <div class="schedule-edit-title">근무 변경</div>
 
-    <div id="schedule-edit-date"
-         class="schedule-edit-date">
-    </div>
+    <div id="schedule-edit-date" class="schedule-edit-date"></div>
 
     <div class="schedule-edit-input-group">
 
-      <label class="schedule-edit-label"
-             for="schedule-edit-dia">
-        DIA 번호 직접 입력
-      </label>
+      <label class="schedule-edit-label" for="schedule-edit-dia">DIA 번호 직접 입력</label>
 
-      <input id="schedule-edit-dia"
-             class="schedule-edit-input"
-             type="text"
-             inputmode="numeric"
-             maxlength="20"
-             placeholder="예: 12602">
+      <input id="schedule-edit-dia" class="schedule-edit-input" type="text" inputmode="numeric" maxlength="20" placeholder="예: 12602">
 
     </div>
 
     <div class="schedule-edit-input-group">
 
-      <div class="schedule-edit-label">
-        휴가 / 근무 상태
-      </div>
+      <div class="schedule-edit-label">휴가 / 근무 상태</div>
 
-      <div id="schedule-edit-options"
-           class="schedule-edit-options">
-      </div>
+      <div id="schedule-edit-options" class="schedule-edit-options"></div>
 
     </div>
 
@@ -692,26 +436,13 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       ※ 「원래 근무로 되돌리기」를 누르면 최초 계산된 근무로 복원됩니다.
     </div>
 
-    <button type="button"
-            class="schedule-edit-reset-btn"
-            onclick="restoreOriginalSchedule()">
+    <button type="button" class="schedule-edit-reset-btn" onclick="restoreOriginalSchedule()">
       원래 근무로 되돌리기
     </button>
 
     <div class="schedule-edit-actions">
-
-      <button type="button"
-              class="dia-text-btn"
-              onclick="closeScheduleEdit()">
-        취소
-      </button>
-
-      <button type="button"
-              class="dia-text-btn"
-              onclick="saveScheduleEdit()">
-        저장
-      </button>
-
+      <button type="button" class="dia-text-btn" onclick="closeScheduleEdit()">취소</button>
+      <button type="button" class="dia-text-btn" onclick="saveScheduleEdit()">저장</button>
     </div>
 
   </div>
@@ -726,74 +457,44 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
 (function () {
 
-  var days =
-    ['일','월','화','수','목','금','토'];
+  var days = ['일','월','화','수','목','금','토'];
 
-  function p(n) {
-    return n < 10 ? '0' + n : '' + n;
-  }
+  function p(n) { return n < 10 ? '0' + n : '' + n; }
 
   function tick() {
 
-    var el =
-      document.getElementById('liveClock');
+    var el = document.getElementById('liveClock');
 
     if (!el) return;
 
-    var now =
-      new Date();
+    var now = new Date();
 
-    var k =
-      new Date(
-        now.getTime() +
-        now.getTimezoneOffset() * 60000 +
-        9 * 3600000
-      );
+    var k = new Date(now.getTime() + now.getTimezoneOffset() * 60000 + 9 * 3600000);
 
     el.textContent =
-      k.getFullYear() + '.' +
-      p(k.getMonth() + 1) + '.' +
-      p(k.getDate()) +
+      k.getFullYear() + '.' + p(k.getMonth() + 1) + '.' + p(k.getDate()) +
       ' (' + days[k.getDay()] + ') ' +
-      p(k.getHours()) + ':' +
-      p(k.getMinutes()) + ':' +
-      p(k.getSeconds()) +
+      p(k.getHours()) + ':' + p(k.getMinutes()) + ':' + p(k.getSeconds()) +
       ' (KST)';
   }
 
   tick();
 
-  setInterval(
-    tick,
-    1000
-  );
+  setInterval(tick, 1000);
 
 })();
 
 /* ============ 오류 표시 ============ */
 
-window.onerror =
-  function (msg, src, line) {
+window.onerror = function (msg, src, line) {
 
-    var m =
-      document.getElementById(
-        'login-message'
-      );
+  var m = document.getElementById('login-message');
 
-    if (m) {
+  if (m) m.textContent = '스크립트 오류: ' + msg + ' (줄 ' + line + ')';
 
-      m.textContent =
-        '스크립트 오류: ' +
-        msg +
-        ' (줄 ' +
-        line +
-        ')';
+  return false;
 
-    }
-
-    return false;
-
-  };
+};
 
 /* ============ 저장소 ============ */
 
@@ -803,17 +504,10 @@ function store(kind) {
 
   try {
 
-    var s =
-      window[kind];
+    var s = window[kind];
+    var t = '__t__';
 
-    var t =
-      '__t__';
-
-    s.setItem(
-      t,
-      '1'
-    );
-
+    s.setItem(t, '1');
     s.removeItem(t);
 
     return s;
@@ -821,255 +515,153 @@ function store(kind) {
   } catch (e) {
 
     return {
-
-      getItem:function(k) {
-
-        return memStore[
-          kind + k
-        ] === undefined
-          ? null
-          : memStore[
-              kind + k
-            ];
-
+      getItem: function (k) {
+        return memStore[kind + k] === undefined ? null : memStore[kind + k];
       },
-
-      setItem:function(k,v) {
-
-        memStore[
-          kind + k
-        ] =
-          String(v);
-
-      },
-
-      removeItem:function(k) {
-
-        delete memStore[
-          kind + k
-        ];
-
-      }
-
+      setItem: function (k, v) { memStore[kind + k] = String(v); },
+      removeItem: function (k) { delete memStore[kind + k]; }
     };
 
   }
 
 }
 
-var LS =
-  store('localStorage');
-
-var SS =
-  store('sessionStorage');
+var LS = store('localStorage');
+var SS = store('sessionStorage');
 
 /* ============ 설정 ============ */
 
 var SCRIPT_URL =
   'https://script.google.com/macros/s/AKfycbzNXcKpOMeIaiOD8XZacs6pM2xjRYlytjbr9pF7SwKWMdYU5GRpl9BOsnV5YRhcxD8GpQ/exec';
 
-var USER_KEY =
-  'railwaySecretaryUser';
-
-// 회원가입된 사용자 목록을 관리하기 위한 저장소 키
-var USERS_LIST_KEY = 'railwaySecretaryUsersList';
+var USER_KEY = 'railwaySecretaryUser';
 
 var CAL_MIN_Y = 2026;
 var CAL_MIN_M = 0;
 var CAL_MAX_Y = 2099;
 var CAL_MAX_M = 11;
 
-var calendarYear =
-  new Date().getFullYear();
-
-var calendarMonth =
-  new Date().getMonth();
+var calendarYear = new Date().getFullYear();
+var calendarMonth = new Date().getMonth();
 
 // 근무그룹 페이지용 월 상태
 var groupCalendarYear = calendarYear;
 var groupCalendarMonth = calendarMonth;
 
-if (
-  calendarYear < CAL_MIN_Y
-) {
-
-  calendarYear =
-    CAL_MIN_Y;
-
-  calendarMonth =
-    CAL_MIN_M;
-
+if (calendarYear < CAL_MIN_Y) {
+  calendarYear = CAL_MIN_Y;
+  calendarMonth = CAL_MIN_M;
 }
 
-if (
-  calendarYear > CAL_MAX_Y
-) {
-
-  calendarYear =
-    CAL_MAX_Y;
-
-  calendarMonth =
-    CAL_MAX_M;
-
+if (calendarYear > CAL_MAX_Y) {
+  calendarYear = CAL_MAX_Y;
+  calendarMonth = CAL_MAX_M;
 }
 
-/* ============ DIA 데이터 ============ */
+/* ============ DIA 데이터 (개인 달력용 임시 데이터) ============ */
 
 var diaData = [
-
-  {
-    dia:'12602',
-    type:'주간',
-    start:'07:43',
-    end:'18:46',
-    train1:'6127',
-    train2:'6128'
-  },
-
-  {
-    dia:'12404',
-    type:'야간',
-    start:'18:20',
-    end:'07:49',
-    train1:'717',
-    train2:'3252'
-  },
-
-  {
-    dia:'12601',
-    type:'주간',
-    start:'07:30',
-    end:'18:38',
-    train1:'L6121',
-    train2:'6122'
-  },
-
-  {
-    dia:'12402',
-    type:'주간',
-    start:'12:59',
-    end:'20:59',
-    train1:'3226',
-    train2:'3227'
-  },
-
-  {
-    dia:'12581',
-    type:'야간',
-    start:'22:06',
-    end:'10:24',
-    train1:'9999',
-    train2:'L6129'
-  },
-
-  {
-    dia:'12101',
-    type:'주간',
-    start:'08:32',
-    end:'19:06',
-    train1:'1279',
-    train2:'1208'
-  },
-
-  {
-    dia:'12551',
-    type:'주간',
-    start:'07:45',
-    end:'17:47',
-    train1:'K/M6129',
-    train2:''
-  },
-
-  {
-    dia:'12201',
-    type:'주간',
-    start:'09:10',
-    end:'18:10',
-    train1:'3224',
-    train2:'3223'
-  },
-
-  {
-    dia:'12401',
-    type:'주간',
-    start:'10:45',
-    end:'20:31',
-    train1:'3334',
-    train2:'D1208'
-  },
-
-  {
-    dia:'12403',
-    type:'야간',
-    start:'18:20',
-    end:'08:29',
-    train1:'717',
-    train2:'3262'
-  }
-
+  { dia:'12602', type:'주간', start:'07:43', end:'18:46', train1:'6127',    train2:'6128' },
+  { dia:'12404', type:'야간', start:'18:20', end:'07:49', train1:'717',     train2:'3252' },
+  { dia:'12601', type:'주간', start:'07:30', end:'18:38', train1:'L6121',   train2:'6122' },
+  { dia:'12402', type:'주간', start:'12:59', end:'20:59', train1:'3226',    train2:'3227' },
+  { dia:'12581', type:'야간', start:'22:06', end:'10:24', train1:'9999',    train2:'L6129' },
+  { dia:'12101', type:'주간', start:'08:32', end:'19:06', train1:'1279',    train2:'1208' },
+  { dia:'12551', type:'주간', start:'07:45', end:'17:47', train1:'K/M6129', train2:'' },
+  { dia:'12201', type:'주간', start:'09:10', end:'18:10', train1:'3224',    train2:'3223' },
+  { dia:'12401', type:'주간', start:'10:45', end:'20:31', train1:'3334',    train2:'D1208' },
+  { dia:'12403', type:'야간', start:'18:20', end:'08:29', train1:'717',     train2:'3262' }
 ];
 
-var selectedDia =
-  null;
+var selectedDia = null;
 
-var DIA_CACHE_KEY =
-  'railwaySecretaryDiaDB';
+var DIA_CACHE_KEY = 'railwaySecretaryDiaDB';
 
 try {
 
-  var cachedDia =
-    JSON.parse(
-      LS.getItem(
-        DIA_CACHE_KEY
-      ) || 'null'
-    );
+  var cachedDia = JSON.parse(LS.getItem(DIA_CACHE_KEY) || 'null');
 
-  if (
-    cachedDia &&
-    cachedDia.length
-  ) {
-
-    diaData =
-      cachedDia;
-
-  }
+  if (cachedDia && cachedDia.length) diaData = cachedDia;
 
 } catch (e) {}
 
-normDia(
-  diaData
-);
+normDia(diaData);
 
 function normDia(list) {
 
-  list.forEach(
-    function(it,i) {
-
-      if (!it.seq) {
-
-        it.seq =
-          String(i + 1);
-
-      }
-
-    }
-  );
+  list.forEach(function (it, i) {
+    if (!it.seq) it.seq = String(i + 1);
+  });
 
   return list;
 
 }
 
 function $(id) {
+  return document.getElementById(id);
+}
 
-  return document.getElementById(
-    id
-  );
+function esc(t) {
+  return String(t == null ? '' : t)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/* ============ 서버 통신 (JSONP) ============ */
+
+function api(params, cb) {
+
+  var name = 'cb_' + Date.now() + Math.floor(Math.random() * 1000000);
+  var s = document.createElement('script');
+  var done = false;
+  var timer;
+
+  function cleanup() {
+    try { delete window[name]; } catch (e) { window[name] = undefined; }
+    if (s.parentNode) s.parentNode.removeChild(s);
+  }
+
+  function finish(r) {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    cleanup();
+    cb(r);
+  }
+
+  timer = setTimeout(function () {
+    finish({ success: false, message: '서버 응답 시간이 초과되었습니다.' });
+  }, 15000);
+
+  window[name] = finish;
+
+  s.onerror = function () {
+    finish({ success: false, message: '서버에 연결하지 못했습니다.' });
+  };
+
+  var q = [];
+
+  for (var k in params) {
+    if (Object.prototype.hasOwnProperty.call(params, k)) {
+      q.push(encodeURIComponent(k) + '=' + encodeURIComponent(params[k]));
+    }
+  }
+
+  q.push('callback=' + name);
+
+  s.src = SCRIPT_URL + '?' + q.join('&');
+
+  document.head.appendChild(s);
 
 }
 
 /* ============ 화면 전환 ============ */
 
 function switchSection(id) {
+
+  // 근무그룹 화면을 벗어나면 자동 갱신 중지
+  if (id !== 'group-section') stopGroupAutoRefresh();
 
   [
     'login-section',
@@ -1080,68 +672,38 @@ function switchSection(id) {
     'pattern-section',
     'vacation-section',
     'settings-section'
-  ].forEach(
-    function(s) {
+  ].forEach(function (s) {
 
-      var e =
-        $(s);
+    var e = $(s);
 
-      if (e) {
+    if (e) e.classList.remove('active');
 
-        e.classList.remove(
-          'active'
-        );
+  });
 
-      }
+  var t = $(id);
 
-    }
-  );
+  if (t) t.classList.add('active');
 
-  var t =
-    $(id);
-
-  if (t) {
-
-    t.classList.add(
-      'active'
-    );
-
-  }
-
-  // 전체 컨테이너 너비 제어 (그룹 페이지는 표 때문에 가로 넓게 확장)
+  // 그룹 페이지는 표 때문에 가로 넓게 확장
   var mainContainer = $('main-container');
+
   if (mainContainer) {
-    if (id === 'group-section') {
-      mainContainer.classList.add('wide');
-    } else {
-      mainContainer.classList.remove('wide');
-    }
+    if (id === 'group-section') mainContainer.classList.add('wide');
+    else mainContainer.classList.remove('wide');
   }
 
-  if (
-    id === 'login-section' &&
-    $('login-message')
-  ) {
+  if (id === 'login-section' && $('login-message')) $('login-message').textContent = '';
 
-    $('login-message')
-      .textContent = '';
-
-  }
-
-  if (
-    id === 'signup-section' &&
-    $('signup-message')
-  ) {
-
-    $('signup-message')
-      .textContent = '';
-
-  }
+  if (id === 'signup-section' && $('signup-message')) $('signup-message').textContent = '';
 
 }
 
 function openMainSection() {
   switchSection('main-section');
+}
+
+function openSettings() {
+  switchSection('settings-section');
 }
 
 /* ============ 근무표 ============ */
@@ -1152,34 +714,21 @@ function openSchedule() {
 
   renderCalendar();
 
-  switchSection(
-    'schedule-section'
-  );
+  switchSection('schedule-section');
 
 }
 
-var selDate =
-  null;
+var selDate = null;
 
 /* ============ 수동 근무 변경 ============ */
 
-var scheduleEditDate =
-  null;
+var scheduleEditDate = null;
+var scheduleEditMode = 'dia';
+var scheduleEditTimer = null;
+var scheduleEditLongPress = false;
+var scheduleEditSuppressClick = false;
 
-var scheduleEditMode =
-  'dia';
-
-var scheduleEditTimer =
-  null;
-
-var scheduleEditLongPress =
-  false;
-
-var scheduleEditSuppressClick =
-  false;
-
-var SCHEDULE_OVERRIDE_KEY =
-  'railwaySecretaryScheduleOverrides_';
+var SCHEDULE_OVERRIDE_KEY = 'railwaySecretaryScheduleOverrides_';
 
 var SCHEDULE_OVERRIDE_OPTIONS = [
   '연차',
@@ -1194,7 +743,6 @@ var SCHEDULE_OVERRIDE_OPTIONS = [
 /* ============ 공휴일 ============ */
 
 var FIXED_HOL = {
-
   '1-1':'신정',
   '3-1':'삼일절',
   '5-5':'어린이날',
@@ -1203,11 +751,9 @@ var FIXED_HOL = {
   '10-3':'개천절',
   '10-9':'한글날',
   '12-25':'성탄절'
-
 };
 
 var EXTRA_HOL = {
-
   '2026-02-16':'설날',
   '2026-02-17':'설날',
   '2026-02-18':'설날',
@@ -1220,39 +766,17 @@ var EXTRA_HOL = {
   '2026-09-25':'추석',
   '2026-09-26':'추석',
   '2026-10-05':'대체'
-
 };
 
-function holidayName(
-  y,
-  m,
-  d
-) {
+function holidayName(y, m, d) {
 
-  var key =
-    (m + 1) +
-    '-' +
-    d;
+  var key = (m + 1) + '-' + d;
 
-  if (
-    FIXED_HOL[key]
-  ) {
+  if (FIXED_HOL[key]) return FIXED_HOL[key];
 
-    return FIXED_HOL[key];
+  var full = y + '-' + pad2(m + 1) + '-' + pad2(d);
 
-  }
-
-  var full =
-    y +
-    '-' +
-    pad2(m + 1) +
-    '-' +
-    pad2(d);
-
-  return (
-    EXTRA_HOL[full] ||
-    ''
-  );
+  return EXTRA_HOL[full] || '';
 
 }
 
@@ -1260,495 +784,267 @@ function pad2(n) {
   return n < 10 ? '0' + n : '' + n;
 }
 
-/* ============ 회원 관리 및 수동 변경 저장 ============ */
-
-function getRegisteredUsers() {
-  try {
-    var raw = LS.getItem(USERS_LIST_KEY);
-    if (raw) {
-      var list = JSON.parse(raw);
-      if (Array.isArray(list)) return list;
-    }
-  } catch(e) {}
-  
-  // 기본 등록된 유저가 없으면 현재 로그인 유저 포함 기본값 반환
-  var cur = getCurrentUser();
-  return [cur];
-}
-
-function registerUserToList(userObj) {
-  var list = getRegisteredUsers();
-  var found = false;
-  for (var i = 0; i < list.length; i++) {
-    if (list[i].employeeId === userObj.employeeId) {
-      list[i].name = userObj.name;
-      found = true;
-      break;
-    }
-  }
-  if (!found) {
-    list.push(userObj);
-  }
-  LS.setItem(USERS_LIST_KEY, JSON.stringify(list));
-}
+/* ============ 수동 변경 저장 (개인 단말) ============ */
 
 function getScheduleOverrideKeyForUser(employeeId) {
-  return (
-    SCHEDULE_OVERRIDE_KEY +
-    (employeeId ? employeeId : 'guest')
-  );
+  return SCHEDULE_OVERRIDE_KEY + (employeeId ? employeeId : 'guest');
 }
 
 function getScheduleOverrideKey() {
 
-  var user =
-    getCurrentUser();
+  var user = getCurrentUser();
 
-  return getScheduleOverrideKeyForUser(
-    user && user.employeeId ? user.employeeId : 'guest'
-  );
+  return getScheduleOverrideKeyForUser(user && user.employeeId ? user.employeeId : 'guest');
 
 }
 
 function loadScheduleOverridesForUser(employeeId) {
+
   var key = getScheduleOverrideKeyForUser(employeeId);
   var raw = LS.getItem(key) || SS.getItem(key);
+
   if (!raw) return {};
+
   try {
     var map = JSON.parse(raw);
     return (map && typeof map === 'object') ? map : {};
   } catch (e) {
     return {};
   }
+
 }
 
 function loadScheduleOverrides() {
+
   var user = getCurrentUser();
+
   return loadScheduleOverridesForUser(user && user.employeeId ? user.employeeId : 'guest');
-}
-
-function saveScheduleOverrides(
-  map
-) {
-
-  var raw =
-    JSON.stringify(
-      map || {}
-    );
-
-  LS.setItem(
-    getScheduleOverrideKey(),
-    raw
-  );
-
-  SS.setItem(
-    getScheduleOverrideKey(),
-    raw
-  );
 
 }
 
-function getDateKey(
-  y,
-  m,
-  d
-) {
+function saveScheduleOverrides(map) {
 
-  return (
-    y +
-    '-' +
-    pad2(m + 1) +
-    '-' +
-    pad2(d)
-  );
+  var raw = JSON.stringify(map || {});
 
+  LS.setItem(getScheduleOverrideKey(), raw);
+  SS.setItem(getScheduleOverrideKey(), raw);
+
+}
+
+function getDateKey(y, m, d) {
+  return y + '-' + pad2(m + 1) + '-' + pad2(d);
 }
 
 function getOverrideForDateForUser(employeeId, y, m, d) {
+
   var map = loadScheduleOverridesForUser(employeeId);
   var key = getDateKey(y, m, d);
+
   return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : null;
+
 }
 
-function getOverrideForDate(
-  y,
-  m,
-  d
-) {
+function getOverrideForDate(y, m, d) {
+
   var user = getCurrentUser();
+
   return getOverrideForDateForUser(user && user.employeeId ? user.employeeId : 'guest', y, m, d);
+
 }
 
 function diaIndexByNumber(diaNum) {
+
   for (var i = 0; i < diaData.length; i++) {
-    if (diaData[i].dia === diaNum) {
-      return i;
-    }
+    if (diaData[i].dia === diaNum) return i;
   }
+
   return -1;
+
 }
 
 function getPatternDia(y, m, d) {
+
   if (!diaData.length) return null;
+
   var dayCount = Math.floor(new Date(y, m, d).getTime() / 86400000);
+
   return diaData[Math.abs(dayCount) % diaData.length];
+
 }
 
 function getDisplayDiaForUser(employeeId, y, m, d) {
+
   var ov = getOverrideForDateForUser(employeeId, y, m, d);
+
   if (ov) {
+
     if (ov.type === 'dia') {
+
       var idx = diaIndexByNumber(ov.dia);
-      if (idx >= 0) {
-        return { override: true, type: 'dia', item: diaData[idx] };
-      }
+
+      if (idx >= 0) return { override: true, type: 'dia', item: diaData[idx] };
+
       return { override: true, type: 'dia', item: { dia: String(ov.dia), type: '근무' } };
+
     }
+
     if (ov.type === 'status') {
       return { override: true, type: 'status', item: { type: ov.status } };
     }
+
   }
+
   var normal = getPatternDia(y, m, d);
+
   return normal ? { override: false, type: 'dia', item: normal } : null;
+
 }
 
-function getDisplayDia(
-  y,
-  m,
-  d
-) {
+function getDisplayDia(y, m, d) {
+
   var user = getCurrentUser();
+
   return getDisplayDiaForUser(user && user.employeeId ? user.employeeId : 'guest', y, m, d);
+
 }
 
 /* ============ 근무 변경 팝업 ============ */
 
-function openScheduleEdit(
-  y,
-  m,
-  d
-) {
+function openScheduleEdit(y, m, d) {
 
-  scheduleEditDate = {
+  scheduleEditDate = { y: y, m: m, d: d };
 
-    y:y,
-    m:m,
-    d:d
+  scheduleEditMode = 'dia';
 
-  };
+  var panel = $('schedule-edit-panel');
+  var dateEl = $('schedule-edit-date');
+  var input = $('schedule-edit-dia');
+  var options = $('schedule-edit-options');
 
-  scheduleEditMode =
-    'dia';
+  if (!panel || !dateEl || !input || !options) return;
 
-  var panel =
-    $('schedule-edit-panel');
+  dateEl.textContent = y + '년 ' + (m + 1) + '월 ' + d + '일';
 
-  var dateEl =
-    $('schedule-edit-date');
+  input.value = '';
 
-  var input =
-    $('schedule-edit-dia');
+  options.innerHTML = '';
 
-  var options =
-    $('schedule-edit-options');
+  var ov = getOverrideForDate(y, m, d);
 
-  if (
-    !panel ||
-    !dateEl ||
-    !input ||
-    !options
-  ) {
+  if (ov && ov.type === 'dia') input.value = ov.dia || '';
 
-    return;
+  SCHEDULE_OVERRIDE_OPTIONS.forEach(function (name) {
 
-  }
+    var b = document.createElement('button');
 
-  dateEl.textContent =
-    y +
-    '년 ' +
-    (m + 1) +
-    '월 ' +
-    d +
-    '일';
+    b.type = 'button';
 
-  input.value =
-    '';
+    b.className =
+      'schedule-edit-option' +
+      (ov && ov.type === 'status' && ov.status === name ? ' selected' : '');
 
-  options.innerHTML =
-    '';
+    b.textContent = name;
 
-  var ov =
-    getOverrideForDate(
-      y,
-      m,
-      d
-    );
+    b.onclick = function () {
 
-  if (
-    ov &&
-    ov.type === 'dia'
-  ) {
+      scheduleEditMode = 'status';
 
-    input.value =
-      ov.dia || '';
+      input.value = '';
 
-  }
+      var all = options.querySelectorAll('.schedule-edit-option');
 
-  SCHEDULE_OVERRIDE_OPTIONS.forEach(
-    function(name) {
+      for (var i = 0; i < all.length; i++) all[i].classList.remove('selected');
 
-      var b =
-        document.createElement(
-          'button'
-        );
-
-      b.type =
-        'button';
-
-      b.className =
-        'schedule-edit-option' +
-        (
-          ov &&
-          ov.type === 'status' &&
-          ov.status === name
-            ? ' selected'
-            : ''
-        );
-
-      b.textContent =
-        name;
-
-      b.onclick =
-        function() {
-
-          scheduleEditMode =
-            'status';
-
-          input.value =
-            '';
-
-          var all =
-            options.querySelectorAll(
-              '.schedule-edit-option'
-            );
-
-          for (
-            var i = 0;
-            i < all.length;
-            i++
-          ) {
-
-            all[i].classList.remove(
-              'selected'
-            );
-
-          }
-
-          b.classList.add(
-            'selected'
-          );
-
-        };
-
-      options.appendChild(
-        b
-      );
-
-    }
-  );
-
-  input.oninput =
-    function() {
-
-      scheduleEditMode =
-        'dia';
-
-      var all =
-        options.querySelectorAll(
-          '.schedule-edit-option'
-        );
-
-      for (
-        var i = 0;
-        i < all.length;
-        i++
-      ) {
-
-        all[i].classList.remove(
-          'selected'
-        );
-
-      }
+      b.classList.add('selected');
 
     };
 
-  panel.classList.add(
-    'active'
-  );
+    options.appendChild(b);
 
-  setTimeout(
-    function() {
+  });
 
-      input.focus();
+  input.oninput = function () {
 
-    },
-    80
-  );
+    scheduleEditMode = 'dia';
+
+    var all = options.querySelectorAll('.schedule-edit-option');
+
+    for (var i = 0; i < all.length; i++) all[i].classList.remove('selected');
+
+  };
+
+  panel.classList.add('active');
+
+  setTimeout(function () { input.focus(); }, 80);
 
 }
 
 function closeScheduleEdit() {
 
-  var panel =
-    $('schedule-edit-panel');
+  var panel = $('schedule-edit-panel');
 
-  if (panel) {
+  if (panel) panel.classList.remove('active');
 
-    panel.classList.remove(
-      'active'
-    );
+  scheduleEditDate = null;
 
-  }
-
-  scheduleEditDate =
-    null;
-
-  scheduleEditMode =
-    'dia';
+  scheduleEditMode = 'dia';
 
 }
 
-/* ============ 수동 변경 저장 ============ */
-
 function saveScheduleEdit() {
 
-  if (
-    !scheduleEditDate
-  ) {
+  if (!scheduleEditDate) return;
 
-    return;
+  var input = $('schedule-edit-dia');
+  var options = $('schedule-edit-options');
 
-  }
+  var dia = input ? input.value.trim() : '';
 
-  var input =
-    $('schedule-edit-dia');
-
-  var options =
-    $('schedule-edit-options');
-
-  var dia =
-    input
-      ? input.value.trim()
-      : '';
-
-  var selectedStatus =
-    null;
+  var selectedStatus = null;
 
   if (options) {
 
-    var selected =
-      options.querySelector(
-        '.schedule-edit-option.selected'
-      );
+    var selected = options.querySelector('.schedule-edit-option.selected');
 
-    if (selected) {
-
-      selectedStatus =
-        selected.textContent;
-
-    }
+    if (selected) selectedStatus = selected.textContent;
 
   }
 
-  if (
-    !dia &&
-    !selectedStatus
-  ) {
-
-    alert(
-      'DIA 번호를 입력하거나 휴가 / 근무 상태를 선택해주세요.'
-    );
-
+  if (!dia && !selectedStatus) {
+    alert('DIA 번호를 입력하거나 휴가 / 근무 상태를 선택해주세요.');
     return;
-
   }
 
-  if (
-    dia &&
-    !/^[0-9]+$/.test(dia)
-  ) {
-
-    alert(
-      'DIA 번호는 숫자만 입력해주세요.'
-    );
-
+  if (dia && !/^[0-9]+$/.test(dia)) {
+    alert('DIA 번호는 숫자만 입력해주세요.');
     return;
+  }
+
+  if (dia && diaIndexByNumber(dia) < 0) {
+
+    if (!confirm('등록된 DIA 목록에 없는 번호입니다. 그래도 이 번호를 저장하시겠습니까?')) return;
 
   }
 
-  if (
-    dia &&
-    diaIndexByNumber(dia) < 0
-  ) {
+  var y = scheduleEditDate.y;
+  var m = scheduleEditDate.m;
+  var d = scheduleEditDate.d;
 
-    if (
-      !confirm(
-        '등록된 DIA 목록에 없는 번호입니다. 그래도 이 번호를 저장하시겠습니까?'
-      )
-    ) {
+  var map = loadScheduleOverrides();
 
-      return;
+  var key = getDateKey(y, m, d);
 
-    }
+  map[key] = dia
+    ? { type: 'dia', dia: dia }
+    : { type: 'status', status: selectedStatus };
 
-  }
+  saveScheduleOverrides(map);
 
-  var y =
-    scheduleEditDate.y;
-
-  var m =
-    scheduleEditDate.m;
-
-  var d =
-    scheduleEditDate.d;
-
-  var map =
-    loadScheduleOverrides();
-
-  var key =
-    getDateKey(
-      y,
-      m,
-      d
-    );
-
-  map[key] =
-    dia
-      ? {
-          type:'dia',
-          dia:dia
-        }
-      : {
-          type:'status',
-          status:selectedStatus
-        };
-
-  saveScheduleOverrides(
-    map
-  );
-
-  var savedDate = {
-
-    y:y,
-    m:m,
-    d:d
-
-  };
+  var savedDate = { y: y, m: m, d: d };
 
   closeScheduleEdit();
 
-  selDate =
-    savedDate;
+  selDate = savedDate;
 
   renderCalendar();
 
@@ -1756,55 +1052,21 @@ function saveScheduleEdit() {
 
 }
 
-/* ============ 원래 근무로 되돌리기 ============ */
-
 function restoreOriginalSchedule() {
 
-  if (
-    !scheduleEditDate
-  ) {
+  if (!scheduleEditDate) return;
 
-    return;
+  var y = scheduleEditDate.y;
+  var m = scheduleEditDate.m;
+  var d = scheduleEditDate.d;
 
-  }
+  var dateText = y + '년 ' + (m + 1) + '월 ' + d + '일';
 
-  var y =
-    scheduleEditDate.y;
+  if (!confirm(dateText + '의 수동 변경을 삭제하고 최초 근무로 되돌리시겠습니까?')) return;
 
-  var m =
-    scheduleEditDate.m;
+  var map = loadScheduleOverrides();
 
-  var d =
-    scheduleEditDate.d;
-
-  var dateText =
-    y +
-    '년 ' +
-    (m + 1) +
-    '월 ' +
-    d +
-    '일';
-
-  if (
-    !confirm(
-      dateText +
-      '의 수동 변경을 삭제하고 최초 근무로 되돌리시겠습니까?'
-    )
-  ) {
-
-    return;
-
-  }
-
-  var map =
-    loadScheduleOverrides();
-
-  var key =
-    getDateKey(
-      y,
-      m,
-      d
-    );
+  var key = getDateKey(y, m, d);
 
   if (Object.prototype.hasOwnProperty.call(map, key)) {
     delete map[key];
@@ -1820,112 +1082,156 @@ function restoreOriginalSchedule() {
 /* ============ 개인 캘린더 렌더링 ============ */
 
 function renderCalendar() {
+
   var titleEl = $('calendar-title');
-  if (titleEl) {
-    titleEl.textContent = calendarYear + '년 ' + (calendarMonth + 1) + '월';
-  }
+
+  if (titleEl) titleEl.textContent = calendarYear + '년 ' + (calendarMonth + 1) + '월';
+
   var grid = $('calendar-grid');
+
   if (!grid) return;
+
   grid.innerHTML = '';
-  
+
   var firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
   var lastDate = new Date(calendarYear, calendarMonth + 1, 0).getDate();
 
   for (var i = 0; i < firstDay; i++) {
-    var cell = document.createElement('div');
-    cell.className = 'cell empty';
-    grid.appendChild(cell);
+    var empty = document.createElement('div');
+    empty.className = 'cell empty';
+    grid.appendChild(empty);
   }
 
   for (var d = 1; d <= lastDate; d++) {
+
     var cell = document.createElement('div');
     cell.className = 'cell';
-    
+
     var disp = getDisplayDia(calendarYear, calendarMonth, d);
     var labelHtml = '';
     var sideHtml = '';
-    
+
     var hName = holidayName(calendarYear, calendarMonth, d);
+
     if (hName) {
       cell.classList.add('hol');
       sideHtml = hName;
     }
-    
+
     var dow = new Date(calendarYear, calendarMonth, d).getDay();
+
     if (dow === 0 && !hName) cell.classList.add('sun');
     if (dow === 6 && !hName) cell.classList.add('sat');
 
     if (disp) {
+
       if (disp.type === 'dia') {
+
         var diaNum = disp.item.dia || '';
         var asterisk = disp.override ? '*' : '';
-        labelHtml = '<div class="cell-lbl">' + diaNum + asterisk + '</div>';
+
+        labelHtml = '<div class="cell-lbl">' + esc(diaNum) + asterisk + '</div>';
+
       } else if (disp.type === 'status') {
-        labelHtml = '<div class="cell-lbl t-off" style="font-size:12px;">' + disp.item.type + '</div>';
+
+        labelHtml = '<div class="cell-lbl t-off" style="font-size:12px;">' + esc(disp.item.type) + '</div>';
+
       }
+
     }
 
-    cell.innerHTML = '<div class="cell-top"><span class="cell-num">' + d + '</span><span class="cell-side">' + sideHtml + '</span></div>' + labelHtml;
-    
+    cell.innerHTML =
+      '<div class="cell-top"><span class="cell-num">' + d + '</span><span class="cell-side">' +
+      esc(sideHtml) + '</span></div>' + labelHtml;
+
     if (selDate && selDate.y === calendarYear && selDate.m === calendarMonth && selDate.d === d) {
       cell.classList.add('selected');
     }
 
-    (function(y, m, day) {
-      cell.onclick = function() {
+    (function (y, m, day) {
+
+      cell.onclick = function () {
         selDate = { y: y, m: m, d: day };
         renderCalendar();
         renderDayDetail();
       };
-      cell.onmousedown = cell.ontouchstart = function() {
-        scheduleEditLongPress = setTimeout(function() {
+
+      cell.onmousedown = cell.ontouchstart = function () {
+        scheduleEditLongPress = setTimeout(function () {
           scheduleEditLongPress = null;
           scheduleEditSuppressClick = true;
           openScheduleEdit(y, m, day);
         }, 800);
       };
-      cell.onmouseup = cell.ontouchend = cell.onmouseleave = function() {
+
+      cell.onmouseup = cell.ontouchend = cell.onmouseleave = function () {
         if (scheduleEditLongPress) {
           clearTimeout(scheduleEditLongPress);
           scheduleEditLongPress = null;
         }
       };
+
     })(calendarYear, calendarMonth, d);
 
     grid.appendChild(cell);
+
   }
+
 }
 
 function renderDayDetail() {
+
   var detail = $('day-detail');
+
   if (!detail) return;
+
   if (!selDate) {
     detail.innerHTML = '<div class="dd-empty">날짜를 선택하시면 상세 정보가 표시됩니다.</div>';
     return;
   }
+
+  var dateText = selDate.y + '년 ' + (selDate.m + 1) + '월 ' + selDate.d + '일';
+
   var disp = getDisplayDia(selDate.y, selDate.m, selDate.d);
+
   if (!disp) {
-    detail.innerHTML = '<div class="dd-date">' + selDate.y + '년 ' + (selDate.m + 1) + '월 ' + selDate.d + '일</div><div class="dd-empty">근무 정보가 없습니다.</div>';
+    detail.innerHTML = '<div class="dd-date">' + dateText + '</div><div class="dd-empty">근무 정보가 없습니다.</div>';
     return;
   }
 
-  var html = '<div class="dd-date">' + selDate.y + '년 ' + (selDate.m + 1) + '월 ' + selDate.d + '일</div>';
+  var html = '<div class="dd-date">' + dateText + '</div>';
+
   if (disp.type === 'dia') {
+
     var item = disp.item;
     var overrideMark = disp.override ? ' (수동 변경됨)' : '';
-    html += '<div class="dd-main"><span class="dd-dia">DIA ' + item.dia + overrideMark + '</span><span class="dd-tag">' + (item.type || '') + '</span></div>';
-    html += '<div class="dd-row">출퇴근: <span class="dd-chip">' + (item.start || '-') + ' ~ ' + (item.end || '-') + '</span></div>';
+
+    html += '<div class="dd-main"><span class="dd-dia">DIA ' + esc(item.dia) + overrideMark +
+            '</span><span class="dd-tag">' + esc(item.type || '') + '</span></div>';
+
+    html += '<div class="dd-row">출퇴근: <span class="dd-chip">' +
+            esc(item.start || '-') + ' ~ ' + esc(item.end || '-') + '</span></div>';
+
     if (item.train1 || item.type === '열차') {
-      html += '<div class="dd-row">열차번호: <span class="dd-chip">' + (item.train1 || '-') + (item.train2 ? ' / ' + item.train2 : '') + '</span></div>';
+      html += '<div class="dd-row">열차번호: <span class="dd-chip">' +
+              esc(item.train1 || '-') + (item.train2 ? ' / ' + esc(item.train2) : '') + '</span></div>';
     }
+
   } else if (disp.type === 'status') {
-    html += '<div class="dd-main"><span class="dd-dia t-off">' + disp.item.type + '</span><span class="dd-tag">휴가/상태</span></div>';
+
+    html += '<div class="dd-main"><span class="dd-dia t-off">' + esc(disp.item.type) +
+            '</span><span class="dd-tag">휴가/상태</span></div>';
+
   }
+
   detail.innerHTML = html;
+
 }
 
 function changeMonth(diff) {
+
   calendarMonth += diff;
+
   if (calendarMonth > 11) {
     calendarMonth = 0;
     calendarYear++;
@@ -1933,25 +1239,61 @@ function changeMonth(diff) {
     calendarMonth = 11;
     calendarYear--;
   }
+
   renderCalendar();
+
 }
 
 function goToday() {
+
   var now = new Date();
+
   calendarYear = now.getFullYear();
   calendarMonth = now.getMonth();
+
   renderCalendar();
+
 }
 
-/* ============ 근무그룹 표 기능 ============ */
+/* ============ 근무그룹 표 (회원정보 DB 실시간 반영) ============ */
+
+var groupData = null;
+var groupTimer = null;
+var GROUP_REFRESH_MS = 30000;   // 30초마다 자동 갱신
 
 function openGroupSection() {
-  renderGroupTable();
+
   switchSection('group-section');
+
+  loadGroupSchedule(false);
+
+  startGroupAutoRefresh();
+
+}
+
+function startGroupAutoRefresh() {
+
+  stopGroupAutoRefresh();
+
+  groupTimer = setInterval(function () {
+    loadGroupSchedule(true);
+  }, GROUP_REFRESH_MS);
+
+}
+
+function stopGroupAutoRefresh() {
+
+  if (groupTimer) {
+    clearInterval(groupTimer);
+    groupTimer = null;
+  }
+
 }
 
 function changeGroupMonth(diff) {
+
   groupCalendarMonth += diff;
+
   if (groupCalendarMonth > 11) {
     groupCalendarMonth = 0;
     groupCalendarYear++;
@@ -1959,140 +1301,302 @@ function changeGroupMonth(diff) {
     groupCalendarMonth = 11;
     groupCalendarYear--;
   }
+
+  groupData = null;
+
+  loadGroupSchedule(false);
+
+}
+
+function loadGroupSchedule(silent) {
+
+  var user = getCurrentUser();
+  var status = $('group-status');
+
+  // 제목과 날짜 헤더는 먼저 그려둔다
   renderGroupTable();
+
+  if (!user.token) {
+    if (status) status.textContent = '로그인 후 이용해주세요.';
+    return;
+  }
+
+  var y = groupCalendarYear;
+  var m = groupCalendarMonth;
+  var last = new Date(y, m + 1, 0).getDate();
+
+  if (!silent && status) status.textContent = '근무표를 불러오는 중...';
+
+  api({
+    action: 'getGroupSchedule',
+    employeeId: user.employeeId,
+    token: user.token,
+    startDate: getDateKey(y, m, 1),
+    endDate: getDateKey(y, m, last)
+  }, function (r) {
+
+    // 불러오는 사이 다른 달로 이동했으면 무시
+    if (y !== groupCalendarYear || m !== groupCalendarMonth) return;
+
+    if (!r || !r.success) {
+      if (status) status.textContent = (r && r.message) || '불러오지 못했습니다.';
+      return;
+    }
+
+    if (status) status.textContent = '';
+
+    groupData = r;
+
+    renderGroupTable();
+
+  });
+
+}
+
+function groupCellClass(label, isStatus) {
+
+  if (isStatus) return 'g-status';
+  if (label === '주') return 'g-day';
+  if (label === '야') return 'g-night';
+  if (label === '비') return 'g-bi';
+  if (label === '휴') return 'g-off';
+
+  return '';
+
 }
 
 function renderGroupTable() {
+
   var titleEl = $('group-calendar-title');
+
   if (titleEl) {
     titleEl.textContent = groupCalendarYear + '년 ' + (groupCalendarMonth + 1) + '월 근무표';
   }
 
   var headRow = $('group-table-head-row');
   var bodyEl = $('group-table-body');
+
   if (!headRow || !bodyEl) return;
 
-  var lastDate = new Date(groupCalendarYear, groupCalendarMonth + 1, 0).getDate();
+  var y = groupCalendarYear;
+  var m = groupCalendarMonth;
+  var lastDate = new Date(y, m + 1, 0).getDate();
 
-  // 테이블 헤더 (날짜별 생성)
   var headHtml = '<th class="name-col">이름</th>';
+
   for (var d = 1; d <= lastDate; d++) {
-    var dow = new Date(groupCalendarYear, groupCalendarMonth, d).getDay();
-    var cls = '';
-    if (dow === 0) cls = ' style="color:#e53935;"';
-    else if (dow === 6) cls = ' style="color:#1a73e8;"';
-    headHtml += '<th' + cls + '>' + d + '</th>';
+
+    var dow = new Date(y, m, d).getDay();
+
+    var style = dow === 0 ? ' style="color:#e53935;"' : (dow === 6 ? ' style="color:#1a73e8;"' : '');
+
+    headHtml += '<th' + style + '>' + d + '</th>';
+
   }
+
   headRow.innerHTML = headHtml;
 
-  // 테이블 본문 (등록된 사용자별 행 생성)
-  var users = getRegisteredUsers();
-  var bodyHtml = '';
-
-  for (var i = 0; i < users.length; i++) {
-    var u = users[i];
-    bodyHtml += '<tr>';
-    bodyHtml += '<td class="name-col">' + (u.name || u.employeeId) + '</td>';
-
-    for (var d = 1; d <= lastDate; d++) {
-      var disp = getDisplayDiaForUser(u.employeeId, groupCalendarYear, groupCalendarMonth, d);
-      var cellText = '-';
-      var cellClass = '';
-
-      if (disp) {
-        if (disp.type === 'dia') {
-          cellText = (disp.item.dia || '') + (disp.override ? '*' : '');
-        } else if (disp.type === 'status') {
-          cellText = disp.item.type;
-          cellClass = ' class="off-status"';
-        }
-      }
-
-      var hName = holidayName(groupCalendarYear, groupCalendarMonth, d);
-      if (hName && cellText === '-') {
-        cellClass = ' class="holiday"';
-        cellText = hName;
-      }
-
-      bodyHtml += '<td' + cellClass + '>' + cellText + '</td>';
-    }
-    bodyHtml += '</tr>';
+  if (!groupData || !groupData.members) {
+    bodyEl.innerHTML = '';
+    return;
   }
 
-  bodyEl.innerHTML = bodyHtml;
+  // 로그인한 사람이 항상 맨 위
+  var me = getCurrentUser().employeeId;
+
+  var members = groupData.members.slice().sort(function (a, b) {
+    if (a.employeeId === me) return -1;
+    if (b.employeeId === me) return 1;
+    return 0;
+  });
+
+  var html = '';
+
+  for (var i = 0; i < members.length; i++) {
+
+    var mem = members[i];
+
+    html += '<tr' + (mem.employeeId === me ? ' class="me"' : '') + '>';
+    html += '<td class="name-col">' + esc(mem.name || mem.employeeId) + '</td>';
+
+    for (var day = 1; day <= lastDate; day++) {
+
+      var info = mem.days ? mem.days[getDateKey(y, m, day)] : null;
+
+      var text = '-';
+      var cls = '';
+
+      if (info && info.label) {
+
+        var isStatus = info.overrideType === 'status';
+
+        text = info.label + (info.manual ? '*' : '');
+
+        cls = groupCellClass(info.label, isStatus);
+
+      }
+
+      html += '<td' + (cls ? ' class="' + cls + '"' : '') + '>' + esc(text) + '</td>';
+
+    }
+
+    html += '</tr>';
+
+  }
+
+  bodyEl.innerHTML = html;
+
 }
+
+/* ============ DIA 설정 (임시) ============ */
 
 function loadSavedDia() {
   // 다이아 설정 로드 스텁
 }
 
 function openDiaSelector() {
+
   var panel = $('dia-panel');
+
   if (panel) panel.classList.add('active');
+
 }
 
 function closeDiaSelector() {
+
   var panel = $('dia-panel');
+
   if (panel) panel.classList.remove('active');
+
 }
 
 function saveSelectedDia() {
   closeDiaSelector();
 }
 
+/* ============ 로그인 / 회원가입 (서버 DB 연동) ============ */
+
 function getCurrentUser() {
+
   try {
+
     var raw = SS.getItem(USER_KEY) || LS.getItem(USER_KEY);
+
     if (raw) {
+
       var u = JSON.parse(raw);
+
       if (u && u.employeeId) return u;
+
     }
-  } catch(e) {}
-  return { employeeId: '2026001', name: '송주영' };
+
+  } catch (e) {}
+
+  return { employeeId: 'guest', name: '', token: '' };
+
 }
 
 function setCurrentUser(u) {
+
   var str = JSON.stringify(u);
+
   LS.setItem(USER_KEY, str);
   SS.setItem(USER_KEY, str);
-  registerUserToList(u);
+
 }
 
 function handleLogin(e) {
+
   e.preventDefault();
+
   var id = $('login-id').value.trim();
-  var nameInput = $('signup-name') ? $('signup-name').value.trim() : '송주영';
-  
-  // 로그인 시 사용자가 입력한 사원번호 반영
-  var user = { employeeId: id, name: nameInput || '사용자' };
-  setCurrentUser(user);
-  
-  var nameEl = $('welcome-name');
-  if (nameEl) nameEl.textContent = user.name;
-  
-  switchSection('main-section');
+  var pw = $('login-pw').value;
+
+  var msg = $('login-message');
+  var btn = $('login-btn');
+  var loading = $('login-loading');
+
+  msg.textContent = '';
+  btn.disabled = true;
+  loading.style.display = 'block';
+
+  api({ action: 'login', employeeId: id, password: pw }, function (r) {
+
+    btn.disabled = false;
+    loading.style.display = 'none';
+
+    if (!r || !r.success) {
+      msg.textContent = (r && r.message) || '로그인에 실패했습니다.';
+      return;
+    }
+
+    setCurrentUser({ employeeId: r.employeeId, name: r.name, token: r.token });
+
+    $('welcome-name').textContent = r.name;
+
+    switchSection('main-section');
+
+  });
+
   return false;
+
 }
 
 function handleSignup(e) {
+
   e.preventDefault();
+
   var id = $('signup-id').value.trim();
   var name = $('signup-name').value.trim();
-  
-  var user = { employeeId: id, name: name };
-  setCurrentUser(user);
-  
-  alert('회원가입이 완료되었습니다!');
-  switchSection('login-section');
+  var pw = $('signup-pw').value;
+  var pw2 = $('signup-pw-confirm').value;
+
+  var msg = $('signup-message');
+  var btn = $('signup-btn');
+  var loading = $('signup-loading');
+
+  msg.textContent = '';
+
+  if (pw !== pw2) {
+    msg.textContent = '비밀번호가 서로 다릅니다.';
+    return false;
+  }
+
+  btn.disabled = true;
+  loading.style.display = 'block';
+
+  api({ action: 'signup', employeeId: id, name: name, password: pw }, function (r) {
+
+    btn.disabled = false;
+    loading.style.display = 'none';
+
+    if (!r || !r.success) {
+      msg.textContent = (r && r.message) || '회원가입에 실패했습니다.';
+      return;
+    }
+
+    alert('회원가입이 완료되었습니다. 로그인해주세요.');
+
+    switchSection('login-section');
+
+  });
+
   return false;
+
 }
 
 function logout() {
-  switchSection('login-section');
-}
 
-// 초기 실행 시 현재 사용자 기본 등록 처리
-registerUserToList(getCurrentUser());
+  stopGroupAutoRefresh();
+
+  groupData = null;
+
+  LS.removeItem(USER_KEY);
+  SS.removeItem(USER_KEY);
+
+  switchSection('login-section');
+
+}
 
 </script>
 </body>
