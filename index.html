@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
 <title>철도비서</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
@@ -669,26 +671,169 @@ function api(params, cb) {
 
 }
 
-/* 한 달 근무표(전 회원) 조회 — 근무표/근무그룹 모두 이 함수 하나로 가져온다 */
-function fetchRange(startKey, endKey, cb) {
+/* ============ 데이터 캐시 (속도 개선) ============
+ * - 한 번 받은 월/주 데이터는 메모리 + localStorage에 저장
+ * - 화면을 열면 저장된 데이터를 먼저 보여주고, 뒤에서 서버 최신값으로 갱신
+ * - 같은 요청이 동시에 여러 번 나가지 않도록 하나로 합침
+ */
+
+var CACHE_LS_KEY = 'railwaySecretaryCache_v1';
+var CACHE_FRESH_MS = 20000;   // 이 시간 안의 캐시는 서버에 다시 묻지 않음
+var CACHE_KEEP = 14;          // localStorage에 보관할 최대 항목 수
+
+var dataCache = {};   // key -> { r: 서버응답, t: 저장시각 }
+var inflight = {};    // key -> [콜백...]
+var cacheGen = 0;     // 캐시를 비울 때마다 증가 (이전 요청의 낡은 응답 저장 방지)
+
+try {
+  var rawCache = LS.getItem(CACHE_LS_KEY);
+  if (rawCache) dataCache = JSON.parse(rawCache) || {};
+} catch (e) {
+  dataCache = {};
+}
+
+function persistCache() {
+
+  try {
+
+    var keys = Object.keys(dataCache).sort(function (a, b) {
+      return dataCache[b].t - dataCache[a].t;
+    });
+
+    var keep = {};
+
+    for (var i = 0; i < keys.length && i < CACHE_KEEP; i++) keep[keys[i]] = dataCache[keys[i]];
+
+    dataCache = keep;
+
+    LS.setItem(CACHE_LS_KEY, JSON.stringify(dataCache));
+
+  } catch (e) {}
+
+}
+
+function clearDataCache() {
+
+  dataCache = {};
+  cacheGen++;
+
+  try { LS.removeItem(CACHE_LS_KEY); } catch (e) {}
+
+}
+
+function cacheKey(scope, startKey, endKey) {
+  return getCurrentUser().employeeId + '|' + scope + '|' + startKey + '|' + endKey;
+}
+
+function peekData(scope, startKey, endKey) {
+  return dataCache[cacheKey(scope, startKey, endKey)] || null;
+}
+
+/* scope: 'me' = 내 근무표만(가벼움), 'group' = 전 회원
+ * cb(r, fromCache): 캐시가 있으면 즉시 한 번, 서버 응답이 오면 또 한 번 호출 */
+function fetchData(scope, startKey, endKey, force, cb) {
 
   var user = getCurrentUser();
+  var key = cacheKey(scope, startKey, endKey);
+  var hit = dataCache[key];
+  var fresh = hit && (Date.now() - hit.t < CACHE_FRESH_MS);
 
-  api({
+  if (hit && cb) cb(hit.r, true);
+
+  if (hit && fresh && !force) return;
+
+  if (inflight[key]) {
+    if (cb) inflight[key].push(cb);
+    return;
+  }
+
+  inflight[key] = cb ? [cb] : [];
+
+  var gen = cacheGen;
+
+  var params = {
     action: 'getGroupSchedule',
     employeeId: user.employeeId,
     token: user.token,
     startDate: startKey,
     endDate: endKey
-  }, cb);
+  };
+
+  if (scope === 'me') params.me = '1';
+
+  api(params, function (r) {
+
+    var list = inflight[key] || [];
+
+    delete inflight[key];
+
+    var ok = r && r.success;
+
+    if (ok && gen === cacheGen) {
+      dataCache[key] = { r: r, t: Date.now() };
+      persistCache();
+    }
+
+    // 이미 캐시 화면을 보여준 경우, 일시적 통신 오류는 조용히 넘어감 (인증 오류만 알림)
+    if (!ok && hit && !(r && r.errorCode === 'AUTH_FAILED')) return;
+
+    for (var i = 0; i < list.length; i++) list[i](r, false);
+
+  });
 
 }
 
-function fetchMonth(y, m, cb) {
+function prefetchData(scope, startKey, endKey) {
+
+  if (!getCurrentUser().token) return;
+  if (peekData(scope, startKey, endKey)) return;
+
+  fetchData(scope, startKey, endKey, false, null);
+
+}
+
+function monthRangeKeys(y, m) {
 
   var last = new Date(y, m + 1, 0).getDate();
 
-  fetchRange(getDateKey(y, m, 1), getDateKey(y, m, last), cb);
+  return { s: getDateKey(y, m, 1), e: getDateKey(y, m, last) };
+
+}
+
+function fetchMonth(y, m, force, cb) {
+
+  var k = monthRangeKeys(y, m);
+
+  fetchData('me', k.s, k.e, force, cb);
+
+}
+
+function peekMonth(y, m) {
+
+  var k = monthRangeKeys(y, m);
+
+  return peekData('me', k.s, k.e);
+
+}
+
+/* 앞뒤 달을 미리 받아 두어 달을 넘길 때 바로 뜨게 한다 */
+function prefetchMonths(y, m) {
+
+  setTimeout(function () {
+
+    [-1, 1].forEach(function (diff) {
+
+      var dt = new Date(y, m + diff, 1);
+
+      if (dt.getFullYear() < CAL_MIN_Y) return;
+
+      var k = monthRangeKeys(dt.getFullYear(), dt.getMonth());
+
+      prefetchData('me', k.s, k.e);
+
+    });
+
+  }, 400);
 
 }
 
@@ -797,32 +942,34 @@ function patternIndexFor(dateKey) {
 
 }
 
+var metaLoadedAt = 0;
+var META_FRESH_MS = 60000;   // 1분 안에는 다시 불러오지 않음
+
 function loadMeta(cb) {
 
   var user = getCurrentUser();
-  var pending = 2;
-  var failMsg = '';
 
-  function one() {
-    pending--;
-    if (pending === 0 && cb) cb(failMsg);
+  if (metaLoadedAt && diaList.length && Date.now() - metaLoadedAt < META_FRESH_MS) {
+    if (cb) cb('');
+    return;
   }
 
-  api({ action: 'getDia' }, function (r) {
+  // DIA 순서표 + 내 설정을 서버 호출 1번으로 가져온다
+  api({ action: 'getMeta', employeeId: user.employeeId, token: user.token }, function (r) {
 
-    if (r && r.success) diaList = r.list || [];
-    else failMsg = (r && r.message) || '근무 순서표를 불러오지 못했습니다.';
+    if (r && r.success) {
 
-    one();
+      diaList = r.list || [];
+      mySettings = { seq: r.seq || '', anchor: r.anchor || '' };
+      metaLoadedAt = Date.now();
 
-  });
+      if (cb) cb('');
 
-  api({ action: 'getSettings', employeeId: user.employeeId, token: user.token }, function (r) {
+    } else if (cb) {
 
-    if (r && r.success) mySettings = { seq: r.seq || '', anchor: r.anchor || '' };
-    else failMsg = (r && r.message) || '설정을 불러오지 못했습니다.';
+      cb((r && r.message) || '근무 순서표를 불러오지 못했습니다.');
 
-    one();
+    }
 
   });
 
@@ -858,7 +1005,7 @@ function openSchedule() {
 
 }
 
-function loadMyMonth() {
+function loadMyMonth(force) {
 
   var user = getCurrentUser();
   var y = calendarYear;
@@ -870,9 +1017,10 @@ function loadMyMonth() {
     return;
   }
 
-  st.textContent = '근무표를 불러오는 중...';
+  // 저장된 데이터가 있으면 바로 보여주므로 '불러오는 중' 문구는 처음 한 번만
+  if (!peekMonth(y, m)) st.textContent = '근무표를 불러오는 중...';
 
-  fetchMonth(y, m, function (r) {
+  fetchMonth(y, m, !!force, function (r, fromCache) {
 
     if (y !== calendarYear || m !== calendarMonth) return;
 
@@ -900,6 +1048,8 @@ function loadMyMonth() {
 
     renderCalendar();
     renderDayDetail();
+
+    prefetchMonths(y, m);
 
   });
 
@@ -1237,7 +1387,9 @@ function saveScheduleEdit() {
 
     selDate = { y: target.y, m: target.m, d: target.d };
 
-    loadMyMonth();
+    clearDataCache();
+
+    loadMyMonth(true);
 
   });
 
@@ -1274,7 +1426,9 @@ function restoreOriginalSchedule() {
 
     selDate = { y: target.y, m: target.m, d: target.d };
 
-    loadMyMonth();
+    clearDataCache();
+
+    loadMyMonth(true);
 
   });
 
@@ -1285,7 +1439,7 @@ function restoreOriginalSchedule() {
 var groupWeekStart = null;   // 표시 중인 주의 일요일 (Date)
 var groupData = null;
 var groupTimer = null;
-var GROUP_REFRESH_MS = 30000;   // 30초마다 자동 갱신
+var GROUP_REFRESH_MS = 60000;   // 60초마다 자동 갱신 (화면이 보일 때만)
 
 function weekStartOf(dt) {
   return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() - dt.getDay());
@@ -1336,6 +1490,7 @@ function startGroupAutoRefresh() {
   stopGroupAutoRefresh();
 
   groupTimer = setInterval(function () {
+    if (document.hidden) return;   // 다른 앱/탭에 있을 때는 서버 호출 안 함
     loadGroupSchedule(true);
   }, GROUP_REFRESH_MS);
 
@@ -1368,14 +1523,34 @@ function goGroupThisWeek() {
 
 }
 
+function prefetchGroupWeeks() {
+
+  var base = groupWeekStart;
+
+  setTimeout(function () {
+
+    [-1, 1].forEach(function (k) {
+
+      var s = new Date(base.getFullYear(), base.getMonth(), base.getDate() + k * 7);
+      var e = new Date(s.getFullYear(), s.getMonth(), s.getDate() + 6);
+
+      prefetchData('group',
+        getDateKey(s.getFullYear(), s.getMonth(), s.getDate()),
+        getDateKey(e.getFullYear(), e.getMonth(), e.getDate()));
+
+    });
+
+  }, 400);
+
+}
+
 function loadGroupSchedule(silent) {
 
   var user = getCurrentUser();
   var status = $('group-status');
 
-  renderGroupTable();
-
   if (!user.token) {
+    renderGroupTable();
     status.textContent = '로그인 후 이용해주세요.';
     return;
   }
@@ -1384,12 +1559,22 @@ function loadGroupSchedule(silent) {
   var startKey = days[0].key;
   var endKey = days[6].key;
 
-  if (!silent) status.textContent = '근무표를 불러오는 중...';
+  // 저장된 데이터가 있으면 먼저 바로 보여준다
+  var cached = peekData('group', startKey, endKey);
 
-  fetchRange(startKey, endKey, function (r) {
+  if (cached) groupData = cached.r;
+
+  renderGroupTable();
+
+  if (!cached && !silent) status.textContent = '근무표를 불러오는 중...';
+
+  fetchData('group', startKey, endKey, !!silent, function (r, fromCache) {
 
     // 불러오는 사이 다른 주로 이동했으면 무시
     if (groupWeekDays()[0].key !== startKey) return;
+
+    // 자동 갱신 때는 이미 그린 캐시를 다시 그리지 않는다
+    if (fromCache && silent) return;
 
     if (!r || !r.success) {
       status.textContent = (r && r.message) || '불러오지 못했습니다.';
@@ -1401,6 +1586,8 @@ function loadGroupSchedule(silent) {
     groupData = r;
 
     renderGroupTable();
+
+    prefetchGroupWeeks();
 
   });
 
@@ -1753,6 +1940,9 @@ function saveSelectedDia() {
 
     myMonth = null;
 
+    clearDataCache();
+    metaLoadedAt = 0;
+
     warn.textContent = '';
 
     closeDiaSelector();
@@ -1763,12 +1953,37 @@ function saveSelectedDia() {
 
 /* ============ 로그인 / 회원가입 (서버 DB 연동) ============ */
 
-function handleLogin(e) {
+var SAVED_LOGIN_KEY = 'railwaySecretarySavedLogin';
 
-  e.preventDefault();
+function readSavedLogin() {
 
-  var id = $('login-id').value.trim();
-  var pw = $('login-pw').value;
+  try {
+
+    var raw = LS.getItem(SAVED_LOGIN_KEY);
+
+    if (raw) {
+
+      var v = JSON.parse(raw);
+
+      if (v && v.id) return v;
+
+    }
+
+  } catch (e) {}
+
+  return null;
+
+}
+
+function writeSavedLogin(id, pw, auto) {
+  LS.setItem(SAVED_LOGIN_KEY, JSON.stringify({ id: id, pw: pw, auto: !!auto }));
+}
+
+function clearSavedLogin() {
+  LS.removeItem(SAVED_LOGIN_KEY);
+}
+
+function doLogin(id, pw, isAuto) {
 
   var msg = $('login-message');
   var btn = $('login-btn');
@@ -1776,6 +1991,7 @@ function handleLogin(e) {
 
   msg.textContent = '';
   btn.disabled = true;
+  loading.textContent = isAuto ? '자동 로그인 중...' : '로그인 확인 중...';
   loading.style.display = 'block';
 
   api({ action: 'login', employeeId: id, password: pw }, function (r) {
@@ -1784,9 +2000,18 @@ function handleLogin(e) {
     loading.style.display = 'none';
 
     if (!r || !r.success) {
-      msg.textContent = (r && r.message) || '로그인에 실패했습니다.';
+
+      msg.textContent = (isAuto ? '자동 로그인 실패: ' : '') + ((r && r.message) || '로그인에 실패했습니다.');
+
+      // 비밀번호가 틀린 경우 자동 로그인은 끈다 (입력칸 값은 유지)
+      if (isAuto && r && r.errorCode === 'LOGIN_FAILED') writeSavedLogin(id, pw, false);
+
       return;
     }
+
+    // 로그인 정보 저장 체크 시: 사원번호/비밀번호 저장 + 다음부터 자동 로그인
+    if ($('remember').checked) writeSavedLogin(id, pw, true);
+    else clearSavedLogin();
 
     setCurrentUser({ employeeId: r.employeeId, name: r.name, token: r.token });
 
@@ -1795,10 +2020,26 @@ function handleLogin(e) {
     myMonth = null;
     groupData = null;
     mySettings = { seq: '', anchor: '' };
+    metaLoadedAt = 0;
 
     switchSection('main-section');
 
+    // 메인 화면이 뜬 직후 백그라운드로 미리 불러 둔다 (근무표/설정 진입이 빨라짐)
+    setTimeout(function () {
+      loadMeta(null);
+      var k = monthRangeKeys(calendarYear, calendarMonth);
+      prefetchData('me', k.s, k.e);
+    }, 0);
+
   });
+
+}
+
+function handleLogin(e) {
+
+  e.preventDefault();
+
+  doLogin($('login-id').value.trim(), $('login-pw').value, false);
 
   return false;
 
@@ -1854,13 +2095,42 @@ function logout() {
   groupData = null;
   myMonth = null;
   mySettings = { seq: '', anchor: '' };
+  metaLoadedAt = 0;
+
+  clearDataCache();   // 공용 폰 대비: 저장된 근무 데이터도 삭제
 
   LS.removeItem(USER_KEY);
   SS.removeItem(USER_KEY);
 
+  // 로그아웃하면 자동 로그인은 끄고, 저장된 사원번호/비밀번호는 입력칸에 남겨둔다
+  var saved = readSavedLogin();
+
+  if (saved) {
+    writeSavedLogin(saved.id, saved.pw, false);
+    $('login-id').value = saved.id;
+    $('login-pw').value = saved.pw;
+    $('remember').checked = true;
+  }
+
   switchSection('login-section');
 
 }
+
+/* ============ 시작 시: 저장된 로그인 정보 채우기 + 자동 로그인 ============ */
+
+(function initSavedLogin() {
+
+  var saved = readSavedLogin();
+
+  if (!saved) return;
+
+  $('login-id').value = saved.id;
+  $('login-pw').value = saved.pw;
+  $('remember').checked = true;
+
+  if (saved.auto) doLogin(saved.id, saved.pw, true);
+
+})();
 
 </script>
 </body>
