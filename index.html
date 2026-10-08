@@ -296,6 +296,13 @@ var diaData = [
 ];
 var selectedDia = null;
 
+/* DIA_DB: 마지막으로 받은 목록을 폰에 보관 (인터넷이 안 될 때 사용) */
+var DIA_CACHE_KEY = 'railwaySecretaryDiaDB';
+try {
+  var cachedDia = JSON.parse(LS.getItem(DIA_CACHE_KEY) || 'null');
+  if (cachedDia && cachedDia.length) diaData = cachedDia;
+} catch (e) {}
+
 function $(id) { return document.getElementById(id); }
 
 /* ============ 화면 전환 ============ */
@@ -462,7 +469,7 @@ function handleLogin(e) {
     loading.style.display = 'none';
 
     if (result && result.success === true) {
-      var userData = JSON.stringify({ employeeId: result.employeeId || id, name: result.name || id });
+      var userData = JSON.stringify({ employeeId: result.employeeId || id, name: result.name || id, token: result.token || '' });
       if (remember) {
         LS.setItem(USER_KEY, userData);
         SS.removeItem(USER_KEY);
@@ -474,6 +481,8 @@ function handleLogin(e) {
       $('login-pw').value = '';
       loadSavedDia();
       switchSection('main-section');
+      loadDiaFromServer();
+      syncFromServer();
       return;
     }
     msg.textContent = (result && result.message) ? result.message : '로그인에 실패했습니다.';
@@ -501,10 +510,13 @@ function getCurrentUser() {
 function checkSavedLogin() {
   var user = getCurrentUser();
   if (!user) return;
+  if (!user.token) { LS.removeItem(USER_KEY); SS.removeItem(USER_KEY); return; }
   $('welcome-name').textContent = user.name;
   $('login-id').value = user.employeeId;
   $('remember').checked = Boolean(LS.getItem(USER_KEY));
   switchSection('main-section');
+  loadDiaFromServer();
+  syncFromServer();
 }
 
 /* ============ DIA ============ */
@@ -533,6 +545,55 @@ function openSettings() {
   switchSection('settings-section');
 }
 
+function loadDiaFromServer(cb) {
+  jsonpRequest({ action: 'getDia' }, function (r) {
+    if (r && r.success === true && r.list && r.list.length) {
+      diaData = r.list;
+      try { LS.setItem(DIA_CACHE_KEY, JSON.stringify(diaData)); } catch (e) {}
+      renderCalendar();
+      var panel = $('dia-panel');
+      if (panel && panel.classList.contains('active')) renderDiaList();
+    }
+    if (cb) cb(r);
+  });
+}
+
+function pushSettings(cb) {
+  var user = getCurrentUser();
+  if (!user || !user.token || !selectedDia) { if (cb) cb({ success: false, message: '로그인 정보가 없습니다.' }); return; }
+  jsonpRequest({
+    action: 'saveSettings',
+    employeeId: user.employeeId,
+    token: user.token,
+    dia: selectedDia.dia,
+    anchor: selectedDia.anchor
+  }, function (r) { if (cb) cb(r); });
+}
+
+/* 서버에 저장된 내 설정을 가져와 이 기기에 반영 (서버에 없으면 이 기기 설정을 올림) */
+function syncFromServer() {
+  var user = getCurrentUser();
+  if (!user || !user.token) return;
+  jsonpRequest({ action: 'getSettings', employeeId: user.employeeId, token: user.token }, function (r) {
+    if (!r) return;
+    if (r.success !== true) {
+      if (r.errorCode === 'AUTH_FAILED') { alert('로그인 정보가 만료되었습니다. 다시 로그인해주세요.'); logout(); }
+      return;
+    }
+    if (r.dia) {
+      selectedDia = { dia: r.dia, anchor: r.anchor || todayStr() };
+      var val = JSON.stringify(selectedDia);
+      var key = 'railwaySecretaryDia_' + user.employeeId;
+      LS.setItem(key, val);
+      SS.setItem(key, val);
+      updateCurrentDia();
+      renderCalendar();
+    } else if (selectedDia) {
+      pushSettings();
+    }
+  });
+}
+
 function openDiaSelector() {
   var panel = $('dia-panel');
   if (!panel) return;
@@ -541,6 +602,7 @@ function openDiaSelector() {
   pendingDia = selectedDia ? selectedDia.dia : null;
   $('dia-anchor').value = (selectedDia && selectedDia.anchor) ? selectedDia.anchor : todayStr();
   renderDiaList();
+  loadDiaFromServer();
 }
 
 function closeDiaSelector() {
@@ -592,8 +654,14 @@ function saveSelectedDia() {
   SS.setItem(key, val);
   updateCurrentDia();
   renderCalendar();
-  alert('근무표 설정이 저장되었습니다.');
-  closeDiaSelector();
+  pushSettings(function (r) {
+    if (r && r.success === true) {
+      alert('근무표 설정이 저장되었습니다.');
+    } else {
+      alert('이 기기에는 저장되었지만 서버 저장에 실패했습니다.\n' + ((r && r.message) ? r.message : ''));
+    }
+    closeDiaSelector();
+  });
 }
 
 function loadSavedDia() {
