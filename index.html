@@ -1,11 +1,130 @@
+```html
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-    <meta charset="utf-8">
-    <title>나의 첫 무료 웹사이트</title>
-</head>
-<body>
-    <h1>환영합니다! 🎉</h1>
-    <p>GitHub Pages로 만든 첫 번째 웹사이트입니다.</p>
-</body>
-</html>
+    <meta charset="UTF-8">
+
+    <!-- 모바일 화면 최적화 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>나의 근무표</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, "Noto Sans KR", sans-serif;
+            background: #f5f7fa;
+            color: #222;
+        }
+
+        /* 모바일 화면 */
+        .mobile-container {
+            width: 100%;
+            max-width: 430px;
+            min-height: 100vh;
+            margin: 0 auto;
+            background: white;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 상단 영역 */
+        .header {
+            padding: 60px 30px 30px;
+            text-align: center;
+        }
+
+        .logo {
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 20px;
+
+            background: #0066cc;
+            border-radius: 20px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            color: white;
+            font-size: 30px;
+            font-weight: bold;
+        }
+
+        .title {
+            margin: 0;
+            font-size: 27px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            margin-top: 10px;
+            color: #777;
+            font-size: 14px;
+        }
+
+        /* 로그인 영역 */
+        .login-area {
+            padding: 20px 30px;
+            flex: 1;
+        }
+
+        .input-title {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .input-box {
+            width: 100%;
+            height: 52px;
+
+            border: 1px solid #ddd;
+            border-radius: 10px;
+
+            padding: 0 15px;
+            font-size: 16px;
+
+            outline: none;
+        }
+
+        .input-box:focus {
+            border-color: #0066cc;
+        }
+
+        .password {
+            margin-top: 18px;
+        }
+
+        /* 로그인 버튼 */
+        .login-button {
+            width: 100%;
+            height: 54px;
+
+            margin-top: 28px;
+
+            border: none;
+            border-radius: 10px;
+
+            background: #0066cc;
+            color: white;
+
+            font-size: 16px;
+            font-weight: 700;
+
+            cursor: pointer;
+        }
+
+        .login-button:active {
+            background: #0052a3;
+        }
+
+        /* 하단 */
+        .footer {
+            padding: 25px 30
