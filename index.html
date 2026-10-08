@@ -106,6 +106,7 @@
         .signup-link-btn:hover {
             background-color: #e2e6ea;
         }
+        /* 화면 전환용 클래스 제어 */
         .page-view {
             display: none;
         }
@@ -142,104 +143,3 @@
                 <button type="submit" class="btn">로그인</button>
                 <button type="button" id="go-to-signup" class="signup-link-btn">회원가입</button>
             </form>
-        </div>
-
-        <!-- [2] 회원가입 화면 -->
-        <div id="signup-section" class="page-view">
-            <h1>회원가입</h1>
-            
-            <form id="signup-form">
-                <div class="input-group">
-                    <label for="signup-id">사원번호</label>
-                    <input type="text" id="signup-id" placeholder="사원번호를 입력하세요" required>
-                </div>
-
-                <div class="input-group">
-                    <label for="signup-name">이름</label>
-                    <input type="text" id="signup-name" placeholder="이름을 입력하세요" required>
-                </div>
-                
-                <div class="input-group">
-                    <label for="signup-pw">비밀번호</label>
-                    <input type="password" id="signup-pw" placeholder="사용할 비밀번호를 입력하세요" required>
-                </div>
-                
-                <button type="submit" class="btn">가입 완료</button>
-                <button type="button" id="go-to-login" class="signup-link-btn">돌아가기</button>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        // 🚨 아래 빈칸에 구글 앱스크립트에서 복사한 '웹 앱 URL'을 넣어주세요!
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzNXcKpOMeIaiOD8XZacs6pM2xjRYlytjbr9pF7SwKWMdYU5GRpl9BOsnV5YRhcxD8GpQ/exec';
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const loginSection = document.getElementById('login-section');
-            const signupSection = document.getElementById('signup-section');
-            const goToSignupBtn = document.getElementById('go-to-signup');
-            const goToLoginBtn = document.getElementById('go-to-login');
-
-            // 화면 전환
-            goToSignupBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                loginSection.classList.remove('active');
-                signupSection.classList.add('active');
-            });
-
-            goToLoginBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                signupSection.classList.remove('active');
-                loginSection.classList.add('active');
-            });
-
-            // 회원가입 제출 (구글 시트로 데이터 전송)
-            document.getElementById('signup-form').addEventListener('submit', function(e) {
-                e.preventDefault();
-
-                if (SCRIPT_URL === '여기에_웹앱_URL을_넣으세요') {
-                    alert('구글 시트 웹 앱 URL을 코드에 입력해 주세요!');
-                    return;
-                }
-
-                const formData = {
-                    employeeId: document.getElementById('signup-id').value,
-                    name: document.getElementById('signup-name').value,
-                    password: document.getElementById('signup-pw').value,
-                    action: 'signup'
-                };
-
-                // 구글 시트로 데이터 전송
-                fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors', // 구글 시트 CORS 우회용
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(formData)
-                })
-                .then(() => {
-                    alert('회원가입이 완료되었습니다! 구글 시트에 저장되었습니다.');
-                    document.getElementById('signup-form').reset();
-                    signupSection.classList.remove('active');
-                    loginSection.classList.add('active');
-                })
-                .catch((error) => {
-                    console.error('Error:', error);
-                    alert('회원가입 중 오류가 발생했습니다.');
-                });
-            });
-
-            // 로그인 처리
-            document.getElementById('login-form').addEventListener('submit', function(e) {
-                e.preventDefault();
-                const loginId = document.getElementById('login-id').value;
-                const loginPw = document.getElementById('login-pw').value;
-                
-                alert(`사원번호 ${loginId}님, 로그인 시도 중입니다.`);
-            });
-        });
-    </script>
-
-</body>
-</html>
