@@ -1,20 +1,28 @@
 ```html
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    >
 
     <title>철도비서</title>
 
+
     <style>
+
         * {
             box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
         }
 
-        html, body {
+
+        html,
+        body {
             margin: 0;
             padding: 0;
             width: 100%;
@@ -26,2469 +34,2783 @@
                 "Malgun Gothic",
                 sans-serif;
             background: #f4f7fb;
-            color: #172033;
+            color: #1f2937;
         }
+
 
         body {
             min-height: 100vh;
         }
+
 
         button,
         input {
             font-family: inherit;
         }
 
+
         button {
             cursor: pointer;
         }
 
-        .hidden {
-            display: none !important;
-        }
-
-        /* =========================
-           전체 앱
-        ========================= */
 
         .app {
             width: 100%;
             max-width: 520px;
             min-height: 100vh;
             margin: 0 auto;
-            background: #f4f7fb;
+            background: #ffffff;
         }
 
-        /* =========================
-           로그인 / 회원가입
-        ========================= */
 
-        .auth-page {
-            min-height: 100vh;
-            padding: 40px 22px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        /****************************************
+         * 상단
+         ****************************************/
+
+        .top-header {
+            padding: 24px 20px 14px;
+            background: #ffffff;
+            text-align: center;
         }
 
-        .auth-box {
-            width: 100%;
-            background: white;
-            border-radius: 24px;
-            padding: 30px 22px;
-            box-shadow: 0 10px 30px rgba(30, 60, 90, 0.08);
-        }
 
         .logo {
-            text-align: center;
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 900;
-            color: #1479e9;
-            margin-bottom: 8px;
+            color: #1976d2;
+            letter-spacing: -1px;
         }
 
-        .logo-sub {
+
+        .subtitle {
+            margin-top: 5px;
+            font-size: 13px;
+            color: #8b95a5;
+        }
+
+
+        .clock {
+            margin-top: 14px;
+            padding: 10px;
+            border-radius: 12px;
+            background: #f3f7fc;
+            color: #3975a8;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+
+        /****************************************
+         * 공통 화면
+         ****************************************/
+
+        .page {
+            display: none;
+            padding: 12px 18px 30px;
+        }
+
+
+        .page.active {
+            display: block;
+        }
+
+
+        /****************************************
+         * 로그인
+         ****************************************/
+
+        .login-card {
+            margin-top: 12px;
+            padding: 24px 20px;
+            border: 1px solid #e6edf5;
+            border-radius: 20px;
+            background: #ffffff;
+            box-shadow: 0 8px 25px rgba(30, 60, 90, 0.08);
+        }
+
+
+        .login-title {
+            text-align: center;
+            font-size: 23px;
+            font-weight: 900;
+            color: #26384a;
+        }
+
+
+        .login-description {
+            margin-top: 8px;
+            margin-bottom: 22px;
             text-align: center;
             font-size: 13px;
-            color: #7a8496;
-            margin-bottom: 30px;
+            color: #929baa;
         }
+
 
         .input-label {
             display: block;
+            margin: 0 0 7px;
             font-size: 13px;
-            font-weight: 700;
-            color: #596579;
-            margin: 0 0 7px 3px;
+            font-weight: 800;
+            color: #526172;
         }
+
 
         .input-box {
             width: 100%;
-            height: 52px;
-            border: 1px solid #dce2eb;
-            border-radius: 13px;
-            padding: 0 15px;
-            font-size: 16px;
-            outline: none;
-            background: #fafbfd;
+            height: 50px;
             margin-bottom: 15px;
+            padding: 0 14px;
+            border: 1px solid #dce4ed;
+            border-radius: 12px;
+            outline: none;
+            font-size: 15px;
+            background: #fafcff;
         }
+
 
         .input-box:focus {
-            border-color: #55a5f7;
-            background: white;
+            border-color: #64a9e8;
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(100, 169, 232, 0.12);
         }
 
-        .primary-btn {
+
+        .primary-button {
             width: 100%;
-            height: 52px;
-            border: none;
-            border-radius: 13px;
-            background: #1479e9;
+            height: 50px;
+            border: 0;
+            border-radius: 12px;
+            background: #1976d2;
             color: white;
             font-size: 16px;
-            font-weight: 800;
-            margin-top: 5px;
+            font-weight: 900;
         }
 
-        .secondary-btn {
+
+        .primary-button:active {
+            transform: scale(0.98);
+        }
+
+
+        .secondary-button {
             width: 100%;
             height: 48px;
-            border: none;
-            border-radius: 13px;
-            background: #eef4fb;
-            color: #3672ac;
-            font-size: 14px;
-            font-weight: 700;
             margin-top: 10px;
+            border: 1px solid #dce4ed;
+            border-radius: 12px;
+            background: #ffffff;
+            color: #526172;
+            font-size: 15px;
+            font-weight: 800;
         }
 
-        .auth-message {
-            min-height: 20px;
-            margin-top: 12px;
-            text-align: center;
-            color: #e5484d;
+
+        .message {
+            display: none;
+            margin-top: 14px;
+            padding: 12px;
+            border-radius: 10px;
             font-size: 13px;
-            font-weight: 600;
+            text-align: center;
+            line-height: 1.5;
         }
 
-        /* =========================
-           메인
-        ========================= */
 
-        .page-header {
-            padding: 20px 18px 10px;
-            background: #f4f7fb;
+        .message.show {
+            display: block;
         }
 
-        .welcome-card {
-            background: white;
-            border-radius: 18px;
-            padding: 15px 17px;
-            box-shadow: 0 5px 18px rgba(30, 60, 90, 0.06);
+
+        .message.success {
+            background: #edf9f1;
+            color: #208443;
+        }
+
+
+        .message.error {
+            background: #fff1f1;
+            color: #d14343;
+        }
+
+
+        /****************************************
+         * 로그인 성공
+         ****************************************/
+
+        .login-success-card {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 3px;
+            margin: 6px 0 18px;
+            padding: 15px 12px;
+            border: 1px solid #d9eaf8;
+            border-radius: 14px;
+            background: #f5faff;
+            color: #425466;
             font-size: 14px;
             font-weight: 700;
+            text-align: center;
         }
 
-        .welcome-check {
-            color: #58b8ef;
-            margin-right: 4px;
-            font-size: 16px;
-        }
 
-        .employee-name {
-            color: #1479e9;
-        }
-
-        /* =========================
-           메뉴
-        ========================= */
-
-        .menu-wrap {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 6px;
-            padding: 7px 12px 13px;
-        }
-
-        .menu-btn {
-            min-width: 0;
-            border: none;
-            background: white;
-            border-radius: 12px;
-            padding: 10px 3px;
-            font-size: 11px;
-            font-weight: 700;
-            color: #5a6575;
-            box-shadow: 0 4px 12px rgba(30, 60, 90, 0.05);
-        }
-
-        .menu-btn.active {
-            color: #1479e9;
-            background: #eaf4ff;
-        }
-
-        /* =========================
-           콘텐츠
-        ========================= */
-
-        .content {
-            padding: 0 12px 30px;
-        }
-
-        .section-card {
-            background: white;
-            border-radius: 19px;
-            padding: 17px;
-            margin-bottom: 12px;
-            box-shadow: 0 5px 18px rgba(30, 60, 90, 0.06);
-        }
-
-        .section-title {
-            font-size: 17px;
+        .login-success-check {
+            color: #63b8ff;
+            font-size: 19px;
             font-weight: 900;
-            margin-bottom: 13px;
         }
 
-        /* =========================
-           달력
-        ========================= */
 
-        .calendar-top {
+        .login-success-name {
+            color: #1976d2;
+            font-weight: 900;
+        }
+
+
+        .bracket {
+            color: #91a1b2;
+        }
+
+
+        /****************************************
+         * 메인 메뉴
+         ****************************************/
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 11px;
+        }
+
+
+        .menu-button {
+            min-height: 92px;
+            padding: 15px 10px;
+            border: 1px solid #e3eaf2;
+            border-radius: 17px;
+            background: #ffffff;
+            box-shadow: 0 5px 16px rgba(30, 60, 90, 0.05);
+            text-align: center;
+        }
+
+
+        .menu-button:active {
+            transform: scale(0.98);
+        }
+
+
+        .menu-icon {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 27px;
+        }
+
+
+        .menu-title {
+            display: block;
+            color: #334155;
+            font-size: 14px;
+            font-weight: 900;
+        }
+
+
+        .menu-description {
+            display: block;
+            margin-top: 4px;
+            color: #98a2b1;
+            font-size: 10px;
+        }
+
+
+        /****************************************
+         * 달력
+         ****************************************/
+
+        .calendar-card {
+            margin-top: 18px;
+            padding: 16px 12px;
+            border: 1px solid #e4ebf3;
+            border-radius: 18px;
+            background: #ffffff;
+            box-shadow: 0 5px 18px rgba(30, 60, 90, 0.05);
+        }
+
+
+        .calendar-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 15px;
+            margin-bottom: 14px;
         }
 
-        .month-title {
+
+        .calendar-title {
             font-size: 20px;
+            font-weight: 900;
+            color: #26384a;
+        }
+
+
+        .calendar-arrow {
+            width: 40px;
+            height: 36px;
+            border: 0;
+            border-radius: 10px;
+            background: #f1f5f9;
+            color: #526172;
+            font-size: 18px;
             font-weight: 900;
         }
 
-        .month-buttons {
-            display: flex;
-            gap: 5px;
+
+        .calendar-week {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            margin-bottom: 5px;
         }
 
-        .month-btn {
-            width: 34px;
-            height: 34px;
-            border: none;
-            border-radius: 10px;
-            background: #edf3f9;
-            color: #526175;
-            font-size: 18px;
-            font-weight: 800;
+
+        .week-day {
+            padding: 7px 0;
+            text-align: center;
+            color: #7c8796;
+            font-size: 11px;
+            font-weight: 900;
         }
 
-        .weekday-row,
+
+        .week-day.sunday {
+            color: #e15b5b;
+        }
+
+
+        .week-day.saturday {
+            color: #3975c8;
+        }
+
+
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
         }
 
-        .weekday {
+
+        .calendar-day {
+            min-height: 65px;
+            padding: 5px 3px;
+            border-radius: 9px;
+            background: #fafcff;
             text-align: center;
-            font-size: 11px;
-            font-weight: 800;
-            color: #8a94a5;
-            padding-bottom: 8px;
+            overflow: hidden;
         }
 
-        .day-cell {
-            min-width: 0;
-            min-height: 75px;
-            border-top: 1px solid #edf0f4;
-            padding: 5px 2px;
-            text-align: center;
+
+        .calendar-day.today {
+            border: 2px solid #63b8ff;
+            background: #f2f9ff;
         }
+
 
         .day-number {
+            display: block;
             font-size: 11px;
-            color: #7c8798;
-            margin-bottom: 4px;
-        }
-
-        .today .day-number {
-            display: inline-flex;
-            width: 21px;
-            height: 21px;
-            align-items: center;
-            justify-content: center;
-            background: #1479e9;
-            color: white;
-            border-radius: 50%;
             font-weight: 800;
+            color: #64748b;
         }
 
-        .dia-button {
-            width: 100%;
-            min-height: 36px;
-            padding: 4px 1px;
-            border: none;
-            border-radius: 8px;
-            background: #edf6ff;
-            color: #1479e9;
-            font-size: 10px;
+
+        .calendar-day.sunday .day-number {
+            color: #df5c5c;
+        }
+
+
+        .calendar-day.saturday .day-number {
+            color: #3975c8;
+        }
+
+
+        .dia-badge {
+            display: block;
+            margin-top: 5px;
+            padding: 4px 2px;
+            border-radius: 6px;
+            background: #e9f4ff;
+            color: #2471b8;
+            font-size: 9px;
             font-weight: 900;
-            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .dia-button:active {
-            transform: scale(0.96);
-        }
 
         .empty-day {
-            opacity: 0;
-            pointer-events: none;
+            min-height: 65px;
         }
 
-        /* =========================
-           설정
-        ========================= */
 
-        .setting-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 15px 0;
-            border-bottom: 1px solid #edf0f4;
+        /****************************************
+         * 페이지 제목
+         ****************************************/
+
+        .section-title {
+            margin: 8px 0 15px;
+            font-size: 22px;
+            font-weight: 900;
+            color: #26384a;
         }
 
-        .setting-item:last-child {
-            border-bottom: none;
-        }
 
-        .setting-title {
+        .back-button {
+            width: 100%;
+            height: 46px;
+            margin-top: 16px;
+            border: 1px solid #dce4ed;
+            border-radius: 12px;
+            background: white;
+            color: #526172;
             font-size: 14px;
             font-weight: 800;
         }
 
-        .setting-description {
+
+        /****************************************
+         * 설정
+         ****************************************/
+
+        .settings-card {
+            padding: 16px;
+            border: 1px solid #e4ebf3;
+            border-radius: 16px;
+            background: white;
+        }
+
+
+        .settings-button {
+            width: 100%;
+            min-height: 70px;
+            margin-bottom: 10px;
+            padding: 13px 15px;
+            border: 1px solid #e1e8f0;
+            border-radius: 14px;
+            background: #ffffff;
+            text-align: left;
+        }
+
+
+        .settings-button-title {
+            display: block;
+            color: #334155;
+            font-size: 15px;
+            font-weight: 900;
+        }
+
+
+        .settings-button-description {
+            display: block;
+            margin-top: 5px;
+            color: #98a2b1;
             font-size: 11px;
-            color: #8a94a5;
-            margin-top: 3px;
         }
 
-        .setting-action {
-            border: none;
-            border-radius: 10px;
-            padding: 9px 12px;
-            background: #edf6ff;
-            color: #1479e9;
-            font-size: 12px;
-            font-weight: 800;
-        }
 
-        /* =========================
-           DIA 선택 모달
-        ========================= */
+        /****************************************
+         * DIA 모달
+         ****************************************/
 
         .modal {
             position: fixed;
+            z-index: 9999;
             inset: 0;
-            z-index: 1000;
-            background: rgba(10, 22, 38, 0.52);
-            display: flex;
+            display: none;
             align-items: flex-end;
             justify-content: center;
+            padding: 0;
+            background: rgba(15, 23, 42, 0.45);
         }
 
-        .modal-box {
+
+        .modal.show {
+            display: flex;
+        }
+
+
+        .dia-modal {
             width: 100%;
             max-width: 520px;
-            max-height: 82vh;
+            max-height: 88vh;
+            overflow: hidden;
+            border-radius: 22px 22px 0 0;
+            background: #ffffff;
+            box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.15);
+        }
+
+
+        .dia-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px;
+            border-bottom: 1px solid #edf1f5;
+        }
+
+
+        .dia-modal-title {
+            font-size: 19px;
+            font-weight: 900;
+            color: #26384a;
+        }
+
+
+        .close-button {
+            width: 34px;
+            height: 34px;
+            border: 0;
+            border-radius: 50%;
+            background: #f1f5f9;
+            color: #526172;
+            font-size: 20px;
+        }
+
+
+        .dia-modal-content {
+            max-height: calc(88vh - 150px);
             overflow-y: auto;
-            background: white;
-            border-radius: 24px 24px 0 0;
-            padding: 20px;
+            padding: 15px 18px;
         }
 
-        .modal-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 15px;
+
+        .dia-description {
+            margin: 0 0 14px;
+            color: #7d8998;
+            font-size: 12px;
+            line-height: 1.5;
         }
 
-        .modal-title {
-            font-size: 18px;
-            font-weight: 900;
-        }
 
-        .close-btn {
-            width: 35px;
-            height: 35px;
-            border: none;
-            border-radius: 50%;
-            background: #f0f3f7;
-            font-size: 18px;
-        }
-
-        .dia-list {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-        }
-
-        .dia-select-btn {
-            min-height: 45px;
-            border: 1px solid #e0e5ec;
-            border-radius: 11px;
-            background: white;
-            color: #374458;
-            font-size: 13px;
-            font-weight: 800;
-        }
-
-        .dia-select-btn.selected {
-            border-color: #1479e9;
-            background: #eaf4ff;
-            color: #1479e9;
-        }
-
-        /* =========================
-           행로표 이미지 모달
-        ========================= */
-
-        .route-modal {
-            position: fixed;
-            inset: 0;
-            z-index: 2000;
-            background: rgba(5, 13, 23, 0.92);
-            display: none;
-            flex-direction: column;
-        }
-
-        .route-modal.show {
-            display: flex;
-        }
-
-        .route-header {
-            flex: 0 0 auto;
-            height: 58px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 14px;
-            background: rgba(0, 0, 0, 0.45);
-            color: white;
-        }
-
-        .route-header-title {
-            font-size: 17px;
-            font-weight: 900;
-        }
-
-        .route-close {
-            width: 38px;
-            height: 38px;
-            border: none;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.16);
-            color: white;
-            font-size: 22px;
-        }
-
-        .route-image-area {
-            flex: 1;
-            min-height: 0;
-            overflow: auto;
-            display: flex;
-            align-items: flex-start;
-            justify-content: flex-start;
-            padding: 12px;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .route-image {
-            display: block;
-            width: auto;
-            min-width: 100%;
-            max-width: none;
-            height: auto;
-            object-fit: contain;
-            transform-origin: top left;
-        }
-
-        .route-bottom {
-            flex: 0 0 auto;
-            min-height: 52px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 8px;
-            background: rgba(0, 0, 0, 0.45);
-            padding: 7px;
-        }
-
-        .route-control {
-            border: none;
+        .dia-selected-info {
+            margin-bottom: 12px;
+            padding: 10px 12px;
             border-radius: 10px;
-            background: rgba(255,255,255,0.14);
-            color: white;
-            padding: 8px 13px;
+            background: #f3f8fd;
+            color: #3975a8;
             font-size: 12px;
             font-weight: 800;
         }
 
-        .route-error {
-            color: white;
-            text-align: center;
-            padding: 40px 20px;
-            line-height: 1.7;
+
+        .dia-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 9px;
         }
 
-        .route-error strong {
-            display: block;
-            font-size: 20px;
-            margin-bottom: 8px;
+
+        .dia-item {
+            position: relative;
         }
 
-        .route-loading {
-            color: white;
-            text-align: center;
-            padding: 40px 20px;
-        }
 
-        /* =========================
-           토스트
-        ========================= */
-
-        .toast {
-            position: fixed;
-            z-index: 3000;
-            left: 50%;
-            bottom: 25px;
-            transform: translateX(-50%);
-            width: calc(100% - 40px);
-            max-width: 460px;
-            padding: 13px 16px;
-            border-radius: 12px;
-            background: #202936;
-            color: white;
-            text-align: center;
-            font-size: 13px;
-            font-weight: 700;
+        .dia-checkbox {
+            position: absolute;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.2s;
         }
 
-        .toast.show {
-            opacity: 1;
+
+        .dia-label {
+            display: block;
+            min-height: 65px;
+            padding: 10px;
+            border: 1px solid #e1e8f0;
+            border-radius: 12px;
+            background: #ffffff;
         }
 
-        @media (min-width: 521px) {
+
+        .dia-checkbox:checked + .dia-label {
+            border-color: #63b8ff;
+            background: #f1f9ff;
+            box-shadow: 0 0 0 2px rgba(99, 184, 255, 0.12);
+        }
+
+
+        .dia-code {
+            display: block;
+            color: #1976d2;
+            font-size: 14px;
+            font-weight: 900;
+        }
+
+
+        .dia-name {
+            display: block;
+            margin-top: 3px;
+            color: #657385;
+            font-size: 10px;
+        }
+
+
+        .dia-time {
+            display: block;
+            margin-top: 4px;
+            color: #99a4b1;
+            font-size: 9px;
+        }
+
+
+        .dia-modal-footer {
+            display: flex;
+            gap: 9px;
+            padding: 14px 18px 18px;
+            border-top: 1px solid #edf1f5;
+            background: white;
+        }
+
+
+        .modal-cancel {
+            flex: 1;
+            height: 48px;
+            border: 1px solid #dce4ed;
+            border-radius: 12px;
+            background: white;
+            color: #526172;
+            font-weight: 800;
+        }
+
+
+        .modal-save {
+            flex: 2;
+            height: 48px;
+            border: 0;
+            border-radius: 12px;
+            background: #1976d2;
+            color: white;
+            font-weight: 900;
+        }
+
+
+        /****************************************
+         * 로딩
+         ****************************************/
+
+        .loading {
+            padding: 30px 10px;
+            color: #8b95a5;
+            font-size: 13px;
+            text-align: center;
+        }
+
+
+        /****************************************
+         * PC
+         ****************************************/
+
+        @media (min-width: 700px) {
+
+            body {
+                padding: 25px 0;
+            }
+
             .app {
-                box-shadow: 0 0 30px rgba(0,0,0,0.05);
+                min-height: calc(100vh - 50px);
+                border-radius: 25px;
+                overflow: hidden;
+                box-shadow: 0 10px 40px rgba(30, 60, 90, 0.12);
+            }
+
+            .modal {
+                align-items: center;
+            }
+
+            .dia-modal {
+                border-radius: 22px;
             }
         }
+
     </style>
+
 </head>
+
 
 <body>
 
+
 <div class="app">
 
-    <!-- =========================
-         로그인
-    ========================= -->
-    <section id="loginPage" class="auth-page">
 
-        <div class="auth-box">
+    <!-- =======================================
+         상단
+         ======================================= -->
 
-            <div class="logo">🚆 철도비서</div>
+    <header class="top-header">
 
-            <div class="logo-sub">
-                나만의 철도기관사 근무관리
+        <div class="logo">
+            🚆 철도비서
+        </div>
+
+        <div class="subtitle">
+            KORAIL 나만의 철도비서
+        </div>
+
+        <div
+            id="clock"
+            class="clock"
+        >
+            현재시간
+        </div>
+
+    </header>
+
+
+    <!-- =======================================
+         로그인 페이지
+         ======================================= -->
+
+    <section
+        id="login-section"
+        class="page active"
+    >
+
+        <div class="login-card">
+
+            <div class="login-title">
+                로그인
             </div>
 
-            <label class="input-label">사원번호</label>
+            <div class="login-description">
+                철도비서를 이용하려면 로그인해주세요.
+            </div>
+
+
+            <label class="input-label">
+                사원번호
+            </label>
+
             <input
-                id="loginEmployeeId"
+                id="login-employee-id"
                 class="input-box"
                 type="text"
                 inputmode="numeric"
                 placeholder="사원번호를 입력하세요"
+                autocomplete="username"
             >
 
-            <label class="input-label">비밀번호</label>
+
+            <label class="input-label">
+                비밀번호
+            </label>
+
             <input
-                id="loginPassword"
+                id="login-password"
                 class="input-box"
                 type="password"
                 placeholder="비밀번호를 입력하세요"
+                autocomplete="current-password"
+                onkeydown="if(event.key === 'Enter') loginUser();"
             >
 
-            <button class="primary-btn" onclick="login()">
+
+            <button
+                class="primary-button"
+                onclick="loginUser()"
+            >
                 로그인
             </button>
 
-            <button class="secondary-btn" onclick="showSignup()">
+
+            <button
+                class="secondary-button"
+                onclick="showSignup()"
+            >
                 회원가입
             </button>
 
-            <div id="loginMessage" class="auth-message"></div>
+
+            <div
+                id="login-message"
+                class="message"
+            ></div>
 
         </div>
 
     </section>
 
 
-    <!-- =========================
+    <!-- =======================================
          회원가입
-    ========================= -->
-    <section id="signupPage" class="auth-page hidden">
+         ======================================= -->
 
-        <div class="auth-box">
+    <section
+        id="signup-section"
+        class="page"
+    >
 
-            <div class="logo">🚆 철도비서</div>
+        <div class="login-card">
 
-            <div class="logo-sub">
+            <div class="login-title">
                 회원가입
             </div>
 
-            <label class="input-label">사원번호</label>
+            <div class="login-description">
+                철도비서 계정을 만들어주세요.
+            </div>
+
+
+            <label class="input-label">
+                사원번호
+            </label>
+
             <input
-                id="signupEmployeeId"
+                id="signup-employee-id"
                 class="input-box"
                 type="text"
                 inputmode="numeric"
                 placeholder="사원번호"
             >
 
-            <label class="input-label">이름</label>
+
+            <label class="input-label">
+                이름
+            </label>
+
             <input
-                id="signupName"
+                id="signup-name"
                 class="input-box"
                 type="text"
                 placeholder="이름"
             >
 
-            <label class="input-label">비밀번호</label>
+
+            <label class="input-label">
+                비밀번호
+            </label>
+
             <input
-                id="signupPassword"
+                id="signup-password"
                 class="input-box"
                 type="password"
-                placeholder="비밀번호"
+                placeholder="비밀번호 4자리 이상"
             >
 
-            <button class="primary-btn" onclick="signup()">
+
+            <button
+                class="primary-button"
+                onclick="signupUser()"
+            >
                 회원가입
             </button>
 
-            <button class="secondary-btn" onclick="showLogin()">
+
+            <button
+                class="secondary-button"
+                onclick="showLogin()"
+            >
                 로그인으로 돌아가기
             </button>
 
-            <div id="signupMessage" class="auth-message"></div>
+
+            <div
+                id="signup-message"
+                class="message"
+            ></div>
 
         </div>
 
     </section>
 
 
-    <!-- =========================
+    <!-- =======================================
          메인
-    ========================= -->
-    <section id="mainPage" class="hidden">
+         ======================================= -->
 
-        <header class="page-header">
+    <section
+        id="main-section"
+        class="page"
+    >
 
-            <div class="welcome-card">
-                <span class="welcome-check">✔</span>
-                <span id="welcomeName" class="employee-name"></span>님 로그인 되었습니다.
+        <div class="login-success-card">
+
+            <span class="bracket">
+                [
+            </span>
+
+            <span class="login-success-check">
+                ✔
+            </span>
+
+            <span
+                id="welcome-name"
+                class="login-success-name"
+            >
+                송주영
+            </span>
+
+            <span>
+                님 로그인 되었습니다.
+            </span>
+
+            <span class="bracket">
+                ]
+            </span>
+
+        </div>
+
+
+        <div class="menu-grid">
+
+
+            <button
+                class="menu-button"
+                onclick="openSchedule()"
+            >
+
+                <span class="menu-icon">
+                    📅
+                </span>
+
+                <span class="menu-title">
+                    근무표
+                </span>
+
+                <span class="menu-description">
+                    월간 근무표
+                </span>
+
+            </button>
+
+
+            <button
+                class="menu-button"
+                onclick="showSimplePage('근무그룹')"
+            >
+
+                <span class="menu-icon">
+                    👥
+                </span>
+
+                <span class="menu-title">
+                    근무그룹
+                </span>
+
+                <span class="menu-description">
+                    근무그룹 관리
+                </span>
+
+            </button>
+
+
+            <button
+                class="menu-button"
+                onclick="showSimplePage('근무패턴')"
+            >
+
+                <span class="menu-icon">
+                    🔄
+                </span>
+
+                <span class="menu-title">
+                    근무패턴
+                </span>
+
+                <span class="menu-description">
+                    반복 패턴
+                </span>
+
+            </button>
+
+
+            <button
+                class="menu-button"
+                onclick="showSimplePage('휴가관리')"
+            >
+
+                <span class="menu-icon">
+                    🌴
+                </span>
+
+                <span class="menu-title">
+                    휴가관리
+                </span>
+
+                <span class="menu-description">
+                    휴가 및 연차
+                </span>
+
+            </button>
+
+
+            <button
+                class="menu-button"
+                onclick="openSettings()"
+            >
+
+                <span class="menu-icon">
+                    ⚙️
+                </span>
+
+                <span class="menu-title">
+                    환경설정
+                </span>
+
+                <span class="menu-description">
+                    앱 설정
+                </span>
+
+            </button>
+
+
+        </div>
+
+
+        <!-- 달력 -->
+
+        <div class="calendar-card">
+
+            <div class="calendar-header">
+
+                <button
+                    class="calendar-arrow"
+                    onclick="previousMonth()"
+                >
+                    ‹
+                </button>
+
+
+                <div
+                    id="calendar-title"
+                    class="calendar-title"
+                >
+                    2026년 10월
+                </div>
+
+
+                <button
+                    class="calendar-arrow"
+                    onclick="nextMonth()"
+                >
+                    ›
+                </button>
+
             </div>
 
-        </header>
 
+            <div class="calendar-week">
 
-        <!-- 메뉴 -->
-        <nav class="menu-wrap">
-
-            <button class="menu-btn active" onclick="showMain()">
-                📅<br>근무표
-            </button>
-
-            <button class="menu-btn" onclick="showComingSoon('근무그룹')">
-                👥<br>근무그룹
-            </button>
-
-            <button class="menu-btn" onclick="showComingSoon('근무패턴')">
-                🔄<br>근무패턴
-            </button>
-
-            <button class="menu-btn" onclick="showComingSoon('휴가관리')">
-                🏖️<br>휴가관리
-            </button>
-
-            <button class="menu-btn" onclick="showSettings()">
-                ⚙️<br>환경설정
-            </button>
-
-        </nav>
-
-
-        <main class="content">
-
-            <!-- 달력 -->
-            <section class="section-card">
-
-                <div class="calendar-top">
-
-                    <div id="monthTitle" class="month-title">
-                        2026년 10월
-                    </div>
-
-                    <div class="month-buttons">
-
-                        <button class="month-btn" onclick="changeMonth(-1)">
-                            ‹
-                        </button>
-
-                        <button class="month-btn" onclick="changeMonth(1)">
-                            ›
-                        </button>
-
-                    </div>
-
+                <div class="week-day sunday">
+                    일
                 </div>
 
-
-                <div class="weekday-row">
-
-                    <div class="weekday">일</div>
-                    <div class="weekday">월</div>
-                    <div class="weekday">화</div>
-                    <div class="weekday">수</div>
-                    <div class="weekday">목</div>
-                    <div class="weekday">금</div>
-                    <div class="weekday">토</div>
-
+                <div class="week-day">
+                    월
                 </div>
 
-
-                <div id="calendarGrid" class="calendar-grid"></div>
-
-            </section>
-
-
-            <!-- 안내 -->
-            <section class="section-card">
-
-                <div class="section-title">
-                    📌 이용 안내
+                <div class="week-day">
+                    화
                 </div>
 
-                <div style="font-size:13px; line-height:1.7; color:#697589;">
-                    근무표의 <strong>DIA</strong>를 누르면 해당 DIA의
-                    <strong>행로표 PNG</strong>를 확인할 수 있습니다.
+                <div class="week-day">
+                    수
                 </div>
 
-            </section>
+                <div class="week-day">
+                    목
+                </div>
 
-        </main>
+                <div class="week-day">
+                    금
+                </div>
+
+                <div class="week-day saturday">
+                    토
+                </div>
+
+            </div>
+
+
+            <div
+                id="calendar-grid"
+                class="calendar-grid"
+            ></div>
+
+        </div>
 
     </section>
 
 
-    <!-- =========================
-         환경설정
-    ========================= -->
-    <section id="settingsPage" class="hidden">
+    <!-- =======================================
+         설정
+         ======================================= -->
 
-        <header class="page-header">
+    <section
+        id="settings-section"
+        class="page"
+    >
 
-            <div class="welcome-card">
-                ⚙️ 환경설정
-            </div>
-
-        </header>
+        <div class="section-title">
+            ⚙️ 환경설정
+        </div>
 
 
-        <nav class="menu-wrap">
+        <div class="settings-card">
 
-            <button class="menu-btn" onclick="showMain()">
-                📅<br>근무표
+
+            <button
+                class="settings-button"
+                onclick="openDiaSettings()"
+            >
+
+                <span class="settings-button-title">
+                    📋 근무표 설정
+                </span>
+
+                <span class="settings-button-description">
+                    사용할 DIA를 선택하고 저장합니다.
+                </span>
+
             </button>
 
-            <button class="menu-btn" onclick="showComingSoon('근무그룹')">
-                👥<br>근무그룹
+
+            <button
+                class="settings-button"
+                onclick="showSimpleMessage('업데이트 기능은 준비 중입니다.')"
+            >
+
+                <span class="settings-button-title">
+                    🔄 업데이트
+                </span>
+
+                <span class="settings-button-description">
+                    철도비서 최신 버전 확인
+                </span>
+
             </button>
 
-            <button class="menu-btn" onclick="showComingSoon('근무패턴')">
-                🔄<br>근무패턴
+
+            <button
+                class="settings-button"
+                onclick="logout()"
+            >
+
+                <span class="settings-button-title">
+                    🚪 로그아웃
+                </span>
+
+                <span class="settings-button-description">
+                    현재 계정에서 로그아웃합니다.
+                </span>
+
             </button>
 
-            <button class="menu-btn" onclick="showComingSoon('휴가관리')">
-                🏖️<br>휴가관리
-            </button>
 
-            <button class="menu-btn active">
-                ⚙️<br>환경설정
-            </button>
-
-        </nav>
+        </div>
 
 
-        <main class="content">
-
-            <section class="section-card">
-
-                <div class="section-title">
-                    근무표 설정
-                </div>
-
-
-                <div class="setting-item">
-
-                    <div>
-                        <div class="setting-title">
-                            DIA 설정
-                        </div>
-
-                        <div id="selectedDiaText"
-                             class="setting-description">
-                            선택된 DIA를 관리합니다.
-                        </div>
-                    </div>
-
-                    <button class="setting-action"
-                            onclick="openDiaSetting()">
-                        설정
-                    </button>
-
-                </div>
-
-
-                <div class="setting-item">
-
-                    <div>
-                        <div class="setting-title">
-                            업데이트
-                        </div>
-
-                        <div class="setting-description">
-                            최신 버전 확인
-                        </div>
-                    </div>
-
-                    <button class="setting-action"
-                            onclick="checkUpdate()">
-                        업데이트
-                    </button>
-
-                </div>
-
-
-                <div class="setting-item">
-
-                    <div>
-                        <div class="setting-title">
-                            로그아웃
-                        </div>
-
-                        <div class="setting-description">
-                            현재 계정에서 로그아웃합니다.
-                        </div>
-                    </div>
-
-                    <button class="setting-action"
-                            onclick="logout()">
-                        로그아웃
-                    </button>
-
-                </div>
-
-            </section>
-
-        </main>
+        <button
+            class="back-button"
+            onclick="goMain()"
+        >
+            ← 메인으로
+        </button>
 
     </section>
+
+
+    <!-- =======================================
+         간단 페이지
+         ======================================= -->
+
+    <section
+        id="simple-section"
+        class="page"
+    >
+
+        <div
+            id="simple-title"
+            class="section-title"
+        >
+            메뉴
+        </div>
+
+
+        <div class="settings-card">
+
+            <div
+                id="simple-content"
+                style="
+                    padding:25px 10px;
+                    text-align:center;
+                    color:#8994a3;
+                    font-size:13px;
+                "
+            >
+                준비 중입니다.
+            </div>
+
+        </div>
+
+
+        <button
+            class="back-button"
+            onclick="goMain()"
+        >
+            ← 메인으로
+        </button>
+
+    </section>
+
 
 </div>
 
 
-<!-- =========================
+<!-- =========================================
      DIA 선택 모달
-========================= -->
+     ========================================= -->
 
-<div id="diaModal" class="modal hidden">
+<div
+    id="dia-modal"
+    class="modal"
+>
 
-    <div class="modal-box">
+    <div class="dia-modal">
 
-        <div class="modal-header">
+        <div class="dia-modal-header">
 
-            <div class="modal-title">
-                DIA 선택
+            <div class="dia-modal-title">
+                📋 근무표 설정
             </div>
 
-            <button class="close-btn"
-                    onclick="closeDiaSetting()">
-                ✕
+
+            <button
+                class="close-button"
+                onclick="closeDiaSettings()"
+            >
+                ×
             </button>
 
         </div>
 
-        <div id="diaList" class="dia-list"></div>
+
+        <div class="dia-modal-content">
+
+            <p class="dia-description">
+                근무표에서 사용할 DIA를 선택해주세요.
+                선택한 DIA는 계정에 저장되며 다음 로그인에서도 유지됩니다.
+            </p>
+
+
+            <div
+                id="dia-selected-info"
+                class="dia-selected-info"
+            >
+                선택된 DIA 0개
+            </div>
+
+
+            <div
+                id="dia-list"
+                class="dia-list"
+            >
+
+                <div class="loading">
+                    DIA 목록을 불러오는 중입니다...
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="dia-modal-footer">
+
+            <button
+                class="modal-cancel"
+                onclick="closeDiaSettings()"
+            >
+                취소
+            </button>
+
+
+            <button
+                class="modal-save"
+                onclick="saveDiaSettings()"
+            >
+                저장
+            </button>
+
+        </div>
 
     </div>
 
 </div>
-
-
-<!-- =========================
-     행로표 PNG 모달
-========================= -->
-
-<div id="routeModal" class="route-modal">
-
-    <div class="route-header">
-
-        <div id="routeHeaderTitle"
-             class="route-header-title">
-            DIA 행로표
-        </div>
-
-        <button class="route-close"
-                onclick="closeRouteModal()">
-            ✕
-        </button>
-
-    </div>
-
-
-    <div id="routeImageArea"
-         class="route-image-area">
-
-        <div id="routeLoading"
-             class="route-loading">
-            행로표를 불러오는 중입니다...
-        </div>
-
-        <img id="routeImage"
-             class="route-image hidden"
-             alt="DIA 행로표">
-
-        <div id="routeError"
-             class="route-error hidden">
-        </div>
-
-    </div>
-
-
-    <div class="route-bottom">
-
-        <button class="route-control"
-                onclick="zoomRoute(-0.2)">
-            − 축소
-        </button>
-
-        <button class="route-control"
-                onclick="resetRouteZoom()">
-            기본
-        </button>
-
-        <button class="route-control"
-                onclick="zoomRoute(0.2)">
-            ＋ 확대
-        </button>
-
-        <button class="route-control"
-                onclick="openRouteOriginal()">
-            원본
-        </button>
-
-    </div>
-
-</div>
-
-
-<div id="toast" class="toast"></div>
 
 
 <script>
 
-    /* ============================================================
-       Google Apps Script
-    ============================================================ */
 
-    const SCRIPT_URL =
-        'https://script.google.com/macros/s/AKfycbzNXcKpOMeIaiOD8XZacs6pM2xjRYlytjbr9pF7SwKWMdYU5GRpl9BOsnV5YRhcxD8GpQ/exec';
+/*************************************************
+ * Apps Script URL
+ *
+ * ★ 중요 ★
+ * 마크다운 링크를 넣으면 안 됩니다.
+ *************************************************/
 
+const SCRIPT_URL =
+    'https://script.google.com/macros/s/AKfycbzNXcKpOMeIaiOD8XZacs6pM2xjRYlytjbr9pF7SwKWMdYU5GRpl9BOsnV5YRhcxD8GpQ/exec';
 
-    /* ============================================================
-       GitHub 행로표 이미지 설정
-       
-       저장소:
-       https://github.com/Korail123/-
 
-       기본적으로 아래와 같은 구조를 사용:
-       12602.png
-       12404.png
-       12601.png
-       ...
-    ============================================================ */
+/*************************************************
+ * 현재 로그인 사용자
+ *************************************************/
 
-    const GITHUB_RAW_BASE =
-        'https://raw.githubusercontent.com/Korail123/-/main/';
+let currentUser = null;
 
 
-    /*
-       파일명이 DIA와 동일하다면 별도 등록이 필요 없음.
+/*************************************************
+ * 달력
+ *************************************************/
 
-       예:
-       DIA 12602 → 12602.png
+let calendarDate = new Date();
 
-       그래도 혹시 파일명이 다른 경우를 대비하여
-       아래 객체에 직접 지정할 수 있음.
-    */
+calendarDate.setDate(1);
 
-    const DIA_ROUTE_IMAGES = {
 
-        "12602": GITHUB_RAW_BASE + "12602.png",
-        "12404": GITHUB_RAW_BASE + "12404.png",
-        "12601": GITHUB_RAW_BASE + "12601.png",
-        "12402": GITHUB_RAW_BASE + "12402.png",
-        "12581": GITHUB_RAW_BASE + "12581.png",
-        "12101": GITHUB_RAW_BASE + "12101.png",
-        "12551": GITHUB_RAW_BASE + "12551.png",
-        "12201": GITHUB_RAW_BASE + "12201.png",
-        "12401": GITHUB_RAW_BASE + "12401.png",
-        "12403": GITHUB_RAW_BASE + "12403.png",
+const MIN_YEAR = 2026;
+const MIN_MONTH = 0;
 
-        "12901": GITHUB_RAW_BASE + "12901.png",
-        "12902": GITHUB_RAW_BASE + "12902.png",
-        "12932": GITHUB_RAW_BASE + "12932.png",
-        "12B07": GITHUB_RAW_BASE + "12B07.png"
+const MAX_YEAR = 2099;
+const MAX_MONTH = 11;
 
-    };
 
+/*************************************************
+ * 선택된 DIA
+ *************************************************/
 
-    /* ============================================================
-       기본 DIA
-    ============================================================ */
+let selectedDiaList = [];
 
-    const DEFAULT_DIAS = [
+let allDiaList = [];
 
-        "12602",
-        "12404",
-        "12601",
-        "12402",
-        "12581",
-        "12101",
-        "12551",
-        "12201",
-        "12401",
-        "12403",
-        "12901",
-        "12902",
-        "12932",
-        "12B07",
-        "휴무",
-        "연차",
-        "병가",
-        "출산",
-        "육아",
-        "X"
 
-    ];
+/*************************************************
+ * JSONP 요청
+ *************************************************/
 
+function jsonpRequest(action, params = {}) {
 
-    /* ============================================================
-       상태값
-    ============================================================ */
-
-    let currentUser = null;
-
-    let selectedDias = [];
-
-    let diaList = [];
-
-    let currentDate = new Date();
-
-    let currentRouteDia = "";
-
-    let currentRouteImageUrl = "";
-
-    let routeZoom = 1;
-
-
-    /* ============================================================
-       시작
-    ============================================================ */
-
-    document.addEventListener("DOMContentLoaded", function() {
-
-        loadSavedUser();
-
-    });
-
-
-    /* ============================================================
-       로그인 사용자 확인
-    ============================================================ */
-
-    function loadSavedUser() {
-
-        const savedUser =
-            localStorage.getItem("railwaySecretaryUser");
-
-        if (!savedUser) {
-
-            showLogin();
-
-            return;
-
-        }
-
-
-        try {
-
-            currentUser = JSON.parse(savedUser);
-
-            if (!currentUser.employeeId) {
-
-                showLogin();
-
-                return;
-
-            }
-
-            enterMain();
-
-        } catch (error) {
-
-            localStorage.removeItem("railwaySecretaryUser");
-
-            showLogin();
-
-        }
-
-    }
-
-
-    /* ============================================================
-       화면 전환
-    ============================================================ */
-
-    function showLogin() {
-
-        document.getElementById("loginPage")
-            .classList.remove("hidden");
-
-        document.getElementById("signupPage")
-            .classList.add("hidden");
-
-        document.getElementById("mainPage")
-            .classList.add("hidden");
-
-        document.getElementById("settingsPage")
-            .classList.add("hidden");
-
-    }
-
-
-    function showSignup() {
-
-        document.getElementById("loginPage")
-            .classList.add("hidden");
-
-        document.getElementById("signupPage")
-            .classList.remove("hidden");
-
-    }
-
-
-    function enterMain() {
-
-        document.getElementById("loginPage")
-            .classList.add("hidden");
-
-        document.getElementById("signupPage")
-            .classList.add("hidden");
-
-        document.getElementById("mainPage")
-            .classList.remove("hidden");
-
-        document.getElementById("settingsPage")
-            .classList.add("hidden");
-
-
-        document.getElementById("welcomeName").textContent =
-            currentUser.name || "";
-
-
-        loadUserDiaSettings();
-
-    }
-
-
-    function showMain() {
-
-        document.getElementById("mainPage")
-            .classList.remove("hidden");
-
-        document.getElementById("settingsPage")
-            .classList.add("hidden");
-
-        renderCalendar();
-
-    }
-
-
-    function showSettings() {
-
-        document.getElementById("mainPage")
-            .classList.add("hidden");
-
-        document.getElementById("settingsPage")
-            .classList.remove("hidden");
-
-        updateSelectedDiaText();
-
-    }
-
-
-    function showComingSoon(name) {
-
-        showToast(name + " 기능은 준비 중입니다.");
-
-    }
-
-
-    /* ============================================================
-       회원가입
-    ============================================================ */
-
-    function signup() {
-
-        const employeeId =
-            document.getElementById("signupEmployeeId")
-                .value.trim();
-
-        const name =
-            document.getElementById("signupName")
-                .value.trim();
-
-        const password =
-            document.getElementById("signupPassword")
-                .value.trim();
-
-
-        if (!employeeId || !name || !password) {
-
-            document.getElementById("signupMessage")
-                .textContent =
-                "모든 항목을 입력해주세요.";
-
-            return;
-
-        }
-
-
-        document.getElementById("signupMessage")
-            .textContent =
-            "회원가입 처리 중입니다...";
-
-
-        jsonp(
-            "signup",
-            {
-                employeeId: employeeId,
-                name: name,
-                password: password
-            },
-            function(result) {
-
-                if (result.success) {
-
-                    document.getElementById("signupMessage")
-                        .style.color = "#1479e9";
-
-                    document.getElementById("signupMessage")
-                        .textContent =
-                        result.message || "회원가입이 완료되었습니다.";
-
-                    setTimeout(function() {
-
-                        showLogin();
-
-                    }, 700);
-
-                } else {
-
-                    document.getElementById("signupMessage")
-                        .style.color = "#e5484d";
-
-                    document.getElementById("signupMessage")
-                        .textContent =
-                        result.message || "회원가입에 실패했습니다.";
-
-                }
-
-            }
-        );
-
-    }
-
-
-    /* ============================================================
-       로그인
-    ============================================================ */
-
-    function login() {
-
-        const employeeId =
-            document.getElementById("loginEmployeeId")
-                .value.trim();
-
-        const password =
-            document.getElementById("loginPassword")
-                .value.trim();
-
-
-        if (!employeeId || !password) {
-
-            document.getElementById("loginMessage")
-                .textContent =
-                "사원번호와 비밀번호를 입력해주세요.";
-
-            return;
-
-        }
-
-
-        document.getElementById("loginMessage")
-            .textContent =
-            "로그인 중입니다...";
-
-
-        jsonp(
-            "login",
-            {
-                employeeId: employeeId,
-                password: password
-            },
-            function(result) {
-
-                if (result.success) {
-
-                    currentUser = {
-
-                        employeeId:
-                            result.employeeId || employeeId,
-
-                        name:
-                            result.name || ""
-
-                    };
-
-
-                    localStorage.setItem(
-                        "railwaySecretaryUser",
-                        JSON.stringify(currentUser)
-                    );
-
-
-                    enterMain();
-
-                } else {
-
-                    document.getElementById("loginMessage")
-                        .textContent =
-                        result.message ||
-                        "로그인에 실패했습니다.";
-
-                }
-
-            }
-        );
-
-    }
-
-
-    /* ============================================================
-       로그아웃
-    ============================================================ */
-
-    function logout() {
-
-        if (!confirm("로그아웃하시겠습니까?")) {
-
-            return;
-
-        }
-
-
-        localStorage.removeItem(
-            "railwaySecretaryUser"
-        );
-
-
-        currentUser = null;
-
-        selectedDias = [];
-
-        showLogin();
-
-    }
-
-
-    /* ============================================================
-       DIA 목록 가져오기
-    ============================================================ */
-
-    function loadDiaList(callback) {
-
-        jsonp(
-            "getDiaList",
-            {},
-            function(result) {
-
-                if (
-                    result &&
-                    result.success &&
-                    Array.isArray(result.data)
-                ) {
-
-                    diaList =
-                        result.data.map(function(item) {
-
-                            return item.dia ||
-                                   item.DIA ||
-                                   item.code ||
-                                   item;
-
-                        });
-
-                } else {
-
-                    diaList =
-                        DEFAULT_DIAS.slice();
-
-                }
-
-
-                if (callback) {
-
-                    callback();
-
-                }
-
-            }
-        );
-
-    }
-
-
-    /* ============================================================
-       사용자 DIA 설정 가져오기
-    ============================================================ */
-
-    function loadUserDiaSettings() {
-
-        if (!currentUser) {
-
-            return;
-
-        }
-
-
-        loadDiaList(function() {
-
-            jsonp(
-                "getUserDiaSettings",
-                {
-                    employeeId:
-                        currentUser.employeeId
-                },
-                function(result) {
-
-                    if (
-                        result &&
-                        result.success &&
-                        Array.isArray(result.data)
-                    ) {
-
-                        selectedDias =
-                            result.data;
-
-                    } else {
-
-                        selectedDias =
-                            DEFAULT_DIAS.slice();
-
-                    }
-
-
-                    if (!selectedDias.length) {
-
-                        selectedDias =
-                            DEFAULT_DIAS.slice();
-
-                    }
-
-
-                    renderCalendar();
-
-                    updateSelectedDiaText();
-
-                }
-            );
-
-        });
-
-    }
-
-
-    /* ============================================================
-       DIA 설정 화면
-    ============================================================ */
-
-    function openDiaSetting() {
-
-        loadDiaList(function() {
-
-            const modal =
-                document.getElementById("diaModal");
-
-            const list =
-                document.getElementById("diaList");
-
-            list.innerHTML = "";
-
-
-            const source =
-                diaList.length
-                    ? diaList
-                    : DEFAULT_DIAS;
-
-
-            source.forEach(function(dia) {
-
-                const button =
-                    document.createElement("button");
-
-                button.className =
-                    "dia-select-btn";
-
-
-                if (
-                    selectedDias.includes(
-                        String(dia)
-                    )
-                ) {
-
-                    button.classList.add("selected");
-
-                }
-
-
-                button.textContent = dia;
-
-
-                button.onclick = function() {
-
-                    toggleDiaSelection(
-                        String(dia),
-                        button
-                    );
-
-                };
-
-
-                list.appendChild(button);
-
-            });
-
-
-            modal.classList.remove("hidden");
-
-        });
-
-    }
-
-
-    function closeDiaSetting() {
-
-        document.getElementById("diaModal")
-            .classList.add("hidden");
-
-    }
-
-
-    function toggleDiaSelection(dia, button) {
-
-        const index =
-            selectedDias.indexOf(dia);
-
-
-        if (index >= 0) {
-
-            selectedDias.splice(index, 1);
-
-            button.classList.remove("selected");
-
-        } else {
-
-            selectedDias.push(dia);
-
-            button.classList.add("selected");
-
-        }
-
-
-        saveUserDiaSettings();
-
-    }
-
-
-    function saveUserDiaSettings() {
-
-        if (!currentUser) {
-
-            return;
-
-        }
-
-
-        jsonp(
-            "saveUserDiaSettings",
-            {
-                employeeId:
-                    currentUser.employeeId,
-
-                dias:
-                    JSON.stringify(selectedDias)
-            },
-            function(result) {
-
-                if (
-                    result &&
-                    result.success
-                ) {
-
-                    renderCalendar();
-
-                    updateSelectedDiaText();
-
-                }
-
-            }
-        );
-
-    }
-
-
-    function updateSelectedDiaText() {
-
-        const element =
-            document.getElementById(
-                "selectedDiaText"
-            );
-
-
-        if (!element) {
-
-            return;
-
-        }
-
-
-        if (!selectedDias.length) {
-
-            element.textContent =
-                "선택된 DIA가 없습니다.";
-
-            return;
-
-        }
-
-
-        element.textContent =
-            selectedDias.join(", ");
-
-    }
-
-
-    /* ============================================================
-       달력
-    ============================================================ */
-
-    function renderCalendar() {
-
-        const grid =
-            document.getElementById(
-                "calendarGrid"
-            );
-
-
-        if (!grid) {
-
-            return;
-
-        }
-
-
-        grid.innerHTML = "";
-
-
-        const year =
-            currentDate.getFullYear();
-
-        const month =
-            currentDate.getMonth();
-
-
-        document.getElementById("monthTitle")
-            .textContent =
-            year + "년 " + (month + 1) + "월";
-
-
-        const firstDay =
-            new Date(year, month, 1)
-                .getDay();
-
-
-        const lastDate =
-            new Date(year, month + 1, 0)
-                .getDate();
-
-
-        for (
-            let i = 0;
-            i < firstDay;
-            i++
-        ) {
-
-            const empty =
-                document.createElement("div");
-
-            empty.className =
-                "day-cell empty-day";
-
-            grid.appendChild(empty);
-
-        }
-
-
-        for (
-            let day = 1;
-            day <= lastDate;
-            day++
-        ) {
-
-            const cell =
-                document.createElement("div");
-
-            cell.className =
-                "day-cell";
-
-
-            const number =
-                document.createElement("div");
-
-            number.className =
-                "day-number";
-
-            number.textContent =
-                day;
-
-
-            const today =
-                new Date();
-
-
-            if (
-                today.getFullYear() === year &&
-                today.getMonth() === month &&
-                today.getDate() === day
-            ) {
-
-                cell.classList.add("today");
-
-            }
-
-
-            cell.appendChild(number);
-
-
-            const dia =
-                getDiaForDate(
-                    year,
-                    month,
-                    day
-                );
-
-
-            if (dia) {
-
-                const button =
-                    document.createElement("button");
-
-                button.className =
-                    "dia-button";
-
-                button.textContent =
-                    dia;
-
-
-                /*
-                   ★ 핵심
-                   
-                   DIA 클릭 → 행로표 PNG 팝업
-                */
-
-                button.onclick = function() {
-
-                    openRouteImage(dia);
-
-                };
-
-
-                cell.appendChild(button);
-
-            }
-
-
-            grid.appendChild(cell);
-
-        }
-
-    }
-
-
-    /*
-       현재는 선택된 DIA를 날짜에 순서대로 배치하는
-       임시 근무표 로직.
-
-       실제 근무패턴을 연결할 때 이 함수만 교체하면 됨.
-    */
-
-    function getDiaForDate(year, month, day) {
-
-        if (!selectedDias.length) {
-
-            return "";
-
-        }
-
-
-        const index =
-            Math.abs(
-                (
-                    year * 365 +
-                    month * 31 +
-                    day
-                )
-            ) % selectedDias.length;
-
-
-        return selectedDias[index];
-
-    }
-
-
-    function changeMonth(amount) {
-
-        currentDate.setMonth(
-            currentDate.getMonth() + amount
-        );
-
-
-        renderCalendar();
-
-    }
-
-
-    /* ============================================================
-       ★ DIA → 행로표 PNG
-    ============================================================ */
-
-    function getRouteImageCandidates(dia) {
-
-        const encodedDia =
-            encodeURIComponent(dia);
-
-
-        const candidates = [];
-
-
-        /*
-           1순위:
-           직접 등록된 URL
-        */
-
-        if (DIA_ROUTE_IMAGES[dia]) {
-
-            candidates.push(
-                DIA_ROUTE_IMAGES[dia]
-            );
-
-        }
-
-
-        /*
-           2순위:
-           DIA.png
-        */
-
-        candidates.push(
-            GITHUB_RAW_BASE +
-            encodedDia +
-            ".png"
-        );
-
-
-        /*
-           3순위:
-           dia_DIA.png
-        */
-
-        candidates.push(
-            GITHUB_RAW_BASE +
-            "dia_" +
-            encodedDia +
-            ".png"
-        );
-
-
-        /*
-           4순위:
-           DIA.PNG
-        */
-
-        candidates.push(
-            GITHUB_RAW_BASE +
-            encodedDia +
-            ".PNG"
-        );
-
-
-        return [
-            ...new Set(candidates)
-        ];
-
-    }
-
-
-    function openRouteImage(dia) {
-
-        /*
-           휴무 / 연차 등은 행로표가 없으므로
-           별도 처리
-        */
-
-        const nonWorkDias = [
-            "휴무",
-            "연차",
-            "병가",
-            "출산",
-            "육아",
-            "X"
-        ];
-
-
-        if (
-            nonWorkDias.includes(
-                String(dia)
-            )
-        ) {
-
-            showToast(
-                dia + "는 행로표가 없습니다."
-            );
-
-            return;
-
-        }
-
-
-        currentRouteDia =
-            String(dia);
-
-
-        routeZoom = 1;
-
-
-        const modal =
-            document.getElementById(
-                "routeModal"
-            );
-
-
-        const image =
-            document.getElementById(
-                "routeImage"
-            );
-
-
-        const loading =
-            document.getElementById(
-                "routeLoading"
-            );
-
-
-        const error =
-            document.getElementById(
-                "routeError"
-            );
-
-
-        const title =
-            document.getElementById(
-                "routeHeaderTitle"
-            );
-
-
-        title.textContent =
-            "DIA " + dia + " 행로표";
-
-
-        image.classList.add("hidden");
-
-        error.classList.add("hidden");
-
-        loading.classList.remove("hidden");
-
-
-        modal.classList.add("show");
-
-
-        const candidates =
-            getRouteImageCandidates(dia);
-
-
-        tryNextRouteImage(
-            candidates,
-            0
-        );
-
-    }
-
-
-    function tryNextRouteImage(
-        candidates,
-        index
-    ) {
-
-        const image =
-            document.getElementById(
-                "routeImage"
-            );
-
-
-        const loading =
-            document.getElementById(
-                "routeLoading"
-            );
-
-
-        const error =
-            document.getElementById(
-                "routeError"
-            );
-
-
-        if (
-            index >= candidates.length
-        ) {
-
-            loading.classList.add(
-                "hidden"
-            );
-
-            image.classList.add(
-                "hidden"
-            );
-
-
-            error.innerHTML =
-
-                "<strong>DIA " +
-                escapeHtml(currentRouteDia) +
-                "</strong>" +
-
-                "등록된 행로표 PNG를 찾을 수 없습니다.<br><br>" +
-
-                "GitHub 파일명이 DIA 번호와 같은지 확인해주세요.<br>" +
-
-                "예: <b>" +
-                escapeHtml(currentRouteDia) +
-                ".png</b>";
-
-            error.classList.remove(
-                "hidden"
-            );
-
-            return;
-
-        }
-
-
-        const url =
-            candidates[index];
-
-
-        const testImage =
-            new Image();
-
-
-        testImage.onload =
-            function() {
-
-                currentRouteImageUrl =
-                    url;
-
-
-                image.src =
-                    url;
-
-
-                image.style.width =
-                    "auto";
-
-
-                image.style.transform =
-                    "scale(1)";
-
-
-                loading.classList.add(
-                    "hidden"
-                );
-
-
-                error.classList.add(
-                    "hidden"
-                );
-
-
-                image.classList.remove(
-                    "hidden"
-                );
-
-            };
-
-
-        testImage.onerror =
-            function() {
-
-                tryNextRouteImage(
-                    candidates,
-                    index + 1
-                );
-
-            };
-
-
-        testImage.src =
-            url + "?v=" +
-            Date.now();
-
-    }
-
-
-    /* ============================================================
-       행로표 확대 / 축소
-    ============================================================ */
-
-    function zoomRoute(amount) {
-
-        routeZoom += amount;
-
-
-        if (routeZoom < 0.5) {
-
-            routeZoom = 0.5;
-
-        }
-
-
-        if (routeZoom > 4) {
-
-            routeZoom = 4;
-
-        }
-
-
-        applyRouteZoom();
-
-    }
-
-
-    function resetRouteZoom() {
-
-        routeZoom = 1;
-
-        applyRouteZoom();
-
-    }
-
-
-    function applyRouteZoom() {
-
-        const image =
-            document.getElementById(
-                "routeImage"
-            );
-
-
-        image.style.transform =
-            "scale(" +
-            routeZoom +
-            ")";
-
-
-        image.style.transformOrigin =
-            "top left";
-
-    }
-
-
-    function openRouteOriginal() {
-
-        if (!currentRouteImageUrl) {
-
-            return;
-
-        }
-
-
-        window.open(
-            currentRouteImageUrl,
-            "_blank"
-        );
-
-    }
-
-
-    function closeRouteModal() {
-
-        const modal =
-            document.getElementById(
-                "routeModal"
-            );
-
-
-        modal.classList.remove(
-            "show"
-        );
-
-
-        document.getElementById(
-            "routeImage"
-        ).src = "";
-
-        currentRouteImageUrl = "";
-
-    }
-
-
-    /* ============================================================
-       ESC로 행로표 닫기
-    ============================================================ */
-
-    document.addEventListener(
-        "keydown",
-        function(event) {
-
-            if (
-                event.key === "Escape"
-            ) {
-
-                closeRouteModal();
-
-                closeDiaSetting();
-
-            }
-
-        }
-    );
-
-
-    /* ============================================================
-       Apps Script JSONP
-    ============================================================ */
-
-    function jsonp(
-        action,
-        params,
-        callback
-    ) {
+    return new Promise(function(resolve, reject) {
 
         const callbackName =
-            "jsonpCallback_" +
+            'jsonpCallback_' +
             Date.now() +
-            "_" +
-            Math.floor(
-                Math.random() * 10000
-            );
+            '_' +
+            Math.floor(Math.random() * 100000);
 
 
         const script =
-            document.createElement(
-                "script"
-            );
+            document.createElement('script');
 
 
         const query =
             new URLSearchParams();
 
 
-        query.set(
-            "action",
+        query.append(
+            'action',
             action
         );
 
 
-        query.set(
-            "callback",
+        query.append(
+            'callback',
             callbackName
         );
 
 
-        Object.keys(params || {})
-            .forEach(function(key) {
+        Object.keys(params).forEach(function(key) {
 
-                query.set(
-                    key,
-                    params[key]
+            query.append(
+                key,
+                params[key]
+            );
+
+        });
+
+
+        const timeout =
+            setTimeout(function() {
+
+                cleanup();
+
+                reject(
+                    new Error(
+                        '서버 응답 시간이 초과되었습니다.'
+                    )
                 );
 
-            });
+            }, 15000);
 
 
         window[callbackName] =
             function(data) {
 
-                try {
+                clearTimeout(timeout);
 
-                    callback(data);
+                cleanup();
 
-                } finally {
-
-                    delete window[
-                        callbackName
-                    ];
-
-                    script.remove();
-
-                }
-
+                resolve(data);
             };
+
+
+        function cleanup() {
+
+            try {
+                delete window[callbackName];
+            } catch (e) {
+                window[callbackName] = undefined;
+            }
+
+
+            if (script.parentNode) {
+                script.parentNode.removeChild(script);
+            }
+        }
 
 
         script.onerror =
             function() {
 
-                delete window[
-                    callbackName
-                ];
+                clearTimeout(timeout);
 
-                script.remove();
+                cleanup();
 
-
-                callback({
-
-                    success: false,
-
-                    message:
-                        "서버와 연결할 수 없습니다."
-
-                });
-
+                reject(
+                    new Error(
+                        '서버에 연결할 수 없습니다.'
+                    )
+                );
             };
 
 
         script.src =
             SCRIPT_URL +
-            "?" +
+            '?' +
             query.toString();
 
 
-        document.body.appendChild(
-            script
+        document
+            .body
+            .appendChild(script);
+
+    });
+}
+
+
+/*************************************************
+ * 페이지 전환
+ *************************************************/
+
+function hideAllPages() {
+
+    document
+        .querySelectorAll('.page')
+        .forEach(function(page) {
+
+            page.classList.remove('active');
+
+        });
+}
+
+
+function showLogin() {
+
+    hideAllPages();
+
+    document
+        .getElementById('login-section')
+        .classList.add('active');
+}
+
+
+function showSignup() {
+
+    hideAllPages();
+
+    document
+        .getElementById('signup-section')
+        .classList.add('active');
+
+    clearMessage('signup-message');
+}
+
+
+function goMain() {
+
+    hideAllPages();
+
+    document
+        .getElementById('main-section')
+        .classList.add('active');
+
+    renderCalendar();
+}
+
+
+function openSettings() {
+
+    hideAllPages();
+
+    document
+        .getElementById('settings-section')
+        .classList.add('active');
+}
+
+
+function openSchedule() {
+
+    goMain();
+
+    setTimeout(function() {
+
+        document
+            .querySelector('.calendar-card')
+            .scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+
+    }, 100);
+
+}
+
+
+function showSimplePage(title) {
+
+    hideAllPages();
+
+    document
+        .getElementById('simple-section')
+        .classList.add('active');
+
+
+    document
+        .getElementById('simple-title')
+        .textContent = title;
+
+
+    document
+        .getElementById('simple-content')
+        .textContent =
+            title +
+            ' 기능은 준비 중입니다.';
+}
+
+
+/*************************************************
+ * 메시지
+ *************************************************/
+
+function showMessage(
+    elementId,
+    message,
+    type
+) {
+
+    const element =
+        document.getElementById(elementId);
+
+
+    element.textContent =
+        message;
+
+
+    element.className =
+        'message show ' +
+        type;
+}
+
+
+function clearMessage(elementId) {
+
+    const element =
+        document.getElementById(elementId);
+
+
+    element.textContent =
+        '';
+
+
+    element.className =
+        'message';
+}
+
+
+/*************************************************
+ * 로그인
+ *************************************************/
+
+async function loginUser() {
+
+    const employeeId =
+        document
+            .getElementById('login-employee-id')
+            .value
+            .trim();
+
+
+    const password =
+        document
+            .getElementById('login-password')
+            .value
+            .trim();
+
+
+    clearMessage('login-message');
+
+
+    if (!employeeId) {
+
+        showMessage(
+            'login-message',
+            '사원번호를 입력해주세요.',
+            'error'
         );
 
+        return;
     }
 
 
-    /* ============================================================
-       업데이트
-    ============================================================ */
+    if (!password) {
 
-    function checkUpdate() {
-
-        showToast(
-            "현재 최신 버전을 확인하고 있습니다."
+        showMessage(
+            'login-message',
+            '비밀번호를 입력해주세요.',
+            'error'
         );
 
-        setTimeout(function() {
-
-            showToast(
-                "현재 사용 가능한 최신 버전입니다."
-            );
-
-        }, 900);
-
+        return;
     }
 
 
-    /* ============================================================
-       Toast
-    ============================================================ */
+    showMessage(
+        'login-message',
+        '로그인 중입니다...',
+        'success'
+    );
 
-    let toastTimer = null;
 
+    try {
 
-    function showToast(message) {
+        const result =
+            await jsonpRequest(
+                'login',
+                {
+                    employeeId:
+                        employeeId,
 
-        const toast =
-            document.getElementById(
-                "toast"
+                    password:
+                        password
+                }
             );
 
 
-        toast.textContent =
-            message;
+        if (
+            result &&
+            result.success
+        ) {
+
+            currentUser = {
+
+                employeeId:
+                    result.employeeId,
+
+                name:
+                    result.name
+            };
 
 
-        toast.classList.add(
-            "show"
+            localStorage.setItem(
+                'railwaySecretaryUser',
+                JSON.stringify(currentUser)
+            );
+
+
+            document
+                .getElementById('welcome-name')
+                .textContent =
+                    result.name;
+
+
+            showMessage(
+                'login-message',
+                '로그인되었습니다.',
+                'success'
+            );
+
+
+            setTimeout(
+                goMain,
+                300
+            );
+
+        } else {
+
+            showMessage(
+                'login-message',
+                result.message ||
+                    '로그인에 실패했습니다.',
+                'error'
+            );
+        }
+
+
+    } catch (error) {
+
+        console.error(error);
+
+
+        showMessage(
+            'login-message',
+            '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.',
+            'error'
+        );
+    }
+}
+
+
+/*************************************************
+ * 회원가입
+ *************************************************/
+
+async function signupUser() {
+
+    const employeeId =
+        document
+            .getElementById('signup-employee-id')
+            .value
+            .trim();
+
+
+    const name =
+        document
+            .getElementById('signup-name')
+            .value
+            .trim();
+
+
+    const password =
+        document
+            .getElementById('signup-password')
+            .value
+            .trim();
+
+
+    clearMessage('signup-message');
+
+
+    if (!employeeId) {
+
+        showMessage(
+            'signup-message',
+            '사원번호를 입력해주세요.',
+            'error'
+        );
+
+        return;
+    }
+
+
+    if (!name) {
+
+        showMessage(
+            'signup-message',
+            '이름을 입력해주세요.',
+            'error'
+        );
+
+        return;
+    }
+
+
+    if (!password) {
+
+        showMessage(
+            'signup-message',
+            '비밀번호를 입력해주세요.',
+            'error'
+        );
+
+        return;
+    }
+
+
+    if (password.length < 4) {
+
+        showMessage(
+            'signup-message',
+            '비밀번호는 4자리 이상 입력해주세요.',
+            'error'
+        );
+
+        return;
+    }
+
+
+    showMessage(
+        'signup-message',
+        '회원가입 중입니다...',
+        'success'
+    );
+
+
+    try {
+
+        const result =
+            await jsonpRequest(
+                'signup',
+                {
+
+                    employeeId:
+                        employeeId,
+
+                    name:
+                        name,
+
+                    password:
+                        password
+                }
+            );
+
+
+        if (
+            result &&
+            result.success
+        ) {
+
+            showMessage(
+                'signup-message',
+                '회원가입이 완료되었습니다. 로그인해주세요.',
+                'success'
+            );
+
+
+            document
+                .getElementById('signup-password')
+                .value = '';
+
+
+            setTimeout(
+                showLogin,
+                1000
+            );
+
+        } else {
+
+            showMessage(
+                'signup-message',
+                result.message ||
+                    '회원가입에 실패했습니다.',
+                'error'
+            );
+        }
+
+
+    } catch (error) {
+
+        console.error(error);
+
+
+        showMessage(
+            'signup-message',
+            '서버 연결에 실패했습니다.',
+            'error'
+        );
+    }
+}
+
+
+/*************************************************
+ * 로그아웃
+ *************************************************/
+
+function logout() {
+
+    currentUser = null;
+
+    localStorage.removeItem(
+        'railwaySecretaryUser'
+    );
+
+
+    document
+        .getElementById('login-employee-id')
+        .value = '';
+
+
+    document
+        .getElementById('login-password')
+        .value = '';
+
+
+    showLogin();
+}
+
+
+/*************************************************
+ * DIA 설정 열기
+ *************************************************/
+
+async function openDiaSettings() {
+
+    if (!currentUser) {
+
+        alert(
+            '먼저 로그인해주세요.'
+        );
+
+        return;
+    }
+
+
+    document
+        .getElementById('dia-modal')
+        .classList.add('show');
+
+
+    document
+        .getElementById('dia-list')
+        .innerHTML =
+            '<div class="loading">DIA 목록을 불러오는 중입니다...</div>';
+
+
+    try {
+
+        /***************************************
+         * DIA 목록 가져오기
+         ***************************************/
+
+        const diaResult =
+            await jsonpRequest(
+                'getDiaList'
+            );
+
+
+        if (
+            !diaResult ||
+            !diaResult.success
+        ) {
+
+            throw new Error(
+                diaResult?.message ||
+                'DIA 목록을 불러오지 못했습니다.'
+            );
+        }
+
+
+        allDiaList =
+            diaResult.data || [];
+
+
+        /***************************************
+         * 기존 사용자 설정 가져오기
+         ***************************************/
+
+        const userResult =
+            await jsonpRequest(
+                'getUserDiaSettings',
+                {
+                    employeeId:
+                        currentUser.employeeId
+                }
+            );
+
+
+        if (
+            !userResult ||
+            !userResult.success
+        ) {
+
+            throw new Error(
+                userResult?.message ||
+                '사용자 설정을 불러오지 못했습니다.'
+            );
+        }
+
+
+        selectedDiaList =
+            userResult.data || [];
+
+
+        renderDiaList();
+
+
+    } catch (error) {
+
+        console.error(error);
+
+
+        document
+            .getElementById('dia-list')
+            .innerHTML =
+                '<div class="loading">' +
+                'DIA 목록을 불러오지 못했습니다.<br><br>' +
+                '잠시 후 다시 시도해주세요.' +
+                '</div>';
+    }
+}
+
+
+/*************************************************
+ * DIA 목록 화면 출력
+ *************************************************/
+
+function renderDiaList() {
+
+    const container =
+        document.getElementById(
+            'dia-list'
         );
 
 
-        clearTimeout(
-            toastTimer
-        );
+    if (
+        !allDiaList ||
+        allDiaList.length === 0
+    ) {
+
+        container.innerHTML =
+            '<div class="loading">' +
+            '등록된 DIA가 없습니다.' +
+            '</div>';
+
+        updateSelectedCount();
+
+        return;
+    }
 
 
-        toastTimer =
-            setTimeout(function() {
+    let html = '';
 
-                toast.classList.remove(
-                    "show"
+
+    allDiaList.forEach(
+        function(item, index) {
+
+            const checked =
+                selectedDiaList.includes(
+                    item.dia
                 );
 
-            }, 2200);
 
+            let timeText = '';
+
+
+            if (
+                item.startTime ||
+                item.endTime
+            ) {
+
+                timeText =
+                    (item.startTime || '-') +
+                    ' ~ ' +
+                    (item.endTime || '-');
+
+            }
+
+
+            if (
+                item.train1 ||
+                item.train2
+            ) {
+
+                const trainText =
+                    [
+                        item.train1,
+                        item.train2
+                    ]
+                    .filter(Boolean)
+                    .join(' / ');
+
+
+                timeText +=
+                    '<br>열차 ' +
+                    trainText;
+            }
+
+
+            html +=
+
+                '<div class="dia-item">' +
+
+                    '<input ' +
+
+                        'class="dia-checkbox" ' +
+
+                        'type="checkbox" ' +
+
+                        'id="dia-' +
+                        index +
+                        '" ' +
+
+                        'value="' +
+                        escapeHtml(item.dia) +
+                        '" ' +
+
+                        (checked ? 'checked' : '') +
+
+                        'onchange="toggleDia(this)"' +
+
+                    '>' +
+
+
+                    '<label ' +
+
+                        'class="dia-label" ' +
+
+                        'for="dia-' +
+                        index +
+                        '"' +
+
+                    '>' +
+
+                        '<span class="dia-code">' +
+                            escapeHtml(item.dia) +
+                        '</span>' +
+
+                        '<span class="dia-name">' +
+                            escapeHtml(
+                                item.displayName ||
+                                item.type ||
+                                ''
+                            ) +
+                        '</span>' +
+
+                        '<span class="dia-time">' +
+                            timeText +
+                        '</span>' +
+
+                    '</label>' +
+
+                '</div>';
+
+        }
+    );
+
+
+    container.innerHTML =
+        html;
+
+
+    updateSelectedCount();
+}
+
+
+/*************************************************
+ * DIA 선택 / 해제
+ *************************************************/
+
+function toggleDia(checkbox) {
+
+    const dia =
+        checkbox.value;
+
+
+    if (checkbox.checked) {
+
+        if (
+            !selectedDiaList.includes(dia)
+        ) {
+
+            selectedDiaList.push(dia);
+        }
+
+    } else {
+
+        selectedDiaList =
+            selectedDiaList.filter(
+                function(item) {
+                    return item !== dia;
+                }
+            );
     }
 
 
-    /* ============================================================
-       HTML escape
-    ============================================================ */
+    updateSelectedCount();
+}
 
-    function escapeHtml(value) {
 
-        return String(value)
-            .replace(
-                /&/g,
-                "&amp;"
-            )
-            .replace(
-                /</g,
-                "&lt;"
-            )
-            .replace(
-                />/g,
-                "&gt;"
-            )
-            .replace(
-                /"/g,
-                "&quot;"
-            )
-            .replace(
-                /'/g,
-                "&#039;"
+/*************************************************
+ * 선택 개수
+ *************************************************/
+
+function updateSelectedCount() {
+
+    document
+        .getElementById(
+            'dia-selected-info'
+        )
+        .textContent =
+            '선택된 DIA ' +
+            selectedDiaList.length +
+            '개';
+}
+
+
+/*************************************************
+ * DIA 저장
+ *************************************************/
+
+async function saveDiaSettings() {
+
+    if (!currentUser) {
+
+        alert(
+            '로그인 정보가 없습니다.'
+        );
+
+        return;
+    }
+
+
+    const saveButton =
+        document.querySelector(
+            '.modal-save'
+        );
+
+
+    saveButton.disabled =
+        true;
+
+
+    saveButton.textContent =
+        '저장 중...';
+
+
+    try {
+
+        const result =
+            await jsonpRequest(
+                'saveUserDiaSettings',
+                {
+
+                    employeeId:
+                        currentUser.employeeId,
+
+                    diaList:
+                        JSON.stringify(
+                            selectedDiaList
+                        )
+                }
             );
 
+
+        if (
+            result &&
+            result.success
+        ) {
+
+            alert(
+                '근무표 설정이 저장되었습니다.'
+            );
+
+
+            closeDiaSettings();
+
+            renderCalendar();
+
+        } else {
+
+            alert(
+                result.message ||
+                '저장에 실패했습니다.'
+            );
+        }
+
+
+    } catch (error) {
+
+        console.error(error);
+
+
+        alert(
+            '서버 연결에 실패했습니다.'
+        );
+
+
+    } finally {
+
+        saveButton.disabled =
+            false;
+
+        saveButton.textContent =
+            '저장';
     }
+}
+
+
+/*************************************************
+ * DIA 설정 닫기
+ *************************************************/
+
+function closeDiaSettings() {
+
+    document
+        .getElementById('dia-modal')
+        .classList.remove('show');
+}
+
+
+/*************************************************
+ * 달력
+ *************************************************/
+
+function renderCalendar() {
+
+    const year =
+        calendarDate.getFullYear();
+
+
+    const month =
+        calendarDate.getMonth();
+
+
+    document
+        .getElementById(
+            'calendar-title'
+        )
+        .textContent =
+            year +
+            '년 ' +
+            (month + 1) +
+            '월';
+
+
+    const grid =
+        document
+            .getElementById(
+                'calendar-grid'
+            );
+
+
+    grid.innerHTML = '';
+
+
+    const firstDay =
+        new Date(
+            year,
+            month,
+            1
+        ).getDay();
+
+
+    const lastDate =
+        new Date(
+            year,
+            month + 1,
+            0
+        ).getDate();
+
+
+    for (
+        let i = 0;
+        i < firstDay;
+        i++
+    ) {
+
+        const empty =
+            document.createElement(
+                'div'
+            );
+
+        empty.className =
+            'empty-day';
+
+        grid.appendChild(
+            empty
+        );
+    }
+
+
+    const today =
+        new Date();
+
+
+    for (
+        let day = 1;
+        day <= lastDate;
+        day++
+    ) {
+
+        const cell =
+            document.createElement(
+                'div'
+            );
+
+
+        cell.className =
+            'calendar-day';
+
+
+        const date =
+            new Date(
+                year,
+                month,
+                day
+            );
+
+
+        const dayOfWeek =
+            date.getDay();
+
+
+        if (
+            dayOfWeek === 0
+        ) {
+
+            cell.classList.add(
+                'sunday'
+            );
+
+        }
+
+
+        if (
+            dayOfWeek === 6
+        ) {
+
+            cell.classList.add(
+                'saturday'
+            );
+
+        }
+
+
+        if (
+            year === today.getFullYear() &&
+            month === today.getMonth() &&
+            day === today.getDate()
+        ) {
+
+            cell.classList.add(
+                'today'
+            );
+        }
+
+
+        const number =
+            document.createElement(
+                'span'
+            );
+
+
+        number.className =
+            'day-number';
+
+
+        number.textContent =
+            day;
+
+
+        cell.appendChild(
+            number
+        );
+
+
+        /*
+         * 현재 선택된 DIA가 있다면
+         * 예시로 순서대로 표시
+         *
+         * 실제 날짜별 근무표 DB 연결은
+         * 다음 단계에서 추가 가능
+         */
+
+        if (
+            selectedDiaList.length > 0
+        ) {
+
+            const index =
+                (
+                    firstDay +
+                    day -
+                    1
+                ) %
+                selectedDiaList.length;
+
+
+            const badge =
+                document.createElement(
+                    'span'
+                );
+
+
+            badge.className =
+                'dia-badge';
+
+
+            badge.textContent =
+                selectedDiaList[index];
+
+
+            cell.appendChild(
+                badge
+            );
+        }
+
+
+        grid.appendChild(
+            cell
+        );
+    }
+}
+
+
+/*************************************************
+ * 이전 달
+ *************************************************/
+
+function previousMonth() {
+
+    const year =
+        calendarDate.getFullYear();
+
+
+    const month =
+        calendarDate.getMonth();
+
+
+    if (
+        year === MIN_YEAR &&
+        month === MIN_MONTH
+    ) {
+
+        return;
+    }
+
+
+    calendarDate =
+        new Date(
+            year,
+            month - 1,
+            1
+        );
+
+
+    renderCalendar();
+}
+
+
+/*************************************************
+ * 다음 달
+ *************************************************/
+
+function nextMonth() {
+
+    const year =
+        calendarDate.getFullYear();
+
+
+    const month =
+        calendarDate.getMonth();
+
+
+    if (
+        year === MAX_YEAR &&
+        month === MAX_MONTH
+    ) {
+
+        return;
+    }
+
+
+    calendarDate =
+        new Date(
+            year,
+            month + 1,
+            1
+        );
+
+
+    renderCalendar();
+}
+
+
+/*************************************************
+ * 시계
+ *************************************************/
+
+function updateClock() {
+
+    const now =
+        new Date();
+
+
+    const formatter =
+        new Intl.DateTimeFormat(
+            'ko-KR',
+            {
+                timeZone:
+                    'Asia/Seoul',
+
+                year:
+                    'numeric',
+
+                month:
+                    '2-digit',
+
+                day:
+                    '2-digit',
+
+                weekday:
+                    'short',
+
+                hour:
+                    '2-digit',
+
+                minute:
+                    '2-digit',
+
+                second:
+                    '2-digit',
+
+                hour12:
+                    false
+            }
+        );
+
+
+    document
+        .getElementById('clock')
+        .textContent =
+            formatter.format(now);
+}
+
+
+setInterval(
+    updateClock,
+    1000
+);
+
+
+/*************************************************
+ * 로컬 로그인 복원
+ *************************************************/
+
+function restoreLogin() {
+
+    try {
+
+        const saved =
+            localStorage.getItem(
+                'railwaySecretaryUser'
+            );
+
+
+        if (!saved) {
+
+            showLogin();
+
+            return;
+        }
+
+
+        const user =
+            JSON.parse(saved);
+
+
+        if (
+            !user ||
+            !user.employeeId ||
+            !user.name
+        ) {
+
+            showLogin();
+
+            return;
+        }
+
+
+        currentUser =
+            user;
+
+
+        document
+            .getElementById(
+                'welcome-name'
+            )
+            .textContent =
+                user.name;
+
+
+        goMain();
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        showLogin();
+    }
+}
+
+
+/*************************************************
+ * HTML 특수문자 처리
+ *************************************************/
+
+function escapeHtml(value) {
+
+    return String(value || '')
+        .replace(
+            /&/g,
+            '&amp;'
+        )
+        .replace(
+            /</g,
+            '&lt;'
+        )
+        .replace(
+            />/g,
+            '&gt;'
+        )
+        .replace(
+            /"/g,
+            '&quot;'
+        )
+        .replace(
+            /'/g,
+            '&#039;'
+        );
+}
+
+
+/*************************************************
+ * 간단 메시지
+ *************************************************/
+
+function showSimpleMessage(message) {
+
+    alert(message);
+}
+
+
+/*************************************************
+ * 초기 실행
+ *************************************************/
+
+document.addEventListener(
+    'DOMContentLoaded',
+    function() {
+
+        updateClock();
+
+        restoreLogin();
+
+    }
+);
 
 </script>
 
+
 </body>
+
 </html>
 ```
