@@ -61,7 +61,6 @@
         .input-group input:focus {
             border-color: #0066ff;
         }
-        /* 로그인 정보 저장 영역 스타일 */
         .login-options {
             display: flex;
             justify-content: space-between;
@@ -91,7 +90,6 @@
         .btn:hover {
             background-color: #0052cc;
         }
-        /* 하단 회원가입 버튼 스타일 */
         .signup-link-btn {
             width: 100%;
             padding: 12px;
@@ -108,8 +106,12 @@
         .signup-link-btn:hover {
             background-color: #e2e6ea;
         }
-        .hidden {
+        /* 화면 숨김 처리 */
+        .view-section {
             display: none;
+        }
+        .view-section.active {
+            display: block;
         }
     </style>
 </head>
@@ -120,7 +122,7 @@
         <img src="logo.png" alt="철도비서 로고" class="logo" onerror="this.style.display='none'">
 
         <!-- [1] 로그인 화면 -->
-        <div id="login-view">
+        <div id="login-view" class="view-section active">
             <h1>나만의 철도비서</h1>
             
             <form onsubmit="handleLogin(event)">
@@ -141,14 +143,8 @@
                 </div>
                 
                 <button type="submit" class="btn">로그인</button>
-                <button type="button" class="signup-link-btn" onclick="switchView('signup')">회원가입</button>
+                <button type="button" class="signup-link-btn" onclick="showView('signup-view')">회원가입</button>
             </form>
         </div>
 
-        <!-- [2] 회원가입 화면 (초기엔 숨겨져 있음) -->
-        <div id="signup-view" class="hidden">
-            <h1>회원가입 📝</h1>
-            
-            <form onsubmit="handleSignup(event)">
-                <div class="input-group">
-                    <label for="signup-id">사원번호</label
+        <!-- [2] 회원가입 화면 -->
