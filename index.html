@@ -11,7 +11,14 @@
 body{background:#f7f9fa;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
 .container{width:100%;max-width:400px;background:#fff;padding:25px 20px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.05);text-align:center}
 .container.wide{max-width:720px}
-.live-clock{font-size:13px;color:#666;background:#f1f3f5;padding:6px 12px;border-radius:6px;margin-bottom:20px;font-weight:500}
+
+/* 상단바 레아아웃 및 시계 스타일 수정 */
+.top-bar{display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:20px;min-height:24px}
+.refresh-btn{position:absolute;left:0;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:6px;line-height:1;transition:background .2s}
+.refresh-btn:hover{background:#f1f3f5}
+.refresh-btn:active{transform:translateY(-50%) scale(0.9)}
+.live-clock{font-size:14px;color:#000;font-weight:bold;background:none;padding:0;border-radius:0;margin-bottom:0}
+
 .logo{width:100%;max-width:220px;height:auto;margin-bottom:20px}
 h1{font-size:20px;color:#333;margin-bottom:20px}
 .input-group{margin-bottom:14px;text-align:left}
@@ -155,7 +162,11 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 <body>
 <div id="main-container" class="container">
 
-<div id="liveClock" class="live-clock">시간을 불러오는 중...</div>
+<!-- 최상단 헤더 영역 (새로고침 버튼 & 시계) -->
+<div class="top-bar">
+  <button type="button" class="refresh-btn" onclick="triggerManualSync()" title="백업 및 실시간 동기화">🔄</button>
+  <div id="liveClock" class="live-clock">시간을 불러오는 중...</div>
+</div>
 
 <img src="logo.png" alt="철도비서 로고" class="logo" onerror="this.style.display='none'">
 
@@ -476,8 +487,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     el.textContent =
       k.getFullYear() + '.' + p(k.getMonth() + 1) + '.' + p(k.getDate()) +
       ' (' + days[k.getDay()] + ') ' +
-      p(k.getHours()) + ':' + p(k.getMinutes()) + ':' + p(k.getSeconds()) +
-      ' (KST)';
+      p(k.getHours()) + ':' + p(k.getMinutes()) + ':' + p(k.getSeconds());
   }
 
   tick();
@@ -485,6 +495,22 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   setInterval(tick, 1000);
 
 })();
+
+/* 수동 백업 및 실시간 동기화 (새로고침 버튼 동작) */
+function triggerManualSync() {
+  var u = getCurrentUser();
+  if (!u || !u.token) return;
+
+  var btn = document.querySelector('.refresh-btn');
+  if (btn) btn.style.transform = 'translateY(-50%) rotate(360deg)';
+
+  refreshSnapshot(true, function (ok) {
+    if (btn) btn.style.transform = 'translateY(-50%)';
+    if (ok) {
+      onSnapshotUpdated();
+    }
+  });
+}
 
 /* ============ 오류 표시 ============ */
 
@@ -677,12 +703,7 @@ function api(params, cb) {
 
 }
 
-/* ============ 로컬 스냅샷 (즉시 표시) ============
- * - 서버에서 DIA 목록 + 전 회원 설정 + 근무수정 전체를 "한 번에" 받아 폰에 저장
- * - 달력/근무그룹의 어떤 달·주든 폰에서 바로 계산해서 즉시 표시 (서버 대기 없음)
- * - 서버 최신값은 뒤에서 받아 와서, 바뀐 게 있을 때만 화면을 다시 그림
- * - 저장/삭제는 폰 데이터에 먼저 반영 → 즉시 화면 갱신, 서버와는 뒤에서 다시 맞춤
- */
+/* ============ 로컬 스냅샷 (즉시 표시) ============ */
 
 var SNAP_LS_KEY = 'railwaySecretarySnapshot_v2';
 var SNAP_FRESH_MS = 15000;   // 이 시간 안에는 서버에 다시 묻지 않음
@@ -701,7 +722,6 @@ function buildSnapIndex() {
   var map = {};
   var rows = (snapshot && snapshot.raw && snapshot.raw.overrides) || [];
 
-  // 같은 사원/날짜가 여러 줄이면 아래쪽(최근) 값이 이김 (서버와 동일)
   for (var i = 0; i < rows.length; i++) {
     map[rows[i][0] + '|' + rows[i][1]] = {
       type: rows[i][2], dia: rows[i][3], status: rows[i][4], updatedAt: rows[i][5]
@@ -760,7 +780,6 @@ function snapApply(owner, gen, r) {
 
   if (gen !== snapGen || getCurrentUser().employeeId !== owner) return false;
 
-  // 서버 데이터 버전이 같으면 내용 없이 "변경 없음"만 온다 → 다운로드 0
   if (r.unchanged) {
 
     if (snapshot && snapshot.owner === owner) {
@@ -850,7 +869,7 @@ function onSnapshotUpdated() {
 
 }
 
-/* ---- 폰에서 직접 계산 (서버 getGroupSchedule 과 같은 결과 모양) ---- */
+/* ---- 폰에서 직접 계산 ---- */
 
 function snapDateKeys(startKey, endKey) {
 
@@ -990,7 +1009,7 @@ function buildLocalRange(scope, startKey, endKey) {
 
 }
 
-/* ---- 폰 데이터 직접 수정 (저장 즉시 화면에 반영) ---- */
+/* ---- 폰 데이터 직접 수정 ---- */
 
 function snapDropOverride(employeeId, date) {
 
@@ -1054,14 +1073,12 @@ function snapSetSettings(employeeId, seq, anchor) {
 
 }
 
-/* ---- 화면 코드가 쓰는 조회 함수 (이름 유지) ---- */
+/* ---- 화면 코드가 쓰는 조회 함수 ---- */
 
 function peekData() {
   return snapshotUsable() ? {} : null;
 }
 
-/* scope: 'me' = 내 근무표만, 'group' = 전 회원
- * cb(r, fromLocal): 폰에 데이터가 있으면 즉시(동기) 호출, 없으면 서버에서 받은 뒤 호출 */
 function fetchData(scope, startKey, endKey, force, cb) {
 
   if (!cb) return;
@@ -1070,7 +1087,6 @@ function fetchData(scope, startKey, endKey, force, cb) {
 
     cb(buildLocalRange(scope, startKey, endKey), true);
 
-    // 최신값 확인은 뒤에서 (바뀌면 onSnapshotUpdated 가 화면을 다시 그림)
     refreshSnapshot(!!force, null);
 
     return;
@@ -1140,7 +1156,6 @@ function setCurrentUser(u) {
 
 function switchSection(id) {
 
-  // 근무그룹 화면을 벗어나면 자동 갱신 중지
   if (id !== 'group-section') stopGroupAutoRefresh();
 
   [
@@ -1171,8 +1186,8 @@ function switchSection(id) {
 
 /* ============ 근무 순서표(DIA_DB) · 내 설정 ============ */
 
-var diaList = [];                         // DIA_DB 순서표 (순서, 구분, DIA ...)
-var mySettings = { seq: '', anchor: '' }; // 내가 설정한 오늘의 순서 + 기준일
+var diaList = [];                         
+var mySettings = { seq: '', anchor: '' }; 
 
 function diaBySeq(seq) {
 
@@ -1204,7 +1219,6 @@ function diaByNumber(dia) {
 
 }
 
-/* 기준일 기준으로 어떤 날짜의 순서 위치(index) 계산 (직접 변경 제외) */
 function patternIndexFor(dateKey) {
 
   var idx0 = diaIndexBySeq(mySettings.seq);
@@ -1215,7 +1229,7 @@ function patternIndexFor(dateKey) {
 
 }
 
-var metaLoadedAt = 0;   // (예전 코드 호환용, 사용 안 함)
+var metaLoadedAt = 0;   
 
 function applyMetaFromSnapshot() {
 
@@ -1234,7 +1248,6 @@ function applyMetaFromSnapshot() {
 
 function loadMeta(cb) {
 
-  // 폰에 저장된 데이터가 있으면 기다리지 않고 바로 사용
   if (snapshotUsable()) {
 
     applyMetaFromSnapshot();
@@ -1267,7 +1280,7 @@ var calendarYear = Math.max(now0.y, CAL_MIN_Y);
 var calendarMonth = now0.y < CAL_MIN_Y ? 0 : now0.m;
 
 var selDate = null;
-var myMonth = null;   // { y, m, days: { 'YYYY-MM-DD': {label, dia, type, start, end, train1, train2, manual, overrideType, status} } }
+var myMonth = null;   
 
 function getInfo(y, m, d) {
 
@@ -1301,7 +1314,6 @@ function loadMyMonth(force) {
     return;
   }
 
-  // 저장된 데이터가 있으면 바로 보여주므로 '불러오는 중' 문구는 처음 한 번만
   if (!peekMonth(y, m)) st.textContent = '근무표를 불러오는 중...';
 
   fetchMonth(y, m, !!force, function (r, fromCache) {
@@ -1332,7 +1344,6 @@ function loadMyMonth(force) {
 
     renderCalendar();
     renderDayDetail();
-
 
   });
 
@@ -1528,7 +1539,7 @@ function goToday() {
 
 }
 
-/* ============ 근무 변경 팝업 (서버 저장) ============ */
+/* ============ 근무 변경 팝업 ============ */
 
 var scheduleEditDate = null;
 
@@ -1670,12 +1681,11 @@ function saveScheduleEdit() {
 
     selDate = { y: target.y, m: target.m, d: target.d };
 
-    // 서버 저장이 끝났으니 폰 데이터에 바로 반영 → 즉시 화면 갱신
     snapUpsertOverride(user.employeeId, params.date, params.type, params.dia, params.status);
 
     loadMyMonth();
 
-    refreshSnapshot(true, null);   // 뒤에서 서버와 다시 맞춤
+    refreshSnapshot(true, null);
 
   });
 
@@ -1722,12 +1732,12 @@ function restoreOriginalSchedule() {
 
 }
 
-/* ============ 근무그룹 표 (7일 단위: 일요일 ~ 토요일, 근무표와 동일 데이터) ============ */
+/* ============ 근무그룹 표 ============ */
 
-var groupWeekStart = null;   // 표시 중인 주의 일요일 (Date)
+var groupWeekStart = null;   
 var groupData = null;
 var groupTimer = null;
-var GROUP_REFRESH_MS = 30000;   // 30초마다 서버 최신값 확인 (화면이 보일 때만)
+var GROUP_REFRESH_MS = 30000;   
 
 function weekStartOf(dt) {
   return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() - dt.getDay());
@@ -1778,7 +1788,7 @@ function startGroupAutoRefresh() {
   stopGroupAutoRefresh();
 
   groupTimer = setInterval(function () {
-    if (document.hidden) return;   // 다른 앱/탭에 있을 때는 서버 호출 안 함
+    if (document.hidden) return;   
     loadGroupSchedule(true);
   }, GROUP_REFRESH_MS);
 
@@ -1826,7 +1836,6 @@ function loadGroupSchedule(silent) {
   var startKey = days[0].key;
   var endKey = days[6].key;
 
-  // 저장된 데이터가 있으면 먼저 바로 보여준다
   var cached = peekData('group', startKey, endKey);
 
   if (cached) groupData = cached.r;
@@ -1837,10 +1846,8 @@ function loadGroupSchedule(silent) {
 
   fetchData('group', startKey, endKey, !!silent, function (r, fromCache) {
 
-    // 불러오는 사이 다른 주로 이동했으면 무시
     if (groupWeekDays()[0].key !== startKey) return;
 
-    // 자동 갱신 때는 이미 그린 캐시를 다시 그리지 않는다
     if (fromCache && silent) return;
 
     if (!r || !r.success) {
@@ -1853,7 +1860,6 @@ function loadGroupSchedule(silent) {
     groupData = r;
 
     renderGroupTable();
-
 
   });
 
@@ -1870,7 +1876,6 @@ function groupCellClass(label, isStatus) {
 
 }
 
-/* 휴무를 포함한 모든 휴가(연차·육아휴직·돌봄·출산휴가·병가·공가·휴무·휴) */
 function isLeaveInfo(info) {
   return !!(info && info.label && (info.overrideType === 'status' || info.label === '휴'));
 }
@@ -1925,7 +1930,6 @@ function renderGroupTable() {
     return;
   }
 
-  // 로그인한 사람이 항상 맨 위
   var me = getCurrentUser().employeeId;
 
   var members = groupData.members.slice().sort(function (a, b) {
@@ -1980,7 +1984,6 @@ function renderGroupTable() {
 
   bodyEl.innerHTML = html;
 
-  // 맨 아래: 날짜별 휴가·휴무 인원
   var foot = '<tr><td class="name-col">휴가·휴무</td>';
 
   for (var c = 0; c < 7; c++) {
@@ -1991,7 +1994,6 @@ function renderGroupTable() {
 
   footEl.innerHTML = foot;
 
-  // 오늘이 이 주에 있으면 요약 표시
   var todayIdx = -1;
 
   for (var q = 0; q < 7; q++) {
@@ -2048,7 +2050,6 @@ function renderPattern() {
   var todayKey = getDateKey(t.y, t.m, t.d);
   var todayIdx = patternIndexFor(todayKey);
 
-  // 전체 순서표
   var html = '';
 
   for (var i = 0; i < diaList.length; i++) {
@@ -2078,7 +2079,6 @@ function renderPattern() {
 
   todayEl.textContent = cur.seq + '번 · ' + (cur.type || '-');
 
-  // 앞으로 14일
   var nh = '';
 
   for (var k = 0; k < 14; k++) {
@@ -2217,7 +2217,7 @@ function saveSelectedDia() {
 
 }
 
-/* ============ 로그인 / 회원가입 (서버 DB 연동) ============ */
+/* ============ 로그인 / 회원가입 ============ */
 
 var SAVED_LOGIN_KEY = 'railwaySecretarySavedLogin';
 
@@ -2269,13 +2269,11 @@ function doLogin(id, pw, isAuto) {
 
       msg.textContent = (isAuto ? '자동 로그인 실패: ' : '') + ((r && r.message) || '로그인에 실패했습니다.');
 
-      // 비밀번호가 틀린 경우 자동 로그인은 끈다 (입력칸 값은 유지)
       if (isAuto && r && r.errorCode === 'LOGIN_FAILED') writeSavedLogin(id, pw, false);
 
       return;
     }
 
-    // 로그인 정보 저장 체크 시: 사원번호/비밀번호 저장 + 다음부터 자동 로그인
     if ($('remember').checked) writeSavedLogin(id, pw, true);
     else clearSavedLogin();
 
@@ -2290,7 +2288,6 @@ function doLogin(id, pw, isAuto) {
 
     switchSection('main-section');
 
-    // 로그인 응답에 데이터가 같이 들어온다 (서버 호출 1번으로 로그인 + 동기화)
     if (r.snapshot) snapApply(r.employeeId, snapGen, r.snapshot);
     else refreshSnapshot(true, null);
 
@@ -2360,12 +2357,11 @@ function logout() {
   mySettings = { seq: '', anchor: '' };
   metaLoadedAt = 0;
 
-  clearDataCache();   // 공용 폰 대비: 저장된 근무 데이터도 삭제
+  clearDataCache();   
 
   LS.removeItem(USER_KEY);
   SS.removeItem(USER_KEY);
 
-  // 로그아웃하면 자동 로그인은 끄고, 저장된 사원번호/비밀번호는 입력칸에 남겨둔다
   var saved = readSavedLogin();
 
   if (saved) {
@@ -2379,7 +2375,7 @@ function logout() {
 
 }
 
-/* ============ 시작 시: 저장된 로그인 정보 채우기 + 자동 로그인 ============ */
+/* ============ 시작 시 ============ */
 
 (function initSavedLogin() {
 
@@ -2395,14 +2391,12 @@ function logout() {
 
   var u = getCurrentUser();
 
-  // 지난번 로그인 정보 + 폰에 저장된 근무 데이터가 있으면 로그인 응답을 기다리지 않고 바로 진입
   if (u.token && u.employeeId === saved.id && snapshotUsable()) {
 
     $('welcome-name').textContent = u.name || '';
 
     switchSection('main-section');
 
-    // 로그인 확인 + 최신 데이터 동기화를 뒤에서 한 번에 (비밀번호가 바뀐 경우에만 로그인 화면으로)
     api({ action: 'login', employeeId: saved.id, password: saved.pw, ver: snapVersionFor(saved.id) }, function (r) {
 
       if (r && r.success) {
