@@ -475,7 +475,9 @@
 <div class="container">
 
 
+    <!-- ================================= -->
     <!-- 실시간 시계 -->
+    <!-- ================================= -->
 
     <div
         id="liveClock"
@@ -485,7 +487,9 @@
     </div>
 
 
+    <!-- ================================= -->
     <!-- 로고 -->
+    <!-- ================================= -->
 
     <img
         src="logo.png"
@@ -625,6 +629,7 @@
                     type="text"
                     id="signup-id"
                     placeholder="사원번호를 입력하세요"
+                    autocomplete="username"
                     required
                 >
 
@@ -641,6 +646,7 @@
                     type="text"
                     id="signup-name"
                     placeholder="이름을 입력하세요"
+                    autocomplete="name"
                     required
                 >
 
@@ -657,6 +663,7 @@
                     type="password"
                     id="signup-pw"
                     placeholder="사용할 비밀번호를 입력하세요"
+                    autocomplete="new-password"
                     required
                 >
 
@@ -673,6 +680,7 @@
                     type="password"
                     id="signup-pw-confirm"
                     placeholder="비밀번호를 다시 입력하세요"
+                    autocomplete="new-password"
                     required
                 >
 
@@ -940,9 +948,10 @@
 
 <script>
 
+
 /* =================================================
    Google Apps Script 주소
-   ================================================= */
+================================================= */
 
 const SCRIPT_URL =
     'https://script.google.com/macros/s/AKfycbzNXcKpOMeIaiOD8XZacs6pM2xjRYlytjbr9pF7SwKWMdYU5GRpl9BOsnV5YRhcxD8GpQ/exec';
@@ -950,31 +959,42 @@ const SCRIPT_URL =
 
 /* =================================================
    대한민국 시간
-   ================================================= */
+================================================= */
 
 function getKSTString() {
 
-    const now = new Date();
+    const now =
+        new Date();
+
 
     const options = {
 
-        timeZone: 'Asia/Seoul',
+        timeZone:
+            'Asia/Seoul',
 
-        year: 'numeric',
+        year:
+            'numeric',
 
-        month: '2-digit',
+        month:
+            '2-digit',
 
-        day: '2-digit',
+        day:
+            '2-digit',
 
-        weekday: 'short',
+        weekday:
+            'short',
 
-        hour: '2-digit',
+        hour:
+            '2-digit',
 
-        minute: '2-digit',
+        minute:
+            '2-digit',
 
-        second: '2-digit',
+        second:
+            '2-digit',
 
-        hour12: false
+        hour12:
+            false
 
     };
 
@@ -983,13 +1003,17 @@ function getKSTString() {
         'ko-KR',
         options
     ).format(now) + ' (KST)';
+
 }
 
 
 function updateClock() {
 
     const clock =
-        document.getElementById('liveClock');
+        document.getElementById(
+            'liveClock'
+        );
+
 
     if (clock) {
 
@@ -997,10 +1021,12 @@ function updateClock() {
             getKSTString();
 
     }
+
 }
 
 
 updateClock();
+
 
 setInterval(
     updateClock,
@@ -1010,9 +1036,11 @@ setInterval(
 
 /* =================================================
    화면 전환
-   ================================================= */
+================================================= */
 
-function switchSection(sectionId) {
+function switchSection(
+    sectionId
+) {
 
     const sections = [
 
@@ -1035,85 +1063,93 @@ function switchSection(sectionId) {
     ];
 
 
-    sections.forEach(id => {
+    sections.forEach(
+        function(id) {
 
-        const element =
-            document.getElementById(id);
+            const element =
+                document.getElementById(id);
 
-        if (element) {
 
-            element.classList.remove(
-                'active'
-            );
+            if (element) {
+
+                element.classList.remove(
+                    'active'
+                );
+
+            }
 
         }
-
-    });
+    );
 
 
     const target =
-        document.getElementById(sectionId);
+        document.getElementById(
+            sectionId
+        );
 
 
     if (target) {
 
-        target.classList.add('active');
+        target.classList.add(
+            'active'
+        );
 
     }
 
 
-    if (sectionId === 'login-section') {
+    /* 로그인 화면으로 이동하면
+       오류 메시지 삭제 */
 
-        document
-            .getElementById('login-message')
-            .textContent = '';
+    if (
+        sectionId ===
+        'login-section'
+    ) {
+
+        const loginMessage =
+            document.getElementById(
+                'login-message'
+            );
+
+
+        if (loginMessage) {
+
+            loginMessage.textContent =
+                '';
+
+        }
 
     }
 
-}
+
+    /* 회원가입 화면으로 이동하면
+       오류 메시지 삭제 */
+
+    if (
+        sectionId ===
+        'signup-section'
+    ) {
+
+        const signupMessage =
+            document.getElementById(
+                'signup-message'
+            );
 
 
-/* =================================================
-   SHA-256 비밀번호 해시
-   ================================================= */
+        if (signupMessage) {
 
-async function hashPassword(password) {
+            signupMessage.textContent =
+                '';
 
-    const encoder =
-        new TextEncoder();
+        }
 
-    const data =
-        encoder.encode(password);
-
-
-    const hashBuffer =
-        await crypto.subtle.digest(
-            'SHA-256',
-            data
-        );
-
-
-    const hashArray =
-        Array.from(
-            new Uint8Array(hashBuffer)
-        );
-
-
-    return hashArray
-        .map(
-            byte =>
-                byte
-                    .toString(16)
-                    .padStart(2, '0')
-        )
-        .join('');
+    }
 
 }
 
 
 /* =================================================
    JSONP 요청
-   ================================================= */
+================================================= */
 
 function jsonpRequest(
     params,
@@ -1135,43 +1171,70 @@ function jsonpRequest(
 
     const query =
         Object.keys(params)
-            .map(key => {
+            .map(
+                function(key) {
 
-                return (
-                    encodeURIComponent(key) +
-                    '=' +
-                    encodeURIComponent(
-                        params[key]
-                    )
-                );
+                    return (
+                        encodeURIComponent(key) +
+                        '=' +
+                        encodeURIComponent(
+                            params[key]
+                        )
+                    );
 
-            })
+                }
+            )
             .join('&');
 
 
     const script =
-        document.createElement('script');
+        document.createElement(
+            'script'
+        );
+
+
+    let finished = false;
 
 
     const timeout =
-        setTimeout(() => {
+        setTimeout(
+            function() {
 
-            cleanup();
+                if (finished) {
+                    return;
+                }
 
-            callback({
-                success: false,
-                message:
-                    '서버 응답 시간이 초과되었습니다.'
-            });
 
-        }, 15000);
+                finished = true;
+
+
+                cleanup();
+
+
+                callback({
+
+                    success: false,
+
+                    message:
+                        '서버 응답 시간이 초과되었습니다.'
+
+                });
+
+            },
+            15000
+        );
 
 
     function cleanup() {
 
-        clearTimeout(timeout);
+        clearTimeout(
+            timeout
+        );
 
-        if (script.parentNode) {
+
+        if (
+            script.parentNode
+        ) {
 
             script.parentNode.removeChild(
                 script
@@ -1179,30 +1242,44 @@ function jsonpRequest(
 
         }
 
+
         try {
 
-            delete window[callbackName];
+            delete window[
+                callbackName
+            ];
 
         } catch (error) {
 
-            window[callbackName] =
-                undefined;
+            window[
+                callbackName
+            ] = undefined;
 
         }
 
     }
 
 
-    window[callbackName] =
-        function(result) {
+    window[
+        callbackName
+    ] = function(result) {
 
-            clearTimeout(timeout);
+        if (finished) {
+            return;
+        }
 
-            cleanup();
 
-            callback(result);
+        finished = true;
 
-        };
+
+        cleanup();
+
+
+        callback(
+            result
+        );
+
+    };
 
 
     script.src =
@@ -1214,7 +1291,16 @@ function jsonpRequest(
     script.onerror =
         function() {
 
+            if (finished) {
+                return;
+            }
+
+
+            finished = true;
+
+
             cleanup();
+
 
             callback({
 
@@ -1230,67 +1316,93 @@ function jsonpRequest(
 
     document
         .body
-        .appendChild(script);
+        .appendChild(
+            script
+        );
 
 }
 
 
 /* =================================================
    회원가입
-   ================================================= */
+================================================= */
 
-async function handleSignup(e) {
+function handleSignup(e) {
 
     e.preventDefault();
 
 
+    /* ---------------------------------------------
+       입력값 가져오기
+    --------------------------------------------- */
+
     const employeeId =
         document
-            .getElementById('signup-id')
+            .getElementById(
+                'signup-id'
+            )
             .value
             .trim();
 
 
     const name =
         document
-            .getElementById('signup-name')
+            .getElementById(
+                'signup-name'
+            )
             .value
             .trim();
 
 
     const password =
         document
-            .getElementById('signup-pw')
+            .getElementById(
+                'signup-pw'
+            )
             .value;
 
 
     const passwordConfirm =
         document
-            .getElementById('signup-pw-confirm')
+            .getElementById(
+                'signup-pw-confirm'
+            )
             .value;
 
 
     const message =
         document
-            .getElementById('signup-message');
+            .getElementById(
+                'signup-message'
+            );
 
 
     const button =
         document
-            .getElementById('signup-btn');
+            .getElementById(
+                'signup-btn'
+            );
 
 
     const loading =
         document
-            .getElementById('signup-loading');
+            .getElementById(
+                'signup-loading'
+            );
 
 
-    message.textContent = '';
+    message.textContent =
+        '';
 
 
-    /* 비밀번호 확인 */
+    /* ---------------------------------------------
+       비밀번호 확인
+    --------------------------------------------- */
 
-    if (password !== passwordConfirm) {
+    if (
+        password !==
+        passwordConfirm
+    ) {
 
         message.textContent =
             '비밀번호가 서로 다릅니다.';
@@ -1300,9 +1412,13 @@ async function handleSignup(e) {
     }
 
 
-    /* 비밀번호 최소 길이 */
+    /* ---------------------------------------------
+       비밀번호 최소 길이
+    --------------------------------------------- */
 
-    if (password.length < 4) {
+    if (
+        password.length < 4
+    ) {
 
         message.textContent =
             '비밀번호는 4자리 이상 입력해주세요.';
@@ -1312,264 +1428,357 @@ async function handleSignup(e) {
     }
 
 
-    button.disabled = true;
+    /* ---------------------------------------------
+       버튼 비활성화
+    --------------------------------------------- */
 
-    loading.style.display = 'block';
-
-
-    try {
-
-        const passwordHash =
-            await hashPassword(password);
+    button.disabled =
+        true;
 
 
-        jsonpRequest({
-
-            action: 'signup',
-
-            employeeId:
-                employeeId,
-
-            name:
-                name,
-
-            passwordHash:
-                passwordHash
-
-        }, function(result) {
+    loading.style.display =
+        'block';
 
 
-            if (result.success) {
+    /* ---------------------------------------------
+       Google Apps Script 요청
+    --------------------------------------------- */
 
-                alert(
-                    '회원가입이 완료되었습니다.'
-                );
+    jsonpRequest({
 
+        action:
+            'signup',
 
-                document
-                    .getElementById('signup-form')
-                    .reset();
+        employeeId:
+            employeeId,
 
+        name:
+            name,
 
-                switchSection(
-                    'login-section'
-                );
+        password:
+            password
 
-
-                document
-                    .getElementById('login-id')
-                    .value =
-                    employeeId;
+    }, function(result) {
 
 
-            } else {
+        /* -----------------------------------------
+           회원가입 성공
+        ----------------------------------------- */
 
-                message.textContent =
-                    result.message ||
-                    '회원가입에 실패했습니다.';
+        if (
+            result &&
+            result.success
+        ) {
 
-            }
-
-
-            button.disabled = false;
-
-            loading.style.display =
-                'none';
-
-        });
+            alert(
+                '회원가입이 완료되었습니다.'
+            );
 
 
-    } catch (error) {
+            /* 회원가입 입력창 초기화 */
 
-        console.error(error);
+            document
+                .getElementById(
+                    'signup-form'
+                )
+                .reset();
 
 
-        message.textContent =
-            '회원가입 처리 중 오류가 발생했습니다.';
+            /* 로그인 화면으로 이동 */
+
+            switchSection(
+                'login-section'
+            );
 
 
-        button.disabled = false;
+            /* 가입한 사원번호 자동 입력 */
+
+            document
+                .getElementById(
+                    'login-id'
+                )
+                .value =
+                employeeId;
+
+
+            /* 비밀번호 입력 */
+
+            document
+                .getElementById(
+                    'login-pw'
+                )
+                .focus();
+
+
+        }
+
+
+        /* -----------------------------------------
+           회원가입 실패
+        ----------------------------------------- */
+
+        else {
+
+            message.textContent =
+                (
+                    result &&
+                    result.message
+                )
+                    ? result.message
+                    : '회원가입에 실패했습니다.';
+
+        }
+
+
+        /* -----------------------------------------
+           버튼 원상복구
+        ----------------------------------------- */
+
+        button.disabled =
+            false;
+
 
         loading.style.display =
             'none';
 
-    }
+    });
 
 }
 
 
 /* =================================================
    로그인
-   ================================================= */
+================================================= */
 
-async function handleLogin(e) {
+function handleLogin(e) {
 
     e.preventDefault();
 
 
+    /* ---------------------------------------------
+       입력값
+    --------------------------------------------- */
+
     const employeeId =
         document
-            .getElementById('login-id')
+            .getElementById(
+                'login-id'
+            )
             .value
             .trim();
 
 
     const password =
         document
-            .getElementById('login-pw')
+            .getElementById(
+                'login-pw'
+            )
             .value;
 
 
     const remember =
         document
-            .getElementById('remember')
+            .getElementById(
+                'remember'
+            )
             .checked;
 
 
     const message =
         document
-            .getElementById('login-message');
+            .getElementById(
+                'login-message'
+            );
 
 
     const button =
         document
-            .getElementById('login-btn');
+            .getElementById(
+                'login-btn'
+            );
 
 
     const loading =
         document
-            .getElementById('login-loading');
+            .getElementById(
+                'login-loading'
+            );
 
 
-    message.textContent = '';
+    message.textContent =
+        '';
 
 
-    button.disabled = true;
+    /* ---------------------------------------------
+       버튼 비활성화
+    --------------------------------------------- */
+
+    button.disabled =
+        true;
+
 
     loading.style.display =
         'block';
 
 
-    try {
+    /* ---------------------------------------------
+       Google Apps Script 로그인 요청
+    --------------------------------------------- */
 
-        const passwordHash =
-            await hashPassword(password);
+    jsonpRequest({
 
+        action:
+            'login',
 
-        jsonpRequest({
+        employeeId:
+            employeeId,
 
-            action: 'login',
+        password:
+            password
 
-            employeeId:
-                employeeId,
-
-            passwordHash:
-                passwordHash
-
-        }, function(result) {
-
-
-            button.disabled = false;
-
-            loading.style.display =
-                'none';
+    }, function(result) {
 
 
-            if (result.success) {
+        button.disabled =
+            false;
 
-
-                /* 로그인 정보 저장 */
-
-                const userData = {
-
-                    employeeId:
-                        result.employeeId,
-
-                    name:
-                        result.name
-
-                };
-
-
-                if (remember) {
-
-                    localStorage.setItem(
-                        'railwaySecretaryUser',
-                        JSON.stringify(userData)
-                    );
-
-                } else {
-
-                    sessionStorage.setItem(
-                        'railwaySecretaryUser',
-                        JSON.stringify(userData)
-                    );
-
-                }
-
-
-                /* 이름 표시 */
-
-                document
-                    .getElementById(
-                        'welcome-name'
-                    )
-                    .textContent =
-                    result.name +
-                    '님 환영합니다!';
-
-
-                /* 메인으로 이동 */
-
-                switchSection(
-                    'main-section'
-                );
-
-
-                /* 로그인 폼 초기화 */
-
-                document
-                    .getElementById(
-                        'login-pw'
-                    )
-                    .value = '';
-
-
-            } else {
-
-                message.textContent =
-                    result.message ||
-                    '로그인에 실패했습니다.';
-
-            }
-
-        });
-
-
-    } catch (error) {
-
-        console.error(error);
-
-
-        button.disabled = false;
 
         loading.style.display =
             'none';
 
 
-        message.textContent =
-            '로그인 처리 중 오류가 발생했습니다.';
+        /* -----------------------------------------
+           로그인 성공
+        ----------------------------------------- */
 
-    }
+        if (
+            result &&
+            result.success
+        ) {
+
+            const userData = {
+
+                employeeId:
+                    result.employeeId,
+
+                name:
+                    result.name
+
+            };
+
+
+            /* -------------------------------------
+               로그인 정보 저장
+            ------------------------------------- */
+
+            if (remember) {
+
+                localStorage.setItem(
+
+                    'railwaySecretaryUser',
+
+                    JSON.stringify(
+                        userData
+                    )
+
+                );
+
+
+                /* 기존 세션 로그인 정보 제거 */
+
+                sessionStorage.removeItem(
+                    'railwaySecretaryUser'
+                );
+
+            }
+
+            else {
+
+                sessionStorage.setItem(
+
+                    'railwaySecretaryUser',
+
+                    JSON.stringify(
+                        userData
+                    )
+
+                );
+
+
+                /* 기존 자동 로그인 정보 제거 */
+
+                localStorage.removeItem(
+                    'railwaySecretaryUser'
+                );
+
+            }
+
+
+            /* -------------------------------------
+               환영 메시지
+            ------------------------------------- */
+
+            document
+                .getElementById(
+                    'welcome-name'
+                )
+                .textContent =
+                result.name +
+                '님 환영합니다!';
+
+
+            /* -------------------------------------
+               메인 화면 이동
+            ------------------------------------- */
+
+            switchSection(
+                'main-section'
+            );
+
+
+            /* -------------------------------------
+               비밀번호 입력칸 초기화
+            ------------------------------------- */
+
+            document
+                .getElementById(
+                    'login-pw'
+                )
+                .value =
+                '';
+
+        }
+
+
+        /* -----------------------------------------
+           로그인 실패
+        ----------------------------------------- */
+
+        else {
+
+            message.textContent =
+                (
+                    result &&
+                    result.message
+                )
+                    ? result.message
+                    : '로그인에 실패했습니다.';
+
+        }
+
+    });
 
 }
 
 
 /* =================================================
    로그아웃
-   ================================================= */
+================================================= */
 
 function logout() {
+
+
+    /* 저장된 로그인 정보 삭제 */
 
     localStorage.removeItem(
         'railwaySecretaryUser'
@@ -1581,10 +1790,16 @@ function logout() {
     );
 
 
+    /* 로그인 폼 초기화 */
+
     document
-        .getElementById('login-form')
+        .getElementById(
+            'login-form'
+        )
         .reset();
 
+
+    /* 로그인 화면 */
 
     switchSection(
         'login-section'
@@ -1595,31 +1810,38 @@ function logout() {
 
 /* =================================================
    저장된 로그인 확인
-   ================================================= */
+================================================= */
 
 function checkSavedLogin() {
 
-    let savedUser = null;
+    let savedUser =
+        null;
 
 
-    const localUser =
+    let localUser =
         localStorage.getItem(
             'railwaySecretaryUser'
         );
 
 
-    const sessionUser =
+    let sessionUser =
         sessionStorage.getItem(
             'railwaySecretaryUser'
         );
 
+
+    /* ---------------------------------------------
+       자동 로그인 정보
+    --------------------------------------------- */
 
     if (localUser) {
 
         try {
 
             savedUser =
-                JSON.parse(localUser);
+                JSON.parse(
+                    localUser
+                );
 
         } catch (error) {
 
@@ -1632,12 +1854,21 @@ function checkSavedLogin() {
     }
 
 
-    if (!savedUser && sessionUser) {
+    /* ---------------------------------------------
+       세션 로그인 정보
+    --------------------------------------------- */
+
+    if (
+        !savedUser &&
+        sessionUser
+    ) {
 
         try {
 
             savedUser =
-                JSON.parse(sessionUser);
+                JSON.parse(
+                    sessionUser
+                );
 
         } catch (error) {
 
@@ -1650,7 +1881,13 @@ function checkSavedLogin() {
     }
 
 
+    /* ---------------------------------------------
+       저장된 로그인 정보가 있으면
+       메인 화면으로 이동
+    --------------------------------------------- */
+
     if (savedUser) {
+
 
         document
             .getElementById(
@@ -1674,7 +1911,9 @@ function checkSavedLogin() {
                 'remember'
             )
             .checked =
-            Boolean(localUser);
+            Boolean(
+                localUser
+            );
 
 
         switchSection(
@@ -1688,15 +1927,18 @@ function checkSavedLogin() {
 
 /* =================================================
    페이지 시작
-   ================================================= */
+================================================= */
 
 document.addEventListener(
+
     'DOMContentLoaded',
+
     function() {
 
         checkSavedLogin();
 
     }
+
 );
 
 </script>
