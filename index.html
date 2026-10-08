@@ -106,7 +106,7 @@
         .signup-link-btn:hover {
             background-color: #e2e6ea;
         }
-        /* 화면 숨김 처리 */
+        /* 화면 숨김/표시 제어 클래스 */
         .view-section {
             display: none;
         }
@@ -118,14 +118,11 @@
 <body>
 
     <div class="container">
-        <!-- 철도비서 로고 이미지 -->
+        <!-- 철도비서 로고 이미지 (logo.png 파일을 저장소에 올려주세요) -->
         <img src="logo.png" alt="철도비서 로고" class="logo" onerror="this.style.display='none'">
 
         <!-- [1] 로그인 화면 -->
         <div id="login-view" class="view-section active">
-            <!-- 텍스트 대신 여기에 원하는 이미지 파일명을 넣으세요 (예: title.png) -->
-            <img src="title.png" alt="철도비서 타이틀" class="logo" onerror="this.style.display='none'">
-            
             <form onsubmit="handleLogin(event)">
                 <div class="input-group">
                     <label for="login-id">사원번호</label>
@@ -149,3 +146,58 @@
         </div>
 
         <!-- [2] 회원가입 화면 -->
+        <div id="signup-view" class="view-section">
+            <h1>회원가입 📝</h1>
+            
+            <form onsubmit="handleSignup(event)">
+                <div class="input-group">
+                    <label for="signup-id">사원번호</label>
+                    <input type="text" id="signup-id" placeholder="사원번호를 입력하세요" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="signup-name">이름</label>
+                    <input type="text" id="signup-name" placeholder="이름을 입력하세요" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="signup-pw">비밀번호</label>
+                    <input type="password" id="signup-pw" placeholder="사용할 비밀번호를 입력하세요" required>
+                </div>
+                
+                <button type="submit" class="btn">가입 완료</button>
+                <button type="button" class="signup-link-btn" onclick="showView('login-view')">돌아가기</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 화면 전환 함수
+        function showView(viewId) {
+            // 모든 뷰를 숨김
+            const sections = document.querySelectorAll('.view-section');
+            sections.forEach(sec => sec.classList.remove('active'));
+
+            // 선택한 뷰만 화면에 표시
+            const target = document.getElementById(viewId);
+            if (target) {
+                target.classList.add('active');
+            }
+        }
+
+        // 로그인 처리 (임시)
+        function handleLogin(event) {
+            event.preventDefault();
+            alert('로그인 시도 중입니다.');
+        }
+
+        // 회원가입 처리 (임시)
+        function handleSignup(event) {
+            event.preventDefault();
+            alert('회원가입이 완료되었습니다!');
+            showView('login-view');
+        }
+    </script>
+
+</body>
+</html>
