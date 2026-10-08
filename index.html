@@ -197,30 +197,12 @@
             display: block;
         }
     </style>
-    <script>
-        // ⏰ 대한민국 실시간 날짜 및 시간 포맷팅 함수 (GMT+9)
-        function getKSTString() {
-            const now = new Date();
-            const options = {
-                timeZone: 'Asia/Seoul',
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                weekday: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
-            };
-            return new Intl.DateTimeFormat('ko-KR', options).format(now) + ' (KST)';
-        }
-    </script>
 </head>
 <body>
 
     <div class="container">
         <!-- ⏰ 상단 실시간 날짜 및 시간 -->
-        <div id="liveClock" class="live-clock"><script>document.write(getKSTString());</script></div>
+        <div id="liveClock" class="live-clock">시간을 불러오는 중...</div>
 
         <!-- 철도비서 로고 이미지 -->
         <img src="logo.png" alt="철도비서 로고" class="logo" onerror="this.style.display='none'">
@@ -328,13 +310,32 @@
     <script>
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzNXcKpOMeIaiOD8XZacs6pM2xjRYlytjbr9pF7SwKWMdYU5GRpl9BOsnV5YRhcxD8GpQ/exec';
 
-        // 1초마다 시계 갱신
-        setInterval(() => {
+        // ⏰ 대한민국 실시간 날짜 및 시간 포맷팅 함수 (GMT+9)
+        function getKSTString() {
+            const now = new Date();
+            const options = {
+                timeZone: 'Asia/Seoul',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                weekday: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            };
+            return new Intl.DateTimeFormat('ko-KR', options).format(now) + ' (KST)';
+        }
+
+        // 실시간 시계 즉시 업데이트 및 1초 주기 갱신
+        function updateClock() {
             const clockElement = document.getElementById('liveClock');
             if (clockElement) {
                 clockElement.textContent = getKSTString();
             }
-        }, 1000);
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
 
         // 통합 화면 전환 함수
         function switchSection(sectionId) {
@@ -354,7 +355,6 @@
                 target.classList.add('active');
             }
 
-            // 로그인 화면으로 돌아올 때 폼 초기화
             if (sectionId === 'login-section') {
                 const loginForm = document.getElementById('login-form');
                 if (loginForm) loginForm.reset();
@@ -391,7 +391,10 @@
             e.preventDefault();
             const loginId = document.getElementById('login-id').value;
             
-            document.getElementById('welcome-msg').textContent = `${loginId}님 환영합니다!`;
+            const welcomeMsg = document.getElementById('welcome-msg');
+            if (welcomeMsg) {
+                welcomeMsg.textContent = `${loginId}님 환영합니다!`;
+            }
             switchSection('main-section');
         }
     </script>
