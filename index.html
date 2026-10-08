@@ -245,6 +245,10 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <span class="login-success-name" id="welcome-name"></span>님 환영합니다.
   </div>
 
+  <div id="storage-warn" style="display:none;font-size:12px;color:#b45309;background:#fff7e6;border:1px solid #ffe0a3;border-radius:8px;padding:8px 10px;margin-bottom:12px;text-align:left;line-height:1.5">
+    이 환경에서는 저장 공간을 사용할 수 없어, 실행할 때마다 데이터를 새로 불러옵니다.
+  </div>
+
   <div class="menu-grid">
     <button type="button" class="menu-btn" onclick="openSchedule()">📅 근무표</button>
     <button type="button" class="menu-btn" onclick="openGroupSection()">👥 근무그룹</button>
@@ -512,6 +516,8 @@ function store(kind) {
 
   } catch (e) {
 
+    if (kind === 'localStorage') window.__lsBroken = true;   // 저장이 유지되지 않는 환경
+
     return {
       getItem: function (k) {
         return memStore[kind + k] === undefined ? null : memStore[kind + k];
@@ -747,7 +753,49 @@ function clearDataCache() {
 
 }
 
-/* 서버에서 스냅샷을 받아온다. cb(ok, 오류메시지) */
+/* 서버 응답(전체 또는 "변경 없음")을 폰 데이터에 적용. 적용되면 true */
+function snapApply(owner, gen, r) {
+
+  if (!r || !r.success) return false;
+
+  if (gen !== snapGen || getCurrentUser().employeeId !== owner) return false;
+
+  // 서버 데이터 버전이 같으면 내용 없이 "변경 없음"만 온다 → 다운로드 0
+  if (r.unchanged) {
+
+    if (snapshot && snapshot.owner === owner) {
+      snapshot.t = Date.now();
+      return true;
+    }
+
+    return false;
+  }
+
+  if (!r.dia || !r.members) return false;
+
+  var json = snapCompareJson(r);
+  var changed = json !== snapLastJson;
+
+  snapshot = { owner: owner, t: Date.now(), raw: r };
+  buildSnapIndex();
+  snapLastJson = json;
+  persistSnapshot();
+
+  if (changed) onSnapshotUpdated();
+
+  return true;
+
+}
+
+function snapVersionFor(owner) {
+
+  return (snapshot && snapshot.owner === owner && snapshot.raw && snapshot.raw.version)
+    ? String(snapshot.raw.version)
+    : '';
+
+}
+
+/* 서버와 동기화. 내가 가진 버전(ver)을 보내서 바뀐 게 없으면 "변경 없음"만 받는다. cb(ok, 오류메시지) */
 function refreshSnapshot(force, cb) {
 
   var user = getCurrentUser();
@@ -772,29 +820,13 @@ function refreshSnapshot(force, cb) {
   var gen = snapGen;
   var owner = user.employeeId;
 
-  api({ action: 'getSnapshot', employeeId: owner, token: user.token }, function (r) {
+  api({ action: 'getSnapshot', employeeId: owner, token: user.token, ver: snapVersionFor(owner) }, function (r) {
 
     var list = snapInflight || [];
 
     snapInflight = null;
 
-    var ok = !!(r && r.success);
-    var applied = false;
-
-    if (ok && gen === snapGen && getCurrentUser().employeeId === owner) {
-
-      var json = snapCompareJson(r);
-      var changed = json !== snapLastJson;
-
-      snapshot = { owner: owner, t: Date.now(), raw: r };
-      buildSnapIndex();
-      snapLastJson = json;
-      persistSnapshot();
-      applied = true;
-
-      if (changed) onSnapshotUpdated();
-    }
-
+    var applied = snapApply(owner, gen, r);
     var good = applied || snapshotUsable();
 
     for (var i = 0; i < list.length; i++) {
@@ -1125,6 +1157,11 @@ function switchSection(id) {
   var t = $(id);
 
   if (t) t.classList.add('active');
+
+  if (id === 'main-section') {
+    var warn = $('storage-warn');
+    if (warn) warn.style.display = window.__lsBroken ? 'block' : 'none';
+  }
 
   if (id === 'login-section' && $('login-message')) $('login-message').textContent = '';
 
@@ -2223,7 +2260,7 @@ function doLogin(id, pw, isAuto) {
   loading.textContent = isAuto ? '자동 로그인 중...' : '로그인 확인 중...';
   loading.style.display = 'block';
 
-  api({ action: 'login', employeeId: id, password: pw }, function (r) {
+  api({ action: 'login', employeeId: id, password: pw, ver: snapVersionFor(id) }, function (r) {
 
     btn.disabled = false;
     loading.style.display = 'none';
@@ -2253,8 +2290,9 @@ function doLogin(id, pw, isAuto) {
 
     switchSection('main-section');
 
-    // 메인 화면이 뜬 직후 전체 데이터를 한 번에 받아 둔다 (이후 모든 화면이 즉시 표시됨)
-    refreshSnapshot(true, null);
+    // 로그인 응답에 데이터가 같이 들어온다 (서버 호출 1번으로 로그인 + 동기화)
+    if (r.snapshot) snapApply(r.employeeId, snapGen, r.snapshot);
+    else refreshSnapshot(true, null);
 
   });
 
@@ -2364,10 +2402,8 @@ function logout() {
 
     switchSection('main-section');
 
-    refreshSnapshot(true, null);   // 최신 데이터는 뒤에서
-
-    // 로그인도 뒤에서 조용히 갱신 (비밀번호가 바뀐 경우에만 로그인 화면으로)
-    api({ action: 'login', employeeId: saved.id, password: saved.pw }, function (r) {
+    // 로그인 확인 + 최신 데이터 동기화를 뒤에서 한 번에 (비밀번호가 바뀐 경우에만 로그인 화면으로)
+    api({ action: 'login', employeeId: saved.id, password: saved.pw, ver: snapVersionFor(saved.id) }, function (r) {
 
       if (r && r.success) {
 
@@ -2375,7 +2411,8 @@ function logout() {
 
         $('welcome-name').textContent = r.name;
 
-        refreshSnapshot(true, null);
+        if (r.snapshot) snapApply(r.employeeId, snapGen, r.snapshot);
+        else refreshSnapshot(true, null);
 
       } else if (r && r.errorCode === 'LOGIN_FAILED') {
 
