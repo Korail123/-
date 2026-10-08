@@ -77,18 +77,37 @@
         .login-btn:hover {
             background-color: #0052cc;
         }
+        /* 추가된 링크/버튼 영역 스타일 */
+        .sub-links {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 16px;
+            font-size: 13px;
+        }
+        .sub-links a {
+            color: #666666;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .sub-links a:hover {
+            color: #0066ff;
+        }
+        .divider {
+            color: #dddddd;
+        }
     </style>
 </head>
 <body>
 
     <div class="login-container">
         <h1>환영합니다! 👋</h1>
-        <p class="subtitle">서비스를 이용하시려면 로그인해주세요.</p>
+        <p class="subtitle">사원번호로 로그인해 주세요.</p>
         
         <form action="#" method="POST">
             <div class="input-group">
-                <label for="username">아이디 또는 이메일</label>
-                <input type="text" id="username" name="username" placeholder="아이디를 입력하세요" required>
+                <label for="employeeId">사원번호</label>
+                <input type="text" id="employeeId" name="employeeId" placeholder="사원번호를 입력하세요" required>
             </div>
             
             <div class="input-group">
@@ -97,6 +116,12 @@
             </div>
             
             <button type="submit" class="login-btn">로그인</button>
+
+            <div class="sub-links">
+                <a href="#">회원가입</a>
+                <span class="divider">|</span>
+                <a href="#">비밀번호 찾기</a>
+            </div>
         </form>
     </div>
 
