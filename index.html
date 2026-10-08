@@ -671,124 +671,385 @@ function api(params, cb) {
 
 }
 
-/* ============ 데이터 캐시 (속도 개선) ============
- * - 한 번 받은 월/주 데이터는 메모리 + localStorage에 저장
- * - 화면을 열면 저장된 데이터를 먼저 보여주고, 뒤에서 서버 최신값으로 갱신
- * - 같은 요청이 동시에 여러 번 나가지 않도록 하나로 합침
+/* ============ 로컬 스냅샷 (즉시 표시) ============
+ * - 서버에서 DIA 목록 + 전 회원 설정 + 근무수정 전체를 "한 번에" 받아 폰에 저장
+ * - 달력/근무그룹의 어떤 달·주든 폰에서 바로 계산해서 즉시 표시 (서버 대기 없음)
+ * - 서버 최신값은 뒤에서 받아 와서, 바뀐 게 있을 때만 화면을 다시 그림
+ * - 저장/삭제는 폰 데이터에 먼저 반영 → 즉시 화면 갱신, 서버와는 뒤에서 다시 맞춤
  */
 
-var CACHE_LS_KEY = 'railwaySecretaryCache_v1';
-var CACHE_FRESH_MS = 20000;   // 이 시간 안의 캐시는 서버에 다시 묻지 않음
-var CACHE_KEEP = 14;          // localStorage에 보관할 최대 항목 수
+var SNAP_LS_KEY = 'railwaySecretarySnapshot_v2';
+var SNAP_FRESH_MS = 15000;   // 이 시간 안에는 서버에 다시 묻지 않음
 
-var dataCache = {};   // key -> { r: 서버응답, t: 저장시각 }
-var inflight = {};    // key -> [콜백...]
-var cacheGen = 0;     // 캐시를 비울 때마다 증가 (이전 요청의 낡은 응답 저장 방지)
+var snapshot = null;        // { owner, t, raw, ovMap }
+var snapInflight = null;    // 진행 중인 서버 요청의 콜백 목록
+var snapGen = 0;            // 폰에서 직접 수정/삭제할 때마다 증가 (오래된 응답 무시)
+var snapLastJson = '';
 
-try {
-  var rawCache = LS.getItem(CACHE_LS_KEY);
-  if (rawCache) dataCache = JSON.parse(rawCache) || {};
-} catch (e) {
-  dataCache = {};
+function snapCompareJson(raw) {
+  return JSON.stringify({ d: raw.dia, m: raw.members, o: raw.overrides });
 }
 
-function persistCache() {
+function buildSnapIndex() {
+
+  var map = {};
+  var rows = (snapshot && snapshot.raw && snapshot.raw.overrides) || [];
+
+  // 같은 사원/날짜가 여러 줄이면 아래쪽(최근) 값이 이김 (서버와 동일)
+  for (var i = 0; i < rows.length; i++) {
+    map[rows[i][0] + '|' + rows[i][1]] = {
+      type: rows[i][2], dia: rows[i][3], status: rows[i][4], updatedAt: rows[i][5]
+    };
+  }
+
+  snapshot.ovMap = map;
+
+}
+
+function persistSnapshot() {
 
   try {
-
-    var keys = Object.keys(dataCache).sort(function (a, b) {
-      return dataCache[b].t - dataCache[a].t;
-    });
-
-    var keep = {};
-
-    for (var i = 0; i < keys.length && i < CACHE_KEEP; i++) keep[keys[i]] = dataCache[keys[i]];
-
-    dataCache = keep;
-
-    LS.setItem(CACHE_LS_KEY, JSON.stringify(dataCache));
-
+    LS.setItem(SNAP_LS_KEY, JSON.stringify({ owner: snapshot.owner, t: snapshot.t, raw: snapshot.raw }));
   } catch (e) {}
 
 }
 
+try {
+
+  var snapRaw = LS.getItem(SNAP_LS_KEY);
+
+  if (snapRaw) {
+
+    var snapObj = JSON.parse(snapRaw);
+
+    if (snapObj && snapObj.raw && snapObj.raw.success) {
+      snapshot = snapObj;
+      buildSnapIndex();
+      snapLastJson = snapCompareJson(snapshot.raw);
+    }
+  }
+
+} catch (e) {
+  snapshot = null;
+}
+
+function snapshotUsable() {
+  return !!(snapshot && snapshot.owner === getCurrentUser().employeeId);
+}
+
 function clearDataCache() {
 
-  dataCache = {};
-  cacheGen++;
+  snapshot = null;
+  snapLastJson = '';
+  snapGen++;
 
-  try { LS.removeItem(CACHE_LS_KEY); } catch (e) {}
+  try { LS.removeItem(SNAP_LS_KEY); } catch (e) {}
 
 }
 
-function cacheKey(scope, startKey, endKey) {
-  return getCurrentUser().employeeId + '|' + scope + '|' + startKey + '|' + endKey;
-}
-
-function peekData(scope, startKey, endKey) {
-  return dataCache[cacheKey(scope, startKey, endKey)] || null;
-}
-
-/* scope: 'me' = 내 근무표만(가벼움), 'group' = 전 회원
- * cb(r, fromCache): 캐시가 있으면 즉시 한 번, 서버 응답이 오면 또 한 번 호출 */
-function fetchData(scope, startKey, endKey, force, cb) {
+/* 서버에서 스냅샷을 받아온다. cb(ok, 오류메시지) */
+function refreshSnapshot(force, cb) {
 
   var user = getCurrentUser();
-  var key = cacheKey(scope, startKey, endKey);
-  var hit = dataCache[key];
-  var fresh = hit && (Date.now() - hit.t < CACHE_FRESH_MS);
 
-  if (hit && cb) cb(hit.r, true);
-
-  if (hit && fresh && !force) return;
-
-  if (inflight[key]) {
-    if (cb) inflight[key].push(cb);
+  if (!user.token) {
+    if (cb) cb(false, '로그인 후 이용해주세요.');
     return;
   }
 
-  inflight[key] = cb ? [cb] : [];
+  if (!force && snapshotUsable() && Date.now() - snapshot.t < SNAP_FRESH_MS) {
+    if (cb) cb(true, '');
+    return;
+  }
 
-  var gen = cacheGen;
+  if (snapInflight) {
+    if (cb) snapInflight.push(cb);
+    return;
+  }
 
-  var params = {
-    action: 'getGroupSchedule',
-    employeeId: user.employeeId,
-    token: user.token,
-    startDate: startKey,
-    endDate: endKey
-  };
+  snapInflight = cb ? [cb] : [];
 
-  if (scope === 'me') params.me = '1';
+  var gen = snapGen;
+  var owner = user.employeeId;
 
-  api(params, function (r) {
+  api({ action: 'getSnapshot', employeeId: owner, token: user.token }, function (r) {
 
-    var list = inflight[key] || [];
+    var list = snapInflight || [];
 
-    delete inflight[key];
+    snapInflight = null;
 
-    var ok = r && r.success;
+    var ok = !!(r && r.success);
+    var applied = false;
 
-    if (ok && gen === cacheGen) {
-      dataCache[key] = { r: r, t: Date.now() };
-      persistCache();
+    if (ok && gen === snapGen && getCurrentUser().employeeId === owner) {
+
+      var json = snapCompareJson(r);
+      var changed = json !== snapLastJson;
+
+      snapshot = { owner: owner, t: Date.now(), raw: r };
+      buildSnapIndex();
+      snapLastJson = json;
+      persistSnapshot();
+      applied = true;
+
+      if (changed) onSnapshotUpdated();
     }
 
-    // 이미 캐시 화면을 보여준 경우, 일시적 통신 오류는 조용히 넘어감 (인증 오류만 알림)
-    if (!ok && hit && !(r && r.errorCode === 'AUTH_FAILED')) return;
+    var good = applied || snapshotUsable();
 
-    for (var i = 0; i < list.length; i++) list[i](r, false);
+    for (var i = 0; i < list.length; i++) {
+      list[i](good, good ? '' : ((r && r.message) || '서버에 연결하지 못했습니다.'));
+    }
 
   });
 
 }
 
-function prefetchData(scope, startKey, endKey) {
+/* 서버에서 새 데이터가 와서 내용이 바뀌었을 때, 지금 보이는 화면만 다시 그림 */
+function onSnapshotUpdated() {
 
-  if (!getCurrentUser().token) return;
-  if (peekData(scope, startKey, endKey)) return;
+  function active(id) {
+    var e = $(id);
+    return !!(e && e.classList.contains('active'));
+  }
 
-  fetchData(scope, startKey, endKey, false, null);
+  if (active('schedule-section')) loadMyMonth();
+  if (active('group-section')) loadGroupSchedule(false);
+
+}
+
+/* ---- 폰에서 직접 계산 (서버 getGroupSchedule 과 같은 결과 모양) ---- */
+
+function snapDateKeys(startKey, endKey) {
+
+  var out = [];
+  var cur = dateKeyToNum(startKey);
+  var end = dateKeyToNum(endKey);
+
+  if (isNaN(cur) || isNaN(end)) return out;
+
+  while (cur <= end) {
+    var dt = new Date(cur);
+    out.push(dt.getUTCFullYear() + '-' + pad2(dt.getUTCMonth() + 1) + '-' + pad2(dt.getUTCDate()));
+    cur += 86400000;
+  }
+
+  return out;
+
+}
+
+function snapEmptyDay() {
+  return { dia: '', type: '', start: '', end: '', train1: '', train2: '' };
+}
+
+function snapBaseDay(dateKey, seq, anchor, dia) {
+
+  if (!seq || !anchor || !dia.length) return snapEmptyDay();
+
+  var idx = -1;
+
+  for (var i = 0; i < dia.length; i++) {
+    if (String(dia[i].seq) === String(seq)) { idx = i; break; }
+  }
+
+  if (idx < 0) return snapEmptyDay();
+
+  var diff = dayDiff(anchor, dateKey);
+
+  if (isNaN(diff)) diff = 0;
+
+  var it = dia[mod(idx + diff, dia.length)];
+
+  return {
+    dia: String(it.dia || ''), type: String(it.type || ''),
+    start: String(it.start || ''), end: String(it.end || ''),
+    train1: String(it.train1 || ''), train2: String(it.train2 || '')
+  };
+
+}
+
+function snapBuildDay(dateKey, seq, anchor, dia, ov) {
+
+  var d;
+
+  if (ov) {
+
+    if (ov.type === 'dia') {
+
+      var found = null;
+
+      for (var i = 0; i < dia.length; i++) {
+        if (String(dia[i].dia || '').trim() === ov.dia) { found = dia[i]; break; }
+      }
+
+      if (found) {
+        d = {};
+        for (var k in found) {
+          if (Object.prototype.hasOwnProperty.call(found, k)) d[k] = found[k];
+        }
+      } else {
+        d = snapEmptyDay();
+        d.dia = ov.dia;
+      }
+
+      d.manual = true;
+      d.overrideType = 'dia';
+      d.status = '';
+
+    } else {
+
+      d = snapEmptyDay();
+      d.type = ov.status;
+      d.manual = true;
+      d.overrideType = 'status';
+      d.status = ov.status;
+
+    }
+
+    d.updatedAt = ov.updatedAt || '';
+
+  } else {
+
+    d = snapBaseDay(dateKey, seq, anchor, dia);
+    d.manual = false;
+    d.overrideType = '';
+    d.status = '';
+
+  }
+
+  d.label = d.overrideType === 'status'
+    ? String(d.status || '')
+    : (String(d.type || '').trim() || String(d.dia || ''));
+
+  return d;
+
+}
+
+function buildLocalRange(scope, startKey, endKey) {
+
+  var raw = snapshot.raw;
+  var dia = raw.dia || [];
+  var myId = getCurrentUser().employeeId;
+  var keys = snapDateKeys(startKey, endKey);
+  var out = [];
+
+  for (var i = 0; i < raw.members.length; i++) {
+
+    var mb = raw.members[i];
+
+    if (scope === 'me' && mb.employeeId !== myId) continue;
+
+    var days = {};
+
+    for (var j = 0; j < keys.length; j++) {
+      days[keys[j]] = snapBuildDay(keys[j], mb.seq, mb.anchor, dia, snapshot.ovMap[mb.employeeId + '|' + keys[j]]);
+    }
+
+    out.push({
+      employeeId: mb.employeeId,
+      name: mb.name,
+      settings: { seq: mb.seq || '', anchor: mb.anchor || '' },
+      days: days
+    });
+
+  }
+
+  return { success: true, startDate: startKey, endDate: endKey, requester: myId, members: out };
+
+}
+
+/* ---- 폰 데이터 직접 수정 (저장 즉시 화면에 반영) ---- */
+
+function snapDropOverride(employeeId, date) {
+
+  var rows = snapshot.raw.overrides || [];
+
+  snapshot.raw.overrides = rows.filter(function (r) {
+    return !(r[0] === employeeId && r[1] === date);
+  });
+
+}
+
+function snapAfterLocalChange() {
+
+  buildSnapIndex();
+  snapLastJson = '';
+  snapGen++;
+  persistSnapshot();
+
+}
+
+function snapUpsertOverride(employeeId, date, type, dia, status) {
+
+  if (!snapshotUsable()) return;
+
+  snapDropOverride(employeeId, date);
+
+  var now = new Date();
+  var stamp = now.getFullYear() + '-' + pad2(now.getMonth() + 1) + '-' + pad2(now.getDate()) + ' ' +
+    pad2(now.getHours()) + ':' + pad2(now.getMinutes()) + ':' + pad2(now.getSeconds());
+
+  snapshot.raw.overrides.push([employeeId, date, type, dia || '', status || '', stamp]);
+
+  snapAfterLocalChange();
+
+}
+
+function snapRemoveOverride(employeeId, date) {
+
+  if (!snapshotUsable()) return;
+
+  snapDropOverride(employeeId, date);
+
+  snapAfterLocalChange();
+
+}
+
+function snapSetSettings(employeeId, seq, anchor) {
+
+  if (!snapshotUsable()) return;
+
+  var list = snapshot.raw.members || [];
+
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].employeeId === employeeId) {
+      list[i].seq = String(seq || '');
+      list[i].anchor = String(anchor || '');
+    }
+  }
+
+  snapAfterLocalChange();
+
+}
+
+/* ---- 화면 코드가 쓰는 조회 함수 (이름 유지) ---- */
+
+function peekData() {
+  return snapshotUsable() ? {} : null;
+}
+
+/* scope: 'me' = 내 근무표만, 'group' = 전 회원
+ * cb(r, fromLocal): 폰에 데이터가 있으면 즉시(동기) 호출, 없으면 서버에서 받은 뒤 호출 */
+function fetchData(scope, startKey, endKey, force, cb) {
+
+  if (!cb) return;
+
+  if (snapshotUsable()) {
+
+    cb(buildLocalRange(scope, startKey, endKey), true);
+
+    // 최신값 확인은 뒤에서 (바뀌면 onSnapshotUpdated 가 화면을 다시 그림)
+    refreshSnapshot(!!force, null);
+
+    return;
+  }
+
+  refreshSnapshot(true, function (ok, msg) {
+
+    if (ok && snapshotUsable()) cb(buildLocalRange(scope, startKey, endKey), false);
+    else cb({ success: false, message: msg }, false);
+
+  });
 
 }
 
@@ -808,33 +1069,8 @@ function fetchMonth(y, m, force, cb) {
 
 }
 
-function peekMonth(y, m) {
-
-  var k = monthRangeKeys(y, m);
-
-  return peekData('me', k.s, k.e);
-
-}
-
-/* 앞뒤 달을 미리 받아 두어 달을 넘길 때 바로 뜨게 한다 */
-function prefetchMonths(y, m) {
-
-  setTimeout(function () {
-
-    [-1, 1].forEach(function (diff) {
-
-      var dt = new Date(y, m + diff, 1);
-
-      if (dt.getFullYear() < CAL_MIN_Y) return;
-
-      var k = monthRangeKeys(dt.getFullYear(), dt.getMonth());
-
-      prefetchData('me', k.s, k.e);
-
-    });
-
-  }, 400);
-
+function peekMonth() {
+  return peekData();
 }
 
 /* ============ 현재 사용자 ============ */
@@ -942,33 +1178,44 @@ function patternIndexFor(dateKey) {
 
 }
 
-var metaLoadedAt = 0;
-var META_FRESH_MS = 60000;   // 1분 안에는 다시 불러오지 않음
+var metaLoadedAt = 0;   // (예전 코드 호환용, 사용 안 함)
+
+function applyMetaFromSnapshot() {
+
+  var raw = snapshot.raw;
+  var myId = getCurrentUser().employeeId;
+  var mine = null;
+
+  for (var i = 0; i < raw.members.length; i++) {
+    if (raw.members[i].employeeId === myId) { mine = raw.members[i]; break; }
+  }
+
+  diaList = raw.dia || [];
+  mySettings = { seq: mine ? (mine.seq || '') : '', anchor: mine ? (mine.anchor || '') : '' };
+
+}
 
 function loadMeta(cb) {
 
-  var user = getCurrentUser();
+  // 폰에 저장된 데이터가 있으면 기다리지 않고 바로 사용
+  if (snapshotUsable()) {
 
-  if (metaLoadedAt && diaList.length && Date.now() - metaLoadedAt < META_FRESH_MS) {
+    applyMetaFromSnapshot();
+
     if (cb) cb('');
+
+    refreshSnapshot(false, null);
+
     return;
   }
 
-  // DIA 순서표 + 내 설정을 서버 호출 1번으로 가져온다
-  api({ action: 'getMeta', employeeId: user.employeeId, token: user.token }, function (r) {
+  refreshSnapshot(true, function (ok, msg) {
 
-    if (r && r.success) {
-
-      diaList = r.list || [];
-      mySettings = { seq: r.seq || '', anchor: r.anchor || '' };
-      metaLoadedAt = Date.now();
-
+    if (ok && snapshotUsable()) {
+      applyMetaFromSnapshot();
       if (cb) cb('');
-
     } else if (cb) {
-
-      cb((r && r.message) || '근무 순서표를 불러오지 못했습니다.');
-
+      cb(msg || '근무 순서표를 불러오지 못했습니다.');
     }
 
   });
@@ -1049,7 +1296,6 @@ function loadMyMonth(force) {
     renderCalendar();
     renderDayDetail();
 
-    prefetchMonths(y, m);
 
   });
 
@@ -1387,9 +1633,12 @@ function saveScheduleEdit() {
 
     selDate = { y: target.y, m: target.m, d: target.d };
 
-    clearDataCache();
+    // 서버 저장이 끝났으니 폰 데이터에 바로 반영 → 즉시 화면 갱신
+    snapUpsertOverride(user.employeeId, params.date, params.type, params.dia, params.status);
 
-    loadMyMonth(true);
+    loadMyMonth();
+
+    refreshSnapshot(true, null);   // 뒤에서 서버와 다시 맞춤
 
   });
 
@@ -1426,9 +1675,11 @@ function restoreOriginalSchedule() {
 
     selDate = { y: target.y, m: target.m, d: target.d };
 
-    clearDataCache();
+    snapRemoveOverride(user.employeeId, getDateKey(target.y, target.m, target.d));
 
-    loadMyMonth(true);
+    loadMyMonth();
+
+    refreshSnapshot(true, null);
 
   });
 
@@ -1439,7 +1690,7 @@ function restoreOriginalSchedule() {
 var groupWeekStart = null;   // 표시 중인 주의 일요일 (Date)
 var groupData = null;
 var groupTimer = null;
-var GROUP_REFRESH_MS = 60000;   // 60초마다 자동 갱신 (화면이 보일 때만)
+var GROUP_REFRESH_MS = 30000;   // 30초마다 서버 최신값 확인 (화면이 보일 때만)
 
 function weekStartOf(dt) {
   return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() - dt.getDay());
@@ -1523,27 +1774,6 @@ function goGroupThisWeek() {
 
 }
 
-function prefetchGroupWeeks() {
-
-  var base = groupWeekStart;
-
-  setTimeout(function () {
-
-    [-1, 1].forEach(function (k) {
-
-      var s = new Date(base.getFullYear(), base.getMonth(), base.getDate() + k * 7);
-      var e = new Date(s.getFullYear(), s.getMonth(), s.getDate() + 6);
-
-      prefetchData('group',
-        getDateKey(s.getFullYear(), s.getMonth(), s.getDate()),
-        getDateKey(e.getFullYear(), e.getMonth(), e.getDate()));
-
-    });
-
-  }, 400);
-
-}
-
 function loadGroupSchedule(silent) {
 
   var user = getCurrentUser();
@@ -1587,7 +1817,6 @@ function loadGroupSchedule(silent) {
 
     renderGroupTable();
 
-    prefetchGroupWeeks();
 
   });
 
@@ -1940,8 +2169,8 @@ function saveSelectedDia() {
 
     myMonth = null;
 
-    clearDataCache();
-    metaLoadedAt = 0;
+    snapSetSettings(user.employeeId, r.seq, r.anchor);
+    refreshSnapshot(true, null);
 
     warn.textContent = '';
 
@@ -2024,12 +2253,8 @@ function doLogin(id, pw, isAuto) {
 
     switchSection('main-section');
 
-    // 메인 화면이 뜬 직후 백그라운드로 미리 불러 둔다 (근무표/설정 진입이 빨라짐)
-    setTimeout(function () {
-      loadMeta(null);
-      var k = monthRangeKeys(calendarYear, calendarMonth);
-      prefetchData('me', k.s, k.e);
-    }, 0);
+    // 메인 화면이 뜬 직후 전체 데이터를 한 번에 받아 둔다 (이후 모든 화면이 즉시 표시됨)
+    refreshSnapshot(true, null);
 
   });
 
@@ -2128,7 +2353,44 @@ function logout() {
   $('login-pw').value = saved.pw;
   $('remember').checked = true;
 
-  if (saved.auto) doLogin(saved.id, saved.pw, true);
+  if (!saved.auto) return;
+
+  var u = getCurrentUser();
+
+  // 지난번 로그인 정보 + 폰에 저장된 근무 데이터가 있으면 로그인 응답을 기다리지 않고 바로 진입
+  if (u.token && u.employeeId === saved.id && snapshotUsable()) {
+
+    $('welcome-name').textContent = u.name || '';
+
+    switchSection('main-section');
+
+    refreshSnapshot(true, null);   // 최신 데이터는 뒤에서
+
+    // 로그인도 뒤에서 조용히 갱신 (비밀번호가 바뀐 경우에만 로그인 화면으로)
+    api({ action: 'login', employeeId: saved.id, password: saved.pw }, function (r) {
+
+      if (r && r.success) {
+
+        setCurrentUser({ employeeId: r.employeeId, name: r.name, token: r.token });
+
+        $('welcome-name').textContent = r.name;
+
+        refreshSnapshot(true, null);
+
+      } else if (r && r.errorCode === 'LOGIN_FAILED') {
+
+        writeSavedLogin(saved.id, saved.pw, false);
+        logout();
+        $('login-message').textContent = '자동 로그인 실패: ' + (r.message || '로그인 정보를 다시 확인해주세요.');
+
+      }
+
+    });
+
+    return;
+  }
+
+  doLogin(saved.id, saved.pw, true);
 
 })();
 
