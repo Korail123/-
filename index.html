@@ -216,6 +216,8 @@ body{padding-bottom:84px}
 .vnum.today{box-shadow:inset 0 0 0 2px #1a73e8}
 .vnum.used{color:#fff!important;font-weight:bold}
 .vac-chip{display:inline-block;margin:4px 4px 0 0;padding:6px 11px;border-radius:14px;font-size:13px;font-weight:bold;color:#fff;cursor:pointer}
+
+.group-table td:not(.name-col){cursor:pointer}
 </style>
 </head>
 
@@ -515,6 +517,18 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div id="pattern-info-body" style="margin-top:8px"></div>
     <div class="dia-dialog-actions" style="padding-top:18px">
       <button type="button" class="dia-text-btn" onclick="closePatternInfo()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 근무그룹 다이아 정보 팝업 -->
+<div id="group-info-panel" class="dia-modal" style="z-index:110" onclick="if(event.target===this)closeGroupInfo()">
+  <div class="dia-dialog">
+    <div id="group-info-title" class="dia-dialog-title"></div>
+    <div id="group-info-date" style="margin:6px 4px 4px;font-size:13px;color:#7a8696"></div>
+    <div id="group-info-body" style="margin-top:6px"></div>
+    <div class="dia-dialog-actions" style="padding-top:18px">
+      <button type="button" class="dia-text-btn" onclick="closeGroupInfo()">닫기</button>
     </div>
   </div>
 </div>
@@ -2451,6 +2465,7 @@ function restoreOriginalSchedule() {
 var groupWeekStart = null;
 var groupSelKey = null;      // 근무그룹에서 선택한 날짜 (YYYY-MM-DD)
 var groupData = null;
+var groupRows = [];     // 화면에 그려진 근무자 순서
 var groupTimer = null;
 var GROUP_REFRESH_MS = 30000;
 
@@ -2676,6 +2691,8 @@ function renderGroupTable() {
     return String(a.name || a.employeeId).localeCompare(String(b.name || b.employeeId), 'ko');
   });
 
+  groupRows = members;
+
   var counts = [0, 0, 0, 0, 0, 0, 0];
   var leaveNames = [[], [], [], [], [], [], []];
 
@@ -2713,7 +2730,7 @@ function renderGroupTable() {
 
       cls = cls.replace(/^\s+/, '');
 
-      html += '<td' + (cls ? ' class="' + cls + '"' : '') + '>' + esc(text) + '</td>';
+      html += '<td' + (cls ? ' class="' + cls + '"' : '') + ' onclick="openGroupInfo(' + k + ',\'' + days[j].key + '\')">' + esc(text) + '</td>';
 
     }
 
@@ -2755,6 +2772,94 @@ function renderGroupTable() {
         : '');
 
   }
+
+}
+
+/* ---- 근무그룹: 근무자·날짜를 누르면 다이아 정보 팝업 ---- */
+
+function piRow(k, v) {
+  return '<div class="pi-row"><span class="pi-k">' + k + '</span><b>' + esc(v || '-') + '</b></div>';
+}
+
+function openGroupInfo(k, key) {
+
+  var mem = groupRows[k];
+  var panel = $('group-info-panel');
+  var body = $('group-info-body');
+
+  if (!mem || !panel || !body) return;
+
+  groupSelKey = key;
+  renderGroupTable();
+
+  var p = key.split('-');
+  var wd = ['일', '월', '화', '수', '목', '금', '토'][new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10)).getDay()];
+
+  $('group-info-title').textContent = mem.name || mem.employeeId;
+  $('group-info-date').textContent = parseInt(p[0], 10) + '년 ' + parseInt(p[1], 10) + '월 ' + parseInt(p[2], 10) + '일 (' + wd + ')';
+
+  var info = mem.days ? mem.days[key] : null;
+  var html = '';
+
+  if (!info || !info.label) {
+
+    html = '<div class="pi-none">근무 정보가 없습니다.</div>';
+
+  } else if (info.overrideType === 'status') {
+
+    html += piRow('근무 구분', info.status || info.label);
+    html += '<div class="pi-none">' + (info.manual ? '직접 변경한 근무입니다.' : (info.auto ? '야간 근무 후 비번에 자동 적용된 휴가입니다.' : '')) + '</div>';
+
+  } else {
+
+    var diaNo = String(info.dia || '').trim();
+    var meta = diaNo ? diaByNumber(diaNo) : null;
+    var type = String(info.type || (meta && meta.type) || '').trim();
+    var start = String(info.start || (meta && meta.start) || '').trim();
+    var end = String(info.end || (meta && meta.end) || '').trim();
+    var kind = { '주': '주간', '야': '야간', '비': '비번', '휴': '휴무' }[type] || type || '-';
+    var tone = toneOf(type);
+    var color = tone === 'day' ? '#e5a800' : tone === 'off' ? '#e53935' : '#1a73e8';
+
+    html += '<div class="pi-row"><span class="pi-k">다이아 이름</span><b style="color:' + color + '">' +
+            esc(diaNo || kind) + (info.manual ? ' *' : '') + '</b></div>';
+    html += piRow('근무 구분', kind);
+    html += piRow('출근 시간', start);
+    html += piRow('퇴근 시간', end);
+    html += piRow('근무 시간', workDurationText(start, end));
+
+    if (diaNo) {
+
+      var url = diaImageUrl(diaNo);
+
+      if (url) {
+
+        html += '<div class="pi-route">' +
+          '<div class="pi-route-cap">행로표 (누르면 확대/축소)</div>' +
+          '<img src="' + url + '" alt="DIA ' + esc(diaNo) + ' 행로표" data-dia="' + esc(diaNo) + '" ' +
+          'onclick="openRouteViewer(this.getAttribute(\'data-dia\'))" ' +
+          'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
+          '<div class="pi-none" style="display:none">이미지를 불러오지 못했습니다.</div></div>';
+
+      } else {
+
+        html += '<div class="pi-route"><div class="pi-none">행로표 이미지가 없습니다.</div></div>';
+
+      }
+    }
+  }
+
+  body.innerHTML = html;
+
+  panel.classList.add('active');
+
+}
+
+function closeGroupInfo() {
+
+  var panel = $('group-info-panel');
+
+  if (panel) panel.classList.remove('active');
 
 }
 
