@@ -1190,8 +1190,8 @@ function switchSection(id) {
 
 /* ============ 근무 순서표(DIA_DB) · 내 설정 ============ */
 
-var diaList = [];                         
-var mySettings = { seq: '', anchor: '' }; 
+var diaList = [];
+var mySettings = { seq: '', anchor: '' };
 
 function diaBySeq(seq) {
 
@@ -1233,7 +1233,7 @@ function patternIndexFor(dateKey) {
 
 }
 
-var metaLoadedAt = 0;   
+var metaLoadedAt = 0;
 
 function applyMetaFromSnapshot() {
 
@@ -1284,7 +1284,7 @@ var calendarYear = Math.max(now0.y, CAL_MIN_Y);
 var calendarMonth = now0.y < CAL_MIN_Y ? 0 : now0.m;
 
 var selDate = null;
-var myMonth = null;   
+var myMonth = null;
 
 function getInfo(y, m, d) {
 
@@ -1469,18 +1469,58 @@ function dateKeyForSelectedDay() {
   return getDateKey(selDate.y, selDate.m, selDate.d);
 }
 
+/* NXLogis 열차 조회 주소 (열차번호 + 선택한 날짜 전달) */
 function nxLogisTrainUrl(trainNo) {
   var dateKey = dateKeyForSelectedDay();
-  /* NXLogis의 열차정보 조회 화면으로 열차번호와 선택 날짜를 전달 */
-  return 'https://nxlogis.kr/?train=' + encodeURIComponent(String(trainNo || '').trim()) +
+  return 'https://nxlogis.com/?train=' + encodeURIComponent(String(trainNo || '').trim()) +
     '&date=' + encodeURIComponent(dateKey);
 }
 
 function trainLink(trainNo) {
   var n = String(trainNo || '').trim();
   if (!n) return '';
-  return '<a class="dd-chip" href="' + esc(nxLogisTrainUrl(n)) + '" target="_blank" rel="noopener noreferrer" ' +
+  return '<a class="dd-chip" href="#" onclick="return openNxLogis(\'' + esc(n) + '\')" ' +
     'title="NXLogis에서 ' + esc(n) + ' 열차 조회">' + esc(n) + ' ↗</a>';
+}
+
+function showToast(text) {
+  var t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.style.cssText = 'position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:rgba(0,0,0,.8);' +
+      'color:#fff;padding:10px 16px;border-radius:20px;font-size:13px;z-index:200;max-width:90%;text-align:center';
+    document.body.appendChild(t);
+  }
+  t.textContent = text;
+  t.style.display = 'block';
+  clearTimeout(t._h);
+  t._h = setTimeout(function () { t.style.display = 'none'; }, 3500);
+}
+
+/* 열차번호 클립보드 복사 + NXLogis 열기 */
+function openNxLogis(trainNo) {
+  var n = String(trainNo || '').trim();
+  var dateKey = dateKeyForSelectedDay();
+
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(n);
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = n;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    showToast('열차번호 ' + n + ' 복사됨 (' + dateKey + ') · NXLogis 검색창에 붙여넣기');
+  } catch (e) {
+    showToast('NXLogis로 이동합니다: ' + n + ' (' + dateKey + ')');
+  }
+
+  window.open(nxLogisTrainUrl(n), '_blank');
+  return false;
 }
 
 function renderDayDetail() {
@@ -1793,10 +1833,10 @@ function restoreOriginalSchedule() {
 
 /* ============ 근무그룹 표 ============ */
 
-var groupWeekStart = null;   
+var groupWeekStart = null;
 var groupData = null;
 var groupTimer = null;
-var GROUP_REFRESH_MS = 30000;   
+var GROUP_REFRESH_MS = 30000;
 
 function weekStartOf(dt) {
   return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() - dt.getDay());
@@ -1847,7 +1887,7 @@ function startGroupAutoRefresh() {
   stopGroupAutoRefresh();
 
   groupTimer = setInterval(function () {
-    if (document.hidden) return;   
+    if (document.hidden) return;
     loadGroupSchedule(true);
   }, GROUP_REFRESH_MS);
 
@@ -2416,7 +2456,7 @@ function logout() {
   mySettings = { seq: '', anchor: '' };
   metaLoadedAt = 0;
 
-  clearDataCache();   
+  clearDataCache();
 
   LS.removeItem(USER_KEY);
   SS.removeItem(USER_KEY);
