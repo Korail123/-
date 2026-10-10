@@ -156,6 +156,8 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 .group-table td.g-status{color:#e53935;font-size:11px}
 .group-table th.g-today,.group-table td.g-today{background:#bfe6fb}
 .group-table tr.me td.name-col{background:#e8f3ff}
+.group-table th.g-hd{cursor:pointer}
+.group-table th.g-sel,.group-table td.g-sel{box-shadow:inset 0 0 0 2px #1a8fd8}
 .group-table th{line-height:1.5}
 .group-table td{font-size:15px}
 .group-table tfoot td{background:#fff7e6;color:#c2410c;font-size:13px;border-top:2px solid #f5c26b}
@@ -349,6 +351,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div id="group-summary" class="current-dia-card" style="display:none"></div>
 
   <div class="sch-note">※ 년월 부분을 누르면 이번 주로 이동합니다.</div>
+  <div class="sch-note">※ 날짜를 누르면 해당일 휴가·휴무 명단 표시</div>
 
   <button class="back-btn" style="margin-top:14px" onclick="switchSection('main-section')">돌아가기</button>
 
@@ -1866,6 +1869,7 @@ function restoreOriginalSchedule() {
 /* ============ 근무그룹 표 ============ */
 
 var groupWeekStart = null;
+var groupSelKey = null;      // 근무그룹에서 선택한 날짜 (YYYY-MM-DD)
 var groupData = null;
 var groupTimer = null;
 var GROUP_REFRESH_MS = 30000;
@@ -1901,9 +1905,18 @@ function groupWeekDays() {
 
 }
 
+function selectGroupDate(key) {
+
+  groupSelKey = key;
+
+  renderGroupTable();
+
+}
+
 function openGroupSection() {
 
   groupWeekStart = thisWeekStart();
+  groupSelKey = null;
   groupData = null;
 
   switchSection('group-section');
@@ -1946,6 +1959,7 @@ function changeGroupWeek(diff) {
 function goGroupThisWeek() {
 
   groupWeekStart = thisWeekStart();
+  groupSelKey = null;
   groupData = null;
 
   loadGroupSchedule(false);
@@ -2019,6 +2033,17 @@ function renderGroupTable() {
   var today = todayKST();
   var todayKey = getDateKey(today.y, today.m, today.d);
 
+  /* 선택 날짜: 이번 주 안에 있으면 그대로, 아니면 오늘(이번 주일 때) 또는 그 주의 첫날 */
+  var selKey = null;
+  var hasToday = false;
+
+  for (var sk = 0; sk < 7; sk++) {
+    if (days[sk].key === groupSelKey) selKey = groupSelKey;
+    if (days[sk].key === todayKey) hasToday = true;
+  }
+
+  if (!selKey) selKey = hasToday ? todayKey : days[0].key;
+
   var first = days[0];
   var last = days[6];
 
@@ -2045,7 +2070,9 @@ function renderGroupTable() {
 
     var style = dd.dow === 0 || holidayName(dd.y, dd.m, dd.d) ? ' style="color:#e53935;"' : (dd.dow === 6 ? ' style="color:#1a73e8;"' : '');
 
-    headHtml += '<th' + (dd.key === todayKey ? ' class="g-today"' : '') + style + '>' +
+    var hcls = 'g-hd' + (dd.key === todayKey ? ' g-today' : '') + (dd.key === selKey ? ' g-sel' : '');
+
+    headHtml += '<th class="' + hcls + '" onclick="selectGroupDate(\'' + dd.key + '\')"' + style + '>' +
                 names[dd.dow] + '<br>' + dd.d + '</th>';
 
   }
@@ -2070,7 +2097,7 @@ function renderGroupTable() {
   });
 
   var counts = [0, 0, 0, 0, 0, 0, 0];
-  var todayLeaveNames = [];
+  var leaveNames = [[], [], [], [], [], [], []];
 
   var html = '';
 
@@ -2098,10 +2125,11 @@ function renderGroupTable() {
 
       if (isLeaveInfo(info)) {
         counts[j]++;
-        if (days[j].key === todayKey) todayLeaveNames.push(mem.name || mem.employeeId);
+        leaveNames[j].push((mem.name || mem.employeeId) + '(' + info.label + ')');
       }
 
       if (days[j].key === todayKey) cls += ' g-today';
+      if (days[j].key === selKey) cls += ' g-sel';
 
       cls = cls.replace(/^\s+/, '');
 
@@ -2125,29 +2153,26 @@ function renderGroupTable() {
 
   footEl.innerHTML = foot;
 
-  var todayIdx = -1;
+  var selIdx = 0;
 
   for (var q = 0; q < 7; q++) {
-    if (days[q].key === todayKey) todayIdx = q;
+    if (days[q].key === selKey) selIdx = q;
   }
 
   if (summary) {
 
-    if (todayIdx >= 0) {
+    var sd = days[selIdx];
 
-      summary.style.display = 'block';
+    summary.style.display = 'block';
 
-      summary.innerHTML =
-        '<div class="current-dia-label">오늘 휴가·휴무 인원 (전체 ' + members.length + '명 중)</div>' +
-        '<div class="current-dia-value">' + counts[todayIdx] + '명' +
-        (todayLeaveNames.length ? ' <span style="font-size:13px;color:#555;font-weight:normal">(' + esc(todayLeaveNames.join(', ')) + ')</span>' : '') +
-        '</div>';
-
-    } else {
-
-      summary.style.display = 'none';
-
-    }
+    summary.innerHTML =
+      '<div class="current-dia-label" style="white-space:nowrap;font-size:clamp(9px,3vw,11px)">' +
+      (sd.m + 1) + '월 ' + sd.d + '일(' + names[sd.dow] + ') 휴가·휴무 (전체 ' + members.length + '명 중)</div>' +
+      '<div class="current-dia-value">' + counts[selIdx] + '명</div>' +
+      (leaveNames[selIdx].length
+        ? '<div style="margin-top:6px;font-size:14px;color:#444;line-height:1.7;white-space:normal;word-break:keep-all">' +
+          esc(leaveNames[selIdx].join(', ')) + '</div>'
+        : '');
 
   }
 
@@ -2189,9 +2214,9 @@ function renderPattern() {
     var tone = toneOf(it.type);
     var lc = tone === 'day' ? ' l-day' : tone === 'bi' ? ' l-bi' : tone === 'off' ? ' l-off' : '';
 
-    html += '<div class="dia-item' + lc + (i === todayIdx ? ' selected' : '') + '" style="cursor:default">' +
+    html += '<div class="dia-item dia-name' + lc + (i === todayIdx ? ' selected' : '') + '" style="cursor:default">' +
             '<span class="dia-seq">' + esc(it.seq) + '</span>' +
-            '<span class="dia-number">' + esc(it.type || '-') + '</span></div>';
+            '<span class="dia-number">' + esc(it.dia || it.type || '-') + '</span></div>';
 
   }
 
@@ -2208,7 +2233,7 @@ function renderPattern() {
 
   var cur = diaList[todayIdx];
 
-  todayEl.textContent = cur.seq + '번 · ' + (cur.type || '-');
+  todayEl.textContent = cur.seq + '번 · ' + (cur.dia || cur.type || '-');
 
   var nh = '';
 
