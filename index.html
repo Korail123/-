@@ -538,13 +538,27 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="dia-dialog-title">출근 알람</div>
     <div class="dia-dialog-note" style="white-space:normal">
       ※ 오늘 주간·야간 근무가 있을 때만 알려드립니다.<br>
-      ※ 비번·휴무·휴가는 알람에서 제외됩니다.
+      ※ 비번·휴무·휴가는 알람에서 제외됩니다.<br>
+      ※ 이 화면의 알람은 웹이 열려 있을 때 울립니다.
     </div>
     <label class="alarm-toggle"><span>알람 사용</span><input type="checkbox" id="alarm-on" onchange="alarmUiUpdate()"></label>
     <div id="alarm-value" class="alarm-value"></div>
     <input type="range" id="alarm-range" class="alarm-range" min="0" max="17" step="1" value="12" oninput="alarmUiUpdate()">
     <div class="alarm-scale"><span>3시간 전</span><span>10분 전</span></div>
     <div id="alarm-preview" class="alarm-preview"></div>
+    <button type="button" class="btn" style="margin-top:14px;background:#2e7d32" onclick="exportAlarmIcs()">📅 캘린더에 알람 등록 (웹을 꺼도 울림)</button>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button type="button" class="btn" style="margin:0;background:#f57c00;padding:11px 4px;font-size:13px" onclick="testAlarmRing()">🔔 지금 알람 테스트</button>
+      <button type="button" class="btn" style="margin:0;background:#6a1b9a;padding:11px 4px;font-size:13px" onclick="testAlarmIcs()">📅 캘린더 테스트</button>
+    </div>
+    <div style="margin:6px 4px 0;font-size:11px;color:#7a8696;line-height:1.5">
+      ※ 지금 알람 테스트: 팝업·소리·진동·알림이 오는지 바로 확인합니다.<br>
+      ※ 캘린더 테스트: 약 2분 뒤 울리는 일정 파일을 만들어 캘린더 알람을 확인합니다.
+    </div>
+    <div style="margin:10px 4px 0;font-size:11px;color:#7a8696;line-height:1.5">
+      ※ 폰 캘린더에 앞으로 60일치 출근 일정과 알람이 등록됩니다.<br>
+      ※ 근무가 바뀌면 다시 등록해주세요. (같은 날짜 일정은 덮어써집니다)
+    </div>
     <div class="dia-dialog-actions">
       <button type="button" class="dia-text-btn" onclick="saveAlarmSettings()">확인</button>
       <button type="button" class="dia-text-btn" onclick="closeAlarmSettings()">닫기</button>
@@ -3835,7 +3849,7 @@ function alarmWorkInfo(dateKey) {
 
   if (isNaN(sm)) return null;
 
-  return { dia: String(d.dia || ''), type: type, start: String(d.start).trim(), startMin: sm };
+  return { dia: String(d.dia || ''), type: type, start: String(d.start).trim(), end: String(d.end || '').trim(), startMin: sm };
 
 }
 
@@ -3907,6 +3921,166 @@ function alarmUiUpdate() {
 
 }
 
+
+/* 폰 캘린더용 알람 파일(.ics): 웹이 꺼져 있어도 캘린더 앱이 알람을 울려줌 */
+
+function icsStamp(ms) {
+
+  var d = new Date(ms);
+
+  return d.getUTCFullYear() + pad2(d.getUTCMonth() + 1) + pad2(d.getUTCDate()) + 'T' +
+         pad2(d.getUTCHours()) + pad2(d.getUTCMinutes()) + '00Z';
+
+}
+
+function buildAlarmIcs(min) {
+
+  var t = todayKST();
+  var nowMs = Date.now();
+  var seq = Math.floor(nowMs / 1000);
+  var lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//KORAIL Railway Secretary//Alarm//KO',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'X-WR-CALNAME:출근 알람'
+  ];
+  var count = 0;
+
+  for (var add = 0; add < 60; add++) {
+
+    var dt = new Date(Date.UTC(t.y, t.m, t.d + add));
+    var key = getDateKey(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate());
+    var w = alarmWorkInfo(key);
+
+    if (!w) continue;
+
+    var startMs = alarmStartMs(key, w.startMin);
+    var endMin = parseHM(w.end);
+    var diff = isNaN(endMin) ? 60 : endMin - w.startMin;
+
+    if (diff <= 0) diff += 1440;
+
+    var endMs = startMs + diff * 60000;
+    var title = '출근 ' + (w.dia || (w.type === '주' ? '주간' : '야간')) + ' ' + w.start;
+
+    lines.push(
+      'BEGIN:VEVENT',
+      'UID:korail-alarm-' + key.replace(/-/g, '') + '@railway-secretary',
+      'DTSTAMP:' + icsStamp(nowMs),
+      'SEQUENCE:' + seq,
+      'DTSTART:' + icsStamp(startMs),
+      'DTEND:' + icsStamp(endMs),
+      'SUMMARY:' + title,
+      'DESCRIPTION:출근 ' + alarmMinText(min) + ' 알람',
+      'BEGIN:VALARM',
+      'ACTION:DISPLAY',
+      'DESCRIPTION:' + title,
+      'TRIGGER:-PT' + min + 'M',
+      'END:VALARM',
+      'END:VEVENT'
+    );
+
+    count++;
+
+  }
+
+  lines.push('END:VCALENDAR');
+
+  return { text: lines.join('\r\n') + '\r\n', count: count };
+
+}
+
+function exportAlarmIcs() {
+
+  if (!snapshotUsable()) {
+    showToast('근무 정보를 불러온 뒤 다시 눌러주세요.');
+    return;
+  }
+
+  var min = alarmUiMin();
+  var ics = buildAlarmIcs(min);
+
+  if (!ics.count) {
+    showToast('앞으로 60일 안에 출근 근무가 없습니다.');
+    return;
+  }
+
+  downloadIcs(ics.text, '출근알람.ics');
+
+  showToast('출근 ' + alarmMinText(min) + ' 알람 ' + ics.count + '일치 파일을 만들었습니다. 열어서 캘린더에 추가하세요.');
+
+}
+
+function downloadIcs(text, fileName) {
+
+  try {
+
+    var blob = new Blob([text], { type: 'text/calendar;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+
+  } catch (e) {
+
+    window.open('data:text/calendar;charset=utf-8,' + encodeURIComponent(text));
+
+  }
+
+}
+
+/* 지금 바로 팝업·소리·진동·알림 테스트 */
+function testAlarmRing() {
+
+  if ('Notification' in window && Notification.permission === 'default') {
+    try { Notification.requestPermission(); } catch (e) {}
+  }
+
+  fireAlarm({ dia: '', type: '주', start: '', test: true }, '', alarmUiMin());
+
+}
+
+/* 약 2분 뒤 캘린더 알람이 울리는지 확인하는 테스트 일정 */
+function testAlarmIcs() {
+
+  var nowMs = Date.now();
+  var startMs = Math.ceil((nowMs + 3 * 60000) / 60000) * 60000;   // 약 3분 뒤 시작, 1분 전 알람
+  var lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//KORAIL Railway Secretary//Alarm Test//KO',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    'UID:korail-alarm-test-' + nowMs + '@railway-secretary',
+    'DTSTAMP:' + icsStamp(nowMs),
+    'DTSTART:' + icsStamp(startMs),
+    'DTEND:' + icsStamp(startMs + 10 * 60000),
+    'SUMMARY:출근 알람 테스트',
+    'DESCRIPTION:캘린더 알람 테스트 일정입니다. 확인 후 삭제하세요.',
+    'BEGIN:VALARM',
+    'ACTION:DISPLAY',
+    'DESCRIPTION:출근 알람 테스트',
+    'TRIGGER:-PT1M',
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ];
+
+  downloadIcs(lines.join('\r\n') + '\r\n', '출근알람_테스트.ics');
+
+  showToast('테스트 파일을 열어 캘린더에 추가하세요. 약 2분 뒤 알람이 울립니다.');
+
+}
+
 function saveAlarmSettings() {
 
   var cfg = { on: $('alarm-on').checked, min: alarmUiMin() };
@@ -3963,9 +4137,11 @@ function alarmBeep() {
 
 function fireAlarm(w, key, min) {
 
-  var msg = (w.dia || (w.type === '주' ? '주간' : '야간')) + ' · 출근 ' + w.start + ' (' + alarmMinText(min).replace(' 전', '') + ' 전)';
+  var msg = w.test
+    ? '알람 테스트입니다. 소리·진동·알림이 오는지 확인하세요.'
+    : (w.dia || (w.type === '주' ? '주간' : '야간')) + ' · 출근 ' + w.start + ' (' + alarmMinText(min).replace(' 전', '') + ' 전)';
 
-  $('alarm-ring-body').innerHTML = '출근 시간이 다가오고 있어요.<br><b>' + esc(msg) + '</b>';
+  $('alarm-ring-body').innerHTML = (w.test ? '' : '출근 시간이 다가오고 있어요.<br>') + '<b>' + esc(msg) + '</b>';
   $('alarm-ring-panel').classList.add('active');
 
   var rounds = 0;
