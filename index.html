@@ -1017,14 +1017,108 @@ function snapEmptyDay() {
   return { dia: '', type: '', start: '', end: '', train1: '', train2: '' };
 }
 
+/* ============ 순환 다이아 목록 · 요일별 적용 다이아 ============ */
+
+/* 근무설정·근무패턴·순환 계산에는 쓰지 않고, 근무표에서만 나타나는 다이아 번호 */
+var EXTRA_DIA_NUMBERS = ['12901', '12902', '12932', '12B07'];
+
+/* 순서(seq)별 요일에 따라 실제로 적용되는 다이아 (요일: 0=일 ... 6=토) */
+var WEEKDAY_RULES = {
+  '1': [
+    { days: [1, 2], dia: '12602' },
+    { days: [3, 4, 5, 6, 0], dia: '12901' }
+  ],
+  '2': [
+    { days: [6], dia: '12902' },
+    { days: [0, 1, 2, 3, 4, 5], dia: '12404' }
+  ],
+  '4': [
+    { days: [6], dia: '12932' },
+    { days: [0], dia: '12B07' },
+    { days: [1, 2, 3, 4, 5], dia: '12601' }
+  ]
+};
+
+function isExtraDia(it) {
+
+  if (String(it.seq == null ? '' : it.seq).trim() === '') return true;
+
+  return EXTRA_DIA_NUMBERS.indexOf(String(it.dia || '').trim().toUpperCase()) >= 0;
+
+}
+
+function rotationOf(list) {
+
+  var out = [];
+
+  for (var i = 0; i < list.length; i++) {
+    if (!isExtraDia(list[i])) out.push(list[i]);
+  }
+
+  return out;
+
+}
+
+function rotList() {
+  return rotationOf(diaList);
+}
+
+function findDiaIn(list, number) {
+
+  var n = String(number || '').trim().toUpperCase();
+
+  for (var i = 0; i < list.length; i++) {
+    if (String(list[i].dia || '').trim().toUpperCase() === n) return list[i];
+  }
+
+  return null;
+
+}
+
+/* 순서표의 기본 다이아를 그 날짜의 요일에 맞는 다이아로 바꿈 */
+function applyWeekdayRule(it, dateKey, list) {
+
+  var rules = WEEKDAY_RULES[String(it.seq)];
+
+  if (!rules) return it;
+
+  var wd = new Date(dateKeyToNum(dateKey)).getUTCDay();
+
+  for (var i = 0; i < rules.length; i++) {
+    if (rules[i].days.indexOf(wd) >= 0) return findDiaIn(list, rules[i].dia) || it;
+  }
+
+  return it;
+
+}
+
+var WD_ORDER = [1, 2, 3, 4, 5, 6, 0];
+var WD_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+
+function weekdayText(days) {
+
+  var out = [];
+
+  for (var i = 0; i < WD_ORDER.length; i++) {
+    if (days.indexOf(WD_ORDER[i]) >= 0) out.push(WD_NAMES[WD_ORDER[i]]);
+  }
+
+  return out.join('·');
+
+}
+
 function snapBaseDay(dateKey, seq, anchor, dia) {
 
   if (!seq || !anchor || !dia.length) return snapEmptyDay();
 
+  var rot = rotationOf(dia);
+
+  if (!rot.length) return snapEmptyDay();
+
   var idx = -1;
 
-  for (var i = 0; i < dia.length; i++) {
-    if (String(dia[i].seq) === String(seq)) { idx = i; break; }
+  for (var i = 0; i < rot.length; i++) {
+    if (String(rot[i].seq) === String(seq)) { idx = i; break; }
   }
 
   if (idx < 0) return snapEmptyDay();
@@ -1033,7 +1127,7 @@ function snapBaseDay(dateKey, seq, anchor, dia) {
 
   if (isNaN(diff)) diff = 0;
 
-  var it = dia[mod(idx + diff, dia.length)];
+  var it = applyWeekdayRule(rot[mod(idx + diff, rot.length)], dateKey, dia);
 
   return {
     dia: String(it.dia || ''), type: String(it.type || ''),
@@ -1449,8 +1543,10 @@ var mySettings = { seq: '', anchor: '' };
 
 function diaBySeq(seq) {
 
-  for (var i = 0; i < diaList.length; i++) {
-    if (String(diaList[i].seq) === String(seq)) return diaList[i];
+  var rl = rotList();
+
+  for (var i = 0; i < rl.length; i++) {
+    if (String(rl[i].seq) === String(seq)) return rl[i];
   }
 
   return null;
@@ -1459,8 +1555,10 @@ function diaBySeq(seq) {
 
 function diaIndexBySeq(seq) {
 
-  for (var i = 0; i < diaList.length; i++) {
-    if (String(diaList[i].seq) === String(seq)) return i;
+  var rl = rotList();
+
+  for (var i = 0; i < rl.length; i++) {
+    if (String(rl[i].seq) === String(seq)) return i;
   }
 
   return -1;
@@ -1481,9 +1579,11 @@ function patternIndexFor(dateKey) {
 
   var idx0 = diaIndexBySeq(mySettings.seq);
 
-  if (idx0 < 0 || !mySettings.anchor || !diaList.length) return -1;
+  var rlen = rotList().length;
 
-  return mod(idx0 + dayDiff(mySettings.anchor, dateKey), diaList.length);
+  if (idx0 < 0 || !mySettings.anchor || !rlen) return -1;
+
+  return mod(idx0 + dayDiff(mySettings.anchor, dateKey), rlen);
 
 }
 
@@ -1715,7 +1815,8 @@ var DIA_IMAGE_FILES = {
   '12401':'dia_12401.png', '12402':'dia_12402.png', '12403':'dia_12403.png', '12404':'dia_12404.png',
   '12551':'dia_12551.png', '12581':'dia_12581.png',
   '12601':'dia_12601.png', '12602':'dia_12602.png', '12702':'dia_12702.png',
-  '12H01':'dia_12H01.png'
+  '12H01':'dia_12H01.png',
+  '12901':'dia_12901.png', '12902':'dia_12902.png', '12932':'dia_12932.png', '12B07':'dia_12B07.png'
 };
 
 function dateKeyForSelectedDay() {
@@ -2903,9 +3004,11 @@ function renderPattern() {
 
   var html = '';
 
-  for (var i = 0; i < diaList.length; i++) {
+  var rl = rotList();
 
-    var it = diaList[i];
+  for (var i = 0; i < rl.length; i++) {
+
+    var it = rl[i];
     var tone = toneOf(it.type);
     var lc = tone === 'day' ? ' l-day' : tone === 'bi' ? ' l-bi' : tone === 'off' ? ' l-off' : '';
 
@@ -2960,7 +3063,7 @@ function workDurationText(start, end) {
 
 function openPatternInfo(i) {
 
-  var it = diaList[i];
+  var it = rotList()[i];
   var panel = $('pattern-info-panel');
   var body = $('pattern-info-body');
 
@@ -2990,6 +3093,18 @@ function openPatternInfo(i) {
   html += row('출근 시간', start);
   html += row('퇴근 시간', end);
   html += row('근무 시간', dur);
+
+  var wRules = WEEKDAY_RULES[String(it.seq)];
+
+  if (wRules) {
+
+    html += '<div class="pi-row" style="display:block"><span class="pi-k">요일별 적용 다이아</span></div>';
+
+    for (var wr = 0; wr < wRules.length; wr++) {
+      html += row(weekdayText(wRules[wr].days), wRules[wr].dia);
+    }
+
+  }
 
   if (diaNo) {
 
@@ -3044,7 +3159,7 @@ function openDiaSelector() {
   var t = todayKST();
   var idx = patternIndexFor(getDateKey(t.y, t.m, t.d));
 
-  tempSeq = idx >= 0 ? String(diaList[idx].seq) : '';
+  tempSeq = idx >= 0 ? String(rotList()[idx].seq) : '';
 
   $('dia-warning').textContent = '';
 
@@ -3052,7 +3167,7 @@ function openDiaSelector() {
 
   if (panel) panel.classList.add('active');
 
-  if (!diaList.length) {
+  if (!rotList().length) {
     loadMeta(function (failMsg) {
       $('dia-warning').textContent = failMsg || '';
       renderDiaSelector();
@@ -3065,14 +3180,14 @@ function renderDiaSelector() {
 
   var listEl = $('dia-list');
 
-  if (!diaList.length) {
+  if (!rotList().length) {
     listEl.innerHTML = '<div class="dia-empty">근무 순서를 불러오는 중...</div>';
     return;
   }
 
   listEl.innerHTML = '';
 
-  diaList.forEach(function (it) {
+  rotList().forEach(function (it) {
 
     var tone = toneOf(it.type);
     var lc = tone === 'day' ? ' l-day' : tone === 'bi' ? ' l-bi' : tone === 'off' ? ' l-off' : '';
