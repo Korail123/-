@@ -364,13 +364,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   <div id="pattern-status" class="status-message" style="margin-top:0"></div>
 
-  <div class="current-dia-card">
-    <div class="current-dia-label">오늘 근무 순서</div>
-    <div id="pattern-today" class="current-dia-value">불러오는 중...</div>
-    <div class="current-dia-label" style="margin-top:12px">앞으로 14일 (직접 변경 제외)</div>
-    <div id="pattern-next" class="pattern-line"></div>
-  </div>
-
   <div class="current-dia-label" style="text-align:left;margin:0 4px 8px">전체 순서표 (파란 칸이 오늘)</div>
 
   <div id="pattern-list" class="dia-list" style="margin-bottom:18px"></div>
@@ -2093,7 +2086,7 @@ function renderGroupTable() {
   var members = groupData.members.slice().sort(function (a, b) {
     if (a.employeeId === me) return -1;
     if (b.employeeId === me) return 1;
-    return 0;
+    return String(a.name || a.employeeId).localeCompare(String(b.name || b.employeeId), 'ko');
   });
 
   var counts = [0, 0, 0, 0, 0, 0, 0];
@@ -2199,8 +2192,6 @@ function openPattern() {
 function renderPattern() {
 
   var listEl = $('pattern-list');
-  var todayEl = $('pattern-today');
-  var nextEl = $('pattern-next');
 
   var t = todayKST();
   var todayKey = getDateKey(t.y, t.m, t.d);
@@ -2223,30 +2214,8 @@ function renderPattern() {
   listEl.innerHTML = html || '<div class="dia-empty">근무 순서표가 없습니다.</div>';
 
   if (todayIdx < 0) {
-
-    todayEl.textContent = '환경설정에서 근무를 먼저 설정하세요.';
-    nextEl.innerHTML = '';
-
-    return;
-
+    $('pattern-status').textContent = '환경설정에서 근무를 먼저 설정하세요.';
   }
-
-  var cur = diaList[todayIdx];
-
-  todayEl.textContent = cur.seq + '번 · ' + (cur.dia || cur.type || '-');
-
-  var nh = '';
-
-  for (var k = 0; k < 14; k++) {
-
-    var idx = mod(todayIdx + k, diaList.length);
-    var ty = diaList[idx].type || '-';
-
-    nh += '<span class="pl-' + toneOf(ty) + '">' + esc(ty) + '</span> ';
-
-  }
-
-  nextEl.innerHTML = nh;
 
 }
 
