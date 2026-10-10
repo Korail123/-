@@ -83,7 +83,11 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 .dd-dia.t-off{color:#e53935}
 .dd-tag{font-size:15px;font-weight:bold;color:#333}
 .dd-row{margin-top:12px;font-size:16px;color:#444}
-.dd-chip{display:inline-block;padding:6px 12px;margin-left:6px;border-radius:12px;background:#bfe6fb;color:#1a73e8;font-weight:bold;font-size:15px}
+.dd-chip{display:inline-block;padding:6px 12px;margin-left:6px;border-radius:12px;background:#bfe6fb;color:#1a73e8;font-weight:bold;font-size:15px;text-decoration:none;cursor:pointer}.dd-chip:hover{background:#9dd8f7;text-decoration:underline}.dd-dia-image-wrap{margin-top:14px;padding:12px;border:1px solid #e1e8ef;border-radius:12px;background:#fff;text-align:center}.dd-dia-image-title{font-size:13px;font-weight:bold;color:#4a5568;margin-bottom:10px}.dd-dia-image{display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;margin:0 auto}.dd-dia-image-missing{font-size:13px;color:#7a8696;line-height:1.6}
+.dd-route{margin-top:16px;padding:14px;border:1px solid #d8e8f8;border-radius:12px;background:#f6fbff;text-align:left}
+.dd-route-title{font-size:14px;font-weight:bold;color:#245b89;margin-bottom:10px}
+.dd-route-line{font-size:14px;line-height:1.8;color:#34495e}
+.dd-route-label{display:inline-block;min-width:88px;color:#718096}
 .dd-empty{margin-top:10px;font-size:14px;color:#7a8696;line-height:1.5}
 .calendar-back{margin-top:6px}
 
@@ -1450,57 +1454,112 @@ function renderCalendar() {
 
 }
 
+/* GitHub에 저장된 DIA PNG와 NXLogis 열차 조회 연결 */
+var DIA_IMAGE_BASE = 'https://raw.githubusercontent.com/Korail123/-/main/';
+var DIA_IMAGE_FILES = {
+  '12101':'dia_12101.png', '12201':'dia_12201.png',
+  '12401':'dia_12401.png', '12402':'dia_12402.png', '12403':'dia_12403.png', '12404':'dia_12404.png',
+  '12551':'dia_12551.png', '12581':'dia_12581.png',
+  '12601':'dia_12601.png', '12602':'dia_12602.png', '12702':'dia_12702.png',
+  '12H01':'dia_12H01.png'
+};
+
+function dateKeyForSelectedDay() {
+  if (!selDate) return '';
+  return getDateKey(selDate.y, selDate.m, selDate.d);
+}
+
+function nxLogisTrainUrl(trainNo) {
+  var dateKey = dateKeyForSelectedDay();
+  /* NXLogis의 열차정보 조회 화면으로 열차번호와 선택 날짜를 전달 */
+  return 'https://nxlogis.kr/?train=' + encodeURIComponent(String(trainNo || '').trim()) +
+    '&date=' + encodeURIComponent(dateKey);
+}
+
+function trainLink(trainNo) {
+  var n = String(trainNo || '').trim();
+  if (!n) return '';
+  return '<a class="dd-chip" href="' + esc(nxLogisTrainUrl(n)) + '" target="_blank" rel="noopener noreferrer" ' +
+    'title="NXLogis에서 ' + esc(n) + ' 열차 조회">' + esc(n) + ' ↗</a>';
+}
+
 function renderDayDetail() {
 
   var detail = $('day-detail');
-
   if (!detail) return;
 
   if (!selDate) {
-    detail.innerHTML = '<div class="dd-empty">날짜를 선택하시면 상세 정보가 표시됩니다.</div>';
+    detail.innerHTML = '<div class="dd-empty">날짜를 선택하시면 상세 근무와 행로표 DIA 정보가 표시됩니다.</div>';
     return;
   }
 
-  var dateText = (selDate.m + 1) + '월 ' + selDate.d + '일 상세 근무 정보';
-
+  var dateText = (selDate.m + 1) + '월 ' + selDate.d + '일';
   var info = getInfo(selDate.y, selDate.m, selDate.d);
 
   if (!info || !info.label) {
-    detail.innerHTML = '<div class="dd-date">' + dateText + '</div><div class="dd-empty">근무 정보가 없습니다.</div>';
+    detail.innerHTML = '<div class="dd-date">' + dateText + ' 상세 근무 정보</div><div class="dd-empty">근무 정보가 없습니다.</div>';
     return;
   }
 
   var isStatus = info.overrideType === 'status';
+  var diaNo = String(info.dia || '').trim();
+  if (!diaNo && !isStatus && diaByNumber(info.label)) diaNo = String(info.label);
+
+  /* 월 근무표 데이터에 열차/시간 정보가 빠진 경우 DIA 원본 목록에서 보완 */
+  var diaMeta = diaNo ? diaByNumber(diaNo) : null;
+  var startTime = info.start || (diaMeta && diaMeta.start) || '';
+  var endTime = info.end || (diaMeta && diaMeta.end) || '';
+  var train1 = info.train1 || (diaMeta && diaMeta.train1) || '';
+  var train2 = info.train2 || (diaMeta && diaMeta.train2) || '';
+  var workType = info.type || (diaMeta && diaMeta.type) || '';
+
   var tone = isStatus ? 'off' : toneOf(info.label);
   var cls = tone === 'day' ? ' t-day' : (tone === 'off' || tone === 'status') ? ' t-off' : '';
-
-  var main;
-
-  if (!isStatus && info.dia && info.dia !== info.label) {
-    main = 'DIA : ' + esc(info.dia) + ' (' + esc(info.label) + ')';
-  } else {
-    main = esc(info.label);
-  }
-
+  var main = (!isStatus && diaNo)
+    ? 'DIA : ' + esc(diaNo) + (workType ? ' (' + esc(workType) + ')' : '')
+    : esc(info.label);
   var tag = '근무';
-
   if (info.label === '휴' || isStatus) tag = '휴무';
   else if (info.label === '비') tag = '비번';
   else if (info.label === 'X') tag = '-';
 
-  var html = '<div class="dd-date">' + dateText + '</div>';
-
+  var html = '<div class="dd-date">' + dateText + ' 상세 근무 정보</div>';
   html += '<div class="dd-main"><span class="dd-dia' + cls + '">' + main + (info.manual ? ' *' : '') +
           '</span><span class="dd-tag">[ ' + tag + ' ]</span></div>';
 
-  if (info.start) html += '<div class="dd-row">⏰ 출근 시간 : ' + esc(info.start) + '</div>';
-
-  if (info.end) html += '<div class="dd-row">🏠 퇴근 시간 : ' + esc(info.end) + '</div>';
-
-  if (info.train1 || info.train2) {
+  if (startTime) html += '<div class="dd-row">⏰ 출근 시간 : ' + esc(startTime) + '</div>';
+  if (endTime) html += '<div class="dd-row">🏠 퇴근 시간 : ' + esc(endTime) + '</div>';
+  if (train1 || train2) {
     html += '<div class="dd-row">🚂 <b>열차 번호 :</b>' +
-            (info.train1 ? '<span class="dd-chip">' + esc(info.train1) + '</span>' : '') +
-            (info.train2 ? '<span class="dd-chip">' + esc(info.train2) + '</span>' : '') + '</div>';
+            (train1 ? trainLink(train1) : '') +
+            (train2 ? trainLink(train2) : '') + '</div>';
+  }
+
+  /* 선택한 날짜의 DIA와 행로표 정보를 한눈에 확인할 수 있도록 하단에 별도 표시 */
+  if (!isStatus && diaNo) {
+    html += '<div class="dd-route">';
+    html += '<div class="dd-route-title">🛤️ 행로표 · DIA 정보</div>';
+    html += '<div class="dd-route-line"><span class="dd-route-label">DIA 번호</span><b>' + esc(diaNo) + '</b></div>';
+    if (workType) html += '<div class="dd-route-line"><span class="dd-route-label">근무 구분</span>' + esc(workType) + '</div>';
+    if (startTime) html += '<div class="dd-route-line"><span class="dd-route-label">출근 시간</span>' + esc(startTime) + '</div>';
+    if (endTime) html += '<div class="dd-route-line"><span class="dd-route-label">퇴근 시간</span>' + esc(endTime) + '</div>';
+    if (train1) html += '<div class="dd-route-line"><span class="dd-route-label">열차 1</span>' + trainLink(train1) + '</div>';
+    if (train2) html += '<div class="dd-route-line"><span class="dd-route-label">열차 2</span>' + trainLink(train2) + '</div>';
+    if (!startTime && !endTime && !train1 && !train2) {
+      html += '<div class="dd-route-line">이 DIA의 상세 행로 정보가 등록되어 있지 않습니다.</div>';
+    }
+    var diaImageFile = DIA_IMAGE_FILES[diaNo.toUpperCase()];
+    if (diaImageFile) {
+      html += '<div class="dd-dia-image-wrap"><div class="dd-dia-image-title">🖼️ DIA ' + esc(diaNo) + ' 행로표 이미지</div>' +
+        '<img class="dd-dia-image" src="' + DIA_IMAGE_BASE + encodeURIComponent(diaImageFile) + '" alt="DIA ' + esc(diaNo) + ' 행로표" ' +
+        'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
+        '<div class="dd-dia-image-missing" style="display:none">이미지를 불러오지 못했습니다. GitHub 저장소의 파일명과 공개 설정을 확인해주세요.</div></div>';
+    } else {
+      html += '<div class="dd-dia-image-wrap"><div class="dd-dia-image-missing">이 DIA 번호에 연결된 PNG 파일이 없습니다.</div></div>';
+    }
+    html += '</div>';
+  } else if (isStatus) {
+    html += '<div class="dd-route"><div class="dd-route-title">🛤️ 행로표 · DIA 정보</div><div class="dd-route-line">선택한 날짜는 ' + esc(info.label) + '으로 지정되어 있어 DIA 행로 정보가 없습니다.</div></div>';
   }
 
   detail.innerHTML = html;
