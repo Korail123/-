@@ -218,6 +218,17 @@ body{padding-bottom:84px}
 .vac-chip{display:inline-block;margin:4px 4px 0 0;padding:6px 11px;border-radius:14px;font-size:13px;font-weight:bold;color:#fff;cursor:pointer}
 
 .group-table td:not(.name-col){cursor:pointer}
+
+/* 출근 알람 */
+.alarm-toggle{display:flex;align-items:center;justify-content:space-between;padding:12px 6px;font-size:16px;font-weight:bold;color:#222}
+.alarm-toggle input{width:44px;height:26px;accent-color:#1a73e8}
+.alarm-value{margin-top:6px;text-align:center;font-size:22px;font-weight:bold;color:#1a73e8}
+.alarm-range{-webkit-appearance:none;appearance:none;width:100%;height:12px;border-radius:8px;background:#dbe3ee;outline:none;margin:16px 0 6px;touch-action:pan-y}
+.alarm-range::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:30px;height:30px;border-radius:50%;background:#1a73e8;border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.4)}
+.alarm-range::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:#1a73e8;border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.4)}
+.alarm-scale{display:flex;justify-content:space-between;font-size:12px;color:#7a8696;padding:0 2px}
+.alarm-preview{margin:14px 2px 0;padding:10px 12px;border-radius:12px;background:#f0f8ff;border:1px solid #c9e5ff;font-size:13px;color:#445;line-height:1.6}
+.alarm-ring-info{margin:10px 0 18px;font-size:16px;color:#333;line-height:1.7}
 </style>
 </head>
 
@@ -397,7 +408,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div id="group-summary" class="current-dia-card" style="display:none"></div>
 
   <div class="sch-note">※ 년월 부분을 누르면 이번 주로 이동합니다.</div>
-  <div class="sch-note">※ 날짜를 누르면 해당일 휴가·휴무 명단 표시</div>
+  <div class="sch-note">※ 날짜를 누르면 해당일 휴가·휴무·X 명단 표시</div>
 
   <button class="back-btn" style="margin-top:14px" onclick="switchSection('main-section')">돌아가기</button>
 
@@ -478,6 +489,19 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   </button>
 
+  <button type="button" class="setting-card" onclick="openAlarmSettings()">
+
+    <span class="setting-icon">⏰</span>
+
+    <span class="setting-text">
+      <span class="setting-title">출근 알람</span>
+      <span id="alarm-sub" class="setting-sub">※ 출근 시간 전에 알려드려요</span>
+    </span>
+
+    <span class="setting-arrow">›</span>
+
+  </button>
+
   <div id="dia-panel" class="dia-modal" onclick="if(event.target===this)closeDiaSelector()">
 
     <div class="dia-dialog">
@@ -506,6 +530,36 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   <button class="back-btn" onclick="switchSection('main-section')" style="margin-top:15px;">돌아가기</button>
 
+</div>
+
+<!-- 출근 알람 설정 팝업 -->
+<div id="alarm-panel" class="dia-modal" onclick="if(event.target===this)closeAlarmSettings()">
+  <div class="dia-dialog">
+    <div class="dia-dialog-title">출근 알람</div>
+    <div class="dia-dialog-note" style="white-space:normal">
+      ※ 오늘 주간·야간 근무가 있을 때만 알려드립니다.<br>
+      ※ 비번·휴무·휴가는 알람에서 제외됩니다.
+    </div>
+    <label class="alarm-toggle"><span>알람 사용</span><input type="checkbox" id="alarm-on" onchange="alarmUiUpdate()"></label>
+    <div id="alarm-value" class="alarm-value"></div>
+    <input type="range" id="alarm-range" class="alarm-range" min="0" max="17" step="1" value="12" oninput="alarmUiUpdate()">
+    <div class="alarm-scale"><span>3시간 전</span><span>10분 전</span></div>
+    <div id="alarm-preview" class="alarm-preview"></div>
+    <div class="dia-dialog-actions">
+      <button type="button" class="dia-text-btn" onclick="saveAlarmSettings()">확인</button>
+      <button type="button" class="dia-text-btn" onclick="closeAlarmSettings()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 출근 알람 울림 팝업 -->
+<div id="alarm-ring-panel" class="dia-modal" style="z-index:400">
+  <div class="dia-dialog" style="text-align:center">
+    <div style="font-size:42px;margin-top:4px">⏰</div>
+    <div class="dia-dialog-title" style="text-align:center">출근 알람</div>
+    <div id="alarm-ring-body" class="alarm-ring-info"></div>
+    <button type="button" class="btn" onclick="closeAlarmRing()">확인</button>
+  </div>
 </div>
 
 <!-- 근무패턴 다이아 정보 팝업 -->
@@ -2615,7 +2669,7 @@ function groupCellClass(label, isStatus) {
 }
 
 function isLeaveInfo(info) {
-  return !!(info && info.label && (info.overrideType === 'status' || info.label === '휴'));
+  return !!(info && info.label && (info.overrideType === 'status' || info.label === '휴' || info.label === 'X'));
 }
 
 function renderGroupTable() {
@@ -2738,7 +2792,7 @@ function renderGroupTable() {
 
   bodyEl.innerHTML = html;
 
-  var foot = '<tr><td class="name-col">휴가·휴무</td>';
+  var foot = '<tr><td class="name-col">휴가·휴무·X</td>';
 
   for (var c = 0; c < 7; c++) {
     foot += '<td' + (days[c].key === selKey ? ' class="g-sel g-sel-b"' : '') + '>' + counts[c] + '명</td>';
@@ -2762,7 +2816,7 @@ function renderGroupTable() {
 
     summary.innerHTML =
       '<div class="current-dia-label" style="white-space:nowrap;font-size:clamp(9px,3vw,11px)">' +
-      (sd.m + 1) + '월 ' + sd.d + '일(' + names[sd.dow] + ') 휴가·휴무 (전체 ' + members.length + '명 중)</div>' +
+      (sd.m + 1) + '월 ' + sd.d + '일(' + names[sd.dow] + ') 휴가·휴무·X (전체 ' + members.length + '명 중)</div>' +
       '<div class="current-dia-value">' + counts[selIdx] + '명</div>' +
       (leaveNames[selIdx].length
         ? '<div style="margin-top:6px;font-size:14px;color:#444;line-height:1.7;white-space:normal;word-break:keep-all">' +
@@ -3293,6 +3347,8 @@ function openSettings() {
 
   switchSection('settings-section');
 
+  if (typeof renderAlarmSub === 'function') renderAlarmSub();
+
   loadMeta(function () {});
 
 }
@@ -3613,6 +3669,387 @@ function logout() {
   }
 
   doLogin(saved.id, saved.pw, true);
+
+})();
+
+/* ============ 화면 스와이프: 달력·근무그룹 이전/다음 ============ */
+
+function attachSwipe(el, onPrev, onNext) {
+
+  if (!el) return;
+
+  var sx = 0, sy = 0, st = 0, ok = false;
+
+  function blocked(target) {
+
+    if (document.querySelector('.dia-modal.active, .schedule-edit-modal.active, .route-viewer.active')) return true;
+
+    for (var n = target; n && n !== el; n = n.parentNode) {
+
+      if (!n.tagName) continue;
+
+      var tag = n.tagName.toLowerCase();
+
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+
+      if (n.scrollWidth > n.clientWidth + 2) {
+        var ox = window.getComputedStyle(n).overflowX;
+        if (ox === 'auto' || ox === 'scroll') return true;   // 가로로 스크롤되는 영역은 스크롤 우선
+      }
+
+    }
+
+    return false;
+
+  }
+
+  el.addEventListener('touchstart', function (e) {
+
+    if (e.touches.length !== 1 || blocked(e.target)) { ok = false; return; }
+
+    ok = true;
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+    st = Date.now();
+
+  }, { passive: true });
+
+  el.addEventListener('touchend', function (e) {
+
+    if (!ok || !e.changedTouches.length) return;
+
+    ok = false;
+
+    var dx = e.changedTouches[0].clientX - sx;
+    var dy = e.changedTouches[0].clientY - sy;
+
+    if (Date.now() - st > 900) return;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+
+    if (dx < 0) onNext();
+    else onPrev();
+
+  }, { passive: true });
+
+}
+
+(function initSwipe() {
+
+  attachSwipe($('schedule-section'),
+    function () {
+      if (calendarYear <= CAL_MIN_Y && calendarMonth === 0) return;
+      changeMonth(-1);
+    },
+    function () { changeMonth(1); });
+
+  attachSwipe($('group-section'),
+    function () { changeGroupWeek(-1); },
+    function () { changeGroupWeek(1); });
+
+  attachSwipe($('vacation-section'),
+    function () { if ($('vac-cal-wrap').style.display !== 'none') changeVacMonth(-1); },
+    function () { if ($('vac-cal-wrap').style.display !== 'none') changeVacMonth(1); });
+
+})();
+
+/* ============ 출근 알람 ============ */
+
+var alarmRingTimer = null;
+
+function alarmKey() {
+  return 'alarmCfg_' + (getCurrentUser().employeeId || '');
+}
+
+function getAlarmCfg() {
+
+  var cfg = { on: false, min: 60 };
+
+  try {
+
+    var raw = LS.getItem(alarmKey());
+
+    if (raw) {
+      var o = JSON.parse(raw);
+      cfg.on = !!o.on;
+      if (o.min >= 10 && o.min <= 180) cfg.min = Math.round(o.min / 10) * 10;
+    }
+
+  } catch (e) {}
+
+  return cfg;
+
+}
+
+function alarmMinText(min) {
+
+  var h = Math.floor(min / 60);
+  var m = min % 60;
+
+  return (h ? h + '시간' + (m ? ' ' + m + '분' : '') : m + '분') + ' 전';
+
+}
+
+function renderAlarmSub() {
+
+  var el = $('alarm-sub');
+
+  if (!el) return;
+
+  var cfg = getAlarmCfg();
+
+  el.textContent = cfg.on ? '※ 출근 ' + alarmMinText(cfg.min) + ' 알람 켜짐' : '※ 꺼짐 · 출근 시간 전에 알려드려요';
+
+}
+
+function findMyMember() {
+
+  if (!snapshotUsable()) return null;
+
+  var raw = snapshot.raw;
+  var myId = getCurrentUser().employeeId;
+
+  for (var i = 0; i < raw.members.length; i++) {
+    if (raw.members[i].employeeId === myId) return raw.members[i];
+  }
+
+  return null;
+
+}
+
+/* 그날 주간·야간 출근이 있으면 출근 정보, 비번·휴무·휴가·X는 null */
+function alarmWorkInfo(dateKey) {
+
+  var mb = findMyMember();
+
+  if (!mb) return null;
+
+  var d = snapDayWithAuto(dateKey, mb, snapshot.raw.dia || [], snapshot.ovMap);
+
+  if (!d || d.overrideType === 'status') return null;
+
+  var type = String(d.type || '').trim();
+
+  if (type !== '주' && type !== '야') return null;
+
+  var sm = parseHM(d.start);
+
+  if (isNaN(sm)) return null;
+
+  return { dia: String(d.dia || ''), type: type, start: String(d.start).trim(), startMin: sm };
+
+}
+
+function alarmStartMs(dateKey, startMin) {
+
+  var p = dateKey.split('-');
+
+  return Date.UTC(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10)) - 9 * 3600000 + startMin * 60000;
+
+}
+
+function alarmClockText(totalMin) {
+
+  var t = ((totalMin % 1440) + 1440) % 1440;
+
+  return pad2(Math.floor(t / 60)) + ':' + pad2(t % 60);
+
+}
+
+function openAlarmSettings() {
+
+  var cfg = getAlarmCfg();
+
+  $('alarm-on').checked = cfg.on;
+  $('alarm-range').value = String((180 - cfg.min) / 10);
+
+  alarmUiUpdate();
+
+  $('alarm-panel').classList.add('active');
+
+}
+
+function closeAlarmSettings() {
+  $('alarm-panel').classList.remove('active');
+}
+
+function alarmUiMin() {
+  return 180 - parseInt($('alarm-range').value, 10) * 10;
+}
+
+function alarmUiUpdate() {
+
+  var min = alarmUiMin();
+  var rng = $('alarm-range');
+  var pct = (parseInt(rng.value, 10) / 17) * 100;
+
+  rng.style.background = 'linear-gradient(to right,#1a73e8 ' + pct + '%,#dbe3ee ' + pct + '%)';
+
+  $('alarm-value').textContent = '출근 ' + alarmMinText(min);
+
+  var on = $('alarm-on').checked;
+
+  rng.disabled = !on;
+  rng.style.opacity = on ? '1' : '.45';
+  $('alarm-value').style.color = on ? '#1a73e8' : '#9aa5b4';
+
+  var t = todayKST();
+  var w = alarmWorkInfo(getDateKey(t.y, t.m, t.d));
+  var pv = $('alarm-preview');
+
+  if (!snapshotUsable()) {
+    pv.textContent = '근무 정보를 불러오는 중입니다.';
+  } else if (!w) {
+    pv.textContent = '오늘은 출근 근무(주간·야간)가 없어 알람이 울리지 않습니다.';
+  } else {
+    pv.innerHTML = '오늘 ' + esc(w.dia || (w.type === '주' ? '주간' : '야간')) + ' · 출근 <b>' + esc(w.start) + '</b><br>' +
+                   '알람 시각 <b>' + alarmClockText(w.startMin - min) + '</b>';
+  }
+
+}
+
+function saveAlarmSettings() {
+
+  var cfg = { on: $('alarm-on').checked, min: alarmUiMin() };
+
+  try {
+    LS.setItem(alarmKey(), JSON.stringify(cfg));
+  } catch (e) {}
+
+  if (cfg.on && 'Notification' in window && Notification.permission === 'default') {
+    try { Notification.requestPermission(); } catch (e) {}
+  }
+
+  closeAlarmSettings();
+  renderAlarmSub();
+
+  showToast(cfg.on ? '출근 ' + alarmMinText(cfg.min) + ' 알람을 켰습니다.' : '출근 알람을 껐습니다.');
+
+}
+
+function alarmBeep() {
+
+  try {
+
+    var AC = window.AudioContext || window.webkitAudioContext;
+
+    if (!AC) return;
+
+    var ctx = new AC();
+
+    for (var i = 0; i < 4; i++) {
+
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      var t0 = ctx.currentTime + i * 0.4;
+
+      osc.type = 'sine';
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.5, t0 + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.32);
+
+    }
+
+    setTimeout(function () { try { ctx.close(); } catch (e) {} }, 2200);
+
+  } catch (e) {}
+
+}
+
+function fireAlarm(w, key, min) {
+
+  var msg = (w.dia || (w.type === '주' ? '주간' : '야간')) + ' · 출근 ' + w.start + ' (' + alarmMinText(min).replace(' 전', '') + ' 전)';
+
+  $('alarm-ring-body').innerHTML = '출근 시간이 다가오고 있어요.<br><b>' + esc(msg) + '</b>';
+  $('alarm-ring-panel').classList.add('active');
+
+  var rounds = 0;
+
+  function ring() {
+    alarmBeep();
+    try { if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400]); } catch (e) {}
+  }
+
+  ring();
+
+  if (alarmRingTimer) clearInterval(alarmRingTimer);
+
+  alarmRingTimer = setInterval(function () {
+    rounds++;
+    if (rounds >= 10) { clearInterval(alarmRingTimer); alarmRingTimer = null; return; }
+    ring();
+  }, 3000);
+
+  try {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('출근 알람', { body: msg });
+    }
+  } catch (e) {}
+
+}
+
+function closeAlarmRing() {
+
+  if (alarmRingTimer) { clearInterval(alarmRingTimer); alarmRingTimer = null; }
+
+  $('alarm-ring-panel').classList.remove('active');
+
+}
+
+function runAlarmCheck() {
+
+  if (!getCurrentUser().token) return;
+
+  var cfg = getAlarmCfg();
+
+  if (!cfg.on || !snapshotUsable()) return;
+
+  var t = todayKST();
+  var nowMs = Date.now();
+  var firedKey = 'alarmFired_' + getCurrentUser().employeeId;
+
+  for (var add = 0; add < 2; add++) {      // 오늘, 내일 새벽 출근까지 확인
+
+    var dt = new Date(Date.UTC(t.y, t.m, t.d + add));
+    var key = getDateKey(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate());
+    var w = alarmWorkInfo(key);
+
+    if (!w) continue;
+
+    var startMs = alarmStartMs(key, w.startMin);
+    var alarmMs = startMs - cfg.min * 60000;
+
+    if (nowMs >= alarmMs && nowMs < startMs) {
+
+      var mark = key + '|' + cfg.min;
+
+      if (LS.getItem(firedKey) === mark) continue;
+
+      try { LS.setItem(firedKey, mark); } catch (e) {}
+
+      fireAlarm(w, key, cfg.min);
+
+      return;
+
+    }
+  }
+
+}
+
+(function initAlarm() {
+
+  setInterval(runAlarmCheck, 20000);
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) runAlarmCheck();
+  });
+
+  setTimeout(runAlarmCheck, 3000);
 
 })();
 
