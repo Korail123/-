@@ -99,21 +99,21 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 .setting-sub{display:block;margin-top:4px;font-size:clamp(9px,2.9vw,12px);color:#8a94a3;line-height:1.4;white-space:nowrap}
 .setting-arrow{font-size:22px;color:#777}
 
-.dia-modal{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center;padding:16px}
+.dia-modal{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center;padding:10px}
 .dia-modal.active{display:flex}
-.dia-dialog{width:100%;max-width:380px;max-height:100%;overflow-y:auto;background:#fff;border-radius:28px;padding:24px 18px 14px;text-align:left}
+.dia-dialog{width:100%;max-width:380px;max-height:100%;overflow-y:auto;background:#fff;border-radius:28px;padding:24px 12px 14px;text-align:left}
 .dia-dialog-title{font-size:18px;font-weight:bold;color:#222;padding:0 4px}
 .dia-dialog-note{margin:8px 4px 16px;font-size:clamp(10px,3.1vw,13px);color:#7a8696;line-height:1.7;white-space:nowrap}
-.dia-list{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
-.dia-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 0;border:2px solid #e3e9f1;border-radius:14px;background:#f0f3f8;cursor:pointer;min-width:0}
+.dia-list{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.dia-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:14px 0;min-height:64px;border:2px solid #e3e9f1;border-radius:14px;background:#f0f3f8;cursor:pointer;min-width:0}
 .dia-item:hover{background:#e6ecf5}
 .dia-item.selected{background:#bfe6fb;border-color:#1a8fd8}
 .dia-seq{font-size:12px;color:#7a8696}
-.dia-number{font-size:16px;font-weight:bold;color:#1a73e8;word-break:break-all}
+.dia-number{font-size:16px;font-weight:bold;color:#1a73e8;white-space:nowrap;letter-spacing:-.4px}
 .dia-item.l-day .dia-number{color:#e5a800}
 .dia-item.l-bi .dia-number{color:#6c757d}
 .dia-item.l-off .dia-number{color:#e53935}
-.dia-item.dia-name .dia-number{font-size:12px}
+.dia-item.dia-name .dia-number{font-size:clamp(10px,3.2vw,13px)}
 .dia-empty{grid-column:1/-1;padding:25px 10px;text-align:center;font-size:13px;color:#888}
 .dia-dialog-actions{display:flex;justify-content:flex-end;gap:28px;padding:26px 12px 8px}
 .dia-text-btn{border:none;background:none;font-size:16px;font-weight:bold;color:#222;cursor:pointer;padding:6px}
@@ -201,11 +201,11 @@ body{padding-bottom:84px}
 .rv-hint{flex:none;text-align:center;color:#9aa5b4;font-size:11px;padding:6px 0 8px}
 
 /* 휴가관리 카드 + 달력 */
-.vac-panel{background:#f0f4f9;border-radius:20px;padding:10px 8px;margin-bottom:12px}
-.vac-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.vac-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:22px 2px;border:2px solid #e3e9f1;border-radius:24px;background:#fff;cursor:pointer;min-width:0;-webkit-tap-highlight-color:transparent}
-.vac-card-name{font-size:clamp(14px,4.6vw,20px);font-weight:bold;white-space:nowrap}
-.vac-card-cnt{font-size:clamp(14px,4.4vw,19px);color:#222;white-space:nowrap}
+.vac-panel{background:#f0f4f9;border-radius:16px;padding:8px 6px;margin-bottom:10px}
+.vac-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.vac-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:11px 2px;border:2px solid #e3e9f1;border-radius:16px;background:#fff;cursor:pointer;min-width:0;-webkit-tap-highlight-color:transparent}
+.vac-card-name{font-size:clamp(12px,3.8vw,16px);font-weight:bold;white-space:nowrap}
+.vac-card-cnt{font-size:clamp(12px,3.6vw,15px);color:#222;white-space:nowrap}
 .vac-hint{margin:14px 4px 4px;text-align:center;font-size:clamp(11px,3.4vw,14px);color:#7a8696;line-height:1.7}
 .vcal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
 .vcell{height:46px;display:flex;align-items:center;justify-content:center;border-top:1px solid #dde4ed}
@@ -240,8 +240,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
 <!-- 로그인 -->
 <div id="login-section" class="page-view active">
-  <h1>철도비서 로그인</h1>
-
   <form id="login-form" onsubmit="return handleLogin(event)">
 
     <div class="input-group">
@@ -544,7 +542,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
     <div class="schedule-edit-input-group">
       <label class="schedule-edit-label" for="schedule-edit-dia">DIA 번호 직접 입력</label>
-      <input id="schedule-edit-dia" class="schedule-edit-input" type="text" inputmode="numeric" maxlength="20" placeholder="예: 12602">
+      <input id="schedule-edit-dia" class="schedule-edit-input" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="20" placeholder="예: 12602 / 12B07">
     </div>
 
     <div class="schedule-edit-input-group">
@@ -2346,7 +2344,7 @@ function saveScheduleEdit() {
   var input = $('schedule-edit-dia');
   var options = $('schedule-edit-options');
 
-  var dia = input ? input.value.trim() : '';
+  var dia = input ? input.value.trim().toUpperCase() : '';   // 영문은 대문자로 저장 (예: 12b07 → 12B07)
 
   var selectedStatus = '';
 
