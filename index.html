@@ -546,7 +546,17 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <input type="range" id="alarm-range" class="alarm-range" min="0" max="17" step="1" value="12" oninput="alarmUiUpdate()">
     <div class="alarm-scale"><span>3시간 전</span><span>10분 전</span></div>
     <div id="alarm-preview" class="alarm-preview"></div>
-    <button type="button" class="btn" style="margin-top:14px;background:#2e7d32" onclick="exportAlarmIcs()">📅 캘린더에 알람 등록 (웹을 꺼도 울림)</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding:0 4px;font-size:14px;font-weight:bold;color:#222">
+      <span>캘린더 등록 기간</span>
+      <select id="alarm-days" onchange="alarmDaysChanged()" style="padding:8px 10px;border:1px solid #cfd8e3;border-radius:8px;font-size:14px;background:#fff">
+        <option value="30">30일</option>
+        <option value="60">60일</option>
+        <option value="90">90일</option>
+        <option value="180">180일</option>
+        <option value="365">1년</option>
+      </select>
+    </div>
+    <button type="button" class="btn" style="margin-top:10px;background:#2e7d32" onclick="exportAlarmIcs()">📅 캘린더에 알람 등록 (웹을 꺼도 울림)</button>
     <div style="display:flex;gap:8px;margin-top:10px">
       <button type="button" class="btn" style="margin:0;background:#f57c00;padding:11px 4px;font-size:13px" onclick="testAlarmRing()">🔔 지금 알람 테스트</button>
       <button type="button" class="btn" style="margin:0;background:#6a1b9a;padding:11px 4px;font-size:13px" onclick="testAlarmIcs()">📅 캘린더 테스트</button>
@@ -556,7 +566,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       ※ 캘린더 테스트: 약 2분 뒤 울리는 일정 파일을 만들어 캘린더 알람을 확인합니다.
     </div>
     <div style="margin:10px 4px 0;font-size:11px;color:#7a8696;line-height:1.5">
-      ※ 폰 캘린더에 앞으로 60일치 출근 일정과 알람이 등록됩니다.<br>
+      ※ 선택한 기간 동안의 출근 일정과 알람이 폰 캘린더에 등록됩니다.<br>
       ※ 근무가 바뀌면 다시 등록해주세요. (같은 날짜 일정은 덮어써집니다)
     </div>
     <div class="dia-dialog-actions">
@@ -2425,8 +2435,8 @@ function saveScheduleEdit() {
     return;
   }
 
-  if (dia && !/^[0-9]+$/.test(dia)) {
-    msg.textContent = 'DIA 번호는 숫자만 입력해주세요.';
+  if (dia && !/^[A-Z0-9]+$/.test(dia)) {
+    msg.textContent = 'DIA 번호는 영문과 숫자만 입력해주세요.';
     return;
   }
 
@@ -3869,9 +3879,22 @@ function alarmClockText(totalMin) {
 
 }
 
+function alarmDaysChanged() {
+
+  try {
+    LS.setItem('alarmDays_' + (getCurrentUser().employeeId || ''), $('alarm-days').value);
+  } catch (e) {}
+
+}
+
 function openAlarmSettings() {
 
   var cfg = getAlarmCfg();
+
+  try {
+    var sd = LS.getItem('alarmDays_' + (getCurrentUser().employeeId || ''));
+    if (sd) $('alarm-days').value = sd;
+  } catch (e) {}
 
   $('alarm-on').checked = cfg.on;
   $('alarm-range').value = String((180 - cfg.min) / 10);
@@ -3933,7 +3956,7 @@ function icsStamp(ms) {
 
 }
 
-function buildAlarmIcs(min) {
+function buildAlarmIcs(min, days) {
 
   var t = todayKST();
   var nowMs = Date.now();
@@ -3948,7 +3971,7 @@ function buildAlarmIcs(min) {
   ];
   var count = 0;
 
-  for (var add = 0; add < 60; add++) {
+  for (var add = 0; add < days; add++) {
 
     var dt = new Date(Date.UTC(t.y, t.m, t.d + add));
     var key = getDateKey(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate());
@@ -4000,10 +4023,11 @@ function exportAlarmIcs() {
   }
 
   var min = alarmUiMin();
-  var ics = buildAlarmIcs(min);
+  var days = parseInt($('alarm-days').value, 10) || 60;
+  var ics = buildAlarmIcs(min, days);
 
   if (!ics.count) {
-    showToast('앞으로 60일 안에 출근 근무가 없습니다.');
+    showToast('앞으로 ' + days + '일 안에 출근 근무가 없습니다.');
     return;
   }
 
