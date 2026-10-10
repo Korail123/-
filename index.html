@@ -1509,7 +1509,7 @@ function dateKeyForSelectedDay() {
 /* NXLogis 열차 조회 주소 (열차번호 + 선택한 날짜 전달) */
 function nxLogisTrainUrl(trainNo) {
   var dateKey = dateKeyForSelectedDay();
-  return 'https://nxlogis.com/?train=' + encodeURIComponent(String(trainNo || '').trim()) +
+  return 'https://nxlogis.kr/index.php?act=SearchTrainInfo&train=' + encodeURIComponent(String(trainNo || '').trim()) +
     '&date=' + encodeURIComponent(dateKey);
 }
 
