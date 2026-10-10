@@ -1020,7 +1020,11 @@ function snapEmptyDay() {
 /* ============ 순환 다이아 목록 · 요일별 적용 다이아 ============ */
 
 /* 근무설정·근무패턴·순환 계산에는 쓰지 않고, 근무표에서만 나타나는 다이아 번호 */
-var EXTRA_DIA_NUMBERS = ['12901', '12902', '12932', '12B07'];
+var EXTRA_DIA_NUMBERS = ['12901', '12902', '12932', '12B07', '12937'];
+
+/* 특정 사용자만 순서 16번(12551)이 12937 다이아로 바뀜 */
+var SPECIAL_SEQ_USERS = ['민현주', '박유진', '이보아', '이주원', '임다빈'];
+var SPECIAL_SEQ_DIA = { '16': '12937' };
 
 /* 순서(seq)별 요일에 따라 실제로 적용되는 다이아 (요일: 0=일 ... 6=토) */
 var WEEKDAY_RULES = {
@@ -1059,8 +1063,41 @@ function rotationOf(list) {
 
 }
 
+/* 이름에 따라 사용자별 대체 다이아를 적용한 순환 목록 */
+function rotationFor(list, name) {
+
+  var rot = rotationOf(list);
+  var nm = String(name || '').trim();
+
+  if (SPECIAL_SEQ_USERS.indexOf(nm) < 0) return rot;
+
+  for (var i = 0; i < rot.length; i++) {
+
+    var target = SPECIAL_SEQ_DIA[String(rot[i].seq)];
+
+    if (!target) continue;
+
+    var repl = findDiaIn(list, target);
+
+    if (!repl) continue;
+
+    var copy = {};
+
+    for (var k in repl) {
+      if (Object.prototype.hasOwnProperty.call(repl, k)) copy[k] = repl[k];
+    }
+
+    copy.seq = rot[i].seq;
+    rot[i] = copy;
+
+  }
+
+  return rot;
+
+}
+
 function rotList() {
-  return rotationOf(diaList);
+  return rotationFor(diaList, getCurrentUser().name);
 }
 
 function findDiaIn(list, number) {
@@ -1107,11 +1144,11 @@ function weekdayText(days) {
 
 }
 
-function snapBaseDay(dateKey, seq, anchor, dia) {
+function snapBaseDay(dateKey, seq, anchor, dia, name) {
 
   if (!seq || !anchor || !dia.length) return snapEmptyDay();
 
-  var rot = rotationOf(dia);
+  var rot = rotationFor(dia, name);
 
   if (!rot.length) return snapEmptyDay();
 
@@ -1137,7 +1174,7 @@ function snapBaseDay(dateKey, seq, anchor, dia) {
 
 }
 
-function snapBuildDay(dateKey, seq, anchor, dia, ov) {
+function snapBuildDay(dateKey, seq, anchor, dia, ov, name) {
 
   var d;
 
@@ -1179,7 +1216,7 @@ function snapBuildDay(dateKey, seq, anchor, dia, ov) {
 
   } else {
 
-    d = snapBaseDay(dateKey, seq, anchor, dia);
+    d = snapBaseDay(dateKey, seq, anchor, dia, name);
     d.manual = false;
     d.overrideType = '';
     d.status = '';
@@ -1205,7 +1242,7 @@ function snapShiftKey(key, delta) {
 /* 하루치 근무 계산. 전날이 '야간 + 휴가'이고 오늘이 비번(직접 변경 없음)이면 비번도 같은 휴가로 처리 */
 function snapDayWithAuto(dateKey, mb, dia, ovMap) {
 
-  var d = snapBuildDay(dateKey, mb.seq, mb.anchor, dia, ovMap[mb.employeeId + '|' + dateKey]);
+  var d = snapBuildDay(dateKey, mb.seq, mb.anchor, dia, ovMap[mb.employeeId + '|' + dateKey], mb.name);
 
   if (!d.manual && String(d.type || '').trim() === '비') {
 
@@ -1214,7 +1251,7 @@ function snapDayWithAuto(dateKey, mb, dia, ovMap) {
 
     if (po && po.type === 'status' && po.status) {
 
-      var pb = snapBaseDay(pk, mb.seq, mb.anchor, dia);
+      var pb = snapBaseDay(pk, mb.seq, mb.anchor, dia, mb.name);
 
       if (String(pb.type || '').trim() === '야') {
 
@@ -1267,7 +1304,7 @@ function computeLeaveUsage(year) {
   }
 
   function baseType(k) {
-    return String(snapBaseDay(k, mb.seq, mb.anchor, dia).type || '').trim();
+    return String(snapBaseDay(k, mb.seq, mb.anchor, dia, mb.name).type || '').trim();
   }
 
   for (var n = 0; n < keys.length; n++) {
@@ -1816,7 +1853,7 @@ var DIA_IMAGE_FILES = {
   '12551':'dia_12551.png', '12581':'dia_12581.png',
   '12601':'dia_12601.png', '12602':'dia_12602.png', '12702':'dia_12702.png',
   '12H01':'dia_12H01.png',
-  '12901':'dia_12901.png', '12902':'dia_12902.png', '12932':'dia_12932.png', '12B07':'dia_12B07.png'
+  '12901':'dia_12901.png', '12902':'dia_12902.png', '12932':'dia_12932.png', '12B07':'dia_12B07.png', '12937':'dia_12937.png'
 };
 
 function dateKeyForSelectedDay() {
