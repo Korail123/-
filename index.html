@@ -1043,9 +1043,14 @@ var WEEKDAY_RULES = {
   ]
 };
 
+/* 근무설정·근무패턴·순환에서 뺄 순서 번호 */
+var HIDDEN_SEQS = ['28', '29'];
+
 function isExtraDia(it) {
 
-  if (String(it.seq == null ? '' : it.seq).trim() === '') return true;
+  var sq = String(it.seq == null ? '' : it.seq).trim();
+
+  if (sq === '' || HIDDEN_SEQS.indexOf(sq) >= 0) return true;
 
   return EXTRA_DIA_NUMBERS.indexOf(String(it.dia || '').trim().toUpperCase()) >= 0;
 
