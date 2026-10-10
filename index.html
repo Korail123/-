@@ -8,8 +8,8 @@
 <title>철도비서</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
-body{background:#f7f9fa;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
-.container{width:100%;max-width:400px;background:#fff;padding:25px 20px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.05);text-align:center}
+body{background:#f7f9fa;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:8px 3px}
+.container{width:100%;max-width:640px;background:#fff;padding:18px 6px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.05);text-align:center}
 .container.wide{max-width:720px}
 
 /* 상단바 레아아웃 및 시계 스타일 수정 */
@@ -51,8 +51,8 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 .sch-nav{flex:none;width:48px;height:48px;border:none;border-radius:16px;background:#f1f4f8;color:#5b6b82;font-size:16px;cursor:pointer}
 .sch-nav:hover{background:#e3e9f1}
 .sch-nav:disabled{color:#c8c8c8;cursor:not-allowed}
-.sch-title{flex:1;font-size:clamp(14px,4.6vw,18px);font-weight:bold;color:#333;cursor:pointer;white-space:nowrap}
-.sch-card{background:#f4f7fb;border-radius:22px;padding:14px 8px;text-align:left}
+.sch-title{flex:1;text-align:center;font-size:clamp(14px,4.6vw,18px);font-weight:bold;color:#333;cursor:pointer;white-space:nowrap}
+.sch-card{background:#f4f7fb;border-radius:18px;padding:12px 2px;text-align:left}
 .sch-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;margin-bottom:6px}
 .wd{font-size:13px;font-weight:bold;color:#8a94a3;padding:4px 0}
 .wd.sun{color:#e53935}
@@ -74,7 +74,7 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 .cell.today{background:#bfe6fb;border-radius:14px;border-top-color:transparent}
 .cell.selected{background:#dfe5ee;border-radius:14px;border-top-color:transparent}
 .sch-note{margin:10px 4px 0;font-size:clamp(9px,2.9vw,12px);color:#8a94a3;line-height:1.7;text-align:left;white-space:nowrap}
-.sch-detail{margin-top:14px;padding:18px 16px;margin-bottom:14px}
+.sch-detail{margin-top:14px;padding:14px 8px;margin-bottom:14px}
 .dd-date{font-size:14px;color:#8a94a3}
 .dd-main{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px}
 .dd-dia{font-size:clamp(14px,5vw,19px);font-weight:bold;color:#1a73e8;white-space:nowrap}
@@ -83,8 +83,8 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 .dd-dia.t-off{color:#e53935}
 .dd-tag{font-size:clamp(12px,3.9vw,15px);font-weight:bold;color:#333;white-space:nowrap}
 .dd-row{margin-top:5px;font-size:clamp(11px,3.9vw,16px);white-space:nowrap;font-weight:normal;letter-spacing:normal;line-height:1.4;color:#444;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
-.dd-chip{display:inline-block;padding:0 8px;margin-left:4px;border-radius:12px;background:#bfe6fb;color:#1a73e8;font-weight:normal;font-size:clamp(11px,3.9vw,16px);letter-spacing:normal;line-height:1.4;vertical-align:middle;white-space:nowrap;font-family:inherit;text-decoration:none;cursor:pointer}.dd-chip:hover{background:#9dd8f7;text-decoration:underline}.dd-dia-image-wrap{margin-top:14px;padding:12px;border:1px solid #e1e8ef;border-radius:12px;background:#fff;text-align:center}.dd-dia-image-title{font-size:13px;font-weight:bold;color:#4a5568;margin-bottom:10px}.dd-dia-image{display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;margin:0 auto}.dd-dia-image-missing{font-size:clamp(10px,3.2vw,13px);color:#7a8696;line-height:1.6;white-space:nowrap}
-.dd-route{margin-top:16px;padding:14px;border:1px solid #d8e8f8;border-radius:12px;background:#f6fbff;text-align:left}
+.dd-chip{display:inline-block;padding:0 8px;margin-left:4px;border-radius:12px;background:#bfe6fb;color:#1a73e8;font-weight:normal;font-size:clamp(11px,3.9vw,16px);letter-spacing:normal;line-height:1.4;vertical-align:middle;white-space:nowrap;font-family:inherit;text-decoration:none;cursor:pointer}.dd-chip:hover{background:#9dd8f7;text-decoration:underline}.dd-dia-image-wrap{margin-top:8px;padding:6px;border:1px solid #e1e8ef;border-radius:12px;background:#fff;text-align:center}.dd-dia-image-title{font-size:13px;font-weight:bold;color:#4a5568;margin-bottom:10px}.dd-dia-image{cursor:zoom-in;display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;margin:0 auto}.dd-dia-image-missing{font-size:clamp(10px,3.2vw,13px);color:#7a8696;line-height:1.6;white-space:nowrap}
+.dd-route{margin-top:16px;padding:6px;border:1px solid #d8e8f8;border-radius:12px;background:#f6fbff;text-align:left}
 .dd-route-title{font-size:14px;font-weight:bold;color:#245b89;margin-bottom:10px}
 .dd-route-line{font-size:14px;line-height:1.8;color:#34495e}
 .dd-route-label{display:inline-block;min-width:88px;color:#718096}
@@ -167,11 +167,38 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 
 /* 하단 고정 메뉴 */
 body{padding-bottom:84px}
-.bottom-nav{display:none;position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:100%;max-width:400px;z-index:90;background:#fff;border-top:1px solid #e3e9f1;box-shadow:0 -2px 10px rgba(0,0,0,.06);padding:6px 2px calc(6px + env(safe-area-inset-bottom))}
+.bottom-nav{display:none;position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:100%;max-width:640px;z-index:90;background:#fff;border-top:1px solid #e3e9f1;box-shadow:0 -2px 10px rgba(0,0,0,.06);padding:6px 2px calc(6px + env(safe-area-inset-bottom))}
 .bottom-nav.show{display:flex}
 .bn-btn{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 0;border:none;background:none;cursor:pointer;color:#8a94a3;font-size:11px;font-weight:bold;white-space:nowrap}
 .bn-btn .bn-ico{font-size:19px;line-height:1}
 .bn-btn.active{color:#1a73e8}
+
+/* 근무그룹 화살표: 검정색, 회색 네모칸 없음 */
+.sch-nav.plain{background:none;color:#000;width:40px;height:44px;border-radius:8px;font-size:20px;font-weight:bold;-webkit-tap-highlight-color:transparent}
+.sch-nav.plain:hover,.sch-nav.plain:active,.sch-nav.plain:focus{background:none;color:#000;outline:none}
+
+/* 근무패턴 다이아 정보 팝업 */
+.dia-item.clickable{cursor:pointer}
+.pi-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:10px 4px;border-bottom:1px solid #eef1f5;font-size:15px;color:#333}
+.pi-row b{font-size:16px;color:#222;text-align:right}
+.pi-row span.pi-k{color:#7a8696;white-space:nowrap}
+.pi-route{margin-top:14px;padding:6px;border:1px solid #e1e8ef;border-radius:12px;background:#fff;text-align:center}
+.pi-route-cap{font-size:12px;color:#7a8696;margin:2px 0 6px}
+.pi-route img{display:block;width:100%;height:auto;max-height:50vh;object-fit:contain;margin:0 auto;cursor:zoom-in}
+.pi-none{font-size:13px;color:#7a8696;padding:10px 0}
+
+/* 행로표 확대/축소 팝업 */
+.route-viewer{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.94);z-index:300;flex-direction:column}
+.route-viewer.active{display:flex}
+.rv-bar{display:flex;align-items:center;gap:6px;padding:8px 8px calc(8px);color:#fff;flex:none}
+.rv-title{flex:1;min-width:0;font-size:14px;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rv-pct{min-width:48px;text-align:center;font-size:12px;color:#cfd6df}
+.rv-btn{min-width:40px;height:40px;padding:0 8px;border:none;border-radius:10px;background:rgba(255,255,255,.2);color:#fff;font-size:20px;font-weight:bold;cursor:pointer}
+.rv-btn:active{background:rgba(255,255,255,.35)}
+.rv-scroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;background:#111}
+.rv-scroll img{display:block;width:100%;max-width:none;height:auto;margin:0 auto;-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
+.rv-msg{display:none;color:#ddd;font-size:14px;text-align:center;padding:40px 16px}
+.rv-hint{flex:none;text-align:center;color:#9aa5b4;font-size:11px;padding:6px 0 8px}
 </style>
 </head>
 
@@ -331,9 +358,9 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <h1>👥 근무그룹</h1>
 
   <div class="sch-head" style="margin-bottom:10px;">
-    <button type="button" class="sch-nav" onclick="changeGroupWeek(-1)">◀</button>
+    <button type="button" class="sch-nav plain" onclick="changeGroupWeek(-1)">◀&#xFE0E;</button>
     <div id="group-calendar-title" class="sch-title" style="font-size:clamp(11px,3.4vw,15px);" onclick="goGroupThisWeek()"></div>
-    <button type="button" class="sch-nav" onclick="changeGroupWeek(1)">▶</button>
+    <button type="button" class="sch-nav plain" onclick="changeGroupWeek(1)">▶&#xFE0E;</button>
   </div>
 
   <div id="group-status" class="status-message" style="margin-top:0"></div>
@@ -366,7 +393,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   <div id="pattern-status" class="status-message" style="margin-top:0"></div>
 
-  <div class="current-dia-label" style="text-align:left;margin:0 4px 8px">전체 순서표 (파란 칸이 오늘)</div>
+  <div class="current-dia-label" style="text-align:left;margin:0 4px 8px">전체 순서표 (파란 칸이 오늘 · 칸을 누르면 다이아 정보)</div>
 
   <div id="pattern-list" class="dia-list" style="margin-bottom:18px"></div>
 
@@ -443,6 +470,17 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
 </div>
 
+<!-- 근무패턴 다이아 정보 팝업 -->
+<div id="pattern-info-panel" class="dia-modal" style="z-index:110" onclick="if(event.target===this)closePatternInfo()">
+  <div class="dia-dialog">
+    <div class="dia-dialog-title">다이아 정보</div>
+    <div id="pattern-info-body" style="margin-top:8px"></div>
+    <div class="dia-dialog-actions" style="padding-top:18px">
+      <button type="button" class="dia-text-btn" onclick="closePatternInfo()">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- 근무표 날짜 변경 팝업 -->
 <div id="schedule-edit-panel" class="schedule-edit-modal" onclick="if(event.target===this)closeScheduleEdit()">
 
@@ -493,6 +531,23 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <button type="button" class="bn-btn" data-sec="vacation-section" onclick="openVacation()"><span class="bn-ico">🏖️</span>휴가관리</button>
   <button type="button" class="bn-btn" data-sec="settings-section" onclick="openSettings()"><span class="bn-ico">⚙️</span>환경설정</button>
 </nav>
+
+<!-- 행로표 확대/축소 팝업 -->
+<div id="route-viewer" class="route-viewer">
+  <div class="rv-bar">
+    <div id="rv-title" class="rv-title">행로표</div>
+    <button type="button" class="rv-btn" onclick="rvStep(-1)" aria-label="축소">−</button>
+    <div id="rv-pct" class="rv-pct">100%</div>
+    <button type="button" class="rv-btn" onclick="rvStep(1)" aria-label="확대">＋</button>
+    <button type="button" class="rv-btn" onclick="rvReset()" aria-label="원래 크기" style="font-size:13px">원본</button>
+    <button type="button" class="rv-btn" onclick="closeRouteViewer()" aria-label="닫기">✕</button>
+  </div>
+  <div id="rv-scroll" class="rv-scroll">
+    <img id="rv-img" alt="행로표">
+    <div id="rv-msg" class="rv-msg">이미지를 불러오지 못했습니다.</div>
+  </div>
+  <div class="rv-hint">두 손가락으로 확대/축소 · 두 번 누르면 확대 · 드래그로 이동</div>
+</div>
 
 <script>
 
@@ -1684,6 +1739,239 @@ function openNxLogis(trainNo) {
   return false;
 }
 
+/* ============ 행로표 확대/축소 팝업 ============ */
+
+function diaImageUrl(diaNo) {
+  var f = DIA_IMAGE_FILES[String(diaNo || '').trim().toUpperCase()];
+  return f ? DIA_IMAGE_BASE + encodeURIComponent(f) : '';
+}
+
+var rvZoom = 1;
+var RV_MIN = 1;
+var RV_MAX = 6;
+
+function rvUpdateLabel() {
+  var el = $('rv-pct');
+  if (el) el.textContent = Math.round(rvZoom * 100) + '%';
+}
+
+/* cx, cy: 화면 좌표(기준점). 생략하면 보이는 영역의 가운데 */
+function rvSetZoom(z, cx, cy) {
+
+  var sc = $('rv-scroll');
+  var img = $('rv-img');
+
+  if (!sc || !img) return;
+
+  z = Math.max(RV_MIN, Math.min(RV_MAX, z));
+
+  var rect = sc.getBoundingClientRect();
+
+  if (cx == null) cx = rect.left + rect.width / 2;
+  if (cy == null) cy = rect.top + rect.height / 2;
+
+  var oldW = img.offsetWidth || 1;
+  var oldH = img.offsetHeight || 1;
+
+  var fx = (sc.scrollLeft + cx - rect.left) / oldW;
+  var fy = (sc.scrollTop + cy - rect.top) / oldH;
+
+  rvZoom = z;
+  img.style.width = (z * 100) + '%';
+
+  var newW = img.offsetWidth;
+  var newH = img.offsetHeight;
+
+  sc.scrollLeft = fx * newW - (cx - rect.left);
+  sc.scrollTop = fy * newH - (cy - rect.top);
+
+  rvUpdateLabel();
+
+}
+
+function rvStep(dir) {
+  rvSetZoom(rvZoom * (dir > 0 ? 1.4 : 1 / 1.4));
+}
+
+function rvReset() {
+
+  rvSetZoom(1);
+
+  var sc = $('rv-scroll');
+
+  if (sc) {
+    sc.scrollLeft = 0;
+    sc.scrollTop = 0;
+  }
+
+}
+
+function openRouteViewer(diaNo) {
+
+  var url = diaImageUrl(diaNo);
+  var panel = $('route-viewer');
+  var img = $('rv-img');
+  var msg = $('rv-msg');
+
+  if (!panel || !img) return;
+
+  if (!url) {
+    showToast('행로표 이미지가 없습니다.');
+    return;
+  }
+
+  $('rv-title').textContent = 'DIA ' + diaNo + ' 행로표';
+
+  msg.style.display = 'none';
+  img.style.display = 'block';
+  img.onerror = function () {
+    img.style.display = 'none';
+    msg.style.display = 'block';
+  };
+
+  rvZoom = 1;
+  img.style.width = '100%';
+  img.src = url;
+
+  rvUpdateLabel();
+
+  panel.classList.add('active');
+  document.body.style.overflow = 'hidden';
+
+  var sc = $('rv-scroll');
+
+  sc.scrollLeft = 0;
+  sc.scrollTop = 0;
+
+}
+
+function closeRouteViewer() {
+
+  var panel = $('route-viewer');
+
+  if (panel) panel.classList.remove('active');
+
+  document.body.style.overflow = '';
+
+}
+
+(function initRouteViewer() {
+
+  var sc = $('rv-scroll');
+
+  if (!sc) return;
+
+  var pinchD0 = 0;
+  var pinchZ0 = 1;
+  var lastTap = 0;
+  var lastTapX = 0;
+  var lastTapY = 0;
+  var moved = false;
+
+  function dist(t) {
+    var dx = t[0].clientX - t[1].clientX;
+    var dy = t[0].clientY - t[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  sc.addEventListener('touchstart', function (e) {
+
+    moved = false;
+
+    if (e.touches.length === 2) {
+      pinchD0 = dist(e.touches);
+      pinchZ0 = rvZoom;
+    }
+
+  }, { passive: true });
+
+  sc.addEventListener('touchmove', function (e) {
+
+    moved = true;
+
+    if (e.touches.length === 2 && pinchD0 > 0) {
+
+      e.preventDefault();
+
+      var cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      var cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+
+      rvSetZoom(pinchZ0 * dist(e.touches) / pinchD0, cx, cy);
+
+    }
+
+  }, { passive: false });
+
+  sc.addEventListener('touchend', function (e) {
+
+    if (e.touches.length < 2) pinchD0 = 0;
+
+    /* 두 번 연속 누르면 확대 ↔ 원래 크기 */
+    if (e.touches.length === 0 && !moved && e.changedTouches.length === 1) {
+
+      var now = Date.now();
+      var x = e.changedTouches[0].clientX;
+      var y = e.changedTouches[0].clientY;
+
+      if (now - lastTap < 320 && Math.abs(x - lastTapX) < 30 && Math.abs(y - lastTapY) < 30) {
+
+        if (rvZoom > 1.05) rvReset();
+        else rvSetZoom(2.5, x, y);
+
+        lastTap = 0;
+
+      } else {
+
+        lastTap = now;
+        lastTapX = x;
+        lastTapY = y;
+
+      }
+    }
+
+  }, { passive: true });
+
+  /* PC: 휠로 확대/축소, 드래그로 이동, 더블클릭 */
+  sc.addEventListener('wheel', function (e) {
+
+    e.preventDefault();
+
+    rvSetZoom(rvZoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY);
+
+  }, { passive: false });
+
+  var drag = null;
+
+  sc.addEventListener('mousedown', function (e) {
+    drag = { x: e.clientX, y: e.clientY, l: sc.scrollLeft, t: sc.scrollTop };
+  });
+
+  window.addEventListener('mousemove', function (e) {
+
+    if (!drag) return;
+
+    sc.scrollLeft = drag.l - (e.clientX - drag.x);
+    sc.scrollTop = drag.t - (e.clientY - drag.y);
+
+  });
+
+  window.addEventListener('mouseup', function () {
+    drag = null;
+  });
+
+  sc.addEventListener('dblclick', function (e) {
+
+    if (rvZoom > 1.05) rvReset();
+    else rvSetZoom(2.5, e.clientX, e.clientY);
+
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeRouteViewer();
+  });
+
+})();
+
 function renderDayDetail() {
 
   var detail = $('day-detail');
@@ -1742,7 +2030,9 @@ function renderDayDetail() {
     var diaImageFile = DIA_IMAGE_FILES[diaNo.toUpperCase()];
     if (diaImageFile) {
       html += '<div class="dd-dia-image-wrap">' +
+        '<div class="dd-dia-image-title">행로표 (누르면 확대/축소)</div>' +
         '<img class="dd-dia-image" src="' + DIA_IMAGE_BASE + encodeURIComponent(diaImageFile) + '" alt="DIA ' + esc(diaNo) + ' 행로표" ' +
+        'data-dia="' + esc(diaNo) + '" onclick="openRouteViewer(this.getAttribute(\'data-dia\'))" ' +
         'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
         '<div class="dd-dia-image-missing" style="display:none">이미지를 불러오지 못했습니다.</div></div>';
     } else {
@@ -2411,7 +2701,7 @@ function renderPattern() {
     var tone = toneOf(it.type);
     var lc = tone === 'day' ? ' l-day' : tone === 'bi' ? ' l-bi' : tone === 'off' ? ' l-off' : '';
 
-    html += '<div class="dia-item dia-name' + lc + (i === todayIdx ? ' selected' : '') + '" style="cursor:default">' +
+    html += '<div class="dia-item dia-name clickable' + lc + (i === todayIdx ? ' selected' : '') + '" onclick="openPatternInfo(' + i + ')">' +
             '<span class="dia-seq">' + esc(it.seq) + '</span>' +
             '<span class="dia-number">' + esc(it.dia || it.type || '-') + '</span></div>';
 
@@ -2422,6 +2712,108 @@ function renderPattern() {
   if (todayIdx < 0) {
     $('pattern-status').textContent = '환경설정에서 근무를 먼저 설정하세요.';
   }
+
+}
+
+/* ---- 근무패턴: 다이아 정보 팝업 ---- */
+
+function parseHM(v) {
+
+  var t = String(v == null ? '' : v);
+  var m = t.match(/(\d{1,2})\s*:\s*(\d{2})/);
+
+  if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+
+  m = t.match(/^\s*(\d{2})(\d{2})\s*$/);
+
+  if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+
+  return NaN;
+
+}
+
+function workDurationText(start, end) {
+
+  var a = parseHM(start);
+  var b = parseHM(end);
+
+  if (isNaN(a) || isNaN(b)) return '';
+
+  var diff = b - a;
+
+  if (diff <= 0) diff += 1440;   // 자정을 넘기는 근무
+
+  var h = Math.floor(diff / 60);
+  var mm = diff % 60;
+
+  return h + '시간' + (mm ? ' ' + mm + '분' : '');
+
+}
+
+function openPatternInfo(i) {
+
+  var it = diaList[i];
+  var panel = $('pattern-info-panel');
+  var body = $('pattern-info-body');
+
+  if (!it || !panel || !body) return;
+
+  var type = String(it.type || '').trim();
+  var diaNo = String(it.dia || '').trim();
+  var kindMap = { '주': '주간', '야': '야간', '비': '비번', '휴': '휴무' };
+  var kind = kindMap[type] || type || '-';
+
+  var tone = toneOf(type);
+  var color = tone === 'day' ? '#e5a800' : tone === 'off' ? '#e53935' : '#1a73e8';
+
+  var start = String(it.start || '').trim();
+  var end = String(it.end || '').trim();
+  var dur = workDurationText(start, end);
+
+  function row(k, v) {
+    return '<div class="pi-row"><span class="pi-k">' + k + '</span><b>' + esc(v || '-') + '</b></div>';
+  }
+
+  var html = '';
+
+  html += '<div class="pi-row"><span class="pi-k">다이아 이름</span><b style="color:' + color + '">' +
+          esc(diaNo || kind) + '</b></div>';
+  html += row('근무 구분', kind);
+  html += row('출근 시간', start);
+  html += row('퇴근 시간', end);
+  html += row('근무 시간', dur);
+
+  if (diaNo) {
+
+    var url = diaImageUrl(diaNo);
+
+    if (url) {
+
+      html += '<div class="pi-route">' +
+        '<div class="pi-route-cap">행로표 (누르면 확대/축소)</div>' +
+        '<img src="' + url + '" alt="DIA ' + esc(diaNo) + ' 행로표" data-dia="' + esc(diaNo) + '" ' +
+        'onclick="openRouteViewer(this.getAttribute(\'data-dia\'))" ' +
+        'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
+        '<div class="pi-none" style="display:none">이미지를 불러오지 못했습니다.</div></div>';
+
+    } else {
+
+      html += '<div class="pi-route"><div class="pi-none">행로표 이미지가 없습니다.</div></div>';
+
+    }
+  }
+
+  body.innerHTML = html;
+
+  panel.classList.add('active');
+
+}
+
+function closePatternInfo() {
+
+  var panel = $('pattern-info-panel');
+
+  if (panel) panel.classList.remove('active');
 
 }
 
