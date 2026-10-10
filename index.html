@@ -77,13 +77,13 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 .sch-detail{margin-top:14px;padding:18px 16px;margin-bottom:14px}
 .dd-date{font-size:14px;color:#8a94a3}
 .dd-main{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px}
-.dd-dia{font-size:22px;font-weight:bold;color:#1a73e8}
+.dd-dia{font-size:19px;font-weight:bold;color:#1a73e8}
 .dd-dia.t-day{color:#e5a800}
 .dd-dia.t-bi{color:#6c757d}
 .dd-dia.t-off{color:#e53935}
 .dd-tag{font-size:15px;font-weight:bold;color:#333}
-.dd-row{margin-top:12px;font-size:16px;color:#444}
-.dd-chip{display:inline-block;padding:6px 12px;margin-left:6px;border-radius:12px;background:#bfe6fb;color:#1a73e8;font-weight:bold;font-size:15px;text-decoration:none;cursor:pointer}.dd-chip:hover{background:#9dd8f7;text-decoration:underline}.dd-dia-image-wrap{margin-top:14px;padding:12px;border:1px solid #e1e8ef;border-radius:12px;background:#fff;text-align:center}.dd-dia-image-title{font-size:13px;font-weight:bold;color:#4a5568;margin-bottom:10px}.dd-dia-image{display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;margin:0 auto}.dd-dia-image-missing{font-size:13px;color:#7a8696;line-height:1.6}
+.dd-row{margin-top:12px;font-size:16px;font-weight:normal;letter-spacing:normal;line-height:1.6;color:#444;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
+.dd-chip{display:inline-block;padding:2px 12px;margin-left:6px;border-radius:12px;background:#bfe6fb;color:#1a73e8;font-weight:normal;font-size:16px;letter-spacing:normal;line-height:1.6;font-family:inherit;text-decoration:none;cursor:pointer}.dd-chip:hover{background:#9dd8f7;text-decoration:underline}.dd-dia-image-wrap{margin-top:14px;padding:12px;border:1px solid #e1e8ef;border-radius:12px;background:#fff;text-align:center}.dd-dia-image-title{font-size:13px;font-weight:bold;color:#4a5568;margin-bottom:10px}.dd-dia-image{display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;margin:0 auto}.dd-dia-image-missing{font-size:13px;color:#7a8696;line-height:1.6}
 .dd-route{margin-top:16px;padding:14px;border:1px solid #d8e8f8;border-radius:12px;background:#f6fbff;text-align:left}
 .dd-route-title{font-size:14px;font-weight:bold;color:#245b89;margin-bottom:10px}
 .dd-route-line{font-size:14px;line-height:1.8;color:#34495e}
@@ -1570,7 +1570,7 @@ function renderDayDetail() {
   if (startTime) html += '<div class="dd-row">⏰ 출근 시간 : ' + esc(startTime) + '</div>';
   if (endTime) html += '<div class="dd-row">🏠 퇴근 시간 : ' + esc(endTime) + '</div>';
   if (train1 || train2) {
-    html += '<div class="dd-row">🚂 <b>열차 번호 :</b>' +
+    html += '<div class="dd-row">🚂 열차 번호 :' +
             (train1 ? trainLink(train1) : '') +
             (train2 ? trainLink(train2) : '') + '</div>';
   }
@@ -1579,15 +1579,6 @@ function renderDayDetail() {
   if (!isStatus && diaNo) {
     html += '<div class="dd-route">';
     html += '<div class="dd-route-title">🛤️ 행로표 · DIA 정보</div>';
-    html += '<div class="dd-route-line"><span class="dd-route-label">DIA 번호</span><b>' + esc(diaNo) + '</b></div>';
-    if (workType) html += '<div class="dd-route-line"><span class="dd-route-label">근무 구분</span>' + esc(workType) + '</div>';
-    if (startTime) html += '<div class="dd-route-line"><span class="dd-route-label">출근 시간</span>' + esc(startTime) + '</div>';
-    if (endTime) html += '<div class="dd-route-line"><span class="dd-route-label">퇴근 시간</span>' + esc(endTime) + '</div>';
-    if (train1) html += '<div class="dd-route-line"><span class="dd-route-label">열차 1</span>' + trainLink(train1) + '</div>';
-    if (train2) html += '<div class="dd-route-line"><span class="dd-route-label">열차 2</span>' + trainLink(train2) + '</div>';
-    if (!startTime && !endTime && !train1 && !train2) {
-      html += '<div class="dd-route-line">이 DIA의 상세 행로 정보가 등록되어 있지 않습니다.</div>';
-    }
     var diaImageFile = DIA_IMAGE_FILES[diaNo.toUpperCase()];
     if (diaImageFile) {
       html += '<div class="dd-dia-image-wrap"><div class="dd-dia-image-title">🖼️ DIA ' + esc(diaNo) + ' 행로표 이미지</div>' +
