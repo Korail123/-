@@ -157,7 +157,9 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 .group-table th.g-today,.group-table td.g-today{background:#bfe6fb}
 .group-table tr.me td.name-col{background:#e8f3ff}
 .group-table th.g-hd{cursor:pointer}
-.group-table th.g-sel,.group-table td.g-sel{box-shadow:inset 0 0 0 2px #1a8fd8}
+.group-table th.g-sel,.group-table td.g-sel{box-shadow:inset 2px 0 0 #1a8fd8,inset -2px 0 0 #1a8fd8}
+.group-table th.g-sel-t{box-shadow:inset 2px 0 0 #1a8fd8,inset -2px 0 0 #1a8fd8,inset 0 2px 0 #1a8fd8}
+.group-table td.g-sel-b{box-shadow:inset 2px 0 0 #1a8fd8,inset -2px 0 0 #1a8fd8,inset 0 -2px 0 #1a8fd8}
 .group-table th{line-height:1.5}
 .group-table td{font-size:15px}
 .group-table tfoot td{background:#fff7e6;color:#c2410c;font-size:13px;border-top:2px solid #f5c26b}
@@ -278,7 +280,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <button type="button" class="menu-btn" onclick="openSchedule()">📅 근무표</button>
     <button type="button" class="menu-btn" onclick="openGroupSection()">👥 근무그룹</button>
     <button type="button" class="menu-btn" onclick="openPattern()">🔄 근무패턴</button>
-    <button type="button" class="menu-btn" onclick="switchSection('vacation-section')">🏖️ 휴가관리</button>
+    <button type="button" class="menu-btn" onclick="openVacation()">🏖️ 휴가관리</button>
     <button type="button" class="menu-btn" onclick="openSettings()">⚙️ 환경설정</button>
   </div>
 
@@ -377,7 +379,17 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   <h1>🏖️ 휴가관리</h1>
 
-  <div class="sub-content">연차·휴가 신청 및 잔여 일수 관리 화면</div>
+  <div class="sch-head" style="margin-bottom:10px;">
+    <button type="button" class="sch-nav" onclick="changeVacYear(-1)">◀</button>
+    <div id="vac-title" class="sch-title"></div>
+    <button type="button" class="sch-nav" onclick="changeVacYear(1)">▶</button>
+  </div>
+
+  <div id="vac-status" class="status-message" style="margin-top:0"></div>
+
+  <div id="vac-list" class="current-dia-card" style="margin-top:0"></div>
+
+  <div class="sch-note" style="margin-bottom:14px">※ 야간+비번은 1일, 야간·주간 동일 휴가는 3일</div>
 
   <button class="back-btn" onclick="switchSection('main-section')">돌아가기</button>
 
@@ -478,7 +490,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <button type="button" class="bn-btn" data-sec="schedule-section" onclick="openSchedule()"><span class="bn-ico">📅</span>근무표</button>
   <button type="button" class="bn-btn" data-sec="group-section" onclick="openGroupSection()"><span class="bn-ico">👥</span>근무그룹</button>
   <button type="button" class="bn-btn" data-sec="pattern-section" onclick="openPattern()"><span class="bn-ico">🔄</span>근무패턴</button>
-  <button type="button" class="bn-btn" data-sec="vacation-section" onclick="switchSection('vacation-section')"><span class="bn-ico">🏖️</span>휴가관리</button>
+  <button type="button" class="bn-btn" data-sec="vacation-section" onclick="openVacation()"><span class="bn-ico">🏖️</span>휴가관리</button>
   <button type="button" class="bn-btn" data-sec="settings-section" onclick="openSettings()"><span class="bn-ico">⚙️</span>환경설정</button>
 </nav>
 
@@ -884,6 +896,7 @@ function onSnapshotUpdated() {
 
   if (active('schedule-section')) loadMyMonth();
   if (active('group-section')) loadGroupSchedule(false);
+  if (active('vacation-section')) renderVacation();
 
 }
 
@@ -994,6 +1007,121 @@ function snapBuildDay(dateKey, seq, anchor, dia, ov) {
 
 }
 
+function snapShiftKey(key, delta) {
+
+  var dt = new Date(dateKeyToNum(key) + delta * 86400000);
+
+  return dt.getUTCFullYear() + '-' + pad2(dt.getUTCMonth() + 1) + '-' + pad2(dt.getUTCDate());
+
+}
+
+/* 하루치 근무 계산. 전날이 '야간 + 휴가'이고 오늘이 비번(직접 변경 없음)이면 비번도 같은 휴가로 처리 */
+function snapDayWithAuto(dateKey, mb, dia, ovMap) {
+
+  var d = snapBuildDay(dateKey, mb.seq, mb.anchor, dia, ovMap[mb.employeeId + '|' + dateKey]);
+
+  if (!d.manual && String(d.type || '').trim() === '비') {
+
+    var pk = snapShiftKey(dateKey, -1);
+    var po = ovMap[mb.employeeId + '|' + pk];
+
+    if (po && po.type === 'status' && po.status) {
+
+      var pb = snapBaseDay(pk, mb.seq, mb.anchor, dia);
+
+      if (String(pb.type || '').trim() === '야') {
+
+        d = snapEmptyDay();
+        d.type = po.status;
+        d.manual = false;
+        d.overrideType = 'status';
+        d.status = po.status;
+        d.auto = true;
+        d.updatedAt = po.updatedAt || '';
+        d.label = po.status;
+
+      }
+    }
+  }
+
+  return d;
+
+}
+
+/* 한 해 휴가 사용일 수 계산
+   - 야간+비번 휴가 = 1일
+   - 야간 휴가 + 비번 다음 날 주간이 같은 종류 휴가 = 야간·비번·주간 합쳐 3일
+   - 종류가 다르면 각각 1일 */
+function computeLeaveUsage(year) {
+
+  var res = { counts: {}, total: 0 };
+
+  if (!snapshotUsable()) return res;
+
+  var raw = snapshot.raw;
+  var dia = raw.dia || [];
+  var myId = getCurrentUser().employeeId;
+  var mb = null;
+
+  for (var i = 0; i < raw.members.length; i++) {
+    if (raw.members[i].employeeId === myId) { mb = raw.members[i]; break; }
+  }
+
+  if (!mb) return res;
+
+  var startKey = year + '-01-01';
+  var endKey = year + '-12-31';
+  var keys = snapDateKeys(snapShiftKey(startKey, -3), endKey);
+  var consumed = {};
+
+  function ownStatus(k) {
+    var o = snapshot.ovMap[myId + '|' + k];
+    return (o && o.type === 'status') ? o.status : '';
+  }
+
+  function baseType(k) {
+    return String(snapBaseDay(k, mb.seq, mb.anchor, dia).type || '').trim();
+  }
+
+  for (var n = 0; n < keys.length; n++) {
+
+    var k = keys[n];
+
+    if (consumed[k]) continue;
+
+    var st = ownStatus(k);
+
+    if (!st) continue;
+
+    var days = 1;
+
+    if (baseType(k) === '야') {
+
+      var k1 = snapShiftKey(k, 1);
+      var k2 = snapShiftKey(k, 2);
+
+      if (!snapshot.ovMap[myId + '|' + k1] && baseType(k1) === '비') {
+
+        consumed[k1] = true;
+
+        if (ownStatus(k2) === st && baseType(k2) === '주') {
+          consumed[k2] = true;
+          days = 3;
+        }
+      }
+    }
+
+    if (k >= startKey) {
+      res.counts[st] = (res.counts[st] || 0) + days;
+      res.total += days;
+    }
+
+  }
+
+  return res;
+
+}
+
 function buildLocalRange(scope, startKey, endKey) {
 
   var raw = snapshot.raw;
@@ -1011,7 +1139,7 @@ function buildLocalRange(scope, startKey, endKey) {
     var days = {};
 
     for (var j = 0; j < keys.length; j++) {
-      days[keys[j]] = snapBuildDay(keys[j], mb.seq, mb.anchor, dia, snapshot.ovMap[mb.employeeId + '|' + keys[j]]);
+      days[keys[j]] = snapDayWithAuto(keys[j], mb, dia, snapshot.ovMap);
     }
 
     out.push({
@@ -2063,7 +2191,7 @@ function renderGroupTable() {
 
     var style = dd.dow === 0 || holidayName(dd.y, dd.m, dd.d) ? ' style="color:#e53935;"' : (dd.dow === 6 ? ' style="color:#1a73e8;"' : '');
 
-    var hcls = 'g-hd' + (dd.key === todayKey ? ' g-today' : '') + (dd.key === selKey ? ' g-sel' : '');
+    var hcls = 'g-hd' + (dd.key === todayKey ? ' g-today' : '') + (dd.key === selKey ? ' g-sel g-sel-t' : '');
 
     headHtml += '<th class="' + hcls + '" onclick="selectGroupDate(\'' + dd.key + '\')"' + style + '>' +
                 names[dd.dow] + '<br>' + dd.d + '</th>';
@@ -2139,7 +2267,7 @@ function renderGroupTable() {
   var foot = '<tr><td class="name-col">휴가·휴무</td>';
 
   for (var c = 0; c < 7; c++) {
-    foot += '<td>' + counts[c] + '명</td>';
+    foot += '<td' + (days[c].key === selKey ? ' class="g-sel g-sel-b"' : '') + '>' + counts[c] + '명</td>';
   }
 
   foot += '</tr>';
@@ -2168,6 +2296,84 @@ function renderGroupTable() {
         : '');
 
   }
+
+}
+
+/* ============ 휴가관리 (사용일 수) ============ */
+
+var vacYear = todayKST().y;
+
+function openVacation() {
+
+  vacYear = todayKST().y;
+
+  switchSection('vacation-section');
+
+  $('vac-status').textContent = '불러오는 중...';
+
+  loadMeta(function (failMsg) {
+
+    $('vac-status').textContent = failMsg || '';
+
+    renderVacation();
+
+  });
+
+}
+
+function changeVacYear(diff) {
+
+  vacYear += diff;
+
+  renderVacation();
+
+}
+
+function renderVacation() {
+
+  var title = $('vac-title');
+  var listEl = $('vac-list');
+
+  if (title) title.textContent = vacYear + '년 휴가 사용일';
+
+  if (!listEl) return;
+
+  if (!snapshotUsable()) {
+    listEl.innerHTML = '';
+    return;
+  }
+
+  var u = computeLeaveUsage(vacYear);
+  var order = SCHEDULE_OVERRIDE_OPTIONS.slice();
+
+  for (var key in u.counts) {
+    if (Object.prototype.hasOwnProperty.call(u.counts, key) && order.indexOf(key) < 0) order.push(key);
+  }
+
+  var rowStyle = 'display:flex;justify-content:space-between;align-items:baseline;padding:8px 2px;' +
+                 'border-bottom:1px solid #dbe9f7;font-size:16px;color:#333;white-space:nowrap';
+
+  var html = '';
+
+  for (var i = 0; i < order.length; i++) {
+
+    var n = u.counts[order[i]];
+
+    if (!n) continue;
+
+    html += '<div style="' + rowStyle + '"><span>' + esc(order[i]) + '</span><b style="color:#06f">' + n + '일</b></div>';
+
+  }
+
+  if (!html) {
+    listEl.innerHTML = '<div class="dd-empty" style="margin:0">사용한 휴가가 없습니다.</div>';
+    return;
+  }
+
+  html += '<div style="' + rowStyle.replace('border-bottom:1px solid #dbe9f7;', '') + ';font-weight:bold">' +
+          '<span>합계</span><span style="color:#06f">' + u.total + '일</span></div>';
+
+  listEl.innerHTML = html;
 
 }
 
