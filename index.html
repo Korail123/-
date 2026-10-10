@@ -8,8 +8,8 @@
 <title>철도비서</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
-body{background:#f7f9fa;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:8px 3px}
-.container{width:100%;max-width:640px;background:#fff;padding:18px 6px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.05);text-align:center}
+body{background:#f7f9fa;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:8px 5px}
+.container{width:100%;max-width:640px;background:#fff;padding:18px 9px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.05);text-align:center}
 .container.wide{max-width:720px}
 
 /* 상단바 레아아웃 및 시계 스타일 수정 */
@@ -52,7 +52,7 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 .sch-nav:hover{background:#e3e9f1}
 .sch-nav:disabled{color:#c8c8c8;cursor:not-allowed}
 .sch-title{flex:1;text-align:center;font-size:clamp(14px,4.6vw,18px);font-weight:bold;color:#333;cursor:pointer;white-space:nowrap}
-.sch-card{background:#f4f7fb;border-radius:18px;padding:12px 2px;text-align:left}
+.sch-card{background:#f4f7fb;border-radius:18px;padding:12px 3px;text-align:left}
 .sch-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;margin-bottom:6px}
 .wd{font-size:13px;font-weight:bold;color:#8a94a3;padding:4px 0}
 .wd.sun{color:#e53935}
@@ -199,6 +199,23 @@ body{padding-bottom:84px}
 .rv-scroll img{display:block;width:100%;max-width:none;height:auto;margin:0 auto;-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
 .rv-msg{display:none;color:#ddd;font-size:14px;text-align:center;padding:40px 16px}
 .rv-hint{flex:none;text-align:center;color:#9aa5b4;font-size:11px;padding:6px 0 8px}
+
+/* 휴가관리 카드 + 달력 */
+.vac-panel{background:#f0f4f9;border-radius:20px;padding:10px 8px;margin-bottom:12px}
+.vac-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.vac-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:22px 2px;border:2px solid #e3e9f1;border-radius:24px;background:#fff;cursor:pointer;min-width:0;-webkit-tap-highlight-color:transparent}
+.vac-card-name{font-size:clamp(14px,4.6vw,20px);font-weight:bold;white-space:nowrap}
+.vac-card-cnt{font-size:clamp(14px,4.4vw,19px);color:#222;white-space:nowrap}
+.vac-hint{margin:14px 4px 4px;text-align:center;font-size:clamp(11px,3.4vw,14px);color:#7a8696;line-height:1.7}
+.vcal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
+.vcell{height:46px;display:flex;align-items:center;justify-content:center;border-top:1px solid #dde4ed}
+.vcell.empty{border-top-color:transparent}
+.vnum{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;color:#444}
+.vcell.sun .vnum,.vcell.hol .vnum{color:#e53935}
+.vcell.sat .vnum{color:#1a73e8}
+.vnum.today{box-shadow:inset 0 0 0 2px #1a73e8}
+.vnum.used{color:#fff!important;font-weight:bold}
+.vac-chip{display:inline-block;margin:4px 4px 0 0;padding:6px 11px;border-radius:14px;font-size:13px;font-weight:bold;color:#fff;cursor:pointer}
 </style>
 </head>
 
@@ -404,19 +421,40 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <!-- 휴가관리 -->
 <div id="vacation-section" class="page-view">
 
-  <h1>🏖️ 휴가관리</h1>
-
   <div class="sch-head" style="margin-bottom:10px;">
-    <button type="button" class="sch-nav" onclick="changeVacYear(-1)">◀</button>
-    <div id="vac-title" class="sch-title"></div>
-    <button type="button" class="sch-nav" onclick="changeVacYear(1)">▶</button>
+    <button type="button" class="sch-nav plain" onclick="changeVacYear(-1)">◀&#xFE0E;</button>
+    <div id="vac-title" class="sch-title" style="font-size:clamp(13px,4.2vw,17px);cursor:default"></div>
+    <button type="button" class="sch-nav plain" onclick="changeVacYear(1)">▶&#xFE0E;</button>
   </div>
 
   <div id="vac-status" class="status-message" style="margin-top:0"></div>
 
-  <div id="vac-list" class="current-dia-card" style="margin-top:0"></div>
+  <div class="vac-panel">
+    <div id="vac-cards" class="vac-grid"></div>
+  </div>
 
-  <div class="sch-note" style="margin-bottom:14px">※ 야간+비번은 1일, 야간·주간 동일 휴가는 3일</div>
+  <div id="vac-hint" class="vac-hint">휴가 종류를 누르면 사용한 날짜가<br>달력에 해당 휴가 색상으로 표시됩니다.</div>
+
+  <div id="vac-cal-wrap" style="display:none">
+
+    <div class="sch-head" style="margin-bottom:8px;">
+      <button type="button" class="sch-nav plain" onclick="changeVacMonth(-1)">◀&#xFE0E;</button>
+      <div id="vac-cal-title" class="sch-title" style="cursor:default;font-size:clamp(14px,4.4vw,17px)"></div>
+      <button type="button" class="sch-nav plain" onclick="changeVacMonth(1)">▶&#xFE0E;</button>
+    </div>
+
+    <div class="sch-card">
+      <div class="sch-weekdays">
+        <div class="wd sun">일</div><div class="wd">월</div><div class="wd">화</div><div class="wd">수</div><div class="wd">목</div><div class="wd">금</div><div class="wd sat">토</div>
+      </div>
+      <div id="vac-cal-grid" class="vcal-grid"></div>
+    </div>
+
+    <div id="vac-dates" class="current-dia-card" style="margin-top:12px"></div>
+
+  </div>
+
+  <div class="sch-note" style="margin:10px 4px 14px">※ 야간+비번은 1일, 야간·주간 동일 휴가는 3일로 계산합니다.</div>
 
   <button class="back-btn" onclick="switchSection('main-section')">돌아가기</button>
 
@@ -2596,6 +2634,8 @@ var vacYear = todayKST().y;
 function openVacation() {
 
   vacYear = todayKST().y;
+  vacSel = '';
+  vacCalMonth = todayKST().m;
 
   switchSection('vacation-section');
 
@@ -2619,51 +2659,219 @@ function changeVacYear(diff) {
 
 }
 
+var VAC_TYPES = [
+  { key: '연차', label: '연차휴가', color: '#e53935' },
+  { key: '출산휴가', label: '출산휴가', color: '#e0357f' },
+  { key: '육아휴직', label: '육아휴직', color: '#f97316' },
+  { key: '돌봄', label: '돌봄휴직', color: '#a855f7' },
+  { key: '병가', label: '병가', color: '#0a84c8' },
+  { key: '공가', label: '공가', color: '#14b8a6' }
+];
+
+var vacSel = '';
+var vacCalMonth = todayKST().m;
+
+function vacTypeByKey(k) {
+
+  for (var i = 0; i < VAC_TYPES.length; i++) {
+    if (VAC_TYPES[i].key === k) return VAC_TYPES[i];
+  }
+
+  return null;
+
+}
+
+/* 한 해 동안 종류별로 휴가를 쓴 날짜 목록 (야간 뒤 비번 자동 반영 포함) */
+function computeLeaveDates(year) {
+
+  var res = {};
+
+  if (!snapshotUsable()) return res;
+
+  var raw = snapshot.raw;
+  var dia = raw.dia || [];
+  var myId = getCurrentUser().employeeId;
+  var mb = null;
+
+  for (var i = 0; i < raw.members.length; i++) {
+    if (raw.members[i].employeeId === myId) { mb = raw.members[i]; break; }
+  }
+
+  if (!mb) return res;
+
+  var keys = snapDateKeys(year + '-01-01', year + '-12-31');
+
+  for (var n = 0; n < keys.length; n++) {
+
+    var d = snapDayWithAuto(keys[n], mb, dia, snapshot.ovMap);
+
+    if (d && d.overrideType === 'status' && d.status) {
+      if (!res[d.status]) res[d.status] = [];
+      res[d.status].push(keys[n]);
+    }
+
+  }
+
+  return res;
+
+}
+
+function selectVacType(key) {
+
+  if (vacSel === key) {
+    vacSel = '';
+  } else {
+
+    vacSel = key;
+
+    var list = computeLeaveDates(vacYear)[key] || [];
+
+    if (list.length) vacCalMonth = parseInt(list[0].split('-')[1], 10) - 1;
+
+  }
+
+  renderVacation();
+
+}
+
+function changeVacMonth(diff) {
+
+  vacCalMonth += diff;
+
+  if (vacCalMonth > 11) {
+    vacCalMonth = 0;
+    vacYear++;
+  } else if (vacCalMonth < 0) {
+    vacCalMonth = 11;
+    vacYear--;
+  }
+
+  renderVacation();
+
+}
+
+function vacGoMonth(m) {
+
+  vacCalMonth = m;
+
+  renderVacation();
+
+}
+
 function renderVacation() {
 
   var title = $('vac-title');
-  var listEl = $('vac-list');
+  var cardsEl = $('vac-cards');
+  var user = getCurrentUser();
 
-  if (title) title.textContent = vacYear + '년 휴가 사용일';
+  if (title) title.textContent = '휴가관리 (' + (user.name || '') + ') - ' + vacYear + '년';
 
-  if (!listEl) return;
+  if (!cardsEl) return;
 
   if (!snapshotUsable()) {
-    listEl.innerHTML = '';
+    cardsEl.innerHTML = '';
+    $('vac-cal-wrap').style.display = 'none';
     return;
   }
 
-  var u = computeLeaveUsage(vacYear);
-  var order = SCHEDULE_OVERRIDE_OPTIONS.slice();
-
-  for (var key in u.counts) {
-    if (Object.prototype.hasOwnProperty.call(u.counts, key) && order.indexOf(key) < 0) order.push(key);
-  }
-
-  var rowStyle = 'display:flex;justify-content:space-between;align-items:baseline;padding:8px 2px;' +
-                 'border-bottom:1px solid #dbe9f7;font-size:16px;color:#333;white-space:nowrap';
-
+  var usage = computeLeaveUsage(vacYear);
   var html = '';
 
-  for (var i = 0; i < order.length; i++) {
+  for (var i = 0; i < VAC_TYPES.length; i++) {
 
-    var n = u.counts[order[i]];
+    var t = VAC_TYPES[i];
+    var n = usage.counts[t.key] || 0;
+    var sel = vacSel === t.key;
 
-    if (!n) continue;
-
-    html += '<div style="' + rowStyle + '"><span>' + esc(order[i]) + '</span><b style="color:#06f">' + n + '일</b></div>';
+    html += '<button type="button" class="vac-card"' +
+      (sel ? ' style="border-color:' + t.color + ';background:' + t.color + '1a"' : '') +
+      ' onclick="selectVacType(\'' + t.key + '\')">' +
+      '<span class="vac-card-name" style="color:' + t.color + '">' + esc(t.label) + '</span>' +
+      '<span class="vac-card-cnt">' + n + ' 일</span></button>';
 
   }
 
-  if (!html) {
-    listEl.innerHTML = '<div class="dd-empty" style="margin:0">사용한 휴가가 없습니다.</div>';
+  cardsEl.innerHTML = html;
+
+  renderVacCalendar();
+
+}
+
+function renderVacCalendar() {
+
+  var wrap = $('vac-cal-wrap');
+  var hint = $('vac-hint');
+  var t = vacTypeByKey(vacSel);
+
+  if (!t) {
+    wrap.style.display = 'none';
+    hint.style.display = 'block';
     return;
   }
 
-  html += '<div style="' + rowStyle.replace('border-bottom:1px solid #dbe9f7;', '') + ';font-weight:bold">' +
-          '<span>합계</span><span style="color:#06f">' + u.total + '일</span></div>';
+  wrap.style.display = 'block';
+  hint.style.display = 'none';
 
-  listEl.innerHTML = html;
+  var dates = computeLeaveDates(vacYear)[t.key] || [];
+  var used = {};
+
+  for (var i = 0; i < dates.length; i++) used[dates[i]] = true;
+
+  $('vac-cal-title').innerHTML = esc(vacYear + '년 ' + (vacCalMonth + 1) + '월') +
+    ' <span style="color:' + t.color + '">· ' + esc(t.label) + '</span>';
+
+  var grid = $('vac-cal-grid');
+  var firstDay = new Date(vacYear, vacCalMonth, 1).getDay();
+  var lastDate = new Date(vacYear, vacCalMonth + 1, 0).getDate();
+  var today = todayKST();
+  var g = '';
+
+  for (var e = 0; e < firstDay; e++) g += '<div class="vcell empty"></div>';
+
+  for (var d = 1; d <= lastDate; d++) {
+
+    var hName = holidayName(vacYear, vacCalMonth, d);
+    var dow = new Date(vacYear, vacCalMonth, d).getDay();
+    var cls = 'vcell' + (hName ? ' hol' : '') + (dow === 0 && !hName ? ' sun' : '') + (dow === 6 && !hName ? ' sat' : '');
+    var isUsed = !!used[getDateKey(vacYear, vacCalMonth, d)];
+    var isToday = today.y === vacYear && today.m === vacCalMonth && today.d === d;
+
+    g += '<div class="' + cls + '"><span class="vnum' + (isUsed ? ' used' : '') + (isToday ? ' today' : '') + '"' +
+         (isUsed ? ' style="background:' + t.color + '"' : '') + '>' + d + '</span></div>';
+
+  }
+
+  grid.innerHTML = g;
+
+  var days = ['일', '월', '화', '수', '목', '금', '토'];
+  var box = $('vac-dates');
+  var h = '<div class="current-dia-label">' + esc(t.label) + ' 사용한 날짜 (' + vacYear + '년)</div>';
+
+  if (!dates.length) {
+
+    h += '<div style="margin-top:6px;font-size:14px;color:#7a8696">사용한 날짜가 없습니다.</div>';
+
+  } else {
+
+    h += '<div>';
+
+    for (var k = 0; k < dates.length; k++) {
+
+      var p = dates[k].split('-');
+      var mm = parseInt(p[1], 10);
+      var dd = parseInt(p[2], 10);
+      var w = days[new Date(vacYear, mm - 1, dd).getDay()];
+
+      h += '<span class="vac-chip" style="background:' + t.color + '" onclick="vacGoMonth(' + (mm - 1) + ')">' +
+           mm + '월 ' + dd + '일(' + w + ')</span>';
+
+    }
+
+    h += '</div>';
+
+  }
+
+  box.innerHTML = h;
 
 }
 
