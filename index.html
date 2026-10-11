@@ -433,7 +433,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   <div id="group-summary" class="current-dia-card" style="display:none"></div>
 
-  <div class="sch-note">※ 년월 부분을 누르면 이번 주로 이동합니다.</div>
+  <div class="sch-note">※ 날짜 제목을 한 번 누르면 이번 주, 꾹 누르면 연도·월을 선택할 수 있습니다.</div>
   <div class="sch-note">※ 날짜를 누르면 해당일 휴가·휴무·X 명단 표시</div>
 
   <button class="back-btn" style="margin-top:14px" onclick="switchSection('main-section')">돌아가기</button>
@@ -635,8 +635,8 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <div class="dia-dialog-note" style="white-space:normal">원하는 사이트를 선택하면 새 탭에서 열립니다.</div>
       <div style="display:flex;flex-direction:column;gap:10px;margin:16px 4px">
         <a class="site-link-btn" href="intent://launch/#Intent;scheme=korailtalk;package=com.korail.talk;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.korail.talk;end" target="_blank" rel="noopener noreferrer">🚆 코레일톡+ <span>↗</span></a>
-        <a class="site-link-btn" href="https://xrois.com/" target="_blank" rel="noopener noreferrer">🔐 Xrois.com <span>↗</span></a>
-        <a class="site-link-btn" href="https://mcrew.com/" target="_blank" rel="noopener noreferrer">👥 mcrew.com <span>↗</span></a>
+        <a class="site-link-btn" href="https://xcrew.korail.com/loginView.do" target="_blank" rel="noopener noreferrer">🔐 Xrois.com <span>↗</span></a>
+        <a class="site-link-btn" href="https://mcrew.korail.com/cpLogin.do?method=loginCheck" target="_blank" rel="noopener noreferrer">👥 mcrew.com <span>↗</span></a>
         <a class="site-link-btn" href="https://nxlogis.kr/" target="_blank" rel="noopener noreferrer">🚄 NXLogis.kr <span>↗</span></a>
       </div>
       <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeSitesPanel()">닫기</button></div>
@@ -830,7 +830,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 </div>
 
 <!-- 휴가 달력 연/월 선택 -->
-<div id="vac-month-picker" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:20px">
+<div id="vac-month-picker" onclick="if(event.target===this)closeVacMonthPicker()" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:20px">
   <div style="width:min(320px,100%);background:#fff;border-radius:16px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.25)">
     <div style="font-weight:800;font-size:17px;margin-bottom:14px">달력 연도·월 선택</div>
     <div style="display:flex;gap:10px">
@@ -3124,26 +3124,90 @@ var vacCalMonth = todayKST().m;
 
 var calendarPickerTarget = 'vacation';
 function bindCalendarTitleGesture(id, target) {
-  var el = $(id); if (!el || el.dataset.titleGestureBound) return;
+  var el = $(id);
+  if (!el || el.dataset.titleGestureBound) return;
   el.dataset.titleGestureBound = '1';
-  var timer = null, longPressed = false, sx = 0, sy = 0;
-  el.addEventListener('pointerdown', function(e) {
-    longPressed = false; sx = e.clientX; sy = e.clientY;
-    timer = setTimeout(function() { longPressed = true; calendarPickerTarget = target; openCalendarMonthPicker(target); }, 550);
-  });
-  ['pointerup','pointercancel','pointerleave'].forEach(function(ev) { el.addEventListener(ev, function() { if (timer) clearTimeout(timer); timer = null; }); });
-  el.addEventListener('pointermove', function(e) { if (Math.abs(e.clientX-sx)>12 || Math.abs(e.clientY-sy)>12) { if(timer) clearTimeout(timer); timer=null; } });
-  el.addEventListener('click', function(e) {
-    if (longPressed) { e.preventDefault(); e.stopPropagation(); longPressed = false; return; }
+
+  var timer = null;
+  var longPressed = false;
+  var sx = 0, sy = 0;
+  var suppressClickUntil = 0;
+
+  function cancelTimer() {
+    if (timer) clearTimeout(timer);
+    timer = null;
+  }
+  function beginPress(x, y) {
+    cancelTimer();
+    longPressed = false;
+    sx = x; sy = y;
+    timer = setTimeout(function () {
+      timer = null;
+      longPressed = true;
+      suppressClickUntil = Date.now() + 1000;
+      calendarPickerTarget = target;
+      openCalendarMonthPicker(target);
+      if (navigator.vibrate) { try { navigator.vibrate(25); } catch (_) {} }
+    }, 550);
+  }
+  function movePress(x, y) {
+    if (Math.abs(x - sx) > 12 || Math.abs(y - sy) > 12) cancelTimer();
+  }
+  function endPress() { cancelTimer(); }
+
+  // Pointer 이벤트를 지원하는 브라우저에서는 마우스/펜/터치 모두 처리합니다.
+  if (window.PointerEvent) {
+    el.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      beginPress(e.clientX, e.clientY);
+    });
+    el.addEventListener('pointermove', function (e) { movePress(e.clientX, e.clientY); });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+      el.addEventListener(ev, endPress);
+    });
+  } else {
+    // 구형 WebView/브라우저용 터치 이벤트 대체 처리
+    el.addEventListener('touchstart', function (e) {
+      if (!e.touches || !e.touches.length) return;
+      beginPress(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: true });
+    el.addEventListener('touchmove', function (e) {
+      if (!e.touches || !e.touches.length) return;
+      movePress(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: true });
+    ['touchend', 'touchcancel'].forEach(function (ev) { el.addEventListener(ev, endPress); });
+  }
+
+  el.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  el.addEventListener('click', function (e) {
+    if (longPressed || Date.now() < suppressClickUntil) {
+      e.preventDefault();
+      e.stopPropagation();
+      longPressed = false;
+      return;
+    }
     if (target === 'schedule') goToday();
     else if (target === 'group') goGroupThisWeek();
-    else { var t=todayKST(); vacYear=t.y; vacCalMonth=t.m; renderVacation(); }
+    else {
+      var t = todayKST();
+      vacYear = t.y;
+      vacCalMonth = t.m;
+      renderVacation();
+    }
   });
 }
 function openCalendarMonthPicker(target) {
   calendarPickerTarget = target;
-  if (target === 'schedule') { vacYear = calendarYear; vacCalMonth = calendarMonth; }
-  else if (target === 'group') { vacYear = groupWeekStart.getFullYear(); vacCalMonth = groupWeekStart.getMonth(); }
+  if (target === 'schedule') {
+    vacYear = calendarYear;
+    vacCalMonth = calendarMonth;
+  } else if (target === 'group') {
+    vacYear = groupWeekStart.getFullYear();
+    vacCalMonth = groupWeekStart.getMonth();
+  } else {
+    vacYear = vacYear || todayKST().y;
+    vacCalMonth = (typeof vacCalMonth === 'number') ? vacCalMonth : todayKST().m;
+  }
   openVacMonthPicker();
 }
 function bindAllCalendarTitleGestures() {
@@ -3151,7 +3215,8 @@ function bindAllCalendarTitleGestures() {
   bindCalendarTitleGesture('group-calendar-title', 'group');
   bindCalendarTitleGesture('vac-cal-title', 'vacation');
 }
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindAllCalendarTitleGestures); else bindAllCalendarTitleGestures();
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindAllCalendarTitleGestures);
+else bindAllCalendarTitleGestures();
 
 function openVacMonthPicker() {
   var overlay = $('vac-month-picker'), ys = $('vac-pick-year'), ms = $('vac-pick-month');
@@ -3810,6 +3875,7 @@ function renderDiaSelector() {
 
   if (!rotList().length) {
     listEl.innerHTML = '<div class="dia-empty">근무 순서를 불러오는 중...</div>';
+    
     return;
   }
 
