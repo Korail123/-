@@ -105,16 +105,16 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 .dia-dialog-title{font-size:18px;font-weight:bold;color:#222;padding:0 4px}
 .dia-dialog-note{margin:8px 4px 16px;font-size:clamp(10px,3.1vw,13px);color:#7a8696;line-height:1.7;white-space:nowrap}
 .dia-list{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
-.dia-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:14px 0;min-height:64px;border:2px solid #e3e9f1;border-radius:14px;background:#f0f3f8;cursor:pointer;min-width:0}
+.dia-item{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;padding:7px 1px 6px;min-height:78px;border:2px solid #e3e9f1;border-radius:14px;background:#f0f3f8;cursor:pointer;min-width:0;box-sizing:border-box}
 .dia-item:hover{background:#e6ecf5}
 .dia-item.selected{background:#bfe6fb;border-color:#1a8fd8}
-.dia-seq{font-size:12px;color:#7a8696}
+.dia-seq{display:block;align-self:stretch;text-align:center;font-size:12px;line-height:1.15;color:#7a8696;min-height:14px}
 .dia-number{font-size:16px;font-weight:bold;color:#1a73e8;white-space:nowrap;letter-spacing:-.4px}
 .dia-item.l-day .dia-number{color:#e5a800}
 .dia-item.l-bi .dia-number{color:#6c757d}
 .dia-item.l-off .dia-number{color:#e53935}
 .dia-item.dia-name .dia-number{font-size:clamp(10px,3.2vw,13px)}
-.dia-train-numbers{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:9px;line-height:1.2;color:#6b7280;white-space:nowrap;font-weight:normal}
+.dia-train-numbers{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:4px;max-width:100%;font-size:9px;line-height:1.2;color:#6b7280;white-space:nowrap;font-weight:normal;letter-spacing:-.2px}.dia-train-numbers span{min-width:0}
 .dia-empty{grid-column:1/-1;padding:25px 10px;text-align:center;font-size:13px;color:#888}
 .dia-dialog-actions{display:flex;justify-content:flex-end;gap:28px;padding:26px 12px 8px}
 .dia-text-btn{border:none;background:none;font-size:16px;font-weight:bold;color:#222;cursor:pointer;padding:6px}
@@ -1216,6 +1216,30 @@ function rotationOf(list) {
   for (var i = 0; i < list.length; i++) {
     if (!isExtraDia(list[i])) out.push(list[i]);
   }
+
+  // 사용자가 지정한 24개 순환 순서와 DIA 순서를 유지한다.
+  // 서버에서 seq 값이 잘못된 순서로 오더라도 기존 순번을 우선 사용하며,
+  // seq가 없거나 중복된 경우에만 아래의 사용자 지정 DIA 순서로 보정한다.
+  var defaultDiaOrder = [
+    '12602', '12404', '12404~', '12601', '휴무', '휴무',
+    '12941', '12402', '12581', '12581~', '휴무', '휴무',
+    '12101', '12942', 'X', '12551', '휴무', '휴무',
+    '12201', '12401', '12403', '12403~', '휴무', '휴무'
+  ];
+  var seqSeen = {};
+  out.sort(function (a, b) {
+    var aSeq = parseInt(String(a && a.seq != null ? a.seq : ''), 10);
+    var bSeq = parseInt(String(b && b.seq != null ? b.seq : ''), 10);
+    var aValid = !isNaN(aSeq) && aSeq >= 1 && aSeq <= ROTATION_MAX_SEQ && !seqSeen['a' + aSeq];
+    var bValid = !isNaN(bSeq) && bSeq >= 1 && bSeq <= ROTATION_MAX_SEQ && !seqSeen['b' + bSeq];
+    if (aValid && bValid) return aSeq - bSeq;
+    var ad = String(a && (a.dia || a.type) || '').trim().toUpperCase();
+    var bd = String(b && (b.dia || b.type) || '').trim().toUpperCase();
+    var ai = defaultDiaOrder.indexOf(ad), bi = defaultDiaOrder.indexOf(bd);
+    if (ai < 0) ai = 999;
+    if (bi < 0) bi = 999;
+    return ai - bi;
+  });
 
   return out;
 
@@ -3292,6 +3316,25 @@ function openPattern() {
 
 }
 
+function diaTrainMarkup(it, list, index) {
+  var dia = String(it && it.dia || '').trim().toUpperCase();
+  if (dia === '12941' || dia === '12942') {
+    return '<span class="dia-train-numbers"><span>대기</span></span>';
+  }
+  var source = it || {};
+  // 비번은 바로 앞 야간 근무의 대표 열차번호를 이어서 표시
+  if (String(it && it.type || '') === '비' && index > 0 && list && list[index - 1] && String(list[index - 1].type || '') === '야') {
+    source = list[index - 1];
+  }
+  var train1 = String(source.train1 || '').trim();
+  var train2 = String(source.train2 || '').trim();
+  if (!train1 && !train2) return '';
+  return '<span class="dia-train-numbers">' +
+    (train1 ? '<span>' + esc(train1) + '</span>' : '') +
+    (train2 ? '<span>' + esc(train2) + '</span>' : '') +
+    '</span>';
+}
+
 function renderPattern() {
 
   var listEl = $('pattern-list');
@@ -3310,14 +3353,7 @@ function renderPattern() {
     var tone = toneOf(it.type);
     var lc = tone === 'day' ? ' l-day' : tone === 'bi' ? ' l-bi' : tone === 'off' ? ' l-off' : '';
 
-    var train1 = String(it.train1 || '').trim();
-    var train2 = String(it.train2 || '').trim();
-    var trainLabels = (train1 || train2)
-      ? '<span class="dia-train-numbers">' +
-          (train1 ? '<span>' + esc(train1) + '</span>' : '') +
-          (train2 ? '<span>' + esc(train2) + '</span>' : '') +
-        '</span>'
-      : '';
+    var trainLabels = diaTrainMarkup(it, rl, i);
 
     html += '<div class="dia-item dia-name clickable' + lc + (i === todayIdx ? ' selected' : '') + '" onclick="openPatternInfo(' + i + ')">' +
             '<span class="dia-seq">' + esc(it.seq) + '</span>' +
@@ -3693,14 +3729,8 @@ function renderDiaSelector() {
 
     b.className = 'dia-item dia-name' + lc + (String(it.seq) === tempSeq ? ' selected' : '');
 
-    var train1 = String(it.train1 || '').trim();
-    var train2 = String(it.train2 || '').trim();
-    var trainLabels = (train1 || train2)
-      ? '<span class="dia-train-numbers">' +
-          (train1 ? '<span>' + esc(train1) + '</span>' : '') +
-          (train2 ? '<span>' + esc(train2) + '</span>' : '') +
-        '</span>'
-      : '';
+    var currentRotation = rotList();
+    var trainLabels = diaTrainMarkup(it, currentRotation, currentRotation.findIndex(function (x) { return String(x.seq) === String(it.seq); }));
     b.innerHTML = '<span class="dia-seq">' + esc(it.seq) + '</span>' +
                   '<span class="dia-number">' + esc(it.dia || it.type || '-') + '</span>' +
                   trainLabels;
