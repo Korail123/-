@@ -247,6 +247,7 @@ body{padding-bottom:84px}
 .alarm-preview{margin:14px 2px 0;padding:10px 12px;border-radius:12px;background:#f0f8ff;border:1px solid #c9e5ff;font-size:13px;color:#445;line-height:1.6}
 .alarm-ring-info{margin:10px 0 18px;font-size:16px;color:#333;line-height:1.7}
 </style>
+<style>html,body{max-width:100%;overflow-x:hidden}#main-container{max-width:100%;overflow-x:clip}.page-view{min-width:0;max-width:100%;box-sizing:border-box}img,table{max-width:100%}</style>
 </head>
 
 <body>
@@ -365,7 +366,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   <div class="sch-head">
     <button type="button" id="prev-month" class="sch-nav" onclick="changeMonth(-1)">◀</button>
-    <div id="calendar-title" class="sch-title" onclick="goToday()"></div>
+    <div id="calendar-title" class="sch-title" style="cursor:pointer;touch-action:manipulation" title="한 번 누르면 오늘, 길게 누르면 연/월 선택"></div>
     <button type="button" id="next-month" class="sch-nav" onclick="changeMonth(1)">▶</button>
   </div>
 
@@ -404,7 +405,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   <div class="sch-head" style="margin-bottom:10px;">
     <button type="button" class="sch-nav plain" onclick="changeGroupWeek(-1)">◀&#xFE0E;</button>
-    <div id="group-calendar-title" class="sch-title" style="font-size:clamp(11px,3.4vw,15px);" onclick="goGroupThisWeek()"></div>
+    <div id="group-calendar-title" class="sch-title" style="font-size:clamp(11px,3.4vw,15px);cursor:pointer;touch-action:manipulation" title="한 번 누르면 이번 주, 길게 누르면 연/월 선택"></div>
     <button type="button" class="sch-nav plain" onclick="changeGroupWeek(1)">▶&#xFE0E;</button>
   </div>
 
@@ -3020,8 +3021,39 @@ var vacCalMonth = todayKST().m;
       var t = todayKST(); vacYear=t.y; vacCalMonth=t.m; renderVacation();
     });
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind); else bind();
+  /* 공통 달력 제목 제스처 핸들러에서 연결 */
 })();
+
+var calendarPickerTarget = 'vacation';
+function bindCalendarTitleGesture(id, target) {
+  var el = $(id); if (!el || el.dataset.titleGestureBound) return;
+  el.dataset.titleGestureBound = '1';
+  var timer = null, longPressed = false, sx = 0, sy = 0;
+  el.addEventListener('pointerdown', function(e) {
+    longPressed = false; sx = e.clientX; sy = e.clientY;
+    timer = setTimeout(function() { longPressed = true; calendarPickerTarget = target; openCalendarMonthPicker(target); }, 550);
+  });
+  ['pointerup','pointercancel','pointerleave'].forEach(function(ev) { el.addEventListener(ev, function() { if (timer) clearTimeout(timer); timer = null; }); });
+  el.addEventListener('pointermove', function(e) { if (Math.abs(e.clientX-sx)>12 || Math.abs(e.clientY-sy)>12) { if(timer) clearTimeout(timer); timer=null; } });
+  el.addEventListener('click', function(e) {
+    if (longPressed) { e.preventDefault(); e.stopPropagation(); longPressed = false; return; }
+    if (target === 'schedule') goToday();
+    else if (target === 'group') goGroupThisWeek();
+    else { var t=todayKST(); vacYear=t.y; vacCalMonth=t.m; renderVacation(); }
+  });
+}
+function openCalendarMonthPicker(target) {
+  calendarPickerTarget = target;
+  if (target === 'schedule') { vacYear = calendarYear; vacCalMonth = calendarMonth; }
+  else if (target === 'group') { vacYear = groupWeekStart.getFullYear(); vacCalMonth = groupWeekStart.getMonth(); }
+  openVacMonthPicker();
+}
+function bindAllCalendarTitleGestures() {
+  bindCalendarTitleGesture('calendar-title', 'schedule');
+  bindCalendarTitleGesture('group-calendar-title', 'group');
+  bindCalendarTitleGesture('vac-cal-title', 'vacation');
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindAllCalendarTitleGestures); else bindAllCalendarTitleGestures();
 
 function openVacMonthPicker() {
   var overlay = $('vac-month-picker'), ys = $('vac-pick-year'), ms = $('vac-pick-month');
@@ -3037,9 +3069,14 @@ function openVacMonthPicker() {
 }
 function closeVacMonthPicker() { var el=$('vac-month-picker'); if(el) el.style.display='none'; }
 function applyVacMonthPicker() {
-  vacYear=parseInt($('vac-pick-year').value,10);
-  vacCalMonth=parseInt($('vac-pick-month').value,10);
-  closeVacMonthPicker(); renderVacation();
+  var y=parseInt($('vac-pick-year').value,10), m=parseInt($('vac-pick-month').value,10);
+  closeVacMonthPicker();
+  if (calendarPickerTarget === 'schedule') {
+    calendarYear=y; calendarMonth=m; selDate=null; renderCalendar(); renderDayDetail(); loadMyMonth();
+  } else if (calendarPickerTarget === 'group') {
+    groupWeekStart = new Date(y, m, 1); groupWeekStart = new Date(y, m, 1 - groupWeekStart.getDay());
+    groupSelKey=null; groupData=null; loadGroupSchedule(false);
+  } else { vacYear=y; vacCalMonth=m; renderVacation(); }
 }
 
 
@@ -4034,8 +4071,7 @@ function attachSwipe(el, onPrev, onNext) {
     var dx = e.changedTouches[0].clientX - sx;
     var dy = e.changedTouches[0].clientY - sy;
     var elapsed = Date.now() - st;
-    var valid = elapsed <= 900 && Math.abs(dx) >= 60 && Math.abs(dx) >= Math.abs(dy) * 1.6;
-    // 스와이프가 성립하지 않으면 원래 자리로 부드럽게 복귀
+    var valid = elapsed <= 900 && Math.abs(dx) >= 60 && Math.abs(dx) >= Math.abs(dy) * 1.6;    // 스와이프가 성립하지 않으면 원래 자리로 부드럽게 복귀
     setFollowStyle(false);
     if (!valid) {
       el.style.transform = '';
@@ -4129,7 +4165,7 @@ function renderAlarmSub() {
 
   var cfg = getAlarmCfg();
 
-  el.textContent = cfg.on ? '※ 출근 ' + alarmMinText(cfg.min) + '알람 켜짐' : '※ 꺼짐 · 출근 시간 전에려드려요';
+  el.textContent = cfg.on ? '※ 출근 ' + alarmMinText(cfg.min) + ' 알람 켜짐' : '※ 꺼짐 · 출근 시간 전에 알려드려요';
 
 }
 
@@ -4665,4 +4701,4 @@ function handleAppBack(fromPopState) {
 
 </script>
 </body>
-</html> 알
+</html>
