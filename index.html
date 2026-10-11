@@ -173,9 +173,23 @@ body{padding-bottom:84px}
 .bn-btn .bn-ico{font-size:19px;line-height:1}
 .bn-btn.active{color:#1a73e8}
 
-/* 근무그룹 화살표: 검정색, 회색 네모칸 없음 */
-.sch-nav.plain{background:none;color:#000;width:40px;height:44px;border-radius:8px;font-size:20px;font-weight:bold;-webkit-tap-highlight-color:transparent}
-.sch-nav.plain:hover,.sch-nav.plain:active,.sch-nav.plain:focus{background:none;color:#000;outline:none}
+/* 환경설정 버튼을 조금 더 작고 간결하게 */
+.setting-card{gap:10px;padding:12px;border-radius:18px;margin-bottom:9px}
+.setting-icon{width:44px;height:44px;font-size:22px}
+.setting-title{font-size:16px}
+.setting-sub{margin-top:3px}
+.setting-arrow{font-size:20px}
+
+/* 근무표 월 이동 화살표: 검정색, 배경과 테두리 제거 */
+#schedule-section .sch-head .sch-nav{background:transparent!important;color:#000!important;border:0!important;box-shadow:none!important;border-radius:0!important;outline:none!important;-webkit-tap-highlight-color:transparent}
+#schedule-section .sch-head .sch-nav:hover,
+#schedule-section .sch-head .sch-nav:active,
+#schedule-section .sch-head .sch-nav:focus{background:transparent!important;color:#000!important;border:0!important;box-shadow:none!important;outline:none!important}
+#schedule-section .sch-head .sch-nav:disabled{color:#000!important;opacity:.45}
+
+/* 다른 화면의 화살표도 검정색, 회색 네모칸 없음 */
+.sch-nav.plain{background:none;color:#000;width:40px;height:44px;border:0;box-shadow:none;border-radius:0;font-size:20px;font-weight:bold;-webkit-tap-highlight-color:transparent}
+.sch-nav.plain:hover,.sch-nav.plain:active,.sch-nav.plain:focus{background:none;color:#000;border:0;box-shadow:none;outline:none}
 
 /* 근무패턴 다이아 정보 팝업 */
 .dia-item.clickable{cursor:pointer}
@@ -4348,7 +4362,7 @@ function saveAlarmSettings() {
     LS.setItem(alarmKey(), JSON.stringify(cfg));
   } catch (e) {}
 
-  if (cfg.on && 'Notification' in window && Notification.permission === 'default') {
+  if (cfg.on && 'Notification' in window & Notification.permission === 'default') {
     try { Notification.requestPermission(); } catch (e) {}
   }
 
