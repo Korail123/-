@@ -4502,6 +4502,100 @@ function runAlarmCheck() {
 
 })();
 
+
+
+/* ============ 공통 뒤로가기 / 왼쪽 가장자리 스와이프 ============
+   팝업 우선 닫기 → 현재 화면에서 메인으로 → 메인에서는 앱 최소화 시도 */
+function closeTopOverlayForBack() {
+  var overlays = [
+    ['route-viewer', closeRouteViewer],
+    ['alarm-ring-panel', closeAlarmRing],
+    ['schedule-edit-panel', closeScheduleEdit],
+    ['group-info-panel', closeGroupInfo],
+    ['pattern-info-panel', closePatternInfo],
+    ['board-editor-panel', closeBoardEditor],
+    ['board-detail-panel', closeBoardDetail],
+    ['notice-panel', closeNoticePanel],
+    ['suggestion-panel', closeSuggestionPanel],
+    ['dia-panel', closeDiaSelector],
+    ['alarm-panel', closeAlarmSettings]
+  ];
+  for (var i = 0; i < overlays.length; i++) {
+    var el = document.getElementById(overlays[i][0]);
+    if (el && el.classList.contains('active')) {
+      overlays[i][1]();
+      return true;
+    }
+  }
+  return false;
+}
+
+function currentPageSection() {
+  var active = document.querySelector('.page-view.active');
+  return active ? active.id : 'main-section';
+}
+
+function tryMinimizeApp() {
+  // 앱을 네이티브 Android WebView로 감싼 경우에만 브리지로 실제 최소화 가능
+  try {
+    if (window.Android && typeof window.Android.minimizeApp === 'function') {
+      window.Android.minimizeApp();
+      return true;
+    }
+    if (window.NativeApp && typeof window.NativeApp.minimizeApp === 'function') {
+      window.NativeApp.minimizeApp();
+      return true;
+    }
+  } catch (e) {}
+  // 일반 웹페이지는 보안상 휴대전화 앱을 직접 최소화할 수 없음
+  if (typeof showToast === 'function') showToast('메인 화면입니다. 휴대전화 홈 동작으로 앱을 최소화해 주세요.');
+  return false;
+}
+
+function handleAppBack() {
+  if (closeTopOverlayForBack()) return;
+  var section = currentPageSection();
+  if (section === 'main-section') {
+    tryMinimizeApp();
+    return;
+  }
+  if (section === 'signup-section') {
+    switchSection('login-section');
+    return;
+  }
+  if (section !== 'login-section') {
+    switchSection('main-section');
+    return;
+  }
+  tryMinimizeApp();
+}
+
+(function installGlobalBackNavigation() {
+  // 브라우저/안드로이드 뒤로가기 버튼을 화면 내 뒤로가기 동작으로 처리
+  try { history.pushState({ railwaySecretaryBack: true }, '', location.href); } catch (e) {}
+  window.addEventListener('popstate', function () {
+    handleAppBack();
+    // popstate 스택을 유지하여 다음 뒤로가기 입력도 앱에서 처리
+    try { history.pushState({ railwaySecretaryBack: true }, '', location.href); } catch (e) {}
+  });
+
+  // 화면 왼쪽 가장자리에서 오른쪽으로 밀면 뒤로가기
+  var startX = 0, startY = 0, startedAtEdge = false;
+  document.addEventListener('touchstart', function (e) {
+    if (!e.touches || e.touches.length !== 1) { startedAtEdge = false; return; }
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    startedAtEdge = startX <= 28;
+  }, { passive: true });
+  document.addEventListener('touchend', function (e) {
+    if (!startedAtEdge || !e.changedTouches || !e.changedTouches.length) return;
+    startedAtEdge = false;
+    var dx = e.changedTouches[0].clientX - startX;
+    var dy = e.changedTouches[0].clientY - startY;
+    if (dx >= 85 && Math.abs(dx) > Math.abs(dy) * 1.4) handleAppBack();
+  }, { passive: true });
+})();
+
 </script>
 </body>
 </html>
