@@ -2083,11 +2083,11 @@ function nxLogisTrainUrl(trainNo, dateKey) {
     '&d=' + encodeURIComponent(day) + '&h=&q2=';
 }
 
-function trainLink(trainNo) {
+function trainLink(trainNo, explicitDateKey) {
   var n = String(trainNo || '').trim();
   if (!n) return '';
-  /* 링크를 그릴 때 선택된 근무 날짜를 함께 저장해, 클릭 시 날짜가 바뀌어도 원래 날짜를 전달 */
-  var selectedDay = dateKeyForSelectedDay();
+  /* 링크를 그릴 때 열차별 운행 날짜를 저장해, 클릭 시 날짜가 바뀌어도 원래 날짜를 전달 */
+  var selectedDay = explicitDateKey || dateKeyForSelectedDay();
   return '<a class="dd-chip" href="#" onclick="return openNxLogis(\'' + esc(n) + '\',\'' + esc(selectedDay) + '\')" ' +
     'title="NXLogis에서 ' + esc(n) + ' 열차 조회">' + esc(n) + ' ↗</a>';
 }
@@ -2277,9 +2277,18 @@ function renderDayDetail() {
   if (startTime) html += '<div class="dd-row">⏰ 출근 시간 : ' + esc(startTime) + '</div>';
   if (endTime) html += '<div class="dd-row">🏠 퇴근 시간 : ' + esc(endTime) + '</div>';
   if (train1 || train2) {
+    var train1Date = dateKeyForSelectedDay();
+    var train2Date = train1Date;
+    /* 야간 근무의 두 번째 열차는 다음 날 운행일로 NXLogis에서 조회 */
+    var isNightWork = info.label === '야' || /야간/.test(String(workType || ''));
+    if (isNightWork && train2 && train1Date) {
+      var dateParts = train1Date.split('-').map(Number);
+      var nextDate = new Date(Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2] + 1));
+      train2Date = nextDate.getUTCFullYear() + '-' + String(nextDate.getUTCMonth() + 1).padStart(2, '0') + '-' + String(nextDate.getUTCDate()).padStart(2, '0');
+    }
     html += '<div class="dd-row">🚂 열차 번호 :' +
-            (train1 ? trainLink(train1) : '') +
-            (train2 ? trainLink(train2) : '') + '</div>';
+            (train1 ? trainLink(train1, train1Date) : '') +
+            (train2 ? trainLink(train2, train2Date) : '') + '</div>';
   }
 
   /* 선택한 날짜의 DIA와 행로표 정보를 한눈에 확인할 수 있도록 하단에 별도 표시 */
