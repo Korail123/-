@@ -2055,11 +2055,13 @@ function dateKeyForSelectedDay() {
   return getDateKey(selDate.y, selDate.m, selDate.d);
 }
 
-/* NXLogis 열차 조회 주소 (열차번호 + 선택한 날짜 전달) */
-function nxLogisTrainUrl(trainNo) {
-  var dateKey = dateKeyForSelectedDay();
-  return 'https://nxlogis.kr/index.php?act=SearchTrainInfo&train=' + encodeURIComponent(String(trainNo || '').trim()) +
-    '&date=' + encodeURIComponent(dateKey);
+/* NXLogis 열차 조회 주소
+   NXLogis가 사용하는 q(열차번호), d(운행일) 파라미터를 전달해 검색 화면을 바로 연다. */
+function nxLogisTrainUrl(trainNo, dateKey) {
+  var n = String(trainNo || '').trim();
+  var day = String(dateKey || dateKeyForSelectedDay() || '').trim();
+  return 'https://nxlogis.kr/?act=SearchTrainInfo&q=' + encodeURIComponent(n) +
+    '&d=' + encodeURIComponent(day) + '&h=&q2=';
 }
 
 function trainLink(trainNo) {
@@ -2069,43 +2071,19 @@ function trainLink(trainNo) {
     'title="NXLogis에서 ' + esc(n) + ' 열차 조회">' + esc(n) + ' ↗</a>';
 }
 
-function showToast(text) {
-  var t = document.getElementById('toast');
-  if (!t) {
-    t = document.createElement('div');
-    t.id = 'toast';
-    t.style.cssText = 'position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:rgba(0,0,0,.8);' +
-      'color:#fff;padding:10px 16px;border-radius:20px;font-size:13px;z-index:200;max-width:90%;text-align:center';
-    document.body.appendChild(t);
-  }
-  t.textContent = text;
-  t.style.display = 'block';
-  clearTimeout(t._h);
-  t._h = setTimeout(function () { t.style.display = 'none'; }, 3500);
-}
-
-/* 열차번호 클립보드 복사 + NXLogis 열기 */
+/* 열차번호를 누르면 NXLogis 검색창에 번호와 날짜를 미리 전달해 새 창에서 조회 */
 function openNxLogis(trainNo) {
   var n = String(trainNo || '').trim();
   var dateKey = dateKeyForSelectedDay();
-
-  try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(n);
-    } else {
-      var ta = document.createElement('textarea');
-      ta.value = n;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-    }
-    showToast('열차번호 ' + n + ' 복사됨 (' + dateKey + ') · NXLogis 검색창에 붙여넣기');
-  } catch (e) {
-    showToast('NXLogis로 이동합니다: ' + n + ' (' + dateKey + ')');
+  if (!n) return false;
+  var url = nxLogisTrainUrl(n, dateKey);
+  // 데스크톱에서는 크기를 지정한 팝업 창으로 열기
+  var popup = window.open(url, 'nxlogisTrainSearch', 'popup=yes,width=1100,height=800,resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=yes,status=no');
+  if (!popup) {
+    showToast('팝업이 차단되었습니다. 브라우저에서 이 사이트의 팝업을 허용해 주세요.');
+  } else {
+    try { popup.focus(); } catch (e) {}
   }
-
-  window.open(nxLogisTrainUrl(n), '_blank');
   return false;
 }
 
