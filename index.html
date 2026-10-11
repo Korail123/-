@@ -114,6 +114,7 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 .dia-item.l-bi .dia-number{color:#6c757d}
 .dia-item.l-off .dia-number{color:#e53935}
 .dia-item.dia-name .dia-number{font-size:clamp(10px,3.2vw,13px)}
+.dia-train-numbers{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:9px;line-height:1.2;color:#6b7280;white-space:nowrap;font-weight:normal}
 .dia-empty{grid-column:1/-1;padding:25px 10px;text-align:center;font-size:13px;color:#888}
 .dia-dialog-actions{display:flex;justify-content:flex-end;gap:28px;padding:26px 12px 8px}
 .dia-text-btn{border:none;background:none;font-size:16px;font-weight:bold;color:#222;cursor:pointer;padding:6px}
@@ -1681,7 +1682,19 @@ function setCurrentUser(u) {
 
 /* ============ 화면 전환 ============ */
 
+var appSectionHistory = [];
+var suppressSectionHistory = false;
+
 function switchSection(id) {
+
+  var current = currentPageSection();
+  if (!suppressSectionHistory && current && current !== id && current !== 'main-section') {
+    appSectionHistory.push(current);
+    if (appSectionHistory.length > 30) appSectionHistory.shift();
+  } else if (!suppressSectionHistory && current && current !== id && id === 'main-section') {
+    appSectionHistory.push(current);
+    if (appSectionHistory.length > 30) appSectionHistory.shift();
+  }
 
   if (id !== 'group-section') stopGroupAutoRefresh();
 
@@ -3297,9 +3310,19 @@ function renderPattern() {
     var tone = toneOf(it.type);
     var lc = tone === 'day' ? ' l-day' : tone === 'bi' ? ' l-bi' : tone === 'off' ? ' l-off' : '';
 
+    var train1 = String(it.train1 || '').trim();
+    var train2 = String(it.train2 || '').trim();
+    var trainLabels = (train1 || train2)
+      ? '<span class="dia-train-numbers">' +
+          (train1 ? '<span>' + esc(train1) + '</span>' : '') +
+          (train2 ? '<span>' + esc(train2) + '</span>' : '') +
+        '</span>'
+      : '';
+
     html += '<div class="dia-item dia-name clickable' + lc + (i === todayIdx ? ' selected' : '') + '" onclick="openPatternInfo(' + i + ')">' +
             '<span class="dia-seq">' + esc(it.seq) + '</span>' +
-            '<span class="dia-number">' + esc(it.dia || it.type || '-') + '</span></div>';
+            '<span class="dia-number">' + esc(it.dia || it.type || '-') + '</span>' +
+            trainLabels + '</div>';
 
   }
 
@@ -3670,8 +3693,17 @@ function renderDiaSelector() {
 
     b.className = 'dia-item dia-name' + lc + (String(it.seq) === tempSeq ? ' selected' : '');
 
+    var train1 = String(it.train1 || '').trim();
+    var train2 = String(it.train2 || '').trim();
+    var trainLabels = (train1 || train2)
+      ? '<span class="dia-train-numbers">' +
+          (train1 ? '<span>' + esc(train1) + '</span>' : '') +
+          (train2 ? '<span>' + esc(train2) + '</span>' : '') +
+        '</span>'
+      : '';
     b.innerHTML = '<span class="dia-seq">' + esc(it.seq) + '</span>' +
-                  '<span class="dia-number">' + esc(it.dia || it.type || '-') + '</span>';
+                  '<span class="dia-number">' + esc(it.dia || it.type || '-') + '</span>' +
+                  trainLabels;
 
     b.onclick = function () {
       tempSeq = String(it.seq);
@@ -4362,7 +4394,7 @@ function saveAlarmSettings() {
     LS.setItem(alarmKey(), JSON.stringify(cfg));
   } catch (e) {}
 
-  if (cfg.on && 'Notification' in window & Notification.permission === 'default') {
+  if (cfg.on && 'Notification' in window && Notification.permission === 'default') {
     try { Notification.requestPermission(); } catch (e) {}
   }
 
@@ -4505,7 +4537,7 @@ function runAlarmCheck() {
 
 
 /* ============ 공통 뒤로가기 / 왼쪽 가장자리 스와이프 ============
-   팝업 우선 닫기 → 현재 화면에서 메인으로 → 메인에서는 앱 최소화 시도 */
+   팝업은 닫고, 다른 화면은 직전 화면으로 복귀. 메인에서는 브라우저 뒤로 이동. */
 function closeTopOverlayForBack() {
   var overlays = [
     ['route-viewer', closeRouteViewer],
@@ -4535,51 +4567,59 @@ function currentPageSection() {
   return active ? active.id : 'main-section';
 }
 
-function tryMinimizeApp() {
-  // 앱을 네이티브 Android WebView로 감싼 경우에만 브리지로 실제 최소화 가능
-  try {
-    if (window.Android && typeof window.Android.minimizeApp === 'function') {
-      window.Android.minimizeApp();
-      return true;
+function returnToPreviousSection() {
+  var current = currentPageSection();
+  var previous = null;
+  while (appSectionHistory.length) {
+    var candidate = appSectionHistory.pop();
+    if (candidate && candidate !== current && document.getElementById(candidate)) {
+      previous = candidate;
+      break;
     }
-    if (window.NativeApp && typeof window.NativeApp.minimizeApp === 'function') {
-      window.NativeApp.minimizeApp();
-      return true;
-    }
-  } catch (e) {}
-  // 일반 웹페이지는 보안상 휴대전화 앱을 직접 최소화할 수 없음
-  if (typeof showToast === 'function') showToast('메인 화면입니다. 휴대전화 홈 동작으로 앱을 최소화해 주세요.');
-  return false;
+  }
+  if (!previous) previous = current === 'signup-section' ? 'login-section' : 'main-section';
+  suppressSectionHistory = true;
+  switchSection(previous);
+  suppressSectionHistory = false;
 }
 
-function handleAppBack() {
+function goBackToBrowserPreviousPage(fromPopState) {
+  // 일반 웹사이트는 브라우저의 홈 페이지 URL을 알 수 없으므로 브라우저 기록으로 이동합니다.
+  try {
+    if (fromPopState) history.back();
+    else history.go(-2); // 앱이 추가한 현재 페이지 상태 1개를 건너뛰고 이전 페이지로
+  } catch (e) {}
+}
+
+function handleAppBack(fromPopState) {
   if (closeTopOverlayForBack()) return;
   var section = currentPageSection();
   if (section === 'main-section') {
-    tryMinimizeApp();
+    goBackToBrowserPreviousPage(!!fromPopState);
     return;
   }
-  if (section === 'signup-section') {
-    switchSection('login-section');
+  if (section === 'login-section') {
+    goBackToBrowserPreviousPage(!!fromPopState);
     return;
   }
-  if (section !== 'login-section') {
-    switchSection('main-section');
-    return;
-  }
-  tryMinimizeApp();
+  returnToPreviousSection();
 }
 
 (function installGlobalBackNavigation() {
-  // 브라우저/안드로이드 뒤로가기 버튼을 화면 내 뒤로가기 동작으로 처리
+  // 브라우저 뒤로가기: 비메인 화면에서는 앱 내부의 직전 화면으로, 메인에서는 브라우저 기록으로 이동
   try { history.pushState({ railwaySecretaryBack: true }, '', location.href); } catch (e) {}
   window.addEventListener('popstate', function () {
-    handleAppBack();
-    // popstate 스택을 유지하여 다음 뒤로가기 입력도 앱에서 처리
+    var section = currentPageSection();
+    if (section === 'main-section' || section === 'login-section') {
+      handleAppBack(true);
+      return;
+    }
+    handleAppBack(true);
+    // 앱 화면 안에서 뒤로가기를 처리했을 때만 상태를 복구해 브라우저를 이탈하지 않게 함
     try { history.pushState({ railwaySecretaryBack: true }, '', location.href); } catch (e) {}
   });
 
-  // 화면 왼쪽 가장자리에서 오른쪽으로 밀면 뒤로가기
+  // 화면 왼쪽 가장자리에서 오른쪽으로 밀면 직전 화면으로 이동
   var startX = 0, startY = 0, startedAtEdge = false;
   document.addEventListener('touchstart', function (e) {
     if (!e.touches || e.touches.length !== 1) { startedAtEdge = false; return; }
@@ -4592,7 +4632,7 @@ function handleAppBack() {
     startedAtEdge = false;
     var dx = e.changedTouches[0].clientX - startX;
     var dy = e.changedTouches[0].clientY - startY;
-    if (dx >= 85 && Math.abs(dx) > Math.abs(dy) * 1.4) handleAppBack();
+    if (dx >= 85 && Math.abs(dx) > Math.abs(dy) * 1.4) handleAppBack(false);
   }, { passive: true });
 })();
 
