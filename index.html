@@ -247,7 +247,16 @@ body{padding-bottom:84px}
 .alarm-preview{margin:14px 2px 0;padding:10px 12px;border-radius:12px;background:#f0f8ff;border:1px solid #c9e5ff;font-size:13px;color:#445;line-height:1.6}
 .alarm-ring-info{margin:10px 0 18px;font-size:16px;color:#333;line-height:1.7}
 </style>
-<style>html,body{max-width:100%;overflow-x:hidden}#main-container{max-width:100%;overflow-x:clip}.page-view{min-width:0;max-width:100%;box-sizing:border-box}img,table{max-width:100%}</style>
+<style>html,body{max-width:100%;overflow-x:hidden}#main-container{max-width:100%;overflow-x:clip}.page-view{min-width:0;max-width:100%;box-sizing:border-box}img,table{max-width:100%}
+.site-link-btn {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:14px 16px; border:1px solid #dce3ec; border-radius:12px;
+  background:#fff; color:#243247; text-decoration:none; font-size:15px; font-weight:700;
+  box-shadow:0 1px 2px rgba(16,24,40,.04); transition:background .15s ease;
+}
+.site-link-btn:active { background:#f1f6fc; }
+.site-link-btn span { color:#1677e8; font-size:18px; }
+</style>
 </head>
 
 <body>
@@ -529,6 +538,15 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <span class="setting-arrow">›</span>
   </button>
 
+  <button type="button" class="setting-card" onclick="openSitesPanel()">
+    <span class="setting-icon" style="background:#e8f2ff">🌐</span>
+    <span class="setting-text">
+      <span class="setting-title">사이트</span>
+      <span class="setting-sub" style="white-space:normal">※ 자주 사용하는 철도 관련 사이트 바로가기</span>
+    </span>
+    <span class="setting-arrow">›</span>
+  </button>
+
   <button type="button" class="setting-card" onclick="openDeleteAccountPanel()">
     <span class="setting-icon" style="background:#fde8e8">🗑️</span>
     <span class="setting-text">
@@ -608,6 +626,20 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <button type="button" class="dia-text-btn" onclick="closePrivacyConsent()">취소</button>
         <button type="button" class="dia-text-btn" onclick="submitPrivacyConsent()" style="color:#1677e8">선택 확인</button>
       </div>
+    </div>
+  </div>
+
+  <div id="sites-panel" class="dia-modal" style="z-index:255" onclick="if(event.target===this)closeSitesPanel()">
+    <div class="dia-dialog" style="max-height:88vh;overflow:auto">
+      <div class="dia-dialog-title">🌐 사이트 바로가기</div>
+      <div class="dia-dialog-note" style="white-space:normal">원하는 사이트를 선택하면 새 탭에서 열립니다.</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin:16px 4px">
+        <a class="site-link-btn" href="intent://launch/#Intent;scheme=korailtalk;package=com.korail.talk;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.korail.talk;end" target="_blank" rel="noopener noreferrer">🚆 코레일톡+ <span>↗</span></a>
+        <a class="site-link-btn" href="https://xrois.com/" target="_blank" rel="noopener noreferrer">🔐 Xrois.com <span>↗</span></a>
+        <a class="site-link-btn" href="https://mcrew.com/" target="_blank" rel="noopener noreferrer">👥 mcrew.com <span>↗</span></a>
+        <a class="site-link-btn" href="https://nxlogis.kr/" target="_blank" rel="noopener noreferrer">🚄 NXLogis.kr <span>↗</span></a>
+      </div>
+      <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeSitesPanel()">닫기</button></div>
     </div>
   </div>
 
@@ -4037,6 +4069,15 @@ function submitPrivacyConsent() {
     alert('회원가입이 완료되었습니다. 로그인해주세요.');
     switchSection('login-section');
   });
+}
+
+function openSitesPanel() {
+  const panel = document.getElementById('sites-panel');
+  if (panel) panel.style.display = 'flex';
+}
+function closeSitesPanel() {
+  const panel = document.getElementById('sites-panel');
+  if (panel) panel.style.display = 'none';
 }
 
 function openDeleteAccountPanel() {
