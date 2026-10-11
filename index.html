@@ -4010,10 +4010,10 @@ function attachSwipe(el, onPrev, onNext) {
 
   if (!el) return;
 
-  var sx = 0, sy = 0, st = 0, ok = false, dxNow = 0, animating = false;
+  var sx = 0, sy = 0, st = 0, ok = false, dxNow = 0;
 
   function blocked(target) {
-    if (animating || document.querySelector('.dia-modal.active, .schedule-edit-modal.active, .route-viewer.active')) return true;
+    if (document.querySelector('.dia-modal.active, .schedule-edit-modal.active, .route-viewer.active')) return true;
     for (var n = target; n && n !== el; n = n.parentNode) {
       if (!n.tagName) continue;
       var tag = n.tagName.toLowerCase();
@@ -4024,11 +4024,6 @@ function attachSwipe(el, onPrev, onNext) {
       }
     }
     return false;
-  }
-
-  function setFollowStyle(dragging) {
-    el.style.transition = dragging ? 'none' : 'transform 180ms cubic-bezier(.22,.61,.36,1)';
-    el.style.willChange = dragging ? 'transform' : 'auto';
   }
 
   function resetPosition() {
@@ -4044,23 +4039,24 @@ function attachSwipe(el, onPrev, onNext) {
     sx = e.touches[0].clientX;
     sy = e.touches[0].clientY;
     st = Date.now();
-    setFollowStyle(true);
+    // 손가락을 따라 움직이도록 드래그 중에는 전환 효과를 끔
+    el.style.transition = 'none';
+    el.style.willChange = 'transform';
   }, { passive: true });
 
   el.addEventListener('touchmove', function (e) {
     if (!ok || !e.touches.length) return;
     var dx = e.touches[0].clientX - sx;
     var dy = e.touches[0].clientY - sy;
-    // 세로 스크롤은 건드리지 않고, 가로 스와이프일 때만 손가락을 따라오게 함
+    // 세로 스크롤은 그대로 두고, 가로로 움직일 때만 손가락을 따라 이동
     if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy) * 1.15) return;
     dxNow = dx;
-    el.style.transform = 'translate3d(' + (dx * 0.72) + 'px,0,0)';
+    el.style.transform = 'translate3d(' + (dx * 0.85) + 'px,0,0)';
   }, { passive: true });
 
   el.addEventListener('touchcancel', function () {
     if (!ok) return;
     ok = false;
-    setFollowStyle(false);
     resetPosition();
   }, { passive: true });
 
@@ -4071,32 +4067,13 @@ function attachSwipe(el, onPrev, onNext) {
     var dx = e.changedTouches[0].clientX - sx;
     var dy = e.changedTouches[0].clientY - sy;
     var elapsed = Date.now() - st;
-    var valid = elapsed <= 900 && Math.abs(dx) >= 60 && Math.abs(dx) >= Math.abs(dy) * 1.6;    // 스와이프가 성립하지 않으면 원래 자리로 부드럽게 복귀
-    setFollowStyle(false);
-    if (!valid) {
-      el.style.transform = '';
-      window.setTimeout(resetPosition, 190);
-      return;
-    }
+    var valid = elapsed <= 900 && Math.abs(dx) >= 60 && Math.abs(dx) >= Math.abs(dy) * 1.6;
 
-    animating = true;
-    var direction = dx < 0 ? -1 : 1;
-    var width = Math.max(90, Math.min(150, el.clientWidth * 0.28));
-    // 손가락을 놓으면 넘기는 방향으로 살짝 더 이동
-    el.style.transform = 'translate3d(' + (direction * -width) + 'px,0,0)';
-    window.setTimeout(function () {
-      if (direction < 0) onNext(); else onPrev();
-      // 새 화면을 반대쪽에서 시작해 중앙으로 들어오게 하여 연속적인 전환 효과 제공
-      el.style.transition = 'none';
-      el.style.transform = 'translate3d(' + (direction * width * 0.45) + 'px,0,0)';
-      window.requestAnimationFrame(function () {
-        window.requestAnimationFrame(function () {
-          el.style.transition = 'transform 220ms cubic-bezier(.22,.61,.36,1)';
-          el.style.transform = 'translate3d(0,0,0)';
-          window.setTimeout(function () { resetPosition(); animating = false; }, 230);
-        });
-      });
-    }, 120);
+    // 손가락을 놓으면 화면 슬라이드 애니메이션 없이 바로 원위치
+    resetPosition();
+    if (!valid) return;
+
+    if (dx < 0) onNext(); else onPrev();
   }, { passive: true });
 
 }
