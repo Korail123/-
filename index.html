@@ -2060,6 +2060,12 @@ function dateKeyForSelectedDay() {
 function nxLogisTrainUrl(trainNo, dateKey) {
   var n = String(trainNo || '').trim();
   var day = String(dateKey || dateKeyForSelectedDay() || '').trim();
+  /* NXLogis의 d 파라미터는 YYYYMMDD 형식이어야 함 */
+  day = day.replace(/[^0-9]/g, '');
+  if (day.length !== 8) {
+    var parsed = String(dateKeyForSelectedDay() || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    day = parsed ? parsed[1] + parsed[2] + parsed[3] : day;
+  }
   return 'https://nxlogis.kr/?act=SearchTrainInfo&q=' + encodeURIComponent(n) +
     '&d=' + encodeURIComponent(day) + '&h=&q2=';
 }
@@ -2067,14 +2073,16 @@ function nxLogisTrainUrl(trainNo, dateKey) {
 function trainLink(trainNo) {
   var n = String(trainNo || '').trim();
   if (!n) return '';
-  return '<a class="dd-chip" href="#" onclick="return openNxLogis(\'' + esc(n) + '\')" ' +
+  /* 링크를 그릴 때 선택된 근무 날짜를 함께 저장해, 클릭 시 날짜가 바뀌어도 원래 날짜를 전달 */
+  var selectedDay = dateKeyForSelectedDay();
+  return '<a class="dd-chip" href="#" onclick="return openNxLogis(\'' + esc(n) + '\',\'' + esc(selectedDay) + '\')" ' +
     'title="NXLogis에서 ' + esc(n) + ' 열차 조회">' + esc(n) + ' ↗</a>';
 }
 
 /* 열차번호를 누르면 NXLogis 검색창에 번호와 날짜를 미리 전달해 새 창에서 조회 */
-function openNxLogis(trainNo) {
+function openNxLogis(trainNo, selectedDateKey) {
   var n = String(trainNo || '').trim();
-  var dateKey = dateKeyForSelectedDay();
+  var dateKey = String(selectedDateKey || dateKeyForSelectedDay() || '').trim();
   if (!n) return false;
   var url = nxLogisTrainUrl(n, dateKey);
   // 데스크톱에서는 크기를 지정한 팝업 창으로 열기
@@ -2611,6 +2619,7 @@ function restoreOriginalSchedule() {
       return;
     }
 
+    /* 원래 근무 복원이 성공하면 별도 저장 없이 편집 팝업을 즉시 닫음 */
     closeScheduleEdit();
 
     selDate = { y: target.y, m: target.m, d: target.d };
@@ -2620,6 +2629,7 @@ function restoreOriginalSchedule() {
     loadMyMonth();
 
     refreshSnapshot(true, null);
+    showToast('원래 근무로 복원했습니다.');
 
   });
 
