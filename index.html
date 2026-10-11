@@ -316,16 +316,15 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
 
     <div class="input-group">
-      <label for="signup-pw">비밀번호</label>
-      <input type="password" id="signup-pw" placeholder="사용할 비밀번호를 입력하세요" autocomplete="new-password" required>
+      <label for="signup-code">인증번호</label>
+      <div style="display:flex;gap:8px;align-items:stretch">
+        <input type="password" id="signup-code" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="4자리 인증번호" autocomplete="off" required style="flex:1;min-width:0">
+        <button type="button" class="btn" id="signup-verify-btn" onclick="verifySignupCode()" style="width:auto;min-width:100px;padding:0 14px;margin:0">인증하기</button>
+      </div>
+      <div id="signup-verify-message" class="status-message" style="margin-top:6px"></div>
     </div>
 
-    <div class="input-group">
-      <label for="signup-pw-confirm">비밀번호 확인</label>
-      <input type="password" id="signup-pw-confirm" placeholder="비밀번호를 다시 입력하세요" autocomplete="new-password" required>
-    </div>
-
-    <button type="submit" class="btn" id="signup-btn">회원가입</button>
+    <button type="submit" class="btn" id="signup-btn">회원가입 완료</button>
 
     <button type="button" class="signup-link-btn" onclick="switchSection('login-section')">로그인으로 돌아가기</button>
 
@@ -530,6 +529,15 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <span class="setting-arrow">›</span>
   </button>
 
+  <button type="button" class="setting-card" onclick="openDeleteAccountPanel()">
+    <span class="setting-icon" style="background:#fde8e8">🗑️</span>
+    <span class="setting-text">
+      <span class="setting-title" style="color:#c62828">회원탈퇴</span>
+      <span class="setting-sub" style="white-space:normal">※ 계정과 삭제 대상 회원정보를 영구 삭제합니다.</span>
+    </span>
+    <span class="setting-arrow">›</span>
+  </button>
+
   <div id="notice-panel" class="dia-modal" onclick="if(event.target===this)closeNoticePanel()">
     <div class="dia-dialog" style="max-height:88vh;overflow:auto">
       <div class="dia-dialog-title">📢 공지사항</div>
@@ -577,6 +585,45 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <textarea id="board-comment-input" rows="3" maxlength="2000" placeholder="댓글을 입력해주세요" style="box-sizing:border-box;width:100%;resize:vertical;padding:10px;border:1px solid #d5dde7;border-radius:12px;font:inherit"></textarea>
       <div id="board-comment-message" class="status-message" style="white-space:normal"></div>
       <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="submitBoardComment()">댓글 등록</button><button type="button" class="dia-text-btn" onclick="closeBoardDetail()">닫기</button></div>
+    </div>
+  </div>
+
+  <div id="privacy-consent-panel" class="dia-modal" style="z-index:250" onclick="if(event.target===this)closePrivacyConsent()">
+    <div class="dia-dialog" style="max-height:88vh;overflow:auto">
+      <div class="dia-dialog-title" style="text-align:center">개인정보 수집·이용 동의서</div>
+      <div class="dia-dialog-note" style="white-space:normal">나만의 철도비서 웹 회원가입을 위해 아래 내용을 확인해 주세요.</div>
+      <div style="font-size:13px;line-height:1.75;color:#344054;white-space:normal;padding:0 4px">
+        <b>1. 수집하는 개인정보 항목</b><br>사원번호, 이름<br><br>
+        <b>2. 개인정보 수집·이용 목적</b><br>근무표 공유, 사용자 구분 및 서비스 제공<br><br>
+        <b>3. 개인정보 보유·이용 기간</b><br>회원 탈퇴 또는 서비스 이용 종료 시까지 보유·이용합니다. 단, 관계 법령에 따라 보존할 필요가 있는 경우 해당 법령에서 정한 기간 동안 보관합니다.<br><br>
+        <b>4. 동의 거부 권리 및 거부 시 불이익</b><br>이용자는 개인정보 수집·이용에 대한 동의를 거부할 권리가 있습니다. 다만 동의하지 않으면 회원가입이 제한되며 근무표 공유 등 해당 서비스 이용이 불가능합니다.<br><br>
+        <b>5. 개인정보 저장 장소</b><br>관리자 송주영이 관리하는 Google Sheets 데이터베이스
+      </div>
+      <div style="margin:16px 4px 4px;padding:12px;border:1px solid #dce3ec;border-radius:12px;background:#f8fafc;font-size:13px;line-height:1.6">
+        <label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:10px"><input type="radio" name="privacy-consent-choice" value="agree" style="margin-top:4px"> <span>동의합니다.</span></label>
+        <label style="display:flex;gap:8px;align-items:flex-start"><input type="radio" name="privacy-consent-choice" value="disagree" style="margin-top:4px"> <span>동의하지 않습니다.</span></label>
+      </div>
+      <div id="privacy-consent-message" class="status-message" style="white-space:normal"></div>
+      <div class="dia-dialog-actions" style="gap:18px">
+        <button type="button" class="dia-text-btn" onclick="closePrivacyConsent()">취소</button>
+        <button type="button" class="dia-text-btn" onclick="submitPrivacyConsent()" style="color:#1677e8">선택 확인</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="delete-account-panel" class="dia-modal" style="z-index:260" onclick="if(event.target===this)closeDeleteAccountPanel()">
+    <div class="dia-dialog" style="max-height:88vh;overflow:auto">
+      <div class="dia-dialog-title" style="color:#c62828">정말 회원탈퇴를 진행할까요?</div>
+      <div class="dia-dialog-note" style="white-space:normal">탈퇴하면 해당 계정으로 이 웹을 이용할 수 없게 됩니다.</div>
+      <div style="font-size:13px;line-height:1.75;color:#344054;white-space:normal;padding:0 4px">
+        회원 사원번호·이름, 개인정보 동의 기록, 로그인 세션 및 해당 회원에게 귀속된 삭제 대상 정보를 삭제하도록 요청합니다. 다른 회원과 공유하는 데이터는 다른 사람의 정보까지 삭제되지 않도록 별도로 구분해야 합니다.<br><br>
+        <b>삭제된 정보는 복구할 수 없습니다.</b>
+      </div>
+      <div id="delete-account-message" class="status-message" style="white-space:normal"></div>
+      <div class="dia-dialog-actions" style="gap:18px">
+        <button type="button" class="dia-text-btn" onclick="closeDeleteAccountPanel()">취소</button>
+        <button type="button" class="dia-text-btn" id="delete-account-confirm-btn" onclick="confirmDeleteAccount()" style="color:#c62828">탈퇴 및 삭제</button>
+      </div>
     </div>
   </div>
 
@@ -766,6 +813,16 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 </div>
 
 <script>
+
+// 인증번호 입력값이 변경되면 다시 인증하도록 처리합니다.
+document.addEventListener('DOMContentLoaded', function () {
+  var codeEl = document.getElementById('signup-code');
+  if (codeEl) codeEl.addEventListener('input', function () {
+    signupCodeVerified = false;
+    var m = document.getElementById('signup-verify-message');
+    if (m) m.textContent = '';
+  });
+});
 
 /* ============ 시계 ============ */
 
@@ -3893,47 +3950,143 @@ function handleLogin(e) {
 
 }
 
+var signupCodeVerified = false;
+var signupPending = null;
+var PRIVACY_CONSENT_VERSION = '2026-10-11-v1';
+
+function verifySignupCode() {
+  var code = $('signup-code').value.trim();
+  var msg = $('signup-verify-message');
+  signupCodeVerified = code === '2526';
+  msg.style.color = signupCodeVerified ? '#16803c' : '#c62828';
+  msg.textContent = signupCodeVerified ? '인증이 완료되었습니다.' : '인증번호가 올바르지 않습니다.';
+  return signupCodeVerified;
+}
+
 function handleSignup(e) {
-
   e.preventDefault();
-
   var id = $('signup-id').value.trim();
   var name = $('signup-name').value.trim();
-  var pw = $('signup-pw').value;
-  var pw2 = $('signup-pw-confirm').value;
-
   var msg = $('signup-message');
-  var btn = $('signup-btn');
-  var loading = $('signup-loading');
-
   msg.textContent = '';
 
-  if (pw !== pw2) {
-    msg.textContent = '비밀번호가 서로 다릅니다.';
+  if (!id || !name) {
+    msg.textContent = '사원번호와 이름을 입력해주세요.';
+    return false;
+  }
+  if (!signupCodeVerified || $('signup-code').value.trim() !== '2526') {
+    msg.textContent = '인증번호 확인을 먼저 완료해주세요.';
     return false;
   }
 
-  btn.disabled = true;
-  loading.style.display = 'block';
+  signupPending = { employeeId: id, name: name };
+  document.querySelectorAll('input[name="privacy-consent-choice"]').forEach(function (el) { el.checked = false; });
+  $('privacy-consent-message').textContent = '';
+  $('privacy-consent-panel').classList.add('active');
+  return false;
+}
 
-  api({ action: 'signup', employeeId: id, name: name, password: pw }, function (r) {
+function closePrivacyConsent() {
+  $('privacy-consent-panel').classList.remove('active');
+}
 
-    btn.disabled = false;
-    loading.style.display = 'none';
+function submitPrivacyConsent() {
+  var choice = document.querySelector('input[name="privacy-consent-choice"]:checked');
+  var msg = $('privacy-consent-message');
+  if (!choice) {
+    msg.textContent = '동의 또는 비동의를 선택해주세요.';
+    return;
+  }
+  if (choice.value !== 'agree') {
+    closePrivacyConsent();
+    signupPending = null;
+    $('signup-message').textContent = '개인정보 수집·이용에 동의하지 않아 회원가입이 취소되었습니다.';
+    switchSection('signup-section');
+    return;
+  }
+  if (!signupPending) {
+    msg.textContent = '회원가입 정보가 없습니다. 다시 입력해주세요.';
+    return;
+  }
 
+  var btn = document.querySelector('#privacy-consent-panel button[onclick="submitPrivacyConsent()"]');
+  if (btn) btn.disabled = true;
+  msg.textContent = '회원가입 정보를 저장하는 중...';
+
+  var payload = {
+    action: 'signup',
+    employeeId: signupPending.employeeId,
+    name: signupPending.name,
+    verificationCode: '2526',
+    consent: 'agree',
+    consentAt: new Date().toISOString(),
+    consentVersion: PRIVACY_CONSENT_VERSION
+  };
+
+  api(payload, function (r) {
+    if (btn) btn.disabled = false;
     if (!r || !r.success) {
-      msg.textContent = (r && r.message) || '회원가입에 실패했습니다.';
+      msg.textContent = (r && r.message) || '회원가입 저장에 실패했습니다. 서버 코드(Code.gs)도 새 회원가입 방식에 맞게 수정해야 합니다.';
       return;
     }
-
+    closePrivacyConsent();
+    signupPending = null;
+    signupCodeVerified = false;
+    $('signup-form').reset();
+    $('signup-message').textContent = '';
     alert('회원가입이 완료되었습니다. 로그인해주세요.');
-
     switchSection('login-section');
-
   });
+}
 
-  return false;
+function openDeleteAccountPanel() {
+  var u = getCurrentUser();
+  $('delete-account-message').textContent = '';
+  if (!u || !u.employeeId || u.employeeId === 'guest' || !u.token) {
+    alert('로그인한 사용자만 회원탈퇴를 할 수 있습니다.');
+    return;
+  }
+  $('delete-account-panel').classList.add('active');
+}
 
+function closeDeleteAccountPanel() {
+  $('delete-account-panel').classList.remove('active');
+}
+
+function confirmDeleteAccount() {
+  var u = getCurrentUser();
+  var msg = $('delete-account-message');
+  var btn = $('delete-account-confirm-btn');
+  if (!u || !u.employeeId || !u.token) {
+    msg.textContent = '로그인 세션을 확인할 수 없습니다. 다시 로그인해주세요.';
+    return;
+  }
+  if (!confirm('정말 탈퇴할까요? 이 작업은 되돌릴 수 없습니다.')) return;
+
+  btn.disabled = true;
+  msg.textContent = '회원정보 삭제를 요청하는 중...';
+  api({ action: 'deleteAccount', employeeId: u.employeeId, token: u.token }, function (r) {
+    btn.disabled = false;
+    if (!r || !r.success) {
+      msg.textContent = (r && r.message) || '회원탈퇴 서버 처리가 완료되지 않았습니다. Code.gs에 deleteAccount 처리가 필요합니다.';
+      return;
+    }
+    stopGroupAutoRefresh();
+    groupData = null;
+    myMonth = null;
+    mySettings = { seq: '', anchor: '' };
+    metaLoadedAt = 0;
+    clearDataCache();
+    LS.removeItem(USER_KEY);
+    SS.removeItem(USER_KEY);
+    clearSavedLogin();
+    $('login-id').value = '';
+    $('login-pw').value = '';
+    $('remember').checked = false;
+    closeDeleteAccountPanel();
+    alert('회원탈퇴가 완료되었습니다.');
+    switchSection('login-section');
+  });
 }
 
 function logout() {
