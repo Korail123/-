@@ -41,6 +41,8 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 .back-btn{width:100%;padding:12px;background:#6c757d;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer}
 .page-view{display:none}
 .page-view.active{display:block}
+/* 손가락을 따라오는 스와이프 전환 */
+#schedule-section,#group-section,#vacation-section{backface-visibility:hidden;}
 .loading{font-size:13px;color:#666;margin-top:12px;display:none}
 .status-message{margin-top:12px;font-size:clamp(10px,3.2vw,13px);color:#dc3545;min-height:18px;line-height:1.5;white-space:nowrap}
 .login-success-card{background:#f8f9fa;border:1px solid #e9ecef;border-radius:10px;padding:18px 10px;margin-bottom:15px;font-size:17px;font-weight:bold;white-space:nowrap}
@@ -83,7 +85,7 @@ h1{font-size:20px;color:#333;margin-bottom:20px}
 .dd-dia.t-off{color:#e53935}
 .dd-tag{font-size:clamp(12px,3.9vw,15px);font-weight:bold;color:#333;white-space:nowrap}
 .dd-row{margin-top:5px;font-size:clamp(11px,3.9vw,16px);white-space:nowrap;font-weight:normal;letter-spacing:normal;line-height:1.4;color:#444;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
-.dd-chip{display:inline-block;padding:0 8px;margin-left:4px;border-radius:12px;background:#bfe6fb;color:#1a73e8;font-weight:normal;font-size:clamp(11px,3.9vw,16px);letter-spacing:normal;line-height:1.4;vertical-align:middle;white-space:nowrap;font-family:inherit;text-decoration:none;cursor:pointer}.dd-chip:hover{background:#9dd8f7;text-decoration:underline}.dd-dia-image-wrap{margin-top:8px;padding:6px;border:1px solid #e1e8ef;border-radius:12px;background:#fff;text-align:center}.dd-dia-image-title{font-size:13px;font-weight:bold;color:#4a5568;margin-bottom:10px}.dd-dia-image{cursor:zoom-in;display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;margin:0 auto}.dd-dia-image-missing{font-size:clamp(10px,3.2vw,13px);color:#7a8696;line-height:1.6;white-space:nowrap}
+.dd-chip{display:inline-block;padding:0 8px;margin-left:4px;border-radius:12px;background:#bfe6fb;color:#1a73e8;font-weight:normal;font-size:clamp(11px,3.9vw,16px);letter-spacing:normal;line-height:1.4;vertical-align:middle;white-space:nowrap;font-family:inherit;text-decoration:none;cursor:pointer}.dd-chip:hover{background:#9dd8f7;text-decoration:underline}.dd-dia-image-wrap{margin-top:8px;padding:6px;border:1px solid #e1e8ef;border-radius:12px;background:#fff;text-align:center}.dd-dia-image-title{font-size:13px;font-weight:bold;color:#4a5568;margin-bottom:10px}.dd-dia-image{cursor:default;display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;margin:0 auto}.dd-dia-image-missing{font-size:clamp(10px,3.2vw,13px);color:#7a8696;line-height:1.6;white-space:nowrap}
 .dd-route{margin-top:16px;padding:6px;border:1px solid #d8e8f8;border-radius:12px;background:#f6fbff;text-align:left}
 .dd-route-title{font-size:14px;font-weight:bold;color:#245b89;margin-bottom:10px}
 .dd-route-line{font-size:14px;line-height:1.8;color:#34495e}
@@ -199,19 +201,19 @@ body{padding-bottom:84px}
 .pi-row span.pi-k{color:#7a8696;white-space:nowrap}
 .pi-route{margin-top:14px;padding:6px;border:1px solid #e1e8ef;border-radius:12px;background:#fff;text-align:center}
 .pi-route-cap{font-size:12px;color:#7a8696;margin:2px 0 6px}
-.pi-route img{display:block;width:100%;height:auto;max-height:50vh;object-fit:contain;margin:0 auto;cursor:zoom-in}
+.pi-route img{display:block;width:100%;height:auto;max-height:50vh;object-fit:contain;margin:0 auto;cursor:default}
 .pi-none{font-size:13px;color:#7a8696;padding:10px 0}
 
-/* 행로표 확대/축소 팝업 */
+/* 행로표 보기 팝업: 확대/축소 비활성화 */
 .route-viewer{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.94);z-index:300;flex-direction:column}
 .route-viewer.active{display:flex}
 .rv-bar{display:flex;align-items:center;gap:6px;padding:8px 8px calc(8px);color:#fff;flex:none}
 .rv-title{flex:1;min-width:0;font-size:14px;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rv-pct{min-width:48px;text-align:center;font-size:12px;color:#cfd6df}
+.rv-pct{display:none}
 .rv-btn{min-width:40px;height:40px;padding:0 8px;border:none;border-radius:10px;background:rgba(255,255,255,.2);color:#fff;font-size:20px;font-weight:bold;cursor:pointer}
 .rv-btn:active{background:rgba(255,255,255,.35)}
-.rv-scroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;background:#111}
-.rv-scroll img{display:block;width:100%;max-width:none;height:auto;margin:0 auto;-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
+.rv-scroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;background:#111}
+.rv-scroll img{display:block;width:100%;max-width:100%;height:auto;max-height:calc(100vh - 110px);object-fit:contain;margin:0 auto;-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
 .rv-msg{display:none;color:#ddd;font-size:14px;text-align:center;padding:40px 16px}
 .rv-hint{flex:none;text-align:center;color:#9aa5b4;font-size:11px;padding:6px 0 8px}
 
@@ -465,7 +467,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
     <div class="sch-head" style="margin-bottom:8px;">
       <button type="button" class="sch-nav plain" onclick="changeVacMonth(-1)">◀&#xFE0E;</button>
-      <div id="vac-cal-title" class="sch-title" style="cursor:default;font-size:clamp(14px,4.4vw,17px)"></div>
+      <div id="vac-cal-title" class="sch-title" style="cursor:pointer;font-size:clamp(14px,4.4vw,17px);touch-action:manipulation" title="한 번 누르면 오늘, 길게 누르면 연/월 선택"></div>
       <button type="button" class="sch-nav plain" onclick="changeVacMonth(1)">▶&#xFE0E;</button>
     </div>
 
@@ -735,21 +737,31 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <button type="button" class="bn-btn" data-sec="settings-section" onclick="openSettings()"><span class="bn-ico">⚙️</span>환경설정</button>
 </nav>
 
-<!-- 행로표 확대/축소 팝업 -->
+<!-- 행로표 보기 팝업 -->
 <div id="route-viewer" class="route-viewer">
   <div class="rv-bar">
     <div id="rv-title" class="rv-title">행로표</div>
-    <button type="button" class="rv-btn" onclick="rvStep(-1)" aria-label="축소">−</button>
-    <div id="rv-pct" class="rv-pct">100%</div>
-    <button type="button" class="rv-btn" onclick="rvStep(1)" aria-label="확대">＋</button>
-    <button type="button" class="rv-btn" onclick="rvReset()" aria-label="원래 크기" style="font-size:13px">원본</button>
     <button type="button" class="rv-btn" onclick="closeRouteViewer()" aria-label="닫기">✕</button>
   </div>
   <div id="rv-scroll" class="rv-scroll">
     <img id="rv-img" alt="행로표">
     <div id="rv-msg" class="rv-msg">이미지를 불러오지 못했습니다.</div>
   </div>
-  <div class="rv-hint">두 손가락으로 확대/축소 · 두 번 누르면 확대 · 드래그로 이동</div>
+</div>
+
+<!-- 휴가 달력 연/월 선택 -->
+<div id="vac-month-picker" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:20px">
+  <div style="width:min(320px,100%);background:#fff;border-radius:16px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.25)">
+    <div style="font-weight:800;font-size:17px;margin-bottom:14px">달력 연도·월 선택</div>
+    <div style="display:flex;gap:10px">
+      <select id="vac-pick-year" style="flex:1;min-width:0;padding:11px;border:1px solid #d6dde6;border-radius:10px;font-size:16px"></select>
+      <select id="vac-pick-month" style="flex:1;min-width:0;padding:11px;border:1px solid #d6dde6;border-radius:10px;font-size:16px"></select>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button type="button" onclick="closeVacMonthPicker()" style="flex:1;padding:11px;border:0;border-radius:10px;background:#eef2f7">취소</button>
+      <button type="button" onclick="applyVacMonthPicker()" style="flex:1;padding:11px;border:0;border-radius:10px;background:#1677e8;color:#fff;font-weight:700">이동</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -2212,120 +2224,9 @@ function closeRouteViewer() {
 }
 
 (function initRouteViewer() {
-
-  var sc = $('rv-scroll');
-
-  if (!sc) return;
-
-  var pinchD0 = 0;
-  var pinchZ0 = 1;
-  var lastTap = 0;
-  var lastTapX = 0;
-  var lastTapY = 0;
-  var moved = false;
-
-  function dist(t) {
-    var dx = t[0].clientX - t[1].clientX;
-    var dy = t[0].clientY - t[1].clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
-
-  sc.addEventListener('touchstart', function (e) {
-
-    moved = false;
-
-    if (e.touches.length === 2) {
-      pinchD0 = dist(e.touches);
-      pinchZ0 = rvZoom;
-    }
-
-  }, { passive: true });
-
-  sc.addEventListener('touchmove', function (e) {
-
-    moved = true;
-
-    if (e.touches.length === 2 && pinchD0 > 0) {
-
-      e.preventDefault();
-
-      var cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-      var cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-
-      rvSetZoom(pinchZ0 * dist(e.touches) / pinchD0, cx, cy);
-
-    }
-
-  }, { passive: false });
-
-  sc.addEventListener('touchend', function (e) {
-
-    if (e.touches.length < 2) pinchD0 = 0;
-
-    /* 두 번 연속 누르면 확대 ↔ 원래 크기 */
-    if (e.touches.length === 0 && !moved && e.changedTouches.length === 1) {
-
-      var now = Date.now();
-      var x = e.changedTouches[0].clientX;
-      var y = e.changedTouches[0].clientY;
-
-      if (now - lastTap < 320 && Math.abs(x - lastTapX) < 30 && Math.abs(y - lastTapY) < 30) {
-
-        if (rvZoom > 1.05) rvReset();
-        else rvSetZoom(2.5, x, y);
-
-        lastTap = 0;
-
-      } else {
-
-        lastTap = now;
-        lastTapX = x;
-        lastTapY = y;
-
-      }
-    }
-
-  }, { passive: true });
-
-  /* PC: 휠로 확대/축소, 드래그로 이동, 더블클릭 */
-  sc.addEventListener('wheel', function (e) {
-
-    e.preventDefault();
-
-    rvSetZoom(rvZoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY);
-
-  }, { passive: false });
-
-  var drag = null;
-
-  sc.addEventListener('mousedown', function (e) {
-    drag = { x: e.clientX, y: e.clientY, l: sc.scrollLeft, t: sc.scrollTop };
-  });
-
-  window.addEventListener('mousemove', function (e) {
-
-    if (!drag) return;
-
-    sc.scrollLeft = drag.l - (e.clientX - drag.x);
-    sc.scrollTop = drag.t - (e.clientY - drag.y);
-
-  });
-
-  window.addEventListener('mouseup', function () {
-    drag = null;
-  });
-
-  sc.addEventListener('dblclick', function (e) {
-
-    if (rvZoom > 1.05) rvReset();
-    else rvSetZoom(2.5, e.clientX, e.clientY);
-
-  });
-
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') closeRouteViewer();
   });
-
 })();
 
 function renderDayDetail() {
@@ -2386,7 +2287,7 @@ function renderDayDetail() {
     var diaImageFile = DIA_IMAGE_FILES[diaNo.toUpperCase()];
     if (diaImageFile) {
       html += '<div class="dd-dia-image-wrap">' +
-        '<div class="dd-dia-image-title">행로표 (누르면 확대/축소)</div>' +
+        '<div class="dd-dia-image-title">행로표</div>' +
         '<img class="dd-dia-image" src="' + DIA_IMAGE_BASE + encodeURIComponent(diaImageFile) + '" alt="DIA ' + esc(diaNo) + ' 행로표" ' +
         'data-dia="' + esc(diaNo) + '" onclick="openRouteViewer(this.getAttribute(\'data-dia\'))" ' +
         'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
@@ -2974,6 +2875,21 @@ function openGroupInfo(k, key) {
   $('group-info-date').textContent = parseInt(p[0], 10) + '년 ' + parseInt(p[1], 10) + '월 ' + parseInt(p[2], 10) + '일 (' + wd + ')';
 
   var info = mem.days ? mem.days[key] : null;
+  // 비번 날짜는 전날이 야간 근무일 때 전날 야간 다이아 정보를 이어서 표시
+  var infoFromNight = false;
+  if (info && String(info.label || info.type || '').trim() === '비') {
+    var dateParts = key.split('-').map(Number);
+    var prevDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2] - 1);
+    var prevKey = getDateKey(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate());
+    var prevInfo = mem.days ? mem.days[prevKey] : null;
+    if (prevInfo && String(prevInfo.type || prevInfo.label || '').trim() === '야' && prevInfo.overrideType !== 'status') {
+      info = Object.assign({}, info, {
+        dia: prevInfo.dia, type: prevInfo.type, start: prevInfo.start, end: prevInfo.end,
+        train1: prevInfo.train1, train2: prevInfo.train2, route: prevInfo.route
+      });
+      infoFromNight = true;
+    }
+  }
   var html = '';
 
   if (!info || !info.label) {
@@ -2998,7 +2914,7 @@ function openGroupInfo(k, key) {
 
     html += '<div class="pi-row"><span class="pi-k">다이아 이름</span><b style="color:' + color + '">' +
             esc(diaNo || kind) + (info.manual ? ' *' : '') + '</b></div>';
-    html += piRow('근무 구분', kind);
+    html += piRow('근무 구분', infoFromNight ? '비번 (전날 야간 다이아 정보)' : kind);
     html += piRow('출근 시간', start);
     html += piRow('퇴근 시간', end);
     html += piRow('근무 시간', workDurationText(start, end));
@@ -3010,7 +2926,7 @@ function openGroupInfo(k, key) {
       if (url) {
 
         html += '<div class="pi-route">' +
-          '<div class="pi-route-cap">행로표 (누르면 확대/축소)</div>' +
+          '<div class="pi-route-cap">행로표</div>' +
           '<img src="' + url + '" alt="DIA ' + esc(diaNo) + ' 행로표" data-dia="' + esc(diaNo) + '" ' +
           'onclick="openRouteViewer(this.getAttribute(\'data-dia\'))" ' +
           'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
@@ -3081,6 +2997,51 @@ var VAC_TYPES = [
 
 var vacSel = '';
 var vacCalMonth = todayKST().m;
+
+/* 휴가 달력 제목: 한 번 누르면 오늘, 길게 누르면 연/월 선택 */
+(function initVacTitleGesture() {
+  var timer = null, longPressed = false, startX = 0, startY = 0;
+  function bind() {
+    var el = $('vac-cal-title');
+    if (!el || el.dataset.vacBound) return;
+    el.dataset.vacBound = '1';
+    el.addEventListener('pointerdown', function(e) {
+      longPressed = false; startX = e.clientX; startY = e.clientY;
+      timer = setTimeout(function() { longPressed = true; openVacMonthPicker(); }, 550);
+    });
+    ['pointerup','pointercancel','pointerleave'].forEach(function(ev) {
+      el.addEventListener(ev, function() { if (timer) clearTimeout(timer); timer = null; });
+    });
+    el.addEventListener('pointermove', function(e) {
+      if (Math.abs(e.clientX-startX)>12 || Math.abs(e.clientY-startY)>12) { if(timer) clearTimeout(timer); timer=null; }
+    });
+    el.addEventListener('click', function(e) {
+      if (longPressed) { e.preventDefault(); e.stopPropagation(); longPressed=false; return; }
+      var t = todayKST(); vacYear=t.y; vacCalMonth=t.m; renderVacation();
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind); else bind();
+})();
+
+function openVacMonthPicker() {
+  var overlay = $('vac-month-picker'), ys = $('vac-pick-year'), ms = $('vac-pick-month');
+  if (!overlay || !ys || !ms) return;
+  var minY = Math.min(todayKST().y - 10, vacYear - 2), maxY = Math.max(todayKST().y + 10, vacYear + 2);
+  ys.innerHTML = '';
+  for (var y=minY; y<=maxY; y++) { var op=document.createElement('option'); op.value=y; op.textContent=y+'년'; ys.appendChild(op); }
+  ys.value=String(vacYear);
+  ms.innerHTML='';
+  for (var m=0; m<12; m++) { var om=document.createElement('option'); om.value=m; om.textContent=(m+1)+'월'; ms.appendChild(om); }
+  ms.value=String(vacCalMonth);
+  overlay.style.display='flex';
+}
+function closeVacMonthPicker() { var el=$('vac-month-picker'); if(el) el.style.display='none'; }
+function applyVacMonthPicker() {
+  vacYear=parseInt($('vac-pick-year').value,10);
+  vacCalMonth=parseInt($('vac-pick-month').value,10);
+  closeVacMonthPicker(); renderVacation();
+}
+
 
 function vacTypeByKey(k) {
 
@@ -3395,11 +3356,22 @@ function workDurationText(start, end) {
 
 function openPatternInfo(i) {
 
-  var it = rotList()[i];
+  var list = rotList();
+  var it = list[i];
   var panel = $('pattern-info-panel');
   var body = $('pattern-info-body');
 
   if (!it || !panel || !body) return;
+
+  // 순서표에서 비번을 선택했고 직전 항목이 야간이면 야간 다이아 상세정보를 사용
+  var infoFromNight = false;
+  if (String(it.type || '').trim() === '비' && i > 0 && String(list[i - 1].type || '').trim() === '야') {
+    it = Object.assign({}, it, {
+      dia: list[i - 1].dia, start: list[i - 1].start, end: list[i - 1].end,
+      seq: list[i - 1].seq, train1: list[i - 1].train1, train2: list[i - 1].train2
+    });
+    infoFromNight = true;
+  }
 
   var type = String(it.type || '').trim();
   var diaNo = String(it.dia || '').trim();
@@ -3421,7 +3393,7 @@ function openPatternInfo(i) {
 
   html += '<div class="pi-row"><span class="pi-k">다이아 이름</span><b style="color:' + color + '">' +
           esc(diaNo || kind) + '</b></div>';
-  html += row('근무 구분', kind);
+  html += row('근무 구분', infoFromNight ? '비번 (전날 야간 다이아 정보)' : kind);
   html += row('출근 시간', start);
   html += row('퇴근 시간', end);
   html += row('근무 시간', dur);
@@ -3457,7 +3429,7 @@ function openPatternInfo(i) {
     if (url) {
 
       html += '<div class="pi-route">' +
-        '<div class="pi-route-cap">행로표 (누르면 확대/축소)</div>' +
+        '<div class="pi-route-cap">행로표</div>' +
         '<img src="' + url + '" alt="DIA ' + esc(diaNo) + ' 행로표" data-dia="' + esc(diaNo) + '" ' +
         'onclick="openRouteViewer(this.getAttribute(\'data-dia\'))" ' +
         'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
@@ -4001,57 +3973,94 @@ function attachSwipe(el, onPrev, onNext) {
 
   if (!el) return;
 
-  var sx = 0, sy = 0, st = 0, ok = false;
+  var sx = 0, sy = 0, st = 0, ok = false, dxNow = 0, animating = false;
 
   function blocked(target) {
-
-    if (document.querySelector('.dia-modal.active, .schedule-edit-modal.active, .route-viewer.active')) return true;
-
+    if (animating || document.querySelector('.dia-modal.active, .schedule-edit-modal.active, .route-viewer.active')) return true;
     for (var n = target; n && n !== el; n = n.parentNode) {
-
       if (!n.tagName) continue;
-
       var tag = n.tagName.toLowerCase();
-
       if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
-
       if (n.scrollWidth > n.clientWidth + 2) {
         var ox = window.getComputedStyle(n).overflowX;
-        if (ox === 'auto' || ox === 'scroll') return true;   // 가로로 스크롤되는 영역은 스크롤 우선
+        if (ox === 'auto' || ox === 'scroll') return true;
       }
-
     }
-
     return false;
+  }
 
+  function setFollowStyle(dragging) {
+    el.style.transition = dragging ? 'none' : 'transform 180ms cubic-bezier(.22,.61,.36,1)';
+    el.style.willChange = dragging ? 'transform' : 'auto';
+  }
+
+  function resetPosition() {
+    el.style.transform = '';
+    el.style.transition = '';
+    el.style.willChange = '';
   }
 
   el.addEventListener('touchstart', function (e) {
-
     if (e.touches.length !== 1 || blocked(e.target)) { ok = false; return; }
-
     ok = true;
+    dxNow = 0;
     sx = e.touches[0].clientX;
     sy = e.touches[0].clientY;
     st = Date.now();
+    setFollowStyle(true);
+  }, { passive: true });
 
+  el.addEventListener('touchmove', function (e) {
+    if (!ok || !e.touches.length) return;
+    var dx = e.touches[0].clientX - sx;
+    var dy = e.touches[0].clientY - sy;
+    // 세로 스크롤은 건드리지 않고, 가로 스와이프일 때만 손가락을 따라오게 함
+    if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy) * 1.15) return;
+    dxNow = dx;
+    el.style.transform = 'translate3d(' + (dx * 0.72) + 'px,0,0)';
+  }, { passive: true });
+
+  el.addEventListener('touchcancel', function () {
+    if (!ok) return;
+    ok = false;
+    setFollowStyle(false);
+    resetPosition();
   }, { passive: true });
 
   el.addEventListener('touchend', function (e) {
-
     if (!ok || !e.changedTouches.length) return;
-
     ok = false;
 
     var dx = e.changedTouches[0].clientX - sx;
     var dy = e.changedTouches[0].clientY - sy;
+    var elapsed = Date.now() - st;
+    var valid = elapsed <= 900 && Math.abs(dx) >= 60 && Math.abs(dx) >= Math.abs(dy) * 1.6;
+    // 스와이프가 성립하지 않으면 원래 자리로 부드럽게 복귀
+    setFollowStyle(false);
+    if (!valid) {
+      el.style.transform = '';
+      window.setTimeout(resetPosition, 190);
+      return;
+    }
 
-    if (Date.now() - st > 900) return;
-    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
-
-    if (dx < 0) onNext();
-    else onPrev();
-
+    animating = true;
+    var direction = dx < 0 ? -1 : 1;
+    var width = Math.max(90, Math.min(150, el.clientWidth * 0.28));
+    // 손가락을 놓으면 넘기는 방향으로 살짝 더 이동
+    el.style.transform = 'translate3d(' + (direction * -width) + 'px,0,0)';
+    window.setTimeout(function () {
+      if (direction < 0) onNext(); else onPrev();
+      // 새 화면을 반대쪽에서 시작해 중앙으로 들어오게 하여 연속적인 전환 효과 제공
+      el.style.transition = 'none';
+      el.style.transform = 'translate3d(' + (direction * width * 0.45) + 'px,0,0)';
+      window.requestAnimationFrame(function () {
+        window.requestAnimationFrame(function () {
+          el.style.transition = 'transform 220ms cubic-bezier(.22,.61,.36,1)';
+          el.style.transform = 'translate3d(0,0,0)';
+          window.setTimeout(function () { resetPosition(); animating = false; }, 230);
+        });
+      });
+    }, 120);
   }, { passive: true });
 
 }
@@ -4120,7 +4129,7 @@ function renderAlarmSub() {
 
   var cfg = getAlarmCfg();
 
-  el.textContent = cfg.on ? '※ 출근 ' + alarmMinText(cfg.min) + ' 알람 켜짐' : '※ 꺼짐 · 출근 시간 전에 알려드려요';
+  el.textContent = cfg.on ? '※ 출근 ' + alarmMinText(cfg.min) + ' 알람 켜짐' : '※ 꺼짐 · 출근 시간 전에려드려요';
 
 }
 
@@ -4656,4 +4665,4 @@ function handleAppBack(fromPopState) {
 
 </script>
 </body>
-</html>
+</html> 알
