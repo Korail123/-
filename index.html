@@ -476,31 +476,91 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   <h1>⚙️ 환경설정</h1>
 
-  <button type="button" class="setting-card" onclick="openDiaSelector()">
-
-    <span class="setting-icon">📋</span>
-
+  <button type="button" class="setting-card" onclick="openNoticePanel()">
+    <span class="setting-icon">📢</span>
     <span class="setting-text">
-      <span class="setting-title">근무 설정</span>
+      <span class="setting-title">공지사항</span>
+      <span class="setting-sub">※ 철도비서의 새 소식과 안내를 확인하세요</span>
+    </span>
+    <span class="setting-arrow">›</span>
+  </button>
+
+  <button type="button" class="setting-card" onclick="openSuggestionPanel()">
+    <span class="setting-icon">💬</span>
+    <span class="setting-text">
+      <span class="setting-title">건의사항</span>
+      <span class="setting-sub">※ 불편한 점이나 개선 의견을 보내주세요</span>
+    </span>
+    <span class="setting-arrow">›</span>
+  </button>
+
+  <button type="button" class="setting-card" onclick="openDiaSelector()">
+    <span class="setting-icon">📋</span>
+    <span class="setting-text">
+      <span class="setting-title">근무설정</span>
       <span class="setting-sub">※ 최초 1회 오늘 근무 설정</span>
     </span>
-
     <span class="setting-arrow">›</span>
-
   </button>
 
   <button type="button" class="setting-card" onclick="openAlarmSettings()">
-
     <span class="setting-icon">⏰</span>
-
     <span class="setting-text">
-      <span class="setting-title">출근 알람</span>
+      <span class="setting-title">알람설정</span>
       <span id="alarm-sub" class="setting-sub">※ 출근 시간 전에 알려드려요</span>
     </span>
-
     <span class="setting-arrow">›</span>
-
   </button>
+
+  <div id="notice-panel" class="dia-modal" onclick="if(event.target===this)closeNoticePanel()">
+    <div class="dia-dialog" style="max-height:88vh;overflow:auto">
+      <div class="dia-dialog-title">📢 공지사항</div>
+      <div class="dia-dialog-note" style="white-space:normal">공지사항은 관리자만 작성할 수 있습니다.</div>
+      <div id="notice-admin-actions" style="display:none;margin:12px 0"><button type="button" class="dia-text-btn" onclick="openBoardEditor('notice')">＋ 공지 작성</button></div>
+      <div id="notice-list" style="margin:12px 4px;line-height:1.7;color:#445;white-space:normal"><div class="dia-empty">공지사항을 불러오는 중...</div></div>
+      <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeNoticePanel()">닫기</button></div>
+    </div>
+  </div>
+
+  <div id="suggestion-panel" class="dia-modal" onclick="if(event.target===this)closeSuggestionPanel()">
+    <div class="dia-dialog" style="max-height:88vh;overflow:auto">
+      <div class="dia-dialog-title">💬 건의사항</div>
+      <div class="dia-dialog-note" style="white-space:normal">모든 사용자가 건의사항을 작성할 수 있습니다.</div>
+      <div style="margin:12px 0"><button type="button" class="dia-text-btn" onclick="openBoardEditor('suggestion')">＋ 건의사항 작성</button></div>
+      <div id="suggestion-list" style="margin:12px 4px;line-height:1.7;color:#445;white-space:normal"><div class="dia-empty">건의사항을 불러오는 중...</div></div>
+      <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeSuggestionPanel()">닫기</button></div>
+    </div>
+  </div>
+
+  <div id="board-editor-panel" class="dia-modal" onclick="if(event.target===this)closeBoardEditor()">
+    <div class="dia-dialog" style="max-height:88vh;overflow:auto">
+      <div id="board-editor-title" class="dia-dialog-title">게시물 작성</div>
+      <label for="board-editor-subject" style="display:block;margin:12px 4px 6px;font-size:13px;font-weight:bold">제목</label>
+      <input id="board-editor-subject" maxlength="120" placeholder="제목을 입력해주세요" style="box-sizing:border-box;width:100%;padding:12px;border:1px solid #d5dde7;border-radius:12px;font:inherit">
+      <div id="board-editor-category-wrap" style="display:none">
+        <label for="board-editor-category" style="display:block;margin:12px 4px 6px;font-size:13px;font-weight:bold">분류</label>
+        <select id="board-editor-category" style="box-sizing:border-box;width:100%;padding:12px;border:1px solid #d5dde7;border-radius:12px;background:#fff;font-size:14px"><option>기능 개선</option><option>오류 신고</option><option>근무표 관련</option><option>기타</option></select>
+      </div>
+      <label for="board-editor-content" style="display:block;margin:12px 4px 6px;font-size:13px;font-weight:bold">내용</label>
+      <textarea id="board-editor-content" rows="6" maxlength="5000" placeholder="내용을 입력해주세요" style="box-sizing:border-box;width:100%;resize:vertical;padding:12px;border:1px solid #d5dde7;border-radius:12px;font:inherit;font-size:14px;line-height:1.6"></textarea>
+      <div id="board-editor-message" class="status-message" style="white-space:normal"></div>
+      <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="saveBoardPost()">저장</button><button type="button" class="dia-text-btn" onclick="closeBoardEditor()">취소</button></div>
+    </div>
+  </div>
+
+  <div id="board-detail-panel" class="dia-modal" onclick="if(event.target===this)closeBoardDetail()">
+    <div class="dia-dialog" style="max-height:88vh;overflow:auto">
+      <div id="board-detail-title" class="dia-dialog-title">게시물</div>
+      <div id="board-detail-meta" style="font-size:12px;color:#8792a1;margin:4px 0 12px"></div>
+      <div id="board-detail-content" style="white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;margin:12px 0"></div>
+      <div id="board-detail-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"></div>
+      <div style="border-top:1px solid #e5eaf0;padding-top:12px;font-weight:bold">댓글</div>
+      <div id="board-comments" style="margin:10px 0;white-space:normal"></div>
+      <textarea id="board-comment-input" rows="3" maxlength="2000" placeholder="댓글을 입력해주세요" style="box-sizing:border-box;width:100%;resize:vertical;padding:10px;border:1px solid #d5dde7;border-radius:12px;font:inherit"></textarea>
+      <div id="board-comment-message" class="status-message" style="white-space:normal"></div>
+      <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="submitBoardComment()">댓글 등록</button><button type="button" class="dia-text-btn" onclick="closeBoardDetail()">닫기</button></div>
+    </div>
+  </div>
 
   <div id="dia-panel" class="dia-modal" onclick="if(event.target===this)closeDiaSelector()">
 
@@ -2435,8 +2495,8 @@ function saveScheduleEdit() {
     return;
   }
 
-  if (dia && !/^[A-Z0-9]+$/.test(dia)) {
-    msg.textContent = 'DIA 번호는 영문과 숫자만 입력해주세요.';
+  if (dia && !/^[0-9]+$/.test(dia)) {
+    msg.textContent = 'DIA 번호는 숫자만 입력해주세요.';
     return;
   }
 
@@ -3363,9 +3423,184 @@ function closePatternInfo() {
 
 }
 
-/* ============ 환경설정 · 근무 설정 ============ */
+/* ============ 환경설정 · 게시판 및 근무 설정 ============ */
 
 var tempSeq = '';
+var BOARD_ADMIN_ID = '199878';
+var activeBoardType = 'notice';
+var activeBoardPost = null;
+var boardEditorType = 'notice';
+var boardEditorPostId = '';
+
+function isBoardAdmin() {
+  var user = getCurrentUser();
+  return String(user && user.employeeId || '') === BOARD_ADMIN_ID;
+}
+function boardUserName(user) {
+  return String((user && (user.name || user.employeeName || user.employeeId)) || '사용자');
+}
+function boardApi(action, extra, cb) {
+  var user = getCurrentUser();
+  var params = { action: action, employeeId: user.employeeId, token: user.token };
+  Object.keys(extra || {}).forEach(function (k) { params[k] = extra[k]; });
+  api(params, function (r) {
+    if (typeof cb === 'function') cb(r || { success: false, message: '서버 응답이 없습니다.' });
+  });
+}
+function openNoticePanel() {
+  var panel = $('notice-panel');
+  var list = $('notice-list');
+  if (panel) panel.classList.add('active');
+  if ($('notice-admin-actions')) $('notice-admin-actions').style.display = isBoardAdmin() ? 'block' : 'none';
+  if (list) list.innerHTML = '<div class="dia-empty">공지사항을 불러오는 중...</div>';
+  if (!getCurrentUser() || getCurrentUser().employeeId === 'guest') {
+    if (list) list.innerHTML = '<div class="dia-empty">로그인 후 공지사항을 확인할 수 있습니다.</div>';
+    return;
+  }
+  boardApi('getAnnouncements', {}, function (r) {
+    if (!list) return;
+    if (!r.success) { list.innerHTML = '<div class="dia-empty">공지사항 서버 연결이 필요합니다. Apps Script에 게시판 기능을 추가해주세요.</div>'; return; }
+    renderBoardList('notice', r.announcements || r.posts || []);
+  });
+}
+function closeNoticePanel() { var p = $('notice-panel'); if (p) p.classList.remove('active'); }
+function openSuggestionPanel() {
+  var p = $('suggestion-panel'); var list = $('suggestion-list');
+  if (p) p.classList.add('active');
+  if (list) list.innerHTML = '<div class="dia-empty">건의사항을 불러오는 중...</div>';
+  if (!getCurrentUser() || getCurrentUser().employeeId === 'guest') { if (list) list.innerHTML = '<div class="dia-empty">로그인 후 이용해주세요.</div>'; return; }
+  boardApi('getSuggestions', {}, function (r) {
+    if (!list) return;
+    if (!r.success) { list.innerHTML = '<div class="dia-empty">건의사항 서버 연결이 필요합니다. Apps Script에 게시판 기능을 추가해주세요.</div>'; return; }
+    renderBoardList('suggestion', r.suggestions || r.posts || []);
+  });
+}
+function closeSuggestionPanel() { var p = $('suggestion-panel'); if (p) p.classList.remove('active'); }
+function renderBoardList(type, posts) {
+  var list = $(type === 'notice' ? 'notice-list' : 'suggestion-list');
+  if (!list) return;
+  if (!Array.isArray(posts) || !posts.length) { list.innerHTML = '<div class="dia-empty">등록된 게시물이 없습니다.</div>'; return; }
+  list.innerHTML = posts.map(function (post) {
+    var id = String(post.id || post.postId || '');
+    var title = esc(post.title || (type === 'notice' ? '공지사항' : '건의사항'));
+    var author = esc(post.authorName || post.name || post.employeeId || '사용자');
+    var date = esc(post.createdAt || post.date || '');
+    var content = esc(post.content || post.body || '').replace(/\n/g, '<br>');
+    return '<button type="button" onclick="openBoardDetail(\'' + type + '\',decodeURIComponent(\'' + encodeURIComponent(id) + '\'))" style="display:block;text-align:left;width:100%;padding:12px;margin-bottom:9px;border:1px solid #e1e8ef;border-radius:14px;background:#f8fafc;color:#263445;font:inherit;cursor:pointer">' +
+      '<div style="font-weight:bold;overflow-wrap:anywhere">' + title + '</div>' +
+      '<div style="font-size:11px;color:#8a94a3;margin-top:3px">' + author + (date ? ' · ' + date : '') + '</div>' +
+      '<div style="margin-top:7px;font-size:13px;overflow-wrap:anywhere">' + content + '</div></button>';
+  }).join('');
+}
+function openBoardEditor(type, post) {
+  boardEditorType = type;
+  boardEditorPostId = post ? String(post.id || post.postId || '') : '';
+  if (type === 'notice' && !isBoardAdmin()) { alert('공지사항 작성은 관리자만 가능합니다.'); return; }
+  var user = getCurrentUser();
+  if (!user || user.employeeId === 'guest') { alert('로그인 후 이용해주세요.'); return; }
+  $('board-editor-title').textContent = (boardEditorPostId ? '게시물 수정' : '게시물 작성');
+  $('board-editor-subject').value = post ? (post.title || '') : '';
+  $('board-editor-content').value = post ? (post.content || post.body || '') : '';
+  $('board-editor-category-wrap').style.display = type === 'suggestion' ? 'block' : 'none';
+  if (post && post.category) $('board-editor-category').value = post.category;
+  $('board-editor-message').textContent = '';
+  $('board-editor-panel').classList.add('active');
+}
+function closeBoardEditor() { var p = $('board-editor-panel'); if (p) p.classList.remove('active'); }
+function saveBoardPost() {
+  var user = getCurrentUser();
+  var title = $('board-editor-subject').value.trim();
+  var content = $('board-editor-content').value.trim();
+  var msg = $('board-editor-message');
+  if (boardEditorType === 'notice' && !isBoardAdmin()) { msg.textContent = '공지사항 작성은 관리자만 가능합니다.'; return; }
+  if (!title) { msg.textContent = '제목을 입력해주세요.'; return; }
+  if (!content) { msg.textContent = '내용을 입력해주세요.'; return; }
+  msg.textContent = '저장 중...';
+  var extra = { title: title, content: content, category: $('board-editor-category').value, postId: boardEditorPostId, id: boardEditorPostId };
+  var action;
+  if (boardEditorType === 'notice') action = boardEditorPostId ? 'updateAnnouncement' : 'createAnnouncement';
+  else action = boardEditorPostId ? 'updateSuggestion' : 'createSuggestion';
+  boardApi(action, extra, function (r) {
+    if (r && r.success) {
+      closeBoardEditor();
+      if (boardEditorType === 'notice') openNoticePanel(); else openSuggestionPanel();
+    } else {
+      msg.textContent = (r && r.message) || '저장에 실패했습니다. Apps Script 서버 기능을 확인해주세요.';
+    }
+  });
+}
+function openBoardDetail(type, id) {
+  activeBoardType = type;
+  var list = $(type === 'notice' ? 'notice-list' : 'suggestion-list');
+  // Fetch a fresh post and its comments; the server must verify edit/delete permissions.
+  activeBoardPost = { id: id, type: type };
+  $('board-detail-title').textContent = type === 'notice' ? '📢 공지사항' : '💬 건의사항';
+  $('board-detail-meta').textContent = '게시물을 불러오는 중...';
+  $('board-detail-content').textContent = '';
+  $('board-comments').innerHTML = '<div class="dia-empty">댓글을 불러오는 중...</div>';
+  $('board-detail-actions').innerHTML = '';
+  $('board-comment-input').value = '';
+  $('board-comment-message').textContent = '';
+  $('board-detail-panel').classList.add('active');
+  var action = type === 'notice' ? 'getAnnouncement' : 'getSuggestion';
+  boardApi(action, { postId: id, id: id }, function (r) {
+    if (!r || !r.success) { $('board-detail-meta').textContent = '게시물 상세 조회 기능을 서버에 연결해야 합니다.'; $('board-detail-content').textContent = (r && r.message) || ''; return; }
+    var post = r.post || r.announcement || r.suggestion || r;
+    activeBoardPost = post; activeBoardPost.type = type;
+    $('board-detail-title').textContent = post.title || (type === 'notice' ? '공지사항' : '건의사항');
+    $('board-detail-meta').textContent = (post.authorName || post.name || post.employeeId || '사용자') + (post.createdAt || post.date ? ' · ' + (post.createdAt || post.date) : '');
+    $('board-detail-content').textContent = post.content || post.body || '';
+    var canEdit = type === 'notice' ? isBoardAdmin() : String(post.employeeId || post.authorId || '') === String(getCurrentUser().employeeId);
+    var actions = '';
+    if (canEdit) actions += '<button type="button" class="dia-text-btn" onclick="editActiveBoardPost()">수정</button><button type="button" class="dia-text-btn" onclick="deleteActiveBoardPost()">삭제</button>';
+    $('board-detail-actions').innerHTML = actions;
+  });
+  boardApi(type === 'notice' ? 'getAnnouncementComments' : 'getSuggestionComments', { postId: id, id: id }, function (r) {
+    var box = $('board-comments');
+    if (!box) return;
+    if (!r || !r.success) { box.innerHTML = '<div class="dia-empty">댓글 기능을 서버에 연결해야 합니다.</div>'; return; }
+    var comments = r.comments || [];
+    box.innerHTML = comments.length ? comments.map(function (c) {
+      var cid = String(c.id || c.commentId || '');
+      var owner = String(c.employeeId || c.authorId || '') === String(getCurrentUser().employeeId);
+      return '<div style="padding:9px 0;border-bottom:1px solid #edf0f4"><div style="font-size:11px;color:#8792a1">' + esc(c.authorName || c.name || c.employeeId || '사용자') + (c.createdAt ? ' · ' + esc(c.createdAt) : '') + '</div><div style="white-space:pre-wrap;overflow-wrap:anywhere;margin:5px 0">' + esc(c.content || c.text || '') + '</div>' + (owner ? '<button type="button" class="dia-text-btn" onclick="editBoardComment(decodeURIComponent(\'' + encodeURIComponent(cid) + '\'),decodeURIComponent(\'' + encodeURIComponent(c.content || c.text || '') + '\'))">수정</button><button type="button" class="dia-text-btn" onclick="deleteBoardComment(decodeURIComponent(\'' + encodeURIComponent(cid) + '\'))">삭제</button>' : '') + '</div>';
+    }).join('') : '<div class="dia-empty">아직 댓글이 없습니다.</div>';
+  });
+}
+function closeBoardDetail() { var p = $('board-detail-panel'); if (p) p.classList.remove('active'); }
+function editActiveBoardPost() { if (!activeBoardPost) return; openBoardEditor(activeBoardType, activeBoardPost); }
+function deleteActiveBoardPost() {
+  if (!activeBoardPost || !confirm('이 게시물을 삭제할까요?')) return;
+  if (activeBoardType === 'notice' && !isBoardAdmin()) { alert('관리자만 삭제할 수 있습니다.'); return; }
+  boardApi(activeBoardType === 'notice' ? 'deleteAnnouncement' : 'deleteSuggestion', { postId: activeBoardPost.id || activeBoardPost.postId, id: activeBoardPost.id || activeBoardPost.postId }, function (r) {
+    if (r && r.success) { closeBoardDetail(); if (activeBoardType === 'notice') openNoticePanel(); else openSuggestionPanel(); }
+    else alert((r && r.message) || '삭제에 실패했습니다. 서버 권한 확인이 필요합니다.');
+  });
+}
+function submitBoardComment() {
+  var user = getCurrentUser(); var content = $('board-comment-input').value.trim(); var msg = $('board-comment-message');
+  if (!user || user.employeeId === 'guest') { msg.textContent = '로그인 후 이용해주세요.'; return; }
+  if (!content) { msg.textContent = '댓글 내용을 입력해주세요.'; return; }
+  if (!activeBoardPost) return;
+  boardApi(activeBoardType === 'notice' ? 'addAnnouncementComment' : 'addSuggestionComment', { postId: activeBoardPost.id || activeBoardPost.postId, id: activeBoardPost.id || activeBoardPost.postId, content: content }, function (r) {
+    if (r && r.success) openBoardDetail(activeBoardType, String(activeBoardPost.id || activeBoardPost.postId));
+    else msg.textContent = (r && r.message) || '댓글 등록 기능을 서버에 연결해야 합니다.';
+  });
+}
+function editBoardComment(commentId, oldContent) {
+  var content = prompt('댓글을 수정해주세요.', oldContent || '');
+  if (content === null) return;
+  content = content.trim(); if (!content) { alert('댓글 내용을 입력해주세요.'); return; }
+  boardApi(activeBoardType === 'notice' ? 'updateAnnouncementComment' : 'updateSuggestionComment', { postId: activeBoardPost.id || activeBoardPost.postId, commentId: commentId, id: commentId, content: content }, function (r) {
+    if (r && r.success) openBoardDetail(activeBoardType, String(activeBoardPost.id || activeBoardPost.postId)); else alert((r && r.message) || '댓글 수정 기능을 서버에 연결해야 합니다.');
+  });
+}
+function deleteBoardComment(commentId) {
+  if (!confirm('이 댓글을 삭제할까요?')) return;
+  boardApi(activeBoardType === 'notice' ? 'deleteAnnouncementComment' : 'deleteSuggestionComment', { postId: activeBoardPost.id || activeBoardPost.postId, commentId: commentId, id: commentId }, function (r) {
+    if (r && r.success) openBoardDetail(activeBoardType, String(activeBoardPost.id || activeBoardPost.postId)); else alert((r && r.message) || '댓글 삭제 기능을 서버에 연결해야 합니다.');
+  });
+}
 
 function openSettings() {
 
