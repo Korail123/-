@@ -264,6 +264,20 @@ body{padding-bottom:84px}
   -webkit-touch-callout: none !important;
 }
 
+
+/* Android WebView: long-press text selection/drag toolbar prevention across the app.
+   Keep form fields editable so users can still type into inputs and textareas. */
+html, body, body *:not(input):not(textarea):not(select):not([contenteditable="true"]) {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+input, textarea, select, [contenteditable="true"] {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: default;
+}
 </style>
 <style>html,body{max-width:100%;overflow-x:hidden}#main-container{max-width:100%;overflow-x:clip}.page-view{min-width:0;max-width:100%;box-sizing:border-box}img,table{max-width:100%}
 .site-link-btn {
@@ -275,9 +289,13 @@ body{padding-bottom:84px}
 .site-link-btn:active { background:#f1f6fc; }
 .site-link-btn span { color:#1677e8; font-size:18px; }
 
-/* 근무그룹 사용자 길게 누르기 및 근무 교환 */
-.group-member-name{cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-.group-member-name:active{background:#eaf3ff}
+/* 근무그룹 근무 교환 버튼 및 사용자 선택 팝업 */
+.group-swap-open-btn{border:1px solid #1769d2;background:#1769d2;color:#fff;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;box-shadow:0 1px 2px rgba(16,24,40,.08)}
+.group-swap-select-dialog{width:100%;max-width:420px;max-height:78vh;overflow:auto;box-sizing:border-box;background:#fff;border-radius:16px;padding:16px;text-align:left}
+.group-swap-user-list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.group-swap-user-btn{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:12px;border:1px solid #dce3ec;border-radius:10px;background:#fff;color:#243247;text-align:left;font-size:14px;font-weight:600}
+.group-swap-user-btn:active{background:#eaf3ff}
+.group-swap-user-id{font-size:11px;color:#7a8696;font-weight:400}
 .swap-dialog{width:100%;max-width:700px;height:88vh;max-height:88vh;min-height:520px;box-sizing:border-box;overflow-y:auto;overscroll-behavior:contain;background:#fff;border-radius:18px;padding:14px;text-align:left}
 .swap-cal-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:12px}
 .swap-person{border:1px solid #dfe6ef;border-radius:12px;overflow:hidden;min-width:0}
@@ -471,6 +489,10 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   </div>
 
   <div id="group-status" class="status-message" style="margin-top:0"></div>
+
+  <div style="display:flex;justify-content:flex-start;margin:8px 0 10px;">
+    <button type="button" class="group-swap-open-btn" onclick="openGroupSwapSelector()">근무 교환</button>
+  </div>
 
   <div class="group-table-container">
     <table class="group-table" id="group-schedule-table">
@@ -907,7 +929,17 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 </div>
 
 
-<!-- 근무그룹 사용자 길게 누르기: 근무 교환 -->
+<!-- 근무그룹 근무 교환 대상 선택 -->
+<div id="group-swap-select-panel" class="dia-modal" style="z-index:179" onclick="if(event.target===this)closeGroupSwapSelector()">
+  <div class="group-swap-select-dialog">
+    <div class="dia-dialog-title">누구와 바꾸시겠습니까?</div>
+    <div class="swap-note">근무를 교환할 그룹원을 선택해 주세요.</div>
+    <div id="group-swap-user-list" class="group-swap-user-list"></div>
+    <div class="dia-dialog-actions" style="padding-top:16px"><button type="button" class="dia-text-btn" onclick="closeGroupSwapSelector()">취소</button></div>
+  </div>
+</div>
+
+<!-- 근무표 비교 및 교환 -->
 <div id="group-swap-panel" class="dia-modal" style="z-index:180" onclick="if(event.target===this)closeGroupSwap()">
   <div class="swap-dialog">
     <div class="dia-dialog-title">근무표 비교 및 교환</div>
@@ -3384,7 +3416,7 @@ function renderGroupTable() {
     var mem = members[k];
 
     html += '<tr' + (mem.employeeId === me ? ' class="me"' : '') + '>';
-    html += '<td class="name-col group-member-name" onpointerdown="startGroupNamePress(' + k + ')" onpointerup="cancelGroupNamePress()" onpointerleave="cancelGroupNamePress()" onpointercancel="cancelGroupNamePress()" oncontextmenu="return false" title="길게 눌러 근무 교환">' + esc(mem.name || mem.employeeId) + '</td>';
+    html += '<td class="name-col group-member-name">' + esc(mem.name || mem.employeeId) + '</td>';
 
     for (var j = 0; j < 7; j++) {
 
@@ -3456,27 +3488,46 @@ function renderGroupTable() {
 
 }
 
-/* ---- 근무그룹: 이름을 길게 눌러 근무표 비교·교환 ---- */
-var groupNamePressTimer = null;
+/* ---- 근무그룹: 버튼으로 교환 대상 선택 ---- */
 var swapTargetMember = null;
+var swapSelectableMembers = [];
 var swapCalendarMonth = null;
 var swapSubmitting = false;
 var swapRangeStart = '';
 var swapRangeEnd = '';
 
-function startGroupNamePress(k) {
-  cancelGroupNamePress();
-  groupNamePressTimer = setTimeout(function () {
-    groupNamePressTimer = null;
-    var mem = groupRows[k];
-    var me = getCurrentUser();
-    if (!mem || !me || !me.employeeId || mem.employeeId === me.employeeId) return;
-    openGroupSwap(mem);
-  }, 650);
+function openGroupSwapSelector() {
+  if (!snapshotUsable()) {
+    showToast('근무표를 먼저 불러와 주세요.');
+    return;
+  }
+  var me = getCurrentUser();
+  var list = $('group-swap-user-list');
+  if (!list) return;
+  var members = (groupRows || []).filter(function (mem) {
+    return mem && String(mem.employeeId) !== String(me && me.employeeId);
+  });
+  swapSelectableMembers = members;
+  if (!members.length) {
+    list.innerHTML = '<div class="swap-note">선택할 수 있는 그룹원이 없습니다.</div>';
+  } else {
+    list.innerHTML = members.map(function (mem, index) {
+      var id = String(mem.employeeId || '');
+      var name = String(mem.name || id);
+      return '<button type="button" class="group-swap-user-btn" onclick="chooseGroupSwapTargetByIndex(' + index + ')"><span>' + esc(name) + '</span><span class="group-swap-user-id">' + esc(id) + '　›</span></button>';
+    }).join('');
+  }
+  $('group-swap-select-panel').classList.add('active');
 }
-function cancelGroupNamePress() {
-  if (groupNamePressTimer) clearTimeout(groupNamePressTimer);
-  groupNamePressTimer = null;
+function closeGroupSwapSelector() {
+  var panel = $('group-swap-select-panel');
+  if (panel) panel.classList.remove('active');
+}
+function chooseGroupSwapTargetByIndex(index) {
+  var mem = swapSelectableMembers[index];
+  if (!mem) { showToast('선택한 그룹원을 찾을 수 없습니다.'); return; }
+  closeGroupSwapSelector();
+  openGroupSwap(mem);
 }
 function openGroupSwap(mem) {
   if (!snapshotUsable()) {
@@ -6183,6 +6234,25 @@ function handleAppBack(fromPopState) {
 
 
 
+</script>
+
+<script>
+// Prevent Android/WebView text-selection handles and long-press context menus
+// while preserving normal interaction with form controls and existing long-press handlers.
+(function () {
+  function isEditable(el) {
+    return !!(el && el.closest && el.closest('input, textarea, select, [contenteditable="true"]'));
+  }
+  document.addEventListener('selectstart', function (e) {
+    if (!isEditable(e.target)) e.preventDefault();
+  }, true);
+  document.addEventListener('contextmenu', function (e) {
+    if (!isEditable(e.target)) e.preventDefault();
+  }, true);
+  document.addEventListener('dragstart', function (e) {
+    if (!isEditable(e.target)) e.preventDefault();
+  }, true);
+})();
 </script>
 </body>
 </html>
