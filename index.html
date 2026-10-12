@@ -558,6 +558,15 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <span class="setting-arrow">›</span>
   </button>
 
+  <button type="button" class="setting-card" onclick="openRegulationsPanel()">
+    <span class="setting-icon" style="background:#fff0d9">📚</span>
+    <span class="setting-text">
+      <span class="setting-title">규정</span>
+      <span class="setting-sub">※ 등록된 규정 PDF를 찾아 열람합니다</span>
+    </span>
+    <span class="setting-arrow">›</span>
+  </button>
+
   <button type="button" class="setting-card" onclick="openSitesPanel()">
     <span class="setting-icon" style="background:#e8f2ff">🌐</span>
     <span class="setting-text">
@@ -634,6 +643,25 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <textarea id="board-comment-input" rows="3" maxlength="2000" placeholder="댓글을 입력해주세요" style="box-sizing:border-box;width:100%;resize:vertical;padding:10px;border:1px solid #d5dde7;border-radius:12px;font:inherit"></textarea>
       <div id="board-comment-message" class="status-message" style="white-space:normal"></div>
       <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="submitBoardComment()">댓글 등록</button><button type="button" class="dia-text-btn" onclick="closeBoardDetail()">닫기</button></div>
+    </div>
+  </div>
+
+
+  <div id="regulations-panel" class="dia-modal" style="z-index:280" onclick="if(event.target===this)closeRegulationsPanel()">
+    <div class="dia-dialog" style="max-width:560px;max-height:90vh;overflow:auto">
+      <div class="dia-dialog-title">📚 규정 자료</div>
+      <div class="dia-dialog-note" style="white-space:normal">목록에서 PDF를 선택한 뒤 ‘찾기’를 누르면 자료가 열립니다.</div>
+      <div id="regulations-status" style="font-size:13px;color:#687386;margin:8px 4px 12px;line-height:1.6">DB에서 PDF 목록을 불러오는 중...</div>
+      <div id="regulations-list" role="radiogroup" aria-label="규정 PDF 목록" style="display:flex;flex-direction:column;gap:8px;max-height:34vh;overflow:auto"></div>
+      <div id="regulations-viewer-wrap" style="display:none;margin-top:14px">
+        <div id="regulations-viewer-title" style="font-weight:bold;margin:0 4px 8px;overflow-wrap:anywhere"></div>
+        <iframe id="regulations-pdf-viewer" title="규정 PDF 미리보기" style="width:100%;height:48vh;border:1px solid #dce3ec;border-radius:10px;background:#f8fafc" referrerpolicy="no-referrer"></iframe>
+        <div id="regulations-open-link" style="font-size:12px;margin:6px 4px"></div>
+      </div>
+      <div class="dia-dialog-actions" style="gap:18px;flex-wrap:wrap">
+        <button type="button" class="dia-text-btn" onclick="findSelectedRegulation()">찾기</button>
+        <button type="button" class="dia-text-btn" onclick="closeRegulationsPanel()">닫기</button>
+      </div>
     </div>
   </div>
 
@@ -4729,6 +4757,93 @@ function submitPrivacyConsent() {
   });
 }
 
+
+var regulationDocuments = [];
+var selectedRegulationIndex = -1;
+
+function openRegulationsPanel() {
+  var panel = $('regulations-panel');
+  var status = $('regulations-status');
+  var list = $('regulations-list');
+  if (!panel) return;
+  panel.classList.add('active');
+  $('regulations-viewer-wrap').style.display = 'none';
+  $('regulations-pdf-viewer').removeAttribute('src');
+  $('regulations-open-link').innerHTML = '';
+  regulationDocuments = [];
+  selectedRegulationIndex = -1;
+  list.innerHTML = '';
+  status.textContent = 'DB에서 PDF 목록을 불러오는 중...';
+  var user = getCurrentUser();
+  if (!user || !user.employeeId || user.employeeId === 'guest' || !user.token) {
+    status.textContent = '로그인 후 규정 자료를 확인할 수 있습니다.';
+    return;
+  }
+  /* 서버에는 app_regulations RPC가 있어야 하며, 로그인 토큰을 검증한 뒤 PDF 메타데이터만 반환해야 합니다. */
+  api({ action: 'getRegulations', employeeId: user.employeeId, token: user.token }, function (r) {
+    if (!panel.classList.contains('active')) return;
+    if (!r || !r.success) {
+      status.textContent = (r && r.message) || '규정 목록을 불러오지 못했습니다. Supabase의 app_regulations 목록 API 설정을 확인해주세요.';
+      return;
+    }
+    var docs = r.documents || r.regulations || r.files || [];
+    if (!Array.isArray(docs)) docs = [];
+    regulationDocuments = docs.filter(function (d) {
+      var name = String(d.name || d.title || d.fileName || d.filename || '');
+      var mime = String(d.mimeType || d.mime_type || d.contentType || '').toLowerCase();
+      var url = String(d.url || d.pdfUrl || d.signedUrl || d.signed_url || '');
+      return (/\.pdf(?:$|[?#])/i.test(name) || mime === 'application/pdf') && !!url;
+    });
+    if (!regulationDocuments.length) {
+      status.textContent = '열 수 있는 PDF가 없습니다. 서버 응답에 PDF 이름과 접근 가능한 URL이 포함되어 있는지 확인해주세요.';
+      return;
+    }
+    status.textContent = 'PDF ' + regulationDocuments.length + '개';
+    list.innerHTML = '';
+    regulationDocuments.forEach(function (doc, i) {
+      var name = String(doc.name || doc.title || doc.fileName || doc.filename || '이름 없는 PDF');
+      var label = document.createElement('label');
+      label.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #e1e7ef;border-radius:12px;background:#f8fafc;font-size:14px;line-height:1.5;cursor:pointer;overflow-wrap:anywhere';
+      var radio = document.createElement('input');
+      radio.type = 'radio'; radio.name = 'regulation-pdf-choice'; radio.value = String(i); radio.style.flex = '0 0 auto';
+      radio.addEventListener('change', function () {
+        selectedRegulationIndex = i;
+        Array.prototype.forEach.call(list.children, function (el) { el.style.borderColor = '#e1e7ef'; el.style.background = '#f8fafc'; });
+        label.style.borderColor = '#2684ff'; label.style.background = '#eef6ff';
+      });
+      var title = document.createElement('span'); title.textContent = name; title.style.flex = '1';
+      label.appendChild(radio); label.appendChild(title); list.appendChild(label);
+    });
+  });
+}
+
+function findSelectedRegulation() {
+  if (selectedRegulationIndex < 0 || !regulationDocuments[selectedRegulationIndex]) {
+    var checked = document.querySelector('input[name="regulation-pdf-choice"]:checked');
+    if (checked) selectedRegulationIndex = Number(checked.value);
+  }
+  var doc = regulationDocuments[selectedRegulationIndex];
+  if (!doc) { alert('먼저 열람할 PDF 자료를 선택해주세요.'); return; }
+  var url = String(doc.url || doc.pdfUrl || doc.signedUrl || doc.signed_url || '');
+  if (!/^https:\/\//i.test(url)) { alert('PDF 주소가 안전한 HTTPS 링크가 아닙니다. 관리자에게 확인해주세요.'); return; }
+  var name = String(doc.name || doc.title || doc.fileName || doc.filename || '규정 PDF');
+  $('regulations-viewer-title').textContent = name;
+  $('regulations-pdf-viewer').src = url;
+  $('regulations-open-link').innerHTML = '';
+  var a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = '새 탭에서 PDF 열기'; a.style.color = '#1769d2';
+  $('regulations-open-link').appendChild(a);
+  $('regulations-viewer-wrap').style.display = 'block';
+}
+
+function closeRegulationsPanel() {
+  var panel = $('regulations-panel');
+  if (panel) panel.classList.remove('active');
+  var viewer = $('regulations-pdf-viewer');
+  if (viewer) viewer.removeAttribute('src');
+  regulationDocuments = [];
+  selectedRegulationIndex = -1;
+}
+
 function openSitesPanel() {
   const panel = document.getElementById('sites-panel');
   if (panel) panel.style.display = 'flex';
@@ -5442,6 +5557,7 @@ function runAlarmCheck() {
    팝업은 닫고, 다른 화면은 직전 화면으로 복귀. 메인에서는 브라우저 뒤로 이동. */
 function closeTopOverlayForBack() {
   var overlays = [
+    ['regulations-panel', closeRegulationsPanel],
     ['route-viewer', closeRouteViewer],
     ['alarm-ring-panel', closeAlarmRing],
     ['schedule-edit-panel', closeScheduleEdit],
