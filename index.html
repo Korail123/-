@@ -976,11 +976,11 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <div class="swap-person"><div id="swap-other-title" class="swap-person-title">상대 근무표</div><div id="swap-other-calendar" class="swap-month"></div></div>
     </div>
     <div id="swap-status" class="swap-note" role="status"></div>
-    <div class="swap-note">※ 선택한 기간의 날짜별 근무를 서로 교환합니다. 변경된 날짜에는 *가 표시됩니다. 양쪽 근무표에 저장하려면 서버의 근무교환 API 지원이 필요합니다.</div>
+    <div class="swap-note">※ 선택한 기간의 날짜별 근무를 서로 교환합니다. 변경된 날짜에는 *가 표시됩니다.</div>
     <div class="swap-actions" style="flex-wrap:wrap">
-      <button type="button" class="swap-cancel" onclick="revertSwapRangeOriginal()" style="border:1px solid #e53935;color:#e53935;background:#fff">원래대로 되돌리기</button>
-      <button type="button" class="swap-cancel" onclick="closeGroupSwap()">취소</button>
-      <button type="button" id="swap-submit" class="swap-submit" onclick="submitGroupSwap()">이 기간 근무 교환</button>
+      <button type="button" class="swap-cancel" onclick="closeGroupSwap()">닫기</button>
+      <button type="button" id="swap-revert" class="swap-cancel" onclick="revertSwapRangeOriginal()" style="border:1px solid #e53935;color:#e53935;background:#fff">원래대로 되돌리기</button>
+      <button type="button" id="swap-submit" class="swap-submit" onclick="submitGroupSwap()">근무 교환</button>
     </div>
   </div>
 </div>
@@ -1107,28 +1107,21 @@ document.addEventListener('DOMContentLoaded', function () {
 /* 서버 보관함에 있는 근무 교환 내용을 이 폰에 반영 */
 function syncPending(done) {
   var u = getCurrentUser();
-  if (!u.token) { if (done) done(0); return; }
+  if (!u.token) { if (done) done(); return; }
   refreshSnapshot(true, function (ok) {
-    if (!ok || !snapshotUsable()) { if (done) done(0); return; }
+    if (!ok || !snapshotUsable()) { if (done) done(); return; }
     api({ action: 'getPending', employeeId: u.employeeId, token: u.token }, function (r) {
-      var n = 0;
       if (r && r.success && r.items && r.items.length) {
         r.items.forEach(function (it) {
-          snapUpsertOverride(u.employeeId, it[0], it[1], it[2], it[3]);
+          if (it[1] === 'clear') snapRemoveOverride(u.employeeId, it[0]);
+          else snapUpsertOverride(u.employeeId, it[0], it[1], it[2], it[3]);
         });
-        n = r.items.length;
-        showToast('근무 교환 ' + n + '일치가 반영되었습니다.');
-        onSnapshotUpdated();
+        showToast('근무 교환 ' + r.items.length + '일치가 반영되었습니다.');
       }
-      if (done) done(n);
+      if (done) done();
     });
   });
 }
-
-/* 앱으로 돌아올 때도 확인 */
-document.addEventListener('visibilitychange', function () {
-  if (!document.hidden) syncPending();
-});
 /* 수동 백업 및 실시간 동기화 (새로고침 버튼 동작) */
 function triggerManualSync() {
   var u = getCurrentUser();
@@ -3284,7 +3277,7 @@ function startGroupAutoRefresh() {
 
   groupTimer = setInterval(function () {
     if (document.hidden) return;
-    syncPending(function () { loadGroupSchedule(true); });
+    loadGroupSchedule(true);
   }, GROUP_REFRESH_MS);
 
 }
@@ -3623,10 +3616,34 @@ function resetSwapRange() {
   renderSwapCalendars();
 }
 
-/* 선택한 기간의 직접 변경(근무교환·수동변경)을 지우고 원래 순환 근무로 복원 */
+/* 근무교환/되돌리기 결과를 두 사람 달력에 바로 반영 (items: [{date,type,dia,status}], type 'clear' = 직접변경 삭제) */
+function swapApplyLocal(employeeId, items) {
+  if (!items || !items.length) return;
+  var me = getCurrentUser().employeeId;
+  if (String(employeeId) === String(me)) {
+    items.forEach(function (it) {
+      if (it.type === 'clear') snapRemoveOverride(me, it.date);
+      else snapUpsertOverride(me, it.date, it.type, it.dia, it.status);
+    });
+    return;
+  }
+  if (!snapshot || !snapshot.raw) return;
+  var dates = {};
+  items.forEach(function (it) { dates[it.date] = it; });
+  var rows = (snapshot.raw.overrides || []).filter(function (r) {
+    return !(String(r[0]) === String(employeeId) && dates[r[1]]);
+  });
+  items.forEach(function (it) {
+    if (it.type !== 'clear') rows.push([employeeId, it.date, it.type, it.dia || '', it.status || '', stampNow()]);
+  });
+  snapshot.raw.overrides = rows;
+  buildSnapIndex();
+}
+
+/* 선택한 기간의 교환을 서버 기록으로 두 사람 모두 원래대로 복원 */
 function revertSwapRangeOriginal() {
   var user = getCurrentUser();
-  if (!user || !user.token) {
+  if (!user || !user.token || !swapTargetMember || swapSubmitting) {
     $('swap-status').textContent = '로그인 후 이용해주세요.';
     return;
   }
@@ -3640,18 +3657,32 @@ function revertSwapRangeOriginal() {
     $('swap-status').textContent = '한 번에 최대 31일까지만 되돌릴 수 있습니다.';
     return;
   }
-  if (!confirm(startKey + ' ~ ' + endKey + ' 기간의 직접 변경을 삭제하고 원래 근무로 되돌릴까요?\n(내 근무표만 복원됩니다)')) return;
-
-  var keys = snapDateKeys(startKey, endKey);
-  for (var i = 0; i < keys.length; i++) {
-    removeAutoNextDayOff(user.employeeId, snapShiftKey(keys[i], 1));
-    snapRemoveOverride(user.employeeId, keys[i]);
-  }
-  $('swap-status').textContent = '선택한 기간을 원래 근무로 복원했습니다. 서버 백업이 켜져 있으면 자동으로 반영됩니다.';
-  if (typeof loadMyMonth === 'function') loadMyMonth();
-  loadGroupSchedule(false);
-  renderSwapCalendars();
-  showToast('원래 근무로 되돌렸습니다.');
+  var tname = swapTargetMember.name || swapTargetMember.employeeId;
+  if (!confirm(startKey + ' ~ ' + endKey + ' 기간의 ' + tname + '님과의 근무 교환을 취소하고 두 사람 모두 원래 근무로 되돌릴까요?')) return;
+  swapSubmitting = true;
+  $('swap-revert').disabled = true;
+  $('swap-submit').disabled = true;
+  $('swap-status').textContent = '원래 근무로 되돌리는 중...';
+  api({ action: 'revertSwapRange', employeeId: user.employeeId, token: user.token,
+        targetEmployeeId: swapTargetMember.employeeId, startDate: startKey, endDate: endKey }, function (r) {
+    swapSubmitting = false;
+    $('swap-revert').disabled = false;
+    if (!r || !r.success) {
+      $('swap-status').textContent = (r && r.message) ? r.message : '되돌리기에 실패했습니다. 잠시 후 다시 시도해주세요.';
+      renderSwapCalendars();
+      return;
+    }
+    function toObj(a) { return (a || []).map(function (x) { return { date: x[0], type: x[1], dia: x[2], status: x[3] }; }); }
+    swapApplyLocal(user.employeeId, toObj(r.mine));
+    swapApplyLocal(swapTargetMember.employeeId, toObj(r.theirs));
+    renderSwapCalendars();
+    $('swap-status').textContent = (r.count ? r.count + '일치 근무를 원래대로 되돌렸습니다.' : '되돌릴 교환 기록이 없습니다.');
+    syncPending(function () {
+      loadGroupSchedule(false);
+      if (typeof loadMyMonth === 'function') loadMyMonth();
+      renderSwapCalendars();
+    });
+  });
 }
 function selectSwapRangeDate(key) {
   if (!swapRangeStart || swapRangeEnd) {
@@ -3799,10 +3830,14 @@ function submitGroupSwap() {
     swapSubmitting = false;
     $('swap-submit').disabled = false;
     if (!r || !r.success) {
-      $('swap-status').textContent = (r && r.message) ? r.message : '서버에 연결하지 못했습니다. 근무표는 변경되지 않았습니다.';
+      $('swap-status').textContent = ((r && r.message) ? r.message : '서버에 연결하지 못했습니다.') + ' (두 사람의 근무표는 변경되지 않았습니다.)';
       return;
     }
-    $('swap-status').textContent = '근무 교환이 저장되었습니다. 근무표를 새로 불러옵니다.';
+    /* 서버 저장이 확인되면 팝업 안 두 달력에 교환 결과를 바로 표시 */
+    swapApplyLocal(user.employeeId, swaps.map(function (w) { var t = w.theirs || {}; return { date: w.date, type: t.type, dia: t.dia, status: t.status }; }));
+    swapApplyLocal(swapTargetMember.employeeId, swaps.map(function (w) { var m = w.mine || {}; return { date: w.date, type: m.type, dia: m.dia, status: m.status }; }));
+    renderSwapCalendars();
+    $('swap-status').textContent = '근무 교환이 완료되었습니다. 두 근무표에 * 로 표시됩니다.';
     syncPending(function () {
       loadGroupSchedule(false);
       if (typeof loadMyMonth === 'function') loadMyMonth();
