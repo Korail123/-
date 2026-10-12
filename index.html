@@ -288,6 +288,7 @@ body{padding-bottom:84px}
 .swap-day{min-height:39px;border-radius:6px;background:#f7f9fc;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 .swap-day.empty{background:transparent}
 .swap-day .sd-num{font-size:10px;color:#687386}
+ .swap-pick-date{width:100%;padding:3px 1px;border:0;color:inherit;font:inherit;text-align:center;cursor:pointer;} .swap-pick-date:focus-visible{outline:2px solid #1769d2;outline-offset:1px;}
 .swap-day .sd-duty{font-size:12px;font-weight:bold;color:#1769d2;overflow:hidden;max-width:100%}
 .swap-day .sd-duty.duty-day{color:#c28b00}.swap-day .sd-duty.duty-off{color:#d32f2f}.swap-day .sd-duty.duty-night{color:#1769d2}
 .swap-day.in-range{background:#dceeff;outline:1px solid #85bfff}
@@ -921,7 +922,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <b id="swap-month-label" style="font-size:13px"></b>
       <button type="button" onclick="changeSwapMonth(1)">다음 달 ▶</button>
     </div>
-    <div id="swap-range-calendar" class="swap-range-calendar" aria-label="교환 기간 달력"></div>
     <div class="swap-cal-grid">
       <div class="swap-person"><div id="swap-me-title" class="swap-person-title">내 근무표</div><div id="swap-me-calendar" class="swap-month"></div></div>
       <div class="swap-person"><div id="swap-other-title" class="swap-person-title">상대 근무표</div><div id="swap-other-calendar" class="swap-month"></div></div>
@@ -1818,7 +1818,9 @@ function snapBuildDay(dateKey, seq, anchor, dia, ov, name) {
       normalizedLabel = displayDutyLabel(baseLabelDay && baseLabelDay.type);
     }
   }
-  d.label = normalizedLabel || (d.overrideType === 'status' ? String(d.status || '') : '');
+  d.label = d.overrideType === 'status'
+    ? String(d.status || d.type || normalizedLabel || '')
+    : (normalizedLabel || String(d.status || ''));
 
   return d;
 
@@ -3585,7 +3587,7 @@ function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
     var inRange = !!(startKey && endKey && key >= startKey && key <= endKey);
     var type = String(info && (info.type || info.label) || '');
     var cls = type === '주' || type === '주간' ? 'duty-day' : (type === '휴' || type === '휴무' ? 'duty-off' : 'duty-night');
-    html += '<div class="swap-day' + (inRange ? ' in-range' : '') + '"><span class="sd-num">' + d + '</span><span class="sd-duty ' + cls + '">' + (info && info.manual ? '*' : '') + esc(label) + '</span></div>';
+    html += '<button type="button" data-key="' + key + '" class="swap-day swap-pick-date' + (inRange ? ' in-range' : '') + '" onclick="selectSwapRangeDate(this.dataset.key)"><span class="sd-num">' + d + '</span><span class="sd-duty ' + cls + '">' + (info && info.manual ? '*' : '') + esc(label) + '</span></button>';
   }
   var tail = (7 - ((firstDow + daysInMonth) % 7)) % 7;
   for (var z = 0; z < tail; z++) html += '<div class="swap-day empty"></div>';
@@ -3595,15 +3597,16 @@ function renderSwapCalendars() {
   if (!swapTargetMember || !swapCalendarMonth) return;
   var startKey = swapRangeStart, endKey = swapRangeEnd;
   $('swap-month-label').textContent = swapCalendarMonth.getFullYear() + '년 ' + (swapCalendarMonth.getMonth() + 1) + '월';
-  renderSwapRangeCalendar();
+  $('swap-start-label').textContent = startKey || '선택 전';
+  $('swap-end-label').textContent = endKey || (startKey ? '종료일 선택' : '선택 전');
   renderOneSwapCalendar(getCurrentUser().employeeId, 'swap-me-calendar', startKey, endKey);
   renderOneSwapCalendar(swapTargetMember.employeeId, 'swap-other-calendar', startKey, endKey);
   var status = $('swap-status');
-  if (startKey && !endKey) status.textContent = '시작일을 선택했어요. 같은 달력에서 종료일을 선택하세요.';
+  if (startKey && !endKey) status.textContent = '시작일을 선택했어요. 내 근무표 또는 상대 근무표에서 종료일을 선택하세요.';
   else if (startKey && endKey && (dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000 > 30) status.textContent = '한 번에 최대 31일까지만 교환할 수 있습니다.';
-  else status.textContent = startKey && endKey ? startKey + ' ~ ' + endKey + ' 기간이 선택되었습니다.' : '달력에서 시작일을 누른 뒤 종료일을 눌러주세요.';
+  else status.textContent = startKey && endKey ? startKey + ' ~ ' + endKey + ' 기간이 선택되었습니다.' : '내 근무표 또는 상대 근무표에서 시작일을 누른 뒤 종료일을 눌러주세요.';
   var btn = $('swap-submit');
-  if (btn) btn.disabled = swapSubmitting || !startKey || !endKey || startKey > endKey || (dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000 > 30;
+  if (btn) btn.disabled = swapSubmitting || !startKey || !endKey || startKey > endKey || (dateKeyToNum(endKey) - dateKeyToNum(startKey                                                                                                                              )) / 86400000 > 30;
 }
 function submitGroupSwap() {
   if (!swapTargetMember || swapSubmitting) return;
