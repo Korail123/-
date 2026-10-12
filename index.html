@@ -299,8 +299,8 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <form id="login-form" onsubmit="return handleLogin(event)">
 
     <div class="input-group">
-      <label for="login-id">사원번호</label>
-      <input type="text" id="login-id" placeholder="사원번호를 입력하세요" autocomplete="username" required>
+      <label for="login-id">사원명</label>
+      <input type="text" id="login-id" placeholder="사원명을 입력하세요" autocomplete="username" required>
     </div>
 
     <div class="input-group">
@@ -331,11 +331,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <h1>회원가입</h1>
 
   <form id="signup-form" onsubmit="return handleSignup(event)">
-
-    <div class="input-group">
-      <label for="signup-id">사원번호</label>
-      <input type="text" id="signup-id" placeholder="사원번호를 입력하세요" autocomplete="username" required>
-    </div>
 
     <div class="input-group">
       <label for="signup-name">이름</label>
@@ -629,7 +624,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <div class="dia-dialog-title" style="text-align:center">개인정보 수집·이용 동의서</div>
       <div class="dia-dialog-note" style="white-space:normal">나만의 철도비서 웹 회원가입을 위해 아래 내용을 확인해 주세요.</div>
       <div style="font-size:13px;line-height:1.75;color:#344054;white-space:normal;padding:0 4px">
-        <b>1. 수집하는 개인정보 항목</b><br>사원번호, 이름<br><br>
+        <b>1. 수집하는 개인정보 항목</b><br>사원명, 개인정보 동의 여부 및 동의 일시<br><br>
         <b>2. 개인정보 수집·이용 목적</b><br>근무표 공유, 사용자 구분 및 서비스 제공<br><br>
         <b>3. 개인정보 보유·이용 기간</b><br>회원 탈퇴 또는 서비스 이용 종료 시까지 보유·이용합니다. 단, 관계 법령에 따라 보존할 필요가 있는 경우 해당 법령에서 정한 기간 동안 보관합니다.<br><br>
         <b>4. 동의 거부 권리 및 거부 시 불이익</b><br>이용자는 개인정보 수집·이용에 대한 동의를 거부할 권리가 있습니다. 다만 동의하지 않으면 회원가입이 제한되며 근무표 공유 등 해당 서비스 이용이 불가능합니다.<br><br>
@@ -4081,13 +4076,12 @@ function verifySignupCode() {
 
 function handleSignup(e) {
   e.preventDefault();
-  var id = $('signup-id').value.trim();
   var name = $('signup-name').value.trim();
   var msg = $('signup-message');
   msg.textContent = '';
 
-  if (!id || !name) {
-    msg.textContent = '사원번호와 이름을 입력해주세요.';
+  if (!name) {
+    msg.textContent = '사원명을 입력해주세요.';
     return false;
   }
   if (!signupCodeVerified || $('signup-code').value.trim() !== '2526') {
@@ -4095,7 +4089,9 @@ function handleSignup(e) {
     return false;
   }
 
-  signupPending = { employeeId: id, name: name };
+  // 기존 서버 호환을 위해 사원명 값을 내부 식별자로 함께 전달합니다.
+  // 따라서 로그인 화면에서도 사원명을 입력해야 합니다.
+  signupPending = { employeeId: name, name: name };
   document.querySelectorAll('input[name="privacy-consent-choice"]').forEach(function (el) { el.checked = false; });
   $('privacy-consent-message').textContent = '';
   $('privacy-consent-panel').classList.add('active');
