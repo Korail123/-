@@ -1097,7 +1097,23 @@ document.addEventListener('DOMContentLoaded', function () {
   setInterval(tick, 1000);
 
 })();
-
+/* 서버 보관함에 있는 근무 교환 내용을 이 폰에 반영 */
+function syncPending(done) {
+  var u = getCurrentUser();
+  if (!u.token) { if (done) done(); return; }
+  refreshSnapshot(true, function (ok) {
+    if (!ok || !snapshotUsable()) { if (done) done(); return; }
+    api({ action: 'getPending', employeeId: u.employeeId, token: u.token }, function (r) {
+      if (r && r.success && r.items && r.items.length) {
+        r.items.forEach(function (it) {
+          snapUpsertOverride(u.employeeId, it[0], it[1], it[2], it[3]);
+        });
+        showToast('근무 교환 ' + r.items.length + '일치가 반영되었습니다.');
+      }
+      if (done) done();
+    });
+  });
+}
 /* 수동 백업 및 실시간 동기화 (새로고침 버튼 동작) */
 function triggerManualSync() {
   var u = getCurrentUser();
@@ -1106,11 +1122,9 @@ function triggerManualSync() {
   var btn = document.querySelector('.refresh-btn');
   if (btn) btn.style.transform = 'translateY(-50%) rotate(360deg)';
 
-  refreshSnapshot(true, function (ok) {
+  syncPending(function () {
     if (btn) btn.style.transform = 'translateY(-50%)';
-    if (ok) {
-      onSnapshotUpdated();
-    }
+    onSnapshotUpdated();
   });
 }
 
@@ -3702,7 +3716,7 @@ function submitGroupSwap() {
       return;
     }
     $('swap-status').textContent = '근무 교환이 저장되었습니다. 근무표를 새로 불러옵니다.';
-    refreshSnapshot(true, function () {
+    syncPending(function () {
       loadGroupSchedule(false);
       if (typeof loadMyMonth === 'function') loadMyMonth();
       renderSwapCalendars();
@@ -5082,7 +5096,7 @@ function doLogin(id, name, isAuto) {
     switchSection('main-section');
 
     if (r.snapshot) snapApply(r.employeeId, snapGen, r.snapshot);
-    else refreshSnapshot(true, null);
+    syncPending();
 
   });
 
