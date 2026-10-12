@@ -263,6 +263,7 @@ body{padding-bottom:84px}
   user-select: none !important;
   -webkit-touch-callout: none !important;
 }
+
 </style>
 <style>html,body{max-width:100%;overflow-x:hidden}#main-container{max-width:100%;overflow-x:clip}.page-view{min-width:0;max-width:100%;box-sizing:border-box}img,table{max-width:100%}
 .site-link-btn {
@@ -511,6 +512,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   <h1>⚙️ 환경설정</h1>
 
+
   <button type="button" class="setting-card" onclick="openNoticePanel()">
     <span class="setting-icon">📢</span>
     <span class="setting-text">
@@ -582,6 +584,8 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </span>
     <span class="setting-arrow">›</span>
   </button>
+
+
 
   <div id="notice-panel" class="dia-modal" onclick="if(event.target===this)closeNoticePanel()">
     <div class="dia-dialog" style="max-height:88vh;overflow:auto">
@@ -1605,7 +1609,17 @@ function snapBuildDay(dateKey, seq, anchor, dia, ov, name) {
 
   if (ov) {
 
-    if (ov.type === 'dia') {
+    if (ov.type === 'auto-status') {
+
+      d = snapEmptyDay();
+      d.type = ov.status || '비';
+      d.manual = false;
+      d.overrideType = '';
+      d.status = ov.status || '비';
+      d.auto = true;
+      d.updatedAt = ov.updatedAt || '';
+
+    } else if (ov.type === 'dia') {
 
       var found = null;
 
@@ -2059,6 +2073,8 @@ function getCurrentUser() {
 
 function setCurrentUser(u) {
 
+  var previousUser = getCurrentUser();
+  var nextId = String(u && u.employeeId || 'guest');
   var str = JSON.stringify(u);
 
   LS.setItem(USER_KEY, str);
@@ -2771,6 +2787,22 @@ function closeScheduleEdit() {
 
 }
 
+/* 야간 DIA 변경 시 자동으로 생성했던 다음 날 비번만 정리합니다. */
+function removeAutoNextDayOff(employeeId, dateKey) {
+  var loc = ensureLocal(employeeId);
+  var before = loc.overrides.length;
+  loc.overrides = loc.overrides.filter(function (r) {
+    return !(r[0] === dateKey && r[1] === 'auto-status');
+  });
+  if (loc.overrides.length !== before) {
+    saveLocalChange(employeeId, loc);
+    if (snapshotUsable()) {
+      mergeLocalIntoSnapshot();
+      snapAfterLocalChange();
+    }
+  }
+}
+
 function saveScheduleEdit() {
 
   if (!scheduleEditDate) return;
@@ -2803,6 +2835,18 @@ function saveScheduleEdit() {
 
   var user = getCurrentUser();
   var target = scheduleEditDate;
+  var targetDateKey = getDateKey(target.y, target.m, target.d);
+  var nextDateKey = snapShiftKey(targetDateKey, 1);
+  var enteredDiaInfo = dia ? diaByNumber(dia) : null;
+  var isNightDia = !!(dia && enteredDiaInfo && String(enteredDiaInfo.type || '').trim() === '야');
+  var autoNextDayOff = false;
+
+  /* 같은 날짜를 다시 수정할 때 이전에 자동 생성한 다음 날 비번은 먼저 제거합니다. */
+  removeAutoNextDayOff(user.employeeId, nextDateKey);
+
+  if (isNightDia) {
+    autoNextDayOff = confirm('다음날 비번이 맞습니까?\n\n[확인] 다음 날을 비번으로 자동 변경\n[취소] 입력한 야간 DIA만 표시');
+  }
 
   var params = {
     action: 'saveScheduleOverride',
@@ -2821,6 +2865,11 @@ function saveScheduleEdit() {
 
   /* 서버로 보내지 않고 이 폰에만 저장 (백업은 환경설정에서) */
   snapUpsertOverride(user.employeeId, params.date, params.type, params.dia, params.status);
+
+  if (isNightDia && autoNextDayOff) {
+    /* 자동 비번은 별도 자동 상태로 저장해 직접 변경(*)과 구분합니다. */
+    snapUpsertOverride(user.employeeId, nextDateKey, 'auto-status', '', '비');
+  }
 
   closeScheduleEdit();
 
@@ -2852,7 +2901,9 @@ function restoreOriginalSchedule() {
   var optBtns = document.querySelectorAll('#schedule-edit-options .schedule-edit-option');
   for (var oi = 0; oi < optBtns.length; oi++) optBtns[oi].classList.remove('selected');
 
-  snapRemoveOverride(user.employeeId, getDateKey(target.y, target.m, target.d));
+  var restoredDateKey = getDateKey(target.y, target.m, target.d);
+  removeAutoNextDayOff(user.employeeId, snapShiftKey(restoredDateKey, 1));
+  snapRemoveOverride(user.employeeId, restoredDateKey);
 
   closeScheduleEdit();
 
@@ -5488,6 +5539,8 @@ function handleAppBack(fromPopState) {
     if (dx >= 85 && Math.abs(dx) > Math.abs(dy) * 1.4) handleAppBack(false);
   }, { passive: true });
 })();
+
+
 
 </script>
 </body>
