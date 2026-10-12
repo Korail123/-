@@ -3675,6 +3675,7 @@ function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
       ' class="swap-day swap-pick-date' + (inRange ? ' in-range' : '') + (edge ? ' range-edge' : '') +
       '" onclick="selectSwapRangeDate(this.dataset.key)"><span class="sd-num">' + d + '</span><span class="sd-duty ' + cls + '">' +
       (info && info.manual ? '*' : '') + esc(label) + '</span></button>';
+      }
   // 달마다 주 수가 달라져도 달력 높이가 변하지 않도록 6주(42칸) 고정
   var usedCells = firstDow + daysInMonth;
   var tail = 42 - usedCells;
