@@ -325,7 +325,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   <h1>회원가입</h1>
 
-  <form id="signup-form" onsubmit="return handleSignup(event)">
+  <form id="signup-form" onsubmit="return handleSignup(event)" novalidate>
 
     <div class="input-group">
       <label for="signup-name">이름</label>
@@ -335,7 +335,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="input-group">
       <label for="signup-code">인증번호</label>
       <div style="display:flex;gap:8px;align-items:stretch">
-        <input type="password" id="signup-code" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="4자리 인증번호" autocomplete="off" required style="flex:1;min-width:0">
+        <input type="password" id="signup-code" inputmode="numeric" maxlength="4" placeholder="4자리 인증번호" autocomplete="off" required style="flex:1;min-width:0">
         <button type="button" class="btn" id="signup-verify-btn" onclick="verifySignupCode()" style="width:auto;min-width:100px;padding:0 14px;margin:0">인증하기</button>
       </div>
       <div id="signup-verify-message" class="status-message" style="margin-top:6px"></div>
@@ -614,29 +614,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
   </div>
 
-  <div id="privacy-consent-panel" class="dia-modal" style="z-index:250" onclick="if(event.target===this)closePrivacyConsent()">
-    <div class="dia-dialog" style="max-height:88vh;overflow:auto">
-      <div class="dia-dialog-title" style="text-align:center">개인정보 수집·이용 동의서</div>
-      <div class="dia-dialog-note" style="white-space:normal">나만의 철도비서 웹 회원가입을 위해 아래 내용을 확인해 주세요.</div>
-      <div style="font-size:13px;line-height:1.75;color:#344054;white-space:normal;padding:0 4px">
-        <b>1. 수집하는 개인정보 항목</b><br>사원명, 개인정보 동의 여부 및 동의 일시<br><br>
-        <b>2. 개인정보 수집·이용 목적</b><br>근무표 공유, 사용자 구분 및 서비스 제공<br><br>
-        <b>3. 개인정보 보유·이용 기간</b><br>회원 탈퇴 또는 서비스 이용 종료 시까지 보유·이용합니다. 단, 관계 법령에 따라 보존할 필요가 있는 경우 해당 법령에서 정한 기간 동안 보관합니다.<br><br>
-        <b>4. 동의 거부 권리 및 거부 시 불이익</b><br>이용자는 개인정보 수집·이용에 대한 동의를 거부할 권리가 있습니다. 다만 동의하지 않으면 회원가입이 제한되며 근무표 공유 등 해당 서비스 이용이 불가능합니다.<br><br>
-        <b>5. 개인정보 저장 장소</b><br>관리자 송주영이 관리하는 Google Sheets 데이터베이스
-      </div>
-      <div style="margin:16px 4px 4px;padding:12px;border:1px solid #dce3ec;border-radius:12px;background:#f8fafc;font-size:13px;line-height:1.6">
-        <label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:10px"><input type="radio" name="privacy-consent-choice" value="agree" style="margin-top:4px"> <span>동의합니다.</span></label>
-        <label style="display:flex;gap:8px;align-items:flex-start"><input type="radio" name="privacy-consent-choice" value="disagree" style="margin-top:4px"> <span>동의하지 않습니다.</span></label>
-      </div>
-      <div id="privacy-consent-message" class="status-message" style="white-space:normal"></div>
-      <div class="dia-dialog-actions" style="gap:18px">
-        <button type="button" class="dia-text-btn" onclick="closePrivacyConsent()">취소</button>
-        <button type="button" class="dia-text-btn" onclick="submitPrivacyConsent()" style="color:#1677e8">선택 확인</button>
-      </div>
-    </div>
-  </div>
-
   <div id="sites-panel" class="dia-modal" style="z-index:255" onclick="if(event.target===this)closeSitesPanel()">
     <div class="dia-dialog" style="max-height:88vh;overflow:auto">
       <div class="dia-dialog-title">🌐 사이트 바로가기</div>
@@ -695,6 +672,30 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   <button class="back-btn" onclick="switchSection('main-section')" style="margin-top:15px;">돌아가기</button>
 
+</div>
+
+<!-- 개인정보 수집·이용 동의 팝업 (회원가입 화면에서도 보이도록 settings-section 밖에 둡니다) -->
+<div id="privacy-consent-panel" class="dia-modal" style="z-index:250" onclick="if(event.target===this)closePrivacyConsent()">
+  <div class="dia-dialog" style="max-height:88vh;overflow:auto">
+    <div class="dia-dialog-title" style="text-align:center">개인정보 수집·이용 동의서</div>
+    <div class="dia-dialog-note" style="white-space:normal">나만의 철도비서 웹 회원가입을 위해 아래 내용을 확인해 주세요.</div>
+    <div style="font-size:13px;line-height:1.75;color:#344054;white-space:normal;padding:0 4px">
+      <b>1. 수집하는 개인정보 항목</b><br>사원명, 개인정보 동의 여부 및 동의 일시<br><br>
+      <b>2. 개인정보 수집·이용 목적</b><br>근무표 공유, 사용자 구분 및 서비스 제공<br><br>
+      <b>3. 개인정보 보유·이용 기간</b><br>회원 탈퇴 또는 서비스 이용 종료 시까지 보유·이용합니다. 단, 관계 법령에 따라 보존할 필요가 있는 경우 해당 법령에서 정한 기간 동안 보관합니다.<br><br>
+      <b>4. 동의 거부 권리 및 거부 시 불이익</b><br>이용자는 개인정보 수집·이용에 대한 동의를 거부할 권리가 있습니다. 다만 동의하지 않으면 회원가입이 제한되며 근무표 공유 등 해당 서비스 이용이 불가능합니다.<br><br>
+      <b>5. 개인정보 저장 장소</b><br>관리자 송주영이 관리하는 Google Sheets 데이터베이스
+    </div>
+    <div style="margin:16px 4px 4px;padding:12px;border:1px solid #dce3ec;border-radius:12px;background:#f8fafc;font-size:13px;line-height:1.6">
+      <label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:10px"><input type="radio" name="privacy-consent-choice" value="agree" style="margin-top:4px"> <span>동의합니다.</span></label>
+      <label style="display:flex;gap:8px;align-items:flex-start"><input type="radio" name="privacy-consent-choice" value="disagree" style="margin-top:4px"> <span>동의하지 않습니다.</span></label>
+    </div>
+    <div id="privacy-consent-message" class="status-message" style="white-space:normal"></div>
+    <div class="dia-dialog-actions" style="gap:18px">
+      <button type="button" class="dia-text-btn" onclick="closePrivacyConsent()">취소</button>
+      <button type="button" class="dia-text-btn" onclick="submitPrivacyConsent()" style="color:#1677e8">선택 확인</button>
+    </div>
+  </div>
 </div>
 
 <!-- 출근 알람 설정 팝업 -->
@@ -4074,6 +4075,7 @@ function handleSignup(e) {
   e.preventDefault();
   var name = $('signup-name').value.trim();
   var msg = $('signup-message');
+  msg.style.color = '';
   msg.textContent = '';
 
   if (!name) {
@@ -4861,6 +4863,7 @@ function closeTopOverlayForBack() {
     ['schedule-edit-panel', closeScheduleEdit],
     ['group-info-panel', closeGroupInfo],
     ['pattern-info-panel', closePatternInfo],
+    ['privacy-consent-panel', closePrivacyConsent],
     ['board-editor-panel', closeBoardEditor],
     ['board-detail-panel', closeBoardDetail],
     ['notice-panel', closeNoticePanel],
