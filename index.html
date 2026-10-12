@@ -325,6 +325,29 @@ input, textarea, select, [contenteditable="true"] {
 .swap-day.in-range{background:#dceeff;outline:1px solid #85bfff}
 .swap-day.range-edge{background:#1769d2;outline:2px solid #0f4fa8}
 .swap-day.range-edge .sd-num,.swap-day.range-edge .sd-duty{color:#fff!important}
+.swap-day.preview-swap{background:#e8f7ec;outline:1px dashed #2e7d32}
+.swap-day.preview-swap.range-edge{background:#1b7a3d;outline:2px solid #0f5a2a}
+.swap-day.preview-swap.range-edge .sd-num,
+.swap-day.preview-swap.range-edge .sd-duty,
+.swap-day.preview-swap.range-edge .sd-old,
+.swap-day.preview-swap.range-edge .sd-arrow,
+.swap-day.preview-swap.range-edge .sd-preview{color:#fff!important}
+.swap-day .sd-stack{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;line-height:1.05;max-width:100%}
+.swap-day .sd-change{display:flex;align-items:center;justify-content:center;gap:2px;max-width:100%;flex-wrap:nowrap}
+.swap-day .sd-old{opacity:.5;text-decoration:line-through;font-size:10px;font-weight:700;letter-spacing:-.3px}
+.swap-day .sd-arrow{font-size:9px;color:#2e7d32;font-weight:800}
+.swap-day .sd-preview{font-size:12px;font-weight:800;letter-spacing:-.3px}
+.swap-day .sd-preview.duty-day{color:#c28b00}.swap-day .sd-preview.duty-off{color:#d32f2f}
+.swap-day .sd-preview.duty-night{color:#1769d2}.swap-day .sd-preview.duty-bi{color:#6c757d}
+.swap-day .sd-preview-tag{font-size:8px;color:#2e7d32;font-weight:800;letter-spacing:-.2px}
+.swap-preview-banner{display:none;margin-top:10px;padding:10px 12px;border-radius:12px;background:linear-gradient(135deg,#eef9f1,#e8f3ff);border:1px solid #b7e0c2;font-size:12px;line-height:1.55;color:#244}
+.swap-preview-banner.show{display:block}
+.swap-preview-banner b{color:#1769d2}
+.swap-preview-banner .pv-title{font-weight:800;color:#1b5e20;margin-bottom:4px}
+.swap-preview-banner .pv-row{display:flex;flex-wrap:wrap;gap:6px 10px;margin-top:4px}
+.swap-preview-banner .pv-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;background:#fff;border:1px solid #d0e6d6;font-size:11px;font-weight:700}
+.swap-preview-banner .pv-chip .from{opacity:.55;text-decoration:line-through}
+.swap-preview-banner .pv-chip .to{color:#1b7a3d}
 .swap-day .sd-star{color:#e53935;font-size:9px}
 .swap-range-summary{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:12px;padding:9px 10px;background:#f5f8fc;border-radius:9px;font-size:12px;color:#475467}
 .swap-range-summary b{color:#1769d2}
@@ -966,6 +989,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <span>종료일 <b id="swap-end-label">선택 전</b></span>
       <button type="button" class="swap-reset" onclick="resetSwapRange()">날짜 다시 선택</button>
     </div>
+    <div id="swap-preview-banner" class="swap-preview-banner" aria-live="polite"></div>
     <div class="swap-nav">
       <button type="button" onclick="changeSwapMonth(-1)">◀ 이전 달</button>
       <b id="swap-month-label" style="font-size:13px"></b>
@@ -976,7 +1000,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <div class="swap-person"><div id="swap-other-title" class="swap-person-title">상대 근무표</div><div id="swap-other-calendar" class="swap-month"></div></div>
     </div>
     <div id="swap-status" class="swap-note" role="status"></div>
-    <div class="swap-note">※ 선택한 기간의 날짜별 근무를 서로 교환합니다. 변경된 날짜에는 *가 표시됩니다.</div>
+    <div class="swap-note">※ 기간을 고르면 달력에 <b>현재 → 교환 후</b> 미리보기가 표시됩니다. 확정 전에는 저장되지 않습니다.<br>※ 교환 후 변경된 날짜에는 *가 표시됩니다.</div>
     <div class="swap-actions" style="flex-wrap:wrap">
       <button type="button" class="swap-cancel" onclick="closeGroupSwap()">닫기</button>
       <button type="button" id="swap-revert" class="swap-cancel" onclick="revertSwapRangeOriginal()" style="border:1px solid #e53935;color:#e53935;background:#fff">원래대로 되돌리기</button>
@@ -1111,12 +1135,20 @@ function syncPending(done) {
   refreshSnapshot(true, function (ok) {
     if (!ok || !snapshotUsable()) { if (done) done(); return; }
     api({ action: 'getPending', employeeId: u.employeeId, token: u.token }, function (r) {
+      var applied = 0;
       if (r && r.success && r.items && r.items.length) {
         r.items.forEach(function (it) {
           if (it[1] === 'clear') snapRemoveOverride(u.employeeId, it[0]);
-          else snapUpsertOverride(u.employeeId, it[0], it[1], it[2], it[3]);
+          else snapUpsertOverride(u.employeeId, it[0], it[1], it[2], it[3], it[4], it[5]);
+          applied++;
         });
         showToast('근무 교환 ' + r.items.length + '일치가 반영되었습니다.');
+      }
+      if (applied) {
+        try {
+          if (typeof refreshUiAfterSwap === 'function') refreshUiAfterSwap();
+          else if (typeof onSnapshotUpdated === 'function') onSnapshotUpdated();
+        } catch (e) {}
       }
       if (done) done();
     });
@@ -1445,7 +1477,8 @@ function buildSnapIndex() {
     if (!rType) continue;
 
     map[rows[i][0] + '|' + String(rows[i][1] || '').slice(0, 10)] = {
-      type: rType, dia: rDia, status: rStatus, updatedAt: rows[i][5]
+      type: rType, dia: rDia, status: rStatus, updatedAt: rows[i][5],
+      partnerId: rows[i][6] || '', partnerName: rows[i][7] || ''
     };
   }
 
@@ -1878,6 +1911,15 @@ function snapBuildDay(dateKey, seq, anchor, dia, ov, name) {
 
   }
 
+  /* 근무 교환 상대 정보 (있으면 상세 근무창에 표시) */
+  if (ov && (ov.partnerId || ov.partnerName)) {
+    d.swapPartnerId = String(ov.partnerId || '');
+    d.swapPartnerName = String(ov.partnerName || '');
+  } else {
+    d.swapPartnerId = '';
+    d.swapPartnerName = '';
+  }
+
   /* 근무표 셀에는 DIA 번호가 아니라 근무 구분(주·야·비·휴)을 표시합니다.
      일부 서버 DIA 레코드의 type 값은 근무 구분이 아닌 문자열일 수 있으므로,
      인식할 수 있는 값만 표시하고 모르면 해당 날짜의 순환 근무 구분을 사용합니다. */
@@ -2205,12 +2247,15 @@ function saveLocalChange(id, loc) {
 
 }
 
-function snapUpsertOverride(employeeId, date, type, dia, status) {
+function snapUpsertOverride(employeeId, date, type, dia, status, partnerId, partnerName) {
 
   var loc = ensureLocal(employeeId);
 
   loc.overrides = loc.overrides.filter(function (r) { return r[0] !== date; });
-  loc.overrides.push([date, type, dia || '', status || '', stampNow()]);
+  loc.overrides.push([
+    date, type, dia || '', status || '', stampNow(),
+    partnerId ? String(partnerId) : '', partnerName ? String(partnerName) : ''
+  ]);
 
   saveLocalChange(employeeId, loc);
 
@@ -2581,7 +2626,10 @@ function loadMyMonth(force) {
       if (localMine.overrides.length !== overrideCountBeforeCleanup) saveLocalChange(user.employeeId, localMine);
       var localOvMap = {};
       (localMine.overrides || []).forEach(function (r) {
-        if (r && r.length >= 4) localOvMap[r[0]] = { type: r[1], dia: r[2], status: r[3], updatedAt: r[4] || '' };
+        if (r && r.length >= 4) localOvMap[r[0]] = {
+          type: r[1], dia: r[2], status: r[3], updatedAt: r[4] || '',
+          partnerId: r[5] || '', partnerName: r[6] || ''
+        };
       });
       Object.keys(monthDays).forEach(function (key) {
         if (localOvMap[key]) {
@@ -2957,6 +3005,13 @@ function renderDayDetail() {
   var html = '<div class="dd-date">' + dateText + ' 상세 근무 정보</div>';
   html += '<div class="dd-main"><span class="dd-dia' + cls + '">' + main + (info.manual ? ' *' : '') +
           '</span><span class="dd-tag">[ ' + tag + ' ]</span></div>';
+
+  if (info.swapPartnerName || info.swapPartnerId) {
+    var partnerLabel = String(info.swapPartnerName || info.swapPartnerId).trim();
+    if (partnerLabel) {
+      html += '<div class="dd-row" style="color:#1769d2;font-weight:bold">🔄 근무 교환 : ' + esc(partnerLabel) + '님과 교환한 근무입니다.</div>';
+    }
+  }
 
   if (startTime) html += '<div class="dd-row">⏰ 출근 시간 : ' + esc(startTime) + '</div>';
   if (endTime) html += '<div class="dd-row">🏠 퇴근 시간 : ' + esc(endTime) + '</div>';
@@ -3486,7 +3541,10 @@ function renderGroupTable() {
     for (var di = 0; di < days.length; di++) {
       var localRow = localOverrideMap[days[di].key];
       if (!localRow) continue;
-      var localOv = { type: localRow[1], dia: localRow[2], status: localRow[3], updatedAt: localRow[4] };
+      var localOv = {
+        type: localRow[1], dia: localRow[2], status: localRow[3], updatedAt: localRow[4],
+        partnerId: localRow[5] || '', partnerName: localRow[6] || ''
+      };
       var localDay = snapBuildDay(days[di].key, localMine.seq, localMine.anchor, diaList, localOv, members[mi].name);
       members[mi].days[days[di].key] = localDay;
     }
@@ -3661,7 +3719,7 @@ function swapApplyLocal(employeeId, items) {
   if (String(employeeId) === String(me)) {
     items.forEach(function (it) {
       if (it.type === 'clear') snapRemoveOverride(me, it.date);
-      else snapUpsertOverride(me, it.date, it.type, it.dia, it.status);
+      else snapUpsertOverride(me, it.date, it.type, it.dia, it.status, it.partnerId, it.partnerName);
     });
     return;
   }
@@ -3669,13 +3727,38 @@ function swapApplyLocal(employeeId, items) {
   var dates = {};
   items.forEach(function (it) { dates[it.date] = it; });
   var rows = (snapshot.raw.overrides || []).filter(function (r) {
-    return !(String(r[0]) === String(employeeId) && dates[r[1]]);
+    return !(String(r[0]) === String(employeeId) && dates[String(r[1] || '').slice(0, 10)]);
   });
   items.forEach(function (it) {
-    if (it.type !== 'clear') rows.push([employeeId, it.date, it.type, it.dia || '', it.status || '', stampNow()]);
+    if (it.type !== 'clear') {
+      rows.push([
+        employeeId, it.date, it.type, it.dia || '', it.status || '', stampNow(),
+        it.partnerId ? String(it.partnerId) : '', it.partnerName ? String(it.partnerName) : ''
+      ]);
+    }
   });
   snapshot.raw.overrides = rows;
   buildSnapIndex();
+  persistSnapshot();
+}
+
+/* 교환/되돌리기 직후: 스냅샷 기준으로 근무표·근무그룹·교환 달력을 즉시 다시 그림 */
+function refreshUiAfterSwap() {
+  try {
+    if (snapshotUsable()) {
+      var days = (typeof groupWeekDays === 'function') ? groupWeekDays() : null;
+      if (days && days.length) {
+        groupData = buildLocalRange('group', days[0].key, days[6].key);
+      }
+      if (typeof renderGroupTable === 'function') renderGroupTable();
+      if (typeof loadMyMonth === 'function') loadMyMonth(true);
+      if (typeof renderSwapCalendars === 'function' && swapTargetMember) renderSwapCalendars();
+      if (typeof onSnapshotUpdated === 'function') onSnapshotUpdated();
+    } else {
+      if (typeof loadGroupSchedule === 'function') loadGroupSchedule(false);
+      if (typeof loadMyMonth === 'function') loadMyMonth(true);
+    }
+  } catch (e) {}
 }
 
 /* 선택한 기간의 교환을 서버 기록으로 두 사람 모두 원래대로 복원 */
@@ -3710,15 +3793,22 @@ function revertSwapRangeOriginal() {
       renderSwapCalendars();
       return;
     }
-    function toObj(a) { return (a || []).map(function (x) { return { date: x[0], type: x[1], dia: x[2], status: x[3] }; }); }
-    swapApplyLocal(user.employeeId, toObj(r.mine));
-    swapApplyLocal(swapTargetMember.employeeId, toObj(r.theirs));
-    renderSwapCalendars();
+    function toObj(a) {
+      return (a || []).map(function (x) {
+        return { date: x[0], type: x[1], dia: x[2], status: x[3], partnerId: x[4] || '', partnerName: x[5] || '' };
+      });
+    }
+    var mineItems = toObj(r.mine);
+    var theirItems = toObj(r.theirs);
+    var targetId = String(swapTargetMember.employeeId);
+    swapApplyLocal(user.employeeId, mineItems);
+    swapApplyLocal(targetId, theirItems);
+    refreshUiAfterSwap();
     $('swap-status').textContent = (r.count ? r.count + '일치 근무를 원래대로 되돌렸습니다.' : '되돌릴 교환 기록이 없습니다.');
     syncPending(function () {
-      loadGroupSchedule(false);
-      if (typeof loadMyMonth === 'function') loadMyMonth();
-      renderSwapCalendars();
+      swapApplyLocal(targetId, theirItems);
+      refreshUiAfterSwap();
+      showToast('근무 교환 되돌리기가 반영되었습니다.');
     });
   });
 }
@@ -3797,9 +3887,21 @@ function swapDutyLabel(info) {
   if (map[status]) return map[status];
   return map[type] || map[label] || type || label || '-';
 }
+function swapDutyClass(label) {
+  var dutyCode = String(label || '').trim();
+  if (dutyCode === '주' || dutyCode === '주간') return 'duty-day';
+  if (dutyCode === '휴' || dutyCode === '휴무') return 'duty-off';
+  if (dutyCode === '비' || dutyCode === '비번') return 'duty-bi';
+  return 'duty-night';
+}
+
+/* 기간이 선택된 칸: 현재 근무 → 교환 후 근무 미리보기 */
 function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
   var el = $(containerId);
   if (!el || !swapCalendarMonth) return;
+  var meId = String(getCurrentUser().employeeId || '');
+  var otherId = swapTargetMember ? String(swapTargetMember.employeeId || '') : '';
+  var partnerId = (String(employeeId) === meId) ? otherId : meId;
   var y = swapCalendarMonth.getFullYear(), m = swapCalendarMonth.getMonth();
   var firstDow = new Date(y, m, 1).getDay();
   var daysInMonth = new Date(y, m + 1, 0).getDate();
@@ -3812,25 +3914,82 @@ function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
     var label = swapDutyLabel(info);
     var inRange = !!(startKey && endKey && key >= startKey && key <= endKey);
     var edge = (key === startKey) ? '시작' : (key === endKey ? '종료' : '');
-    var type = String(info && (info.type || info.label) || '');
-    var dutyCode = swapDutyLabel(info);
-    var cls = (dutyCode === '주' || type === '주' || type === '주간') ? 'duty-day'
-      : (dutyCode === '휴' || type === '휴' || type === '휴무') ? 'duty-off'
-      : (dutyCode === '비' || type === '비' || type === '비번') ? 'duty-bi'
-      : 'duty-night';
+    var cls = swapDutyClass(label);
+    var showPreview = inRange && partnerId;
+    var previewLabel = '';
+    var previewCls = '';
+    if (showPreview) {
+      previewLabel = swapDutyLabel(swapMemberInfo(partnerId, key));
+      previewCls = swapDutyClass(previewLabel);
+    }
+    var dutyHtml;
+    if (showPreview) {
+      dutyHtml =
+        '<span class="sd-stack">' +
+          '<span class="sd-change">' +
+            '<span class="sd-old ' + cls + '">' + (info && info.manual ? '*' : '') + esc(label) + '</span>' +
+            '<span class="sd-arrow">→</span>' +
+            '<span class="sd-preview ' + previewCls + '">' + esc(previewLabel) + '</span>' +
+          '</span>' +
+          '<span class="sd-preview-tag">미리보기</span>' +
+        '</span>';
+    } else {
+      dutyHtml = '<span class="sd-duty ' + cls + '">' + (info && info.manual ? '*' : '') + esc(label) + '</span>';
+    }
     html += '<button type="button" data-key="' + key + '"' +
-      ' class="swap-day swap-pick-date' + (inRange ? ' in-range' : '') + (edge ? ' range-edge' : '') +
+      ' class="swap-day swap-pick-date' +
+      (inRange ? (showPreview ? ' preview-swap' : ' in-range') : '') +
+      (edge ? ' range-edge' : '') +
       '" onclick="selectSwapRangeDate(this.dataset.key)">' +
       '<span class="sd-top"><span class="sd-num">' + d + '</span>' +
       (edge ? '<span class="sd-edge">' + edge + '</span>' : '') + '</span>' +
-      '<span class="sd-duty ' + cls + '">' + (info && info.manual ? '*' : '') + esc(label) + '</span></button>';
-      }
-  // 달마다 주 수가 달라져도 달력 높이가 변하지 않도록 6주(42칸) 고정
+      dutyHtml + '</button>';
+  }
   var usedCells = firstDow + daysInMonth;
   var tail = 42 - usedCells;
   for (var z = 0; z < tail; z++) html += '<div class="swap-day empty"></div>';
   el.innerHTML = html;
 }
+
+function renderSwapPreviewBanner(startKey, endKey) {
+  var banner = $('swap-preview-banner');
+  if (!banner) return;
+  if (!swapTargetMember || !startKey || !endKey || startKey > endKey) {
+    banner.classList.remove('show');
+    banner.innerHTML = '';
+    return;
+  }
+  var daysCount = Math.round((dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000) + 1;
+  if (daysCount > 31) {
+    banner.classList.remove('show');
+    banner.innerHTML = '';
+    return;
+  }
+  var meId = getCurrentUser().employeeId;
+  var otherId = swapTargetMember.employeeId;
+  var otherName = swapTargetMember.name || otherId;
+  var keys = snapDateKeys(startKey, endKey);
+  var chips = '';
+  var maxChips = 8;
+  for (var i = 0; i < keys.length && i < maxChips; i++) {
+    var k = keys[i];
+    var mine = swapDutyLabel(swapMemberInfo(meId, k));
+    var theirs = swapDutyLabel(swapMemberInfo(otherId, k));
+    var p = k.split('-');
+    var short = parseInt(p[1], 10) + '/' + parseInt(p[2], 10);
+    chips += '<span class="pv-chip"><span>' + short + '</span> ' +
+      '<span class="from">' + esc(mine) + '</span>→<span class="to">' + esc(theirs) + '</span></span>';
+  }
+  if (keys.length > maxChips) {
+    chips += '<span class="pv-chip">+' + (keys.length - maxChips) + '일</span>';
+  }
+  banner.innerHTML =
+    '<div class="pv-title">미리보기 · 교환 후 내 근무 (상대: ' + esc(otherName) + ')</div>' +
+    '<div>선택한 <b>' + daysCount + '일</b> 동안 양쪽 달력에 <b>현재 → 교환 후</b> 근무가 표시됩니다. 확정 전에는 저장되지 않습니다.</div>' +
+    '<div class="pv-row">' + chips + '</div>';
+  banner.classList.add('show');
+}
+
 function renderSwapCalendars() {
   if (!swapTargetMember || !swapCalendarMonth) return;
   var startKey = swapRangeStart, endKey = swapRangeEnd;
@@ -3839,10 +3998,12 @@ function renderSwapCalendars() {
   $('swap-end-label').textContent = endKey || (startKey ? '종료일 선택' : '선택 전');
   renderOneSwapCalendar(getCurrentUser().employeeId, 'swap-me-calendar', startKey, endKey);
   renderOneSwapCalendar(swapTargetMember.employeeId, 'swap-other-calendar', startKey, endKey);
+  renderSwapPreviewBanner(startKey, endKey);
   var status = $('swap-status');
   if (startKey && !endKey) status.textContent = '시작일을 선택했어요. 내 근무표 또는 상대 근무표에서 종료일을 선택하세요.';
   else if (startKey && endKey && (dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000 > 30) status.textContent = '한 번에 최대 31일까지만 교환할 수 있습니다.';
-  else status.textContent = startKey && endKey ? startKey + ' ~ ' + endKey + ' 기간이 선택되었습니다.' : '달력에서 시작일을 한 번, 종료일을 한 번 누르면 기간이 한 번에 선택됩니다.';
+  else if (startKey && endKey) status.textContent = startKey + ' ~ ' + endKey + ' 기간 미리보기입니다. 확인 후 [근무 교환]을 누르세요.';
+  else status.textContent = '달력에서 시작일을 한 번, 종료일을 한 번 누르면 기간이 선택되고 교환 미리보기가 표시됩니다.';
   var btn = $('swap-submit');
   if (btn) btn.disabled = swapSubmitting || !startKey || !endKey || startKey > endKey || (dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000 > 30;
 }
@@ -3871,15 +4032,26 @@ function submitGroupSwap() {
       $('swap-status').textContent = ((r && r.message) ? r.message : '서버에 연결하지 못했습니다.') + ' (두 사람의 근무표는 변경되지 않았습니다.)';
       return;
     }
-    /* 서버 저장이 확인되면 팝업 안 두 달력에 교환 결과를 바로 표시 */
-    swapApplyLocal(user.employeeId, swaps.map(function (w) { var t = w.theirs || {}; return { date: w.date, type: t.type, dia: t.dia, status: t.status }; }));
-    swapApplyLocal(swapTargetMember.employeeId, swaps.map(function (w) { var m = w.mine || {}; return { date: w.date, type: m.type, dia: m.dia, status: m.status }; }));
-    renderSwapCalendars();
-    $('swap-status').textContent = '근무 교환이 완료되었습니다. 두 근무표에 * 로 표시됩니다.';
+    /* 서버 저장 확인 후: 당사자·상대 모두 로컬에 즉시 반영 (교환 상대 이름 포함) */
+    var partnerId = String(swapTargetMember.employeeId);
+    var partnerName = String(swapTargetMember.name || partnerId);
+    var myName = String(user.name || user.employeeId);
+    var mineItems = swaps.map(function (w) {
+      var t = w.theirs || {};
+      return { date: w.date, type: t.type, dia: t.dia, status: t.status, partnerId: partnerId, partnerName: partnerName };
+    });
+    var theirItems = swaps.map(function (w) {
+      var m = w.mine || {};
+      return { date: w.date, type: m.type, dia: m.dia, status: m.status, partnerId: String(user.employeeId), partnerName: myName };
+    });
+    swapApplyLocal(user.employeeId, mineItems);
+    swapApplyLocal(partnerId, theirItems);
+    refreshUiAfterSwap();
+    $('swap-status').textContent = '근무 교환이 완료되었습니다. 두 근무표·근무그룹에 바로 반영됩니다.';
     syncPending(function () {
-      loadGroupSchedule(false);
-      if (typeof loadMyMonth === 'function') loadMyMonth();
-      renderSwapCalendars();
+      swapApplyLocal(partnerId, theirItems);
+      refreshUiAfterSwap();
+      showToast('근무 교환이 반영되었습니다.');
     });
   });
 }
@@ -3943,6 +4115,9 @@ function openGroupInfo(k, key) {
   } else if (info.overrideType === 'status') {
 
     html += piRow('근무 구분', info.status || info.label);
+    if (info.swapPartnerName || info.swapPartnerId) {
+      html += piRow('근무 교환', String(info.swapPartnerName || info.swapPartnerId) + '님과 교환');
+    }
     html += '<div class="pi-none">' + (info.manual ? '직접 변경한 근무입니다.' : (info.auto ? '야간 근무 후 비번에 자동 적용된 휴가입니다.' : '')) + '</div>';
 
   } else {
@@ -3959,6 +4134,9 @@ function openGroupInfo(k, key) {
     html += '<div class="pi-row"><span class="pi-k">다이아 이름</span><b style="color:' + color + '">' +
             esc(diaNo || kind) + (info.manual ? ' *' : '') + '</b></div>';
     html += piRow('근무 구분', infoFromNight ? '비번 (전날 야간 다이아 정보)' : kind);
+    if (info.swapPartnerName || info.swapPartnerId) {
+      html += piRow('근무 교환', String(info.swapPartnerName || info.swapPartnerId) + '님과 교환');
+    }
     html += piRow('출근 시간', start);
     html += piRow('퇴근 시간', end);
     html += piRow('근무 시간', workDurationText(start, end));
