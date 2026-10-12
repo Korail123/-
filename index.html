@@ -2234,8 +2234,11 @@ function diaIndexBySeq(seq) {
 
 function diaByNumber(dia) {
 
+  var wanted = String(dia == null ? '' : dia).trim().toUpperCase();
+  if (!wanted) return null;
+
   for (var i = 0; i < diaList.length; i++) {
-    if (String(diaList[i].dia) === String(dia)) return diaList[i];
+    if (String(diaList[i].dia == null ? '' : diaList[i].dia).trim().toUpperCase() === wanted) return diaList[i];
   }
 
   return null;
@@ -3199,6 +3202,22 @@ function renderGroupTable() {
     return String(a.name || a.employeeId).localeCompare(String(b.name || b.employeeId), 'ko');
   });
 
+  /* 내 기기에서 직접 수정한 DIA/상태는 서버 근무표보다 우선해 이번 주 표에도 반영 */
+  var localUser = getCurrentUser();
+  var localMine = ensureLocal(localUser.employeeId);
+  var localOverrideMap = {};
+  (localMine.overrides || []).forEach(function (r) { localOverrideMap[r[0]] = r; });
+  for (var mi = 0; mi < members.length; mi++) {
+    if (members[mi].employeeId !== me || !members[mi].days) continue;
+    for (var di = 0; di < days.length; di++) {
+      var localRow = localOverrideMap[days[di].key];
+      if (!localRow) continue;
+      var localOv = { type: localRow[1], dia: localRow[2], status: localRow[3], updatedAt: localRow[4] };
+      var localDay = snapBuildDay(days[di].key, localMine.seq, localMine.anchor, diaList, localOv, members[mi].name);
+      members[mi].days[days[di].key] = localDay;
+    }
+  }
+
   groupRows = members;
 
   var counts = [0, 0, 0, 0, 0, 0, 0];
@@ -3309,16 +3328,26 @@ function openGroupInfo(k, key) {
   var info = mem.days ? mem.days[key] : null;
   // 비번 날짜는 전날이 야간 근무일 때 전날 야간 다이아 정보를 이어서 표시
   var infoFromNight = false;
-  if (info && String(info.label || info.type || '').trim() === '비') {
+  function normalizeDutyType(v) {
+    var t = String(v || '').trim();
+    if (t === '비번') return '비';
+    if (t === '야간') return '야';
+    if (t === '주간') return '주';
+    if (t === '휴무') return '휴';
+    return t;
+  }
+  if (info && normalizeDutyType(info.label || info.type || info.status) === '비') {
     var dateParts = key.split('-').map(Number);
     var prevDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2] - 1);
     var prevKey = getDateKey(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate());
     var prevInfo = mem.days ? mem.days[prevKey] : null;
-    if (prevInfo && String(prevInfo.type || prevInfo.label || '').trim() === '야' && prevInfo.overrideType !== 'status') {
-      /* 비번의 근무 구분은 '비'로 유지하고, 상세 운행정보만 전날 야간에서 가져옵니다. */
+    if (prevInfo && normalizeDutyType(prevInfo.type || prevInfo.label || prevInfo.status) === '야' && prevInfo.overrideType !== 'status') {
+      /* 비번 구분은 유지하고, 전날 야간의 상세 운행정보만 복사 */
       info = Object.assign({}, info, {
-        dia: prevInfo.dia, start: prevInfo.start, end: prevInfo.end,
-        train1: prevInfo.train1, train2: prevInfo.train2, route: prevInfo.route
+        type: '비', label: '비', dia: prevInfo.dia,
+        start: prevInfo.start, end: prevInfo.end,
+        train1: prevInfo.train1, train2: prevInfo.train2,
+        route: prevInfo.route, routeDiagram: prevInfo.routeDiagram
       });
       infoFromNight = true;
     }
