@@ -1720,23 +1720,39 @@ function snapBuildDay(dateKey, seq, anchor, dia, ov, name) {
 
   }
 
-  /* 화면 표시는 DIA 번호/이름이 아니라 근무 구분(주·야·비·휴)으로 통일합니다.
-     DIA 번호와 운행 상세는 d.dia 및 상세정보 화면에서 계속 사용합니다. */
+  /* 근무표 셀에는 DIA 번호가 아니라 근무 구분(주·야·비·휴)을 표시합니다.
+     일부 서버 DIA 레코드의 type 값은 근무 구분이 아닌 문자열일 수 있으므로,
+     인식할 수 있는 값만 표시하고 모르면 해당 날짜의 순환 근무 구분을 사용합니다. */
   function displayDutyLabel(value) {
-    var v = String(value || '').trim();
+    var v = String(value == null ? '' : value).trim();
     if (!v) return '';
-    if (v === '주' || /주간/.test(v)) return '주';
-    if (v === '야' || /야간/.test(v)) return '야';
-    if (v === '비' || /비번/.test(v)) return '비';
-    if (v === '휴' || /휴무|휴가/.test(v)) return '휴';
-    if (v === 'X') return 'X';
-    return v;
+    var compact = v.replace(/[\s_-]/g, '').toUpperCase();
+    if (compact === '주' || /주간|주간근무|주근무|DAYSHIFT/.test(compact) || compact === 'D') return '주';
+    if (compact === '야' || /야간|야간근무|야근무|NIGHTSHIFT/.test(compact) || compact === 'N') return '야';
+    if (compact === '비' || /비번|비번근무|휴식|RESTDAY/.test(compact) || compact === 'OFF' || compact === 'B') return '비';
+    if (compact === '휴' || /휴무|휴가|공휴|HOLIDAY|LEAVE/.test(compact) || compact === 'H') return '휴';
+    if (compact === 'X') return 'X';
+    return '';
   }
 
   var rawLabel = d.overrideType === 'status'
     ? (d.status || d.type || '')
     : (d.type || d.status || '');
-  d.label = displayDutyLabel(rawLabel) || String(d.dia || '');
+  var normalizedLabel = displayDutyLabel(rawLabel);
+  if (!normalizedLabel && d.overrideType !== 'status') {
+    /* type이 DIA 번호/분류명이거나 비어 있는 레코드라면 다른 근무구분 필드도 확인 */
+    var typeCandidates = [d.dutyType, d.workType, d.kind, d.work, d.status, d.근무구분, d.근무형태];
+    for (var ti = 0; ti < typeCandidates.length && !normalizedLabel; ti++) {
+      normalizedLabel = displayDutyLabel(typeCandidates[ti]);
+    }
+    /* DIA 원본에도 근무구분이 없을 때는 그 날짜의 순환표 근무구분을 사용합니다.
+       라벨에 DIA 번호가 노출되는 것보다 주·야·비·휴 구분을 유지하는 것이 우선입니다. */
+    if (!normalizedLabel) {
+      var baseLabelDay = snapBaseDay(dateKey, seq, anchor, dia, name);
+      normalizedLabel = displayDutyLabel(baseLabelDay && baseLabelDay.type);
+    }
+  }
+  d.label = normalizedLabel || (d.overrideType === 'status' ? String(d.status || '') : '');
 
   return d;
 
