@@ -3,8 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="preconnect" href="https://script.google.com">
-<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+<link rel="preconnect" href="https://qurksmjiifepecapyfky.supabase.co" crossorigin>
 <title>철도비서</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
@@ -723,7 +722,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <b>2. 개인정보 수집·이용 목적</b><br>근무표 공유, 사용자 구분 및 서비스 제공<br><br>
       <b>3. 개인정보 보유·이용 기간</b><br>회원 탈퇴 또는 서비스 이용 종료 시까지 보유·이용합니다. 단, 관계 법령에 따라 보존할 필요가 있는 경우 해당 법령에서 정한 기간 동안 보관합니다.<br><br>
       <b>4. 동의 거부 권리 및 거부 시 불이익</b><br>이용자는 개인정보 수집·이용에 대한 동의를 거부할 권리가 있습니다. 다만 동의하지 않으면 회원가입이 제한되며 근무표 공유 등 해당 서비스 이용이 불가능합니다.<br><br>
-      <b>5. 개인정보 저장 장소</b><br>관리자 송주영이 관리하는 Google Sheets 데이터베이스
+      <b>5. 개인정보 저장 장소</b><br>관리자 송주영이 관리하는 Supabase(PostgreSQL) 데이터베이스
     </div>
     <div style="margin:16px 4px 4px;padding:12px;border:1px solid #dce3ec;border-radius:12px;background:#f8fafc;font-size:13px;line-height:1.6">
       <label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:10px"><input type="radio" name="privacy-consent-choice" value="agree" style="margin-top:4px"> <span>동의합니다.</span></label>
@@ -999,9 +998,6 @@ var SS = store('sessionStorage');
 
 /* ============ 설정 ============ */
 
-var SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbzNXcKpOMeIaiOD8XZacs6pM2xjRYlytjbr9pF7SwKWMdYU5GRpl9BOsnV5YRhcxD8GpQ/exec';
-
 var USER_KEY = 'railwaySecretaryUser';
 
 var CAL_MIN_Y = 2026;
@@ -1109,53 +1105,113 @@ function toneOf(label) {
 
 }
 
-/* ============ 서버 통신 (JSONP) ============ */
+/* ============ 서버 통신 (Supabase) ============ */
 
-function api(params, cb) {
+/* ───────── [A] 서버 통신 (Supabase RPC) — api / postApi 대체 ───────── */
 
-  var name = 'cb_' + Date.now() + Math.floor(Math.random() * 1000000);
-  var s = document.createElement('script');
-  var done = false;
-  var timer;
+var SUPABASE_URL = 'https://qurksmjiifepecapyfky.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1cmtzbWppaWZlcGVjYXB5Zmt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NDQxMDksImV4cCI6MjEwNzAyMDEwOX0.gI5o25kFdCRqblsvxiVhsjknoC2W99ntRwMmnBuVUCs';
 
-  function cleanup() {
-    try { delete window[name]; } catch (e) { window[name] = undefined; }
-    if (s.parentNode) s.parentNode.removeChild(s);
+/* 게시판 동작은 서버의 app_board 함수 하나로 모읍니다. [종류, 동작] */
+var BOARD_MAP = {
+  getAnnouncements:         ['notice', 'list'],
+  getAnnouncement:          ['notice', 'get'],
+  createAnnouncement:       ['notice', 'create'],
+  updateAnnouncement:       ['notice', 'update'],
+  deleteAnnouncement:       ['notice', 'delete'],
+  getAnnouncementComments:  ['notice', 'comments'],
+  addAnnouncementComment:   ['notice', 'addcomment'],
+  updateAnnouncementComment:['notice', 'editcomment'],
+  deleteAnnouncementComment:['notice', 'delcomment'],
+  getSuggestions:           ['suggestion', 'list'],
+  getSuggestion:            ['suggestion', 'get'],
+  createSuggestion:         ['suggestion', 'create'],
+  updateSuggestion:         ['suggestion', 'update'],
+  deleteSuggestion:         ['suggestion', 'delete'],
+  getSuggestionComments:    ['suggestion', 'comments'],
+  addSuggestionComment:     ['suggestion', 'addcomment'],
+  updateSuggestionComment:  ['suggestion', 'editcomment'],
+  deleteSuggestionComment:  ['suggestion', 'delcomment']
+};
+
+/* 로그인 토큰이 없거나 만료됐을 때(예: 구글 앱스크립트 시절 토큰) 한 번만 로그아웃시키고 안내 */
+var authExpiredShown = false;
+
+function handleAuthExpired() {
+  if (authExpiredShown) return;
+  authExpiredShown = true;
+  try { logout(); } catch (e) {}
+  var m = document.getElementById('login-message');
+  if (m) m.textContent = '로그인이 만료되었습니다. 다시 로그인해주세요.';
+}
+
+function rpcCall(params, timeoutMs, cb) {
+
+  var action = String(params.action || '');
+  var p = {};
+
+  for (var k in params) {
+    if (Object.prototype.hasOwnProperty.call(params, k) && k !== 'action') p[k] = params[k];
   }
+
+  var fn;
+  var board = BOARD_MAP[action];
+
+  if (board) {
+    fn = 'app_board';
+    p.kind = board[0];
+    p.op = board[1];
+  } else {
+    fn = 'app_' + action.toLowerCase();   // login → app_login, getSnapshot → app_getsnapshot ...
+  }
+
+  var done = false;
+  var ctrl = window.AbortController ? new AbortController() : null;
 
   function finish(r) {
     if (done) return;
     done = true;
     clearTimeout(timer);
-    cleanup();
+    if (r && r.errorCode === 'AUTH' && action !== 'login') handleAuthExpired();
+    else if (action === 'login' && r && r.success) authExpiredShown = false;
     cb(r);
   }
 
-  timer = setTimeout(function () {
+  var timer = setTimeout(function () {
+    if (ctrl) { try { ctrl.abort(); } catch (e) {} }
     finish({ success: false, message: '서버 응답 시간이 초과되었습니다.' });
-  }, 15000);
+  }, timeoutMs);
 
-  window[name] = finish;
+  var headers = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY };
 
-  s.onerror = function () {
+  /* 예전 방식(JWT 형태 anon 키)일 때만 Authorization 헤더를 함께 보냄 */
+  if (/^eyJ/.test(SUPABASE_KEY)) headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
+
+  try {
+    fetch(SUPABASE_URL + '/rest/v1/rpc/' + fn, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ p: p }),
+      signal: ctrl ? ctrl.signal : undefined
+    }).then(function (res) {
+      return res.json().then(
+        function (j) { return { ok: res.ok, j: j }; },
+        function () { return { ok: false, j: null }; }
+      );
+    }).then(function (x) {
+      if (x.ok && x.j) finish(x.j);
+      else finish({ success: false, message: '서버 오류가 발생했습니다.' + (x.j && x.j.message ? ' (' + x.j.message + ')' : '') });
+    }).catch(function () {
+      finish({ success: false, message: '서버에 연결하지 못했습니다.' });
+    });
+  } catch (e) {
     finish({ success: false, message: '서버에 연결하지 못했습니다.' });
-  };
-
-  var q = [];
-
-  for (var k in params) {
-    if (Object.prototype.hasOwnProperty.call(params, k)) {
-      q.push(encodeURIComponent(k) + '=' + encodeURIComponent(params[k]));
-    }
   }
 
-  q.push('callback=' + name);
-
-  s.src = SCRIPT_URL + '?' + q.join('&');
-
-  document.head.appendChild(s);
-
 }
+
+function api(params, cb) { rpcCall(params, 15000, cb); }
+function postApi(params, cb) { rpcCall(params, 25000, cb); }
 
 /* ============ 로컬 스냅샷 (즉시 표시) ============ */
 
@@ -3849,7 +3905,7 @@ function openNoticePanel() {
   }
   boardApi('getAnnouncements', {}, function (r) {
     if (!list) return;
-    if (!r.success) { list.innerHTML = '<div class="dia-empty">공지사항 서버 연결이 필요합니다. Apps Script에 게시판 기능을 추가해주세요.</div>'; return; }
+    if (!r.success) { list.innerHTML = '<div class="dia-empty">공지사항 서버 연결이 필요합니다. 잠시 후 다시 시도해주세요.</div>'; return; }
     renderBoardList('notice', r.announcements || r.posts || []);
   });
 }
@@ -3861,7 +3917,7 @@ function openSuggestionPanel() {
   if (!getCurrentUser() || getCurrentUser().employeeId === 'guest') { if (list) list.innerHTML = '<div class="dia-empty">로그인 후 이용해주세요.</div>'; return; }
   boardApi('getSuggestions', {}, function (r) {
     if (!list) return;
-    if (!r.success) { list.innerHTML = '<div class="dia-empty">건의사항 서버 연결이 필요합니다. Apps Script에 게시판 기능을 추가해주세요.</div>'; return; }
+    if (!r.success) { list.innerHTML = '<div class="dia-empty">건의사항 서버 연결이 필요합니다. 잠시 후 다시 시도해주세요.</div>'; return; }
     renderBoardList('suggestion', r.suggestions || r.posts || []);
   });
 }
@@ -3915,7 +3971,7 @@ function saveBoardPost() {
       closeBoardEditor();
       if (boardEditorType === 'notice') openNoticePanel(); else openSuggestionPanel();
     } else {
-      msg.textContent = (r && r.message) || '저장에 실패했습니다. Apps Script 서버 기능을 확인해주세요.';
+      msg.textContent = (r && r.message) || '저장에 실패했습니다. 잠시 후 다시 시도해주세요.';
     }
   });
 }
@@ -3993,37 +4049,6 @@ function deleteBoardComment(commentId) {
 }
 
 /* ============ 백업 / 동기화 ============ */
-
-/* 데이터가 길 수 있어 POST로 보냄 (Apps Script는 text/plain 본문을 JSON으로 읽음) */
-function postApi(params, cb) {
-
-  var done = false;
-  var timer = setTimeout(function () {
-    if (done) return;
-    done = true;
-    cb({ success: false, message: '서버 응답 시간이 초과되었습니다.' });
-  }, 25000);
-
-  function finish(r) {
-    if (done) return;
-    done = true;
-    clearTimeout(timer);
-    cb(r);
-  }
-
-  try {
-    fetch(SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(params)
-    }).then(function (res) { return res.json(); })
-      .then(function (r) { finish(r); })
-      .catch(function () { finish({ success: false, message: '서버에 연결하지 못했습니다.' }); });
-  } catch (e) {
-    finish({ success: false, message: '서버에 연결하지 못했습니다.' });
-  }
-
-}
 
 function openBackupPanel() {
 
@@ -4464,12 +4489,31 @@ var signupPending = null;
 var PRIVACY_CONSENT_VERSION = '2026-10-11-v1';
 
 function verifySignupCode() {
+
   var code = $('signup-code').value.trim();
   var msg = $('signup-verify-message');
-  signupCodeVerified = code === '2526';
-  msg.style.color = signupCodeVerified ? '#16803c' : '#c62828';
-  msg.textContent = signupCodeVerified ? '인증이 완료되었습니다.' : '인증번호가 올바르지 않습니다.';
-  return signupCodeVerified;
+  var btn = $('signup-verify-btn');
+
+  signupCodeVerified = false;
+  msg.style.color = '#666';
+  msg.textContent = '확인 중...';
+
+  if (btn) btn.disabled = true;
+
+  api({ action: 'verifyCode', code: code }, function (r) {
+
+    if (btn) btn.disabled = false;
+
+    signupCodeVerified = !!(r && r.success);
+    msg.style.color = signupCodeVerified ? '#16803c' : '#c62828';
+    msg.textContent = signupCodeVerified
+      ? '인증이 완료되었습니다.'
+      : ((r && r.message) || '인증번호가 올바르지 않습니다.');
+
+  });
+
+  return false;
+
 }
 
 function handleSignup(e) {
@@ -4492,7 +4536,7 @@ function handleSignup(e) {
     msg.textContent = '이름을 입력해주세요.';
     return false;
   }
-  if (!signupCodeVerified || $('signup-code').value.trim() !== '2526') {
+  if (!signupCodeVerified) {
     msg.textContent = '인증번호 확인을 먼저 완료해주세요.';
     return false;
   }
@@ -4536,7 +4580,7 @@ function submitPrivacyConsent() {
     action: 'signup',
     employeeId: signupPending.employeeId,
     name: signupPending.name,
-    verificationCode: '2526',
+    verificationCode: $('signup-code').value.trim(),
     consent: 'agree',
     consentAt: new Date().toISOString(),
     consentVersion: PRIVACY_CONSENT_VERSION
@@ -4545,7 +4589,7 @@ function submitPrivacyConsent() {
   api(payload, function (r) {
     if (btn) btn.disabled = false;
     if (!r || !r.success) {
-      msg.textContent = (r && r.message) || '회원가입 저장에 실패했습니다. 서버 코드(Code.gs)도 새 회원가입 방식에 맞게 수정해야 합니다.';
+      msg.textContent = (r && r.message) || '회원가입 저장에 실패했습니다.';
       return;
     }
     closePrivacyConsent();
@@ -4596,7 +4640,7 @@ function confirmDeleteAccount() {
   api({ action: 'deleteAccount', employeeId: u.employeeId, token: u.token }, function (r) {
     btn.disabled = false;
     if (!r || !r.success) {
-      msg.textContent = (r && r.message) || '회원탈퇴 서버 처리가 완료되지 않았습니다. Code.gs에 deleteAccount 처리가 필요합니다.';
+      msg.textContent = (r && r.message) || '회원탈퇴 서버 처리가 완료되지 않았습니다. 잠시 후 다시 시도해주세요.';
       return;
     }
     stopGroupAutoRefresh();
