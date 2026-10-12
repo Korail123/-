@@ -282,7 +282,7 @@ body{padding-bottom:84px}
 
 <!-- 최상단 헤더 영역 (새로고침 버튼 & 시계) -->
 <div class="top-bar">
-  <button type="button" class="refresh-btn" onclick="triggerManualSync()" title="백업 및 실시간 동기화">🔄</button>
+  <button type="button" class="refresh-btn" onclick="triggerManualSync()" title="새로고침 (다른 사람 근무 동기화)" aria-label="새로고침"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg></button>
   <div id="liveClock" class="live-clock">시간을 불러오는 중...</div>
 </div>
 
@@ -551,7 +551,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <span class="setting-icon" style="background:#e6f6ea">☁️</span>
     <span class="setting-text">
       <span class="setting-title">백업 / 동기화</span>
-      <span class="setting-sub">※ 이 폰의 근무설정·휴가를 백업하거나 불러옵니다</span>
+      <span class="setting-sub">※ 변경 내용은 자동 백업 · 수동 백업/불러오기</span>
     </span>
     <span class="setting-arrow">›</span>
   </button>
@@ -667,12 +667,12 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="dia-dialog" style="max-height:88vh;overflow:auto">
       <div class="dia-dialog-title">☁️ 백업 / 동기화</div>
       <div class="dia-dialog-note" style="white-space:normal">
-        ※ 근무설정과 휴가 데이터는 이 폰에 저장됩니다.<br>
-        ※ 서버에는 백업 버튼을 누를 때만 올라갑니다.<br>
-        ※ 백업하면 근무그룹에서 다른 사람에게도 보입니다.
+        ※ 근무설정·휴가를 바꾸면 이 폰에 저장되고 자동으로 서버에 백업됩니다.<br>
+        ※ 백업된 내용은 근무그룹에서 다른 사람에게도 보입니다.<br>
+        ※ 연결이 안 되면 연결될 때 자동으로 다시 시도합니다.
       </div>
       <div id="backup-info" class="current-dia-card" style="white-space:normal;line-height:1.8;font-size:14px;color:#344054"></div>
-      <button type="button" class="btn" id="backup-upload-btn" style="margin-top:6px;background:#2e7d32" onclick="doBackup()">☁️ 백업하기 (이 폰 → 서버)</button>
+      <button type="button" class="btn" id="backup-upload-btn" style="margin-top:6px;background:#2e7d32" onclick="doBackup()">☁️ 지금 백업하기 (이 폰 → 서버)</button>
       <button type="button" class="btn" id="backup-download-btn" style="margin-top:10px;background:#6a1b9a" onclick="doRestore()">📥 불러오기 (서버 → 이 폰)</button>
       <div style="margin:8px 4px 0;font-size:11px;color:#7a8696;line-height:1.5">
         ※ 폰을 바꾸거나 앱 데이터를 지웠을 때 불러오기를 사용하세요.<br>
@@ -836,7 +836,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="schedule-edit-help">
       ※ DIA 번호 입력 또는 상태 선택 후 저장하세요.<br>
       ※ 변경한 날짜에는 * 표시가 붙습니다.<br>
-      ※ 변경 내용은 이 폰에 저장되며, 환경설정에서 백업하면 근무그룹에도 반영됩니다.<br>
+      ※ 변경 내용은 이 폰에 저장되고 자동으로 서버에 백업되어 근무그룹에도 반영됩니다.<br>
       ※ 되돌리기를 누르면 최초 근무로 복원됩니다.
     </div>
 
@@ -1000,7 +1000,7 @@ var SS = store('sessionStorage');
 /* ============ 설정 ============ */
 
 var SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbwSWlwrAxII5rIkuWciB5TVqPxrra6JzK0yht7EF5W-sKx4jcwMKTQ1h8xeH6treobY0g/exec';
+  'https://script.google.com/macros/s/AKfycbzNXcKpOMeIaiOD8XZacs6pM2xjRYlytjbr9pF7SwKWMdYU5GRpl9BOsnV5YRhcxD8GpQ/exec';
 
 var USER_KEY = 'railwaySecretaryUser';
 
@@ -1856,6 +1856,18 @@ function adoptBackupIfNoLocal(owner) {
 
 }
 
+/* 변경 저장: 이 폰에 저장하고 곧바로 서버 백업을 예약 (실패하면 dirty 표시가 남아 나중에 자동 재시도) */
+function saveLocalChange(id, loc) {
+
+  loc.dirty = true;
+  loc.rev = (loc.rev || 0) + 1;
+
+  writeLocal(id, loc);
+
+  scheduleAutoBackup(1500);
+
+}
+
 function snapUpsertOverride(employeeId, date, type, dia, status) {
 
   var loc = ensureLocal(employeeId);
@@ -1863,7 +1875,7 @@ function snapUpsertOverride(employeeId, date, type, dia, status) {
   loc.overrides = loc.overrides.filter(function (r) { return r[0] !== date; });
   loc.overrides.push([date, type, dia || '', status || '', stampNow()]);
 
-  writeLocal(employeeId, loc);
+  saveLocalChange(employeeId, loc);
 
   if (!snapshotUsable()) return;
 
@@ -1878,7 +1890,7 @@ function snapRemoveOverride(employeeId, date) {
 
   loc.overrides = loc.overrides.filter(function (r) { return r[0] !== date; });
 
-  writeLocal(employeeId, loc);
+  saveLocalChange(employeeId, loc);
 
   if (!snapshotUsable()) return;
 
@@ -1894,7 +1906,7 @@ function snapSetSettings(employeeId, seq, anchor) {
   loc.seq = String(seq || '');
   loc.anchor = String(anchor || '');
 
-  writeLocal(employeeId, loc);
+  saveLocalChange(employeeId, loc);
 
   if (!snapshotUsable()) return;
 
@@ -4039,6 +4051,7 @@ function renderBackupInfo() {
   el.innerHTML =
     '이 폰 근무설정: <b>' + (loc && loc.seq ? '설정됨' : '없음') + '</b><br>' +
     '이 폰 근무변경·휴가: <b>' + n + '건</b><br>' +
+    '백업 상태: <b>' + (loc && loc.dirty ? '백업 대기 중 (곧 자동 백업)' : '최신') + '</b><br>' +
     '마지막 백업: <b>' + esc(loc && loc.backedUpAt ? loc.backedUpAt : '없음') + '</b>';
 
 }
@@ -4052,23 +4065,31 @@ function backupMsg(text, color) {
 
 }
 
-function doBackup() {
+var autoBackupBusy = false;
+var autoBackupTimer = null;
+var autoBackupFailShown = false;
+
+/* 이 폰의 근무설정·휴가를 서버로 백업. cb({success, message}) */
+function backupNow(cb) {
 
   var u = getCurrentUser();
 
-  if (!u.token) { backupMsg('로그인 후 이용해주세요.'); return; }
+  function done(r) { if (cb) cb(r); }
+
+  if (!u.token) { done({ success: false, message: '로그인 후 이용해주세요.' }); return; }
 
   var loc = ensureLocal(u.employeeId);
 
-  if (!loc.seq && !loc.overrides.length) {
-    backupMsg('백업할 근무설정·휴가 데이터가 이 폰에 없습니다.');
+  if (!loc.seq && !loc.overrides.length && !loc.dirty) {
+    done({ success: false, message: '백업할 근무설정·휴가 데이터가 이 폰에 없습니다.' });
     return;
   }
 
-  var btn = $('backup-upload-btn');
+  if (autoBackupBusy) { done({ success: false, message: '백업 중입니다. 잠시 후 다시 시도해주세요.' }); return; }
 
-  btn.disabled = true;
-  backupMsg('백업하는 중...', '#666');
+  autoBackupBusy = true;
+
+  var sentRev = loc.rev || 0;
 
   postApi({
     action: 'backupData',
@@ -4079,6 +4100,96 @@ function doBackup() {
     overrides: loc.overrides
   }, function (r) {
 
+    autoBackupBusy = false;
+
+    if (r && r.success) {
+
+      var cur = ensureLocal(u.employeeId);
+
+      cur.backedUpAt = stampNow();
+
+      /* 백업하는 사이 또 바꾼 내용이 있으면 dirty를 유지하고 한 번 더 백업 */
+      if ((cur.rev || 0) === sentRev) cur.dirty = false;
+
+      writeLocal(u.employeeId, cur);
+
+      if (cur.dirty) scheduleAutoBackup(1000);
+
+      refreshSnapshot(true, null);
+
+    }
+
+    done(r);
+
+  });
+
+}
+
+function scheduleAutoBackup(delay) {
+
+  if (autoBackupTimer) clearTimeout(autoBackupTimer);
+
+  autoBackupTimer = setTimeout(runAutoBackup, delay || 1500);
+
+}
+
+function runAutoBackup() {
+
+  autoBackupTimer = null;
+
+  var u = getCurrentUser();
+
+  if (!u.token) return;
+
+  var loc = readLocal(u.employeeId);
+
+  if (!loc || !loc.dirty) return;
+
+  if (autoBackupBusy) { scheduleAutoBackup(3000); return; }
+
+  backupNow(function (r) {
+
+    if (!r || !r.success) {
+      if (!autoBackupFailShown) {
+        showToast('서버 백업에 실패했습니다. 연결되면 자동으로 다시 시도합니다.');
+        autoBackupFailShown = true;
+      }
+    } else {
+      autoBackupFailShown = false;
+    }
+
+    var p = $('backup-panel');
+
+    if (p && p.classList.contains('active')) renderBackupInfo();
+
+  });
+
+}
+
+/* 백업 못 한 변경이 남아 있으면 다시 시도 (시작할 때, 인터넷이 다시 연결될 때, 화면으로 돌아올 때, 1분마다) */
+(function initAutoBackup() {
+
+  setTimeout(runAutoBackup, 4000);
+
+  setInterval(runAutoBackup, 60000);
+
+  window.addEventListener('online', function () { runAutoBackup(); });
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) runAutoBackup();
+  });
+
+})();
+
+function doBackup() {
+
+  var btn = $('backup-upload-btn');
+
+  btn.disabled = true;
+  backupMsg('백업하는 중...', '#666');
+
+  backupNow(function (r) {
+
     btn.disabled = false;
 
     if (!r || !r.success) {
@@ -4086,13 +4197,8 @@ function doBackup() {
       return;
     }
 
-    loc.backedUpAt = stampNow();
-    writeLocal(u.employeeId, loc);
-
     renderBackupInfo();
     backupMsg('백업이 완료되었습니다.', '#16803c');
-
-    refreshSnapshot(true, null);
 
   });
 
