@@ -468,7 +468,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   <div id="sch-status" class="status-message" style="margin-top:0"></div>
 
-  <div class="sch-card">
+  <div id="calendar-card" class="sch-card">
 
     <div class="sch-weekdays">
       <div class="wd sun">일</div>
@@ -509,7 +509,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <button type="button" class="group-swap-open-btn" onclick="openGroupSwapSelector()">근무 교환</button>
   </div>
 
-  <div class="group-table-container">
+  <div id="group-table-card" class="group-table-container">
     <table class="group-table" id="group-schedule-table">
       <thead>
         <tr id="group-table-head-row">
@@ -566,7 +566,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <button type="button" class="sch-nav plain" onclick="changeVacMonth(1)">▶&#xFE0E;</button>
     </div>
 
-    <div class="sch-card">
+    <div id="vac-calendar-card" class="sch-card">
       <div class="sch-weekdays">
         <div class="wd sun">일</div><div class="wd">월</div><div class="wd">화</div><div class="wd">수</div><div class="wd">목</div><div class="wd">금</div><div class="wd sat">토</div>
       </div>
@@ -5782,13 +5782,43 @@ function logout() {
 
 })();
 
-/* ============ 화면 스와이프: 달력·근무그룹 이전/다음 ============ */
+/* ============ 표/달력 스와이프 (이전/다음 이동) ============
+   - 제목·로고·버튼 등은 고정하고, 달력/표(el) 영역만 손가락을 따라 움직입니다.
+   - 손을 떼면 현재 화면이 부드럽게 밀려 나가고, 새 달력/표가 반대쪽에서 슬라이드되어 들어옵니다.
+   - 기준 미달이면 부드럽게 제자리로 돌아옵니다. */
 
-function attachSwipe(el, onPrev, onNext) {
+function attachSwipe(el, onPrev, onNext, canPrev, canNext) {
 
   if (!el) return;
 
-  var sx = 0, sy = 0, st = 0, ok = false, dxNow = 0;
+  var sx = 0, sy = 0, st = 0;
+  var ok = false;        // 이번 터치가 스와이프 후보인지
+  var moved = false;     // 가로 드래그가 시작되었는지
+  var busy = false;      // 전환 애니메이션 진행 중
+  var timers = [];
+
+  var OUT_MS = 170;      // 나가는 시간
+  var IN_MS = 280;       // 들어오는 시간
+  var BACK_MS = 220;     // 제자리 복귀 시간
+
+  el.style.touchAction = 'pan-y';
+
+  function clearTimers() {
+    for (var i = 0; i < timers.length; i++) clearTimeout(timers[i]);
+    timers = [];
+  }
+
+  function later(fn, ms) {
+    var t = setTimeout(fn, ms);
+    timers.push(t);
+  }
+
+  function resetStyles() {
+    el.style.transition = '';
+    el.style.transform = '';
+    el.style.opacity = '';
+    el.style.willChange = '';
+  }
 
   function blocked(target) {
     if (document.querySelector('.dia-modal.active, .schedule-edit-modal.active, .route-viewer.active')) return true;
@@ -5804,74 +5834,142 @@ function attachSwipe(el, onPrev, onNext) {
     return false;
   }
 
-  function resetPosition() {
-    el.style.transform = '';
-    el.style.transition = '';
-    el.style.willChange = '';
+  /* 제자리로 부드럽게 복귀 */
+  function snapBack() {
+    el.style.transition = 'transform ' + BACK_MS + 'ms cubic-bezier(.2,.8,.2,1), opacity ' + BACK_MS + 'ms ease-out';
+    el.style.transform = 'translate3d(0,0,0)';
+    el.style.opacity = '1';
+    busy = true;
+    later(function () { resetStyles(); busy = false; }, BACK_MS + 30);
+  }
+
+  /* 밀려 나가고 → 내용 교체 → 반대쪽에서 들어오기 */
+  function slideAndChange(dir, fromX) {
+
+    // dir: -1 = 다음(왼쪽으로 밀기), +1 = 이전(오른쪽으로 밀기)
+    var w = el.offsetWidth || 320;
+    var outX = dir * w;
+
+    busy = true;
+
+    el.style.willChange = 'transform, opacity';
+    el.style.transition = 'transform ' + OUT_MS + 'ms cubic-bezier(.4,0,1,1), opacity ' + OUT_MS + 'ms ease-in';
+    el.style.transform = 'translate3d(' + outX + 'px,0,0)';
+    el.style.opacity = '0';
+
+    later(function () {
+
+      // 새 내용으로 교체 (달력/표만 다시 그려짐)
+      if (dir < 0) onNext(); else onPrev();
+
+      // 반대쪽에서 시작 위치 준비
+      el.style.transition = 'none';
+      el.style.transform = 'translate3d(' + (-dir * w * 0.35) + 'px,0,0)';
+      el.style.opacity = '0';
+
+      // 강제 리플로우 후 애니메이션 시작
+      void el.offsetWidth;
+
+      el.style.transition = 'transform ' + IN_MS + 'ms cubic-bezier(.22,.8,.3,1), opacity ' + IN_MS + 'ms ease-out';
+      el.style.transform = 'translate3d(0,0,0)';
+      el.style.opacity = '1';
+
+      later(function () { resetStyles(); busy = false; }, IN_MS + 30);
+
+    }, OUT_MS);
+
   }
 
   el.addEventListener('touchstart', function (e) {
-    if (e.touches.length !== 1 || blocked(e.target)) { ok = false; return; }
+    if (busy || e.touches.length !== 1 || blocked(e.target)) { ok = false; return; }
     ok = true;
-    dxNow = 0;
+    moved = false;
     sx = e.touches[0].clientX;
     sy = e.touches[0].clientY;
     st = Date.now();
-    // 손가락을 따라 움직이도록 드래그 중에는 전환 효과를 끔
-    el.style.transition = 'none';
-    el.style.willChange = 'transform';
   }, { passive: true });
 
   el.addEventListener('touchmove', function (e) {
-    if (!ok || !e.touches.length) return;
+    if (!ok || busy || !e.touches.length) return;
+
     var dx = e.touches[0].clientX - sx;
     var dy = e.touches[0].clientY - sy;
-    // 세로 스크롤은 그대로 두고, 가로로 움직일 때만 손가락을 따라 이동
-    if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy) * 1.15) return;
-    dxNow = dx;
-    el.style.transform = 'translate3d(' + (dx * 0.85) + 'px,0,0)';
+
+    if (!moved) {
+      // 세로 스크롤이면 스와이프 후보에서 제외
+      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { ok = false; return; }
+      if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy) * 1.15) return;
+      moved = true;
+      el.style.transition = 'none';
+      el.style.willChange = 'transform, opacity';
+    }
+
+    // 이동할 수 없는 방향이면 저항감 있게 조금만 움직임
+    var allowed = dx < 0 ? (!canNext || canNext()) : (!canPrev || canPrev());
+    var factor = allowed ? 0.9 : 0.25;
+    var w = el.offsetWidth || 320;
+
+    el.style.transform = 'translate3d(' + (dx * factor) + 'px,0,0)';
+    el.style.opacity = String(1 - Math.min(Math.abs(dx) / w, 1) * 0.35);
   }, { passive: true });
 
   el.addEventListener('touchcancel', function () {
     if (!ok) return;
     ok = false;
-    resetPosition();
+    if (moved) snapBack();
+    moved = false;
   }, { passive: true });
 
   el.addEventListener('touchend', function (e) {
     if (!ok || !e.changedTouches.length) return;
     ok = false;
 
+    if (!moved) return;
+    moved = false;
+
     var dx = e.changedTouches[0].clientX - sx;
     var dy = e.changedTouches[0].clientY - sy;
     var elapsed = Date.now() - st;
-    var valid = elapsed <= 900 && Math.abs(dx) >= 60 && Math.abs(dx) >= Math.abs(dy) * 1.6;
+    var w = el.offsetWidth || 320;
 
-    // 손가락을 놓으면 화면 슬라이드 애니메이션 없이 바로 원위치
-    resetPosition();
-    if (!valid) return;
+    // 거리가 충분하거나(화면 폭의 20% 또는 60px) 빠르게 휙 넘긴 경우
+    var farEnough = Math.abs(dx) >= Math.max(60, w * 0.2);
+    var flick = elapsed <= 300 && Math.abs(dx) >= 35;
+    var horizontal = Math.abs(dx) >= Math.abs(dy) * 1.4;
+    var valid = horizontal && (farEnough || flick);
 
-    if (dx < 0) onNext(); else onPrev();
+    if (!valid) { snapBack(); return; }
+
+    var goingNext = dx < 0;
+    var allowed = goingNext ? (!canNext || canNext()) : (!canPrev || canPrev());
+
+    if (!allowed) { snapBack(); return; }
+
+    slideAndChange(goingNext ? -1 : 1, dx);
   }, { passive: true });
 
 }
 
 (function initSwipe() {
 
-  attachSwipe($('schedule-section'),
-    function () {
-      if (calendarYear <= CAL_MIN_Y && calendarMonth === 0) return;
-      changeMonth(-1);
-    },
-    function () { changeMonth(1); });
+  // 근무표: 달력(요일 + 날짜 칸)만 움직이게 함 — 제목, 화살표, 상세정보는 고정
+  attachSwipe($('calendar-card'),
+    function () { changeMonth(-1); },
+    function () { changeMonth(1); },
+    function () { return !(calendarYear <= CAL_MIN_Y && calendarMonth === 0); },
+    null);
 
-  attachSwipe($('group-section'),
+  // 근무그룹: 표만 움직이게 함 — 제목, 날짜 이동 화살표, 근무 교환 버튼, 요약은 고정
+  attachSwipe($('group-table-card'),
     function () { changeGroupWeek(-1); },
-    function () { changeGroupWeek(1); });
+    function () { changeGroupWeek(1); },
+    null, null);
 
-  attachSwipe($('vacation-section'),
-    function () { if ($('vac-cal-wrap').style.display !== 'none') changeVacMonth(-1); },
-    function () { if ($('vac-cal-wrap').style.display !== 'none') changeVacMonth(1); });
+  // 휴가관리: 달력만 움직이게 함
+  attachSwipe($('vac-calendar-card'),
+    function () { changeVacMonth(-1); },
+    function () { changeVacMonth(1); },
+    null, null);
 
 })();
 
