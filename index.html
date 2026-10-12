@@ -278,6 +278,15 @@ input, textarea, select, [contenteditable="true"] {
   user-select: text !important;
   -webkit-touch-callout: default;
 }
+
+/* 게시판 댓글 입력창: 첨부 예시처럼 하단 고정형 컴포저 */
+.board-comment-composer{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:12px -2px 0;background:#f4f4f5;border:1px solid #ececef;border-radius:3px}
+.board-comment-composer .bc-avatar{flex:0 0 34px;width:34px;height:34px;border:1px solid #d4d4d8;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff;color:#626a73;font-size:19px}
+.board-comment-composer textarea{flex:1;min-width:0;border:0!important;outline:none;background:transparent!important;resize:none!important;padding:7px 0!important;min-height:38px;max-height:90px;font-size:14px!important}
+.board-comment-composer button{flex:0 0 38px;width:38px;height:38px;border:0;border-radius:50%;background:transparent;color:#333;font-size:23px;cursor:pointer}
+.board-comment-composer button:disabled{opacity:.45}
+.board-comment-list{border:1px solid #e3e7eb;padding:8px 12px;margin-top:8px}
+.board-comment-item{padding:10px 0;border-bottom:1px solid #eceff2}.board-comment-item:last-child{border-bottom:0}
 </style>
 <style>html,body{max-width:100%;overflow-x:hidden}#main-container{max-width:100%;overflow-x:clip}.page-view{min-width:0;max-width:100%;box-sizing:border-box}img,table{max-width:100%}
 .site-link-btn {
@@ -697,11 +706,13 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <div id="board-detail-meta" style="font-size:12px;color:#8792a1;margin:4px 0 12px"></div>
       <div id="board-detail-content" style="white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;margin:12px 0"></div>
       <div id="board-detail-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"></div>
-      <div style="border-top:1px solid #e5eaf0;padding-top:12px;font-weight:bold">댓글</div>
-      <div id="board-comments" style="margin:10px 0;white-space:normal"></div>
-      <textarea id="board-comment-input" rows="3" maxlength="2000" placeholder="댓글을 입력해주세요" style="box-sizing:border-box;width:100%;resize:vertical;padding:10px;border:1px solid #d5dde7;border-radius:12px;font:inherit"></textarea>
-      <div id="board-comment-message" class="status-message" style="white-space:normal"></div>
-      <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="submitBoardComment()">댓글 등록</button><button type="button" class="dia-text-btn" onclick="closeBoardDetail()">닫기</button></div>
+      <div id="board-comment-section" style="border-top:1px solid #e5eaf0;padding-top:12px">
+        <div style="font-weight:bold;margin-bottom:8px">댓글</div>
+        <div id="board-comments" class="board-comment-list" style="white-space:normal"></div>
+        <div class="board-comment-composer" id="board-comment-composer"><div class="bc-avatar" aria-hidden="true">✎</div><textarea id="board-comment-input" rows="1" maxlength="2000" placeholder="댓글 작성" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,90)+'px'"></textarea><button type="button" aria-label="댓글 등록" title="댓글 등록" onclick="submitBoardComment()">☑</button></div>
+        <div id="board-comment-message" class="status-message" style="white-space:normal"></div>
+      </div>
+      <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeBoardDetail()">닫기</button></div>
     </div>
   </div>
 
@@ -3661,7 +3672,7 @@ function renderSwapCalendars() {
   var status = $('swap-status');
   if (startKey && !endKey) status.textContent = '시작일을 선택했어요. 내 근무표 또는 상대 근무표에서 종료일을 선택하세요.';
   else if (startKey && endKey && (dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000 > 30) status.textContent = '한 번에 최대 31일까지만 교환할 수 있습니다.';
-  else status.textContent = startKey && endKey ? startKey + ' ~ ' + endKey + ' 기간이 선택되었습니다.' : '내 근무표 또는 상대 근무표에서 시작일을 누른 뒤 종료일을 눌러주세요.';
+  else status.textContent = startKey && endKey ? startKey + ' ~ ' + endKey + ' 기간이 선택되었습니다.' : '달력에서 시작일을 한 번, 종료일을 한 번 누르면 기간이 한 번에 선택됩니다.';
   var btn = $('swap-submit');
   if (btn) btn.disabled = swapSubmitting || !startKey || !endKey || startKey > endKey || (dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000 > 30;
 }
@@ -4488,7 +4499,7 @@ function renderBoardList(type, posts) {
 function openBoardEditor(type, post) {
   boardEditorType = type;
   boardEditorPostId = post ? String(post.id || post.postId || '') : '';
-  if (type === 'notice' && !isBoardAdmin()) { alert('공지사항 작성은 관리자만 가능합니다.'); return; }
+  if (type === 'notice' && !isBoardAdmin()) { alert('공지사항 작성은 관리자 199878 송주영만 가능합니다.'); return; }
   var user = getCurrentUser();
   if (!user || user.employeeId === 'guest') { alert('로그인 후 이용해주세요.'); return; }
   $('board-editor-title').textContent = (boardEditorPostId ? '게시물 수정' : '게시물 작성');
@@ -4505,7 +4516,7 @@ function saveBoardPost() {
   var title = $('board-editor-subject').value.trim();
   var content = $('board-editor-content').value.trim();
   var msg = $('board-editor-message');
-  if (boardEditorType === 'notice' && !isBoardAdmin()) { msg.textContent = '공지사항 작성은 관리자만 가능합니다.'; return; }
+  if (boardEditorType === 'notice' && !isBoardAdmin()) { msg.textContent = '공지사항 작성은 관리자 199878 송주영만 가능합니다.'; return; }
   if (!title) { msg.textContent = '제목을 입력해주세요.'; return; }
   if (!content) { msg.textContent = '내용을 입력해주세요.'; return; }
   msg.textContent = '저장 중...';
@@ -4534,6 +4545,8 @@ function openBoardDetail(type, id) {
   $('board-detail-actions').innerHTML = '';
   $('board-comment-input').value = '';
   $('board-comment-message').textContent = '';
+  var commentSection = $('board-comment-section');
+  if (commentSection) commentSection.style.display = type === 'notice' ? 'none' : 'block';
   $('board-detail-panel').classList.add('active');
   var action = type === 'notice' ? 'getAnnouncement' : 'getSuggestion';
   boardApi(action, { postId: id, id: id }, function (r) {
@@ -4548,7 +4561,8 @@ function openBoardDetail(type, id) {
     if (canEdit) actions += '<button type="button" class="dia-text-btn" onclick="editActiveBoardPost()">수정</button><button type="button" class="dia-text-btn" onclick="deleteActiveBoardPost()">삭제</button>';
     $('board-detail-actions').innerHTML = actions;
   });
-  boardApi(type === 'notice' ? 'getAnnouncementComments' : 'getSuggestionComments', { postId: id, id: id }, function (r) {
+  if (type === 'notice') return; // 공지사항에는 댓글 기능을 제공하지 않음
+  boardApi('getSuggestionComments', { postId: id, id: id }, function (r) {
     var box = $('board-comments');
     if (!box) return;
     if (!r || !r.success) { box.innerHTML = '<div class="dia-empty">댓글 기능을 서버에 연결해야 합니다.</div>'; return; }
@@ -4556,7 +4570,7 @@ function openBoardDetail(type, id) {
     box.innerHTML = comments.length ? comments.map(function (c) {
       var cid = String(c.id || c.commentId || '');
       var owner = String(c.employeeId || c.authorId || '') === String(getCurrentUser().employeeId);
-      return '<div style="padding:9px 0;border-bottom:1px solid #edf0f4"><div style="font-size:11px;color:#8792a1">' + esc(c.authorName || c.name || c.employeeId || '사용자') + (c.createdAt ? ' · ' + esc(c.createdAt) : '') + '</div><div style="white-space:pre-wrap;overflow-wrap:anywhere;margin:5px 0">' + esc(c.content || c.text || '') + '</div>' + (owner ? '<button type="button" class="dia-text-btn" onclick="editBoardComment(decodeURIComponent(\'' + encodeURIComponent(cid) + '\'),decodeURIComponent(\'' + encodeURIComponent(c.content || c.text || '') + '\'))">수정</button><button type="button" class="dia-text-btn" onclick="deleteBoardComment(decodeURIComponent(\'' + encodeURIComponent(cid) + '\'))">삭제</button>' : '') + '</div>';
+      return '<div class="board-comment-item"><div style="font-size:11px;color:#8792a1">' + esc(c.authorName || c.name || c.employeeId || '사용자') + (c.createdAt ? ' · ' + esc(c.createdAt) : '') + '</div><div style="white-space:pre-wrap;overflow-wrap:anywhere;margin:5px 0">' + esc(c.content || c.text || '') + '</div>' + (owner ? '<button type="button" class="dia-text-btn" onclick="editBoardComment(decodeURIComponent(\'' + encodeURIComponent(cid) + '\'),decodeURIComponent(\'' + encodeURIComponent(c.content || c.text || '') + '\'))">수정</button><button type="button" class="dia-text-btn" onclick="deleteBoardComment(decodeURIComponent(\'' + encodeURIComponent(cid) + '\'))">삭제</button>' : '') + '</div>';
     }).join('') : '<div class="dia-empty">아직 댓글이 없습니다.</div>';
   });
 }
@@ -4571,11 +4585,12 @@ function deleteActiveBoardPost() {
   });
 }
 function submitBoardComment() {
+  if (activeBoardType === 'notice') { return; }
   var user = getCurrentUser(); var content = $('board-comment-input').value.trim(); var msg = $('board-comment-message');
   if (!user || user.employeeId === 'guest') { msg.textContent = '로그인 후 이용해주세요.'; return; }
   if (!content) { msg.textContent = '댓글 내용을 입력해주세요.'; return; }
   if (!activeBoardPost) return;
-  boardApi(activeBoardType === 'notice' ? 'addAnnouncementComment' : 'addSuggestionComment', { postId: activeBoardPost.id || activeBoardPost.postId, id: activeBoardPost.id || activeBoardPost.postId, content: content }, function (r) {
+  boardApi('addSuggestionComment', { postId: activeBoardPost.id || activeBoardPost.postId, id: activeBoardPost.id || activeBoardPost.postId, content: content }, function (r) {
     if (r && r.success) openBoardDetail(activeBoardType, String(activeBoardPost.id || activeBoardPost.postId));
     else msg.textContent = (r && r.message) || '댓글 등록 기능을 서버에 연결해야 합니다.';
   });
@@ -4584,13 +4599,13 @@ function editBoardComment(commentId, oldContent) {
   var content = prompt('댓글을 수정해주세요.', oldContent || '');
   if (content === null) return;
   content = content.trim(); if (!content) { alert('댓글 내용을 입력해주세요.'); return; }
-  boardApi(activeBoardType === 'notice' ? 'updateAnnouncementComment' : 'updateSuggestionComment', { postId: activeBoardPost.id || activeBoardPost.postId, commentId: commentId, id: commentId, content: content }, function (r) {
+  boardApi('updateSuggestionComment', { postId: activeBoardPost.id || activeBoardPost.postId, commentId: commentId, id: commentId, content: content }, function (r) {
     if (r && r.success) openBoardDetail(activeBoardType, String(activeBoardPost.id || activeBoardPost.postId)); else alert((r && r.message) || '댓글 수정 기능을 서버에 연결해야 합니다.');
   });
 }
 function deleteBoardComment(commentId) {
   if (!confirm('이 댓글을 삭제할까요?')) return;
-  boardApi(activeBoardType === 'notice' ? 'deleteAnnouncementComment' : 'deleteSuggestionComment', { postId: activeBoardPost.id || activeBoardPost.postId, commentId: commentId, id: commentId }, function (r) {
+  boardApi('deleteSuggestionComment', { postId: activeBoardPost.id || activeBoardPost.postId, commentId: commentId, id: commentId }, function (r) {
     if (r && r.success) openBoardDetail(activeBoardType, String(activeBoardPost.id || activeBoardPost.postId)); else alert((r && r.message) || '댓글 삭제 기능을 서버에 연결해야 합니다.');
   });
 }
