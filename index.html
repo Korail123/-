@@ -419,8 +419,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   <div id="day-detail" class="sch-card sch-detail"></div>
 
-  <button type="button" class="back-btn calendar-back" onclick="switchSection('main-section')">메인으로 돌아가기</button>
-
 </div>
 
 <!-- 근무그룹 -->
@@ -453,8 +451,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="sch-note">※ 날짜 제목을 한 번 누르면 이번 주, 꾹 누르면 연도·월을 선택할 수 있습니다.</div>
   <div class="sch-note">※ 날짜를 누르면 해당일 휴가·휴무·X 명단 표시</div>
 
-  <button class="back-btn" style="margin-top:14px" onclick="switchSection('main-section')">돌아가기</button>
-
 </div>
 
 <!-- 근무패턴 -->
@@ -467,8 +463,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="current-dia-label" style="text-align:left;margin:0 4px 8px">전체 순서표 (파란 칸이 오늘 · 칸을 누르면 다이아 정보)</div>
 
   <div id="pattern-list" class="dia-list" style="margin-bottom:18px"></div>
-
-  <button class="back-btn" onclick="switchSection('main-section')">돌아가기</button>
 
 </div>
 
@@ -509,8 +503,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   </div>
 
   <div class="sch-note" style="margin:10px 4px 14px">※ 야간+비번은 1일, 야간·주간 동일 휴가는 3일로 계산합니다.</div>
-
-  <button class="back-btn" onclick="switchSection('main-section')">돌아가기</button>
 
 </div>
 
@@ -569,6 +561,15 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <span class="setting-text">
       <span class="setting-title">사이트</span>
       <span class="setting-sub" style="white-space:normal">※ 자주 사용하는 철도 관련 사이트 바로가기</span>
+    </span>
+    <span class="setting-arrow">›</span>
+  </button>
+
+  <button type="button" class="setting-card" onclick="openResetAllDataPanel()" style="border:1px solid #f2b8b5;background:#fffafa">
+    <span class="setting-icon" style="background:#fde8e8">♻️</span>
+    <span class="setting-text">
+      <span class="setting-title" style="color:#c62828">전체 데이터 초기화</span>
+      <span class="setting-sub" style="white-space:normal">※ 회원정보만 남기고 근무변경·백업·게시물·댓글 등 초기화</span>
     </span>
     <span class="setting-arrow">›</span>
   </button>
@@ -646,6 +647,23 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
   </div>
 
+  <div id="reset-all-data-panel" class="dia-modal" style="z-index:270" onclick="if(event.target===this)closeResetAllDataPanel()">
+    <div class="dia-dialog" style="max-height:88vh;overflow:auto">
+      <div class="dia-dialog-title" style="color:#c62828">⚠️ 전체 데이터 초기화</div>
+      <div class="dia-dialog-note" style="white-space:normal;line-height:1.75">
+        <b>회원정보(사원번호·이름·로그인 계정)는 남기고 나머지 서비스 데이터를 삭제합니다.</b><br><br>
+        초기화 대상: 근무 설정 및 직접 변경, 서버 백업 데이터, 공지사항·건의사항 게시물, 게시물 댓글 등 회원정보 이외의 데이터입니다.<br><br>
+        <span style="color:#c62828;font-weight:bold">삭제 후에는 복구할 수 없습니다.</span> 서버의 전체 데이터를 초기화하므로 다른 사용자에게도 영향을 줍니다.
+      </div>
+      <label style="display:block;margin:12px 4px;font-size:13px"><input id="reset-all-data-confirm-check" type="checkbox"> 회원정보만 남기고 전체 데이터를 삭제하는 것에 동의합니다.</label>
+      <div id="reset-all-data-message" class="status-message" style="white-space:normal"></div>
+      <div class="dia-dialog-actions" style="gap:18px">
+        <button type="button" class="dia-text-btn" onclick="closeResetAllDataPanel()">취소</button>
+        <button type="button" id="reset-all-data-confirm-btn" class="dia-text-btn" onclick="confirmResetAllData()" style="color:#c62828">전체 초기화 실행</button>
+      </div>
+    </div>
+  </div>
+
   <div id="delete-account-panel" class="dia-modal" style="z-index:260" onclick="if(event.target===this)closeDeleteAccountPanel()">
     <div class="dia-dialog" style="max-height:88vh;overflow:auto">
       <div class="dia-dialog-title" style="color:#c62828">정말 회원탈퇴를 진행할까요?</div>
@@ -707,8 +725,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
 
   </div>
-
-  <button class="back-btn" onclick="switchSection('main-section')" style="margin-top:15px;">돌아가기</button>
 
 </div>
 
@@ -4278,6 +4294,66 @@ function doRestore() {
 
   });
 
+}
+
+/* 전체 데이터 초기화: 서버 RPC가 성공한 경우에만 로컬 캐시를 비웁니다.
+   서버에는 app_resetalldata RPC가 필요하며, 회원정보 테이블은 삭제 대상에서 제외해야 합니다. */
+function openResetAllDataPanel() {
+  var check = $('reset-all-data-confirm-check');
+  var msg = $('reset-all-data-message');
+  var btn = $('reset-all-data-confirm-btn');
+  if (check) check.checked = false;
+  if (msg) { msg.textContent = ''; msg.style.color = ''; }
+  if (btn) btn.disabled = false;
+  $('reset-all-data-panel').classList.add('active');
+}
+
+function closeResetAllDataPanel() {
+  var panel = $('reset-all-data-panel');
+  if (panel) panel.classList.remove('active');
+}
+
+function confirmResetAllData() {
+  var user = getCurrentUser();
+  var check = $('reset-all-data-confirm-check');
+  var msg = $('reset-all-data-message');
+  var btn = $('reset-all-data-confirm-btn');
+  if (!user || !user.token || user.employeeId === 'guest') {
+    msg.style.color = '#c62828'; msg.textContent = '로그인 후 이용해주세요.'; return;
+  }
+  if (!isBoardAdmin()) {
+    msg.style.color = '#c62828'; msg.textContent = '전체 초기화는 관리자만 실행할 수 있습니다.'; return;
+  }
+  if (!check || !check.checked) {
+    msg.style.color = '#c62828'; msg.textContent = '초기화 동의 항목을 체크해주세요.'; return;
+  }
+  if (!confirm('마지막 확인입니다. 회원정보를 제외한 모든 사용자의 서비스 데이터가 삭제될 수 있습니다. 정말 초기화할까요?')) return;
+  btn.disabled = true;
+  msg.style.color = '#666';
+  msg.textContent = '서버 데이터 초기화 요청 중...';
+  api({ action: 'resetAllData', employeeId: user.employeeId, token: user.token }, function (r) {
+    btn.disabled = false;
+    if (!r || !r.success) {
+      msg.style.color = '#c62828';
+      msg.textContent = (r && r.message) || '초기화하지 못했습니다. 서버에 app_resetalldata RPC가 배포되어 있는지 확인해주세요. 데이터는 변경하지 않았습니다.';
+      return;
+    }
+    /* 서버 초기화 성공 후에만 이 브라우저의 서비스 캐시/근무변경 데이터를 삭제 */
+    try {
+      var keys = [];
+      for (var i = 0; i < LS.length; i++) {
+        var key = LS.key(i);
+        if (key && (key.indexOf('railwayLocal_v1_') === 0 || key === 'railwaySecretarySnapshot_v2')) keys.push(key);
+      }
+      keys.forEach(function (key) { LS.removeItem(key); });
+    } catch (e) {}
+    snapshot = null;
+    mySettings = { seq: '', anchor: '' };
+    myMonth = null;
+    closeResetAllDataPanel();
+    showToast('회원정보를 제외한 서비스 데이터 초기화가 완료되었습니다.');
+    refreshSnapshot(true, null);
+  });
 }
 
 function openSettings() {
