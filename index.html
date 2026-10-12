@@ -1720,9 +1720,23 @@ function snapBuildDay(dateKey, seq, anchor, dia, ov, name) {
 
   }
 
-  d.label = d.overrideType === 'status'
-    ? String(d.status || '')
-    : (String(d.type || '').trim() || String(d.dia || ''));
+  /* 화면 표시는 DIA 번호/이름이 아니라 근무 구분(주·야·비·휴)으로 통일합니다.
+     DIA 번호와 운행 상세는 d.dia 및 상세정보 화면에서 계속 사용합니다. */
+  function displayDutyLabel(value) {
+    var v = String(value || '').trim();
+    if (!v) return '';
+    if (v === '주' || /주간/.test(v)) return '주';
+    if (v === '야' || /야간/.test(v)) return '야';
+    if (v === '비' || /비번/.test(v)) return '비';
+    if (v === '휴' || /휴무|휴가/.test(v)) return '휴';
+    if (v === 'X') return 'X';
+    return v;
+  }
+
+  var rawLabel = d.overrideType === 'status'
+    ? (d.status || d.type || '')
+    : (d.type || d.status || '');
+  d.label = displayDutyLabel(rawLabel) || String(d.dia || '');
 
   return d;
 
