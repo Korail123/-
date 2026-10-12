@@ -13,9 +13,10 @@ body{background:#f7f9fa;display:flex;justify-content:center;align-items:center;m
 
 /* 상단바 레아아웃 및 시계 스타일 수정 */
 .top-bar{display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:20px;min-height:24px}
-.refresh-btn{position:absolute;left:0;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:6px;line-height:1;transition:background .2s}
+.refresh-btn{position:absolute;left:0;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:6px;line-height:1;transition:background .2s,transform .55s ease}
 .refresh-btn:hover{background:#f1f3f5}
 .refresh-btn:active{transform:translateY(-50%) scale(0.9)}
+.refresh-btn.spinning{transform:translateY(-50%) rotate(360deg)}
 .live-clock{font-size:14px;color:#000;font-weight:bold;background:none;padding:0;border-radius:0;margin-bottom:0}
 
 .logo{width:100%;max-width:220px;height:auto;margin-bottom:20px}
@@ -316,8 +317,9 @@ input, textarea, select, [contenteditable="true"] {
 .swap-day.empty{background:transparent}
 .swap-day .sd-num{font-size:10px;color:#687386}
  .swap-pick-date{width:100%;padding:3px 1px;border:0;color:inherit;font:inherit;text-align:center;cursor:pointer;} .swap-pick-date:focus-visible{outline:2px solid #1769d2;outline-offset:1px;}
-.swap-day .sd-duty{font-size:12px;font-weight:bold;color:#1769d2;overflow:hidden;max-width:100%}
+.swap-day .sd-duty{font-size:13px;font-weight:800;color:#1769d2;overflow:hidden;max-width:100%;letter-spacing:-.3px}
 .swap-day .sd-duty.duty-day{color:#c28b00}.swap-day .sd-duty.duty-off{color:#d32f2f}.swap-day .sd-duty.duty-night{color:#1769d2}
+.swap-day .sd-duty.duty-bi{color:#6c757d}
 .swap-day.in-range{background:#dceeff;outline:1px solid #85bfff}
 .swap-day.range-edge{background:#1769d2;outline:2px solid #0f4fa8}
 .swap-day.range-edge .sd-num,.swap-day.range-edge .sd-duty{color:#fff!important}
@@ -974,7 +976,8 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
     <div id="swap-status" class="swap-note" role="status"></div>
     <div class="swap-note">※ 선택한 기간의 날짜별 근무를 서로 교환합니다. 변경된 날짜에는 *가 표시됩니다. 양쪽 근무표에 저장하려면 서버의 근무교환 API 지원이 필요합니다.</div>
-    <div class="swap-actions">
+    <div class="swap-actions" style="flex-wrap:wrap">
+      <button type="button" class="swap-cancel" onclick="revertSwapRangeOriginal()" style="border:1px solid #e53935;color:#e53935;background:#fff">원래대로 되돌리기</button>
       <button type="button" class="swap-cancel" onclick="closeGroupSwap()">취소</button>
       <button type="button" id="swap-submit" class="swap-submit" onclick="submitGroupSwap()">이 기간 근무 교환</button>
     </div>
@@ -1120,14 +1123,26 @@ function syncPending(done) {
 /* 수동 백업 및 실시간 동기화 (새로고침 버튼 동작) */
 function triggerManualSync() {
   var u = getCurrentUser();
-  if (!u || !u.token) return;
+  if (!u || !u.token) {
+    showToast('로그인 후 새로고침할 수 있습니다.');
+    return;
+  }
 
   var btn = document.querySelector('.refresh-btn');
-  if (btn) btn.style.transform = 'translateY(-50%) rotate(360deg)';
+  if (btn) {
+    btn.classList.remove('spinning');
+    // reflow so the rotation animation restarts every press
+    void btn.offsetWidth;
+    btn.classList.add('spinning');
+    setTimeout(function () { btn.classList.remove('spinning'); }, 600);
+  }
 
+  showToast('근무 데이터를 동기화하는 중...');
   syncPending(function () {
-    if (btn) btn.style.transform = 'translateY(-50%)';
-    onSnapshotUpdated();
+    refreshSnapshot(true, function (ok) {
+      onSnapshotUpdated();
+      showToast(ok ? '동기화가 완료되었습니다.' : '동기화에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    });
   });
 }
 
@@ -2313,6 +2328,13 @@ function switchSection(id) {
     appSectionHistory.push(current);
     if (appSectionHistory.length > 30) appSectionHistory.shift();
   }
+
+  /* 새로고침 후에도 같은 화면을 유지하도록 마지막 화면을 저장 */
+  try {
+    if (id !== 'login-section' && id !== 'signup-section') {
+      LS.setItem('railwaySecretaryLastSection', id);
+    }
+  } catch (e) {}
 
   if (id !== 'group-section') stopGroupAutoRefresh();
 
@@ -3591,6 +3613,37 @@ function resetSwapRange() {
   swapRangeEnd = '';
   renderSwapCalendars();
 }
+
+/* 선택한 기간의 직접 변경(근무교환·수동변경)을 지우고 원래 순환 근무로 복원 */
+function revertSwapRangeOriginal() {
+  var user = getCurrentUser();
+  if (!user || !user.token) {
+    $('swap-status').textContent = '로그인 후 이용해주세요.';
+    return;
+  }
+  var startKey = swapRangeStart, endKey = swapRangeEnd;
+  if (!startKey || !endKey || startKey > endKey) {
+    $('swap-status').textContent = '되돌릴 기간(시작일·종료일)을 먼저 선택해주세요.';
+    return;
+  }
+  var count = Math.round((dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000) + 1;
+  if (count > 31) {
+    $('swap-status').textContent = '한 번에 최대 31일까지만 되돌릴 수 있습니다.';
+    return;
+  }
+  if (!confirm(startKey + ' ~ ' + endKey + ' 기간의 직접 변경을 삭제하고 원래 근무로 되돌릴까요?\n(내 근무표만 복원됩니다)')) return;
+
+  var keys = snapDateKeys(startKey, endKey);
+  for (var i = 0; i < keys.length; i++) {
+    removeAutoNextDayOff(user.employeeId, snapShiftKey(keys[i], 1));
+    snapRemoveOverride(user.employeeId, keys[i]);
+  }
+  $('swap-status').textContent = '선택한 기간을 원래 근무로 복원했습니다. 서버 백업이 켜져 있으면 자동으로 반영됩니다.';
+  if (typeof loadMyMonth === 'function') loadMyMonth();
+  loadGroupSchedule(false);
+  renderSwapCalendars();
+  showToast('원래 근무로 되돌렸습니다.');
+}
 function selectSwapRangeDate(key) {
   if (!swapRangeStart || swapRangeEnd) {
     // 첫 선택은 시작일, 기간이 이미 완성된 뒤 다시 누르면 새로 시작
@@ -3649,10 +3702,22 @@ function swapDayAssignment(employeeId, key) {
 }
 function swapDutyLabel(info) {
   if (!info) return '-';
-  var t = String(info.label || info.type || info.status || '').trim();
-  var map = {'주간':'주','야간':'야','비번':'비','휴무':'휴'};
-  t = map[t] || t;
-  return t || '-';
+  /* 근무교환 달력에는 DIA 번호 대신 근무구분(주·야·비·휴)을 우선 표시 */
+  var type = String(info.type || '').trim();
+  var label = String(info.label || '').trim();
+  var status = String(info.status || '').trim();
+  var map = {
+    '주간':'주', '야간':'야', '비번':'비', '휴무':'휴',
+    '주':'주', '야':'야', '비':'비', '휴':'휴', 'X':'X'
+  };
+  if (map[type]) return map[type];
+  if (map[label]) return map[label];
+  if (info.overrideType === 'status' && status) {
+    /* 휴가 등은 상태명 그대로 짧게 표시 */
+    return status.length > 3 ? status.slice(0, 3) : status;
+  }
+  if (map[status]) return map[status];
+  return map[type] || map[label] || type || label || '-';
 }
 function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
   var el = $(containerId);
@@ -3670,7 +3735,11 @@ function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
     var inRange = !!(startKey && endKey && key >= startKey && key <= endKey);
     var edge = (key === startKey) ? '시작' : (key === endKey ? '종료' : '');
     var type = String(info && (info.type || info.label) || '');
-    var cls = type === '주' || type === '주간' ? 'duty-day' : (type === '휴' || type === '휴무' ? 'duty-off' : 'duty-night');
+    var dutyCode = swapDutyLabel(info);
+    var cls = (dutyCode === '주' || type === '주' || type === '주간') ? 'duty-day'
+      : (dutyCode === '휴' || type === '휴' || type === '휴무') ? 'duty-off'
+      : (dutyCode === '비' || type === '비' || type === '비번') ? 'duty-bi'
+      : 'duty-night';
     html += '<button type="button" data-key="' + key + '"' + (edge ? ' data-edge="' + edge + '"' : '') +
       ' class="swap-day swap-pick-date' + (inRange ? ' in-range' : '') + (edge ? ' range-edge' : '') +
       '" onclick="selectSwapRangeDate(this.dataset.key)"><span class="sd-num">' + d + '</span><span class="sd-duty ' + cls + '">' +
@@ -5088,7 +5157,8 @@ function doLogin(id, name, isAuto) {
       return;
     }
 
-    if ($('remember').checked) writeSavedLogin(id, name, false);
+    /* 로그인 정보 저장을 켜면 새로고침 후에도 세션을 복구할 수 있도록 auto 플래그도 함께 저장 */
+    if ($('remember').checked) writeSavedLogin(id, name, true);
     else clearSavedLogin();
 
     setCurrentUser({ employeeId: r.employeeId, name: r.name, token: r.token });
@@ -5100,7 +5170,28 @@ function doLogin(id, name, isAuto) {
     mySettings = { seq: '', anchor: '' };
     metaLoadedAt = 0;
 
-    switchSection('main-section');
+    /* 자동 로그인(새로고침 복구)이면 직전 화면 유지, 수동 로그인이면 메인으로 */
+    if (isAuto) {
+      var lastSec = '';
+      try { lastSec = LS.getItem('railwaySecretaryLastSection') || ''; } catch (e) {}
+      var allowed = {
+        'main-section': 1, 'schedule-section': 1, 'group-section': 1,
+        'pattern-section': 1, 'vacation-section': 1, 'settings-section': 1
+      };
+      if (!allowed[lastSec]) lastSec = 'main-section';
+      suppressSectionHistory = true;
+      switchSection(lastSec);
+      suppressSectionHistory = false;
+      try {
+        if (lastSec === 'schedule-section' && typeof openSchedule === 'function') openSchedule();
+        else if (lastSec === 'group-section' && typeof openGroupSection === 'function') openGroupSection();
+        else if (lastSec === 'pattern-section' && typeof openPattern === 'function') openPattern();
+        else if (lastSec === 'vacation-section' && typeof openVacation === 'function') openVacation();
+        else if (lastSec === 'settings-section' && typeof openSettings === 'function') openSettings();
+      } catch (e) {}
+    } else {
+      switchSection('main-section');
+    }
 
     if (r.snapshot) snapApply(r.employeeId, snapGen, r.snapshot);
     syncPending();
@@ -5548,48 +5639,62 @@ function logout() {
 (function initSavedLogin() {
 
   var saved = readSavedLogin();
+  if (saved) {
+    $('login-empno').value = saved.id;
+    $('login-id').value = saved.name || '';
+    $('remember').checked = true;
+  }
 
-  if (!saved) return;
+  function restoreLastSection() {
+    var lastSec = '';
+    try { lastSec = LS.getItem('railwaySecretaryLastSection') || ''; } catch (e) {}
+    var allowed = {
+      'main-section': 1, 'schedule-section': 1, 'group-section': 1,
+      'pattern-section': 1, 'vacation-section': 1, 'settings-section': 1
+    };
+    if (!allowed[lastSec]) lastSec = 'main-section';
+    suppressSectionHistory = true;
+    switchSection(lastSec);
+    suppressSectionHistory = false;
+    /* 각 화면 데이터 다시 그리기 */
+    try {
+      if (lastSec === 'schedule-section' && typeof openSchedule === 'function') openSchedule();
+      else if (lastSec === 'group-section' && typeof openGroupSection === 'function') openGroupSection();
+      else if (lastSec === 'pattern-section' && typeof openPattern === 'function') openPattern();
+      else if (lastSec === 'vacation-section' && typeof openVacation === 'function') openVacation();
+      else if (lastSec === 'settings-section' && typeof openSettings === 'function') openSettings();
+    } catch (e) {}
+  }
 
-  $('login-empno').value = saved.id;
-  $('login-id').value = saved.name || '';
-  $('remember').checked = true;
-
-  if (!saved.auto) return;
-
-  var u = getCurrentUser();
-
-  if (u.token && u.employeeId === saved.id && snapshotUsable()) {
-
-    $('welcome-name').textContent = u.name || '';
-
-    switchSection('main-section');
-
-    api({ action: 'login', employeeId: saved.id, name: saved.name || '', ver: snapVersionFor(saved.id) }, function (r) {
-
+  function softRevalidate(u) {
+    api({ action: 'login', employeeId: u.employeeId, name: u.name || '', ver: snapVersionFor(u.employeeId) }, function (r) {
       if (r && r.success) {
-
         setCurrentUser({ employeeId: r.employeeId, name: r.name, token: r.token });
-
         $('welcome-name').textContent = r.name;
-
         if (r.snapshot) snapApply(r.employeeId, snapGen, r.snapshot);
         else refreshSnapshot(true, null);
-
+        syncPending();
       } else if (r && r.errorCode === 'LOGIN_FAILED') {
-
-        writeSavedLogin(saved.id, saved.name, false);
+        if (saved) writeSavedLogin(saved.id, saved.name, false);
         logout();
-        $('login-message').textContent = '자동 로그인 실패: ' + (r.message || '로그인 정보를 다시 확인해주세요.');
-
+        $('login-message').textContent = '로그인이 만료되었습니다. 다시 로그인해주세요.';
       }
-
     });
+  }
 
+  /* 새로고침 시: 저장된 토큰이 있으면 로그인 화면으로 떨어지지 않고 직전 상태를 복구 */
+  var u = getCurrentUser();
+  if (u.token && u.employeeId && u.employeeId !== 'guest') {
+    $('welcome-name').textContent = u.name || '';
+    restoreLastSection();
+    softRevalidate(u);
     return;
   }
 
-  doLogin(saved.id, saved.name || '', true);
+  /* 토큰은 없지만 로그인 정보 저장(자동 로그인)이 켜져 있으면 자동 로그인 */
+  if (saved && saved.auto) {
+    doLogin(saved.id, saved.name || '', true);
+  }
 
 })();
 
