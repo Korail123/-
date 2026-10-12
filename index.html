@@ -310,20 +310,21 @@ input, textarea, select, [contenteditable="true"] {
 .swap-cal-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:12px}
 .swap-person{border:1px solid #dfe6ef;border-radius:12px;overflow:hidden;min-width:0}
 .swap-person-title{padding:9px 5px;text-align:center;font-size:13px;font-weight:bold;background:#f2f6fb;overflow-wrap:anywhere}
-.swap-month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(7,minmax(0,1fr));height:310px;box-sizing:border-box;padding:4px;gap:2px;align-content:stretch}
+.swap-month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(7,minmax(0,1fr));height:330px;box-sizing:border-box;padding:4px;gap:2px;align-content:stretch}
 .swap-wd,.swap-day{min-width:0;text-align:center;padding:4px 0;font-size:10px}
 .swap-wd{color:#778399;font-weight:bold}
-.swap-day{min-height:0;height:100%;box-sizing:border-box;border-radius:6px;background:#f7f9fc;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;overflow:hidden}
+.swap-day{min-height:0;height:100%;box-sizing:border-box;border-radius:6px;background:#f7f9fc;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;overflow:hidden;padding:2px 1px}
 .swap-day.empty{background:transparent}
-.swap-day .sd-num{font-size:10px;color:#687386}
- .swap-pick-date{width:100%;padding:3px 1px;border:0;color:inherit;font:inherit;text-align:center;cursor:pointer;} .swap-pick-date:focus-visible{outline:2px solid #1769d2;outline-offset:1px;}
-.swap-day .sd-duty{font-size:13px;font-weight:800;color:#1769d2;overflow:hidden;max-width:100%;letter-spacing:-.3px}
+.swap-day .sd-top{display:flex;align-items:center;justify-content:center;gap:2px;line-height:1;min-height:11px;max-width:100%}
+.swap-day .sd-num{font-size:10px;color:#687386;line-height:1}
+.swap-day .sd-edge{display:inline-block;font-size:8px;line-height:1;font-weight:800;padding:1px 3px;border-radius:4px;background:rgba(255,255,255,.28);color:#fff;white-space:nowrap;letter-spacing:-.4px}
+ .swap-pick-date{width:100%;padding:2px 1px;border:0;color:inherit;font:inherit;text-align:center;cursor:pointer;} .swap-pick-date:focus-visible{outline:2px solid #1769d2;outline-offset:1px;}
+.swap-day .sd-duty{font-size:12px;font-weight:800;color:#1769d2;overflow:visible;max-width:100%;letter-spacing:-.3px;line-height:1.15;flex:none}
 .swap-day .sd-duty.duty-day{color:#c28b00}.swap-day .sd-duty.duty-off{color:#d32f2f}.swap-day .sd-duty.duty-night{color:#1769d2}
 .swap-day .sd-duty.duty-bi{color:#6c757d}
 .swap-day.in-range{background:#dceeff;outline:1px solid #85bfff}
 .swap-day.range-edge{background:#1769d2;outline:2px solid #0f4fa8}
 .swap-day.range-edge .sd-num,.swap-day.range-edge .sd-duty{color:#fff!important}
-.swap-day.range-edge::after{content:attr(data-edge);font-size:8px;line-height:1;color:#fff;font-weight:bold}
 .swap-day .sd-star{color:#e53935;font-size:9px}
 .swap-range-summary{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:12px;padding:9px 10px;background:#f5f8fc;border-radius:9px;font-size:12px;color:#475467}
 .swap-range-summary b{color:#1769d2}
@@ -341,7 +342,7 @@ input, textarea, select, [contenteditable="true"] {
 .swap-actions button{border:0;border-radius:9px;padding:10px 14px;font-weight:bold;cursor:pointer}
 .swap-cancel{background:#eef1f5;color:#344054}.swap-submit{background:#1769d2;color:#fff}.swap-submit:disabled{opacity:.5}
 .swap-note{font-size:12px;line-height:1.6;color:#667085;margin-top:9px;white-space:normal}
-@media(max-width:480px){.swap-dialog{height:86vh;max-height:86vh;min-height:480px;padding:10px}.swap-cal-grid{gap:5px}.swap-person-title{font-size:11px}.swap-month{height:285px}.swap-day .sd-duty{font-size:10px}.swap-range-calendar .swap-range-date{min-height:34px}}
+@media(max-width:480px){.swap-dialog{height:86vh;max-height:86vh;min-height:480px;padding:10px}.swap-cal-grid{gap:5px}.swap-person-title{font-size:11px}.swap-month{height:300px}.swap-day .sd-duty{font-size:11px}.swap-day .sd-edge{font-size:7px;padding:1px 2px}.swap-range-calendar .swap-range-date{min-height:34px}}
 
 </style>
 </head>
@@ -3740,10 +3741,12 @@ function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
       : (dutyCode === '휴' || type === '휴' || type === '휴무') ? 'duty-off'
       : (dutyCode === '비' || type === '비' || type === '비번') ? 'duty-bi'
       : 'duty-night';
-    html += '<button type="button" data-key="' + key + '"' + (edge ? ' data-edge="' + edge + '"' : '') +
+    html += '<button type="button" data-key="' + key + '"' +
       ' class="swap-day swap-pick-date' + (inRange ? ' in-range' : '') + (edge ? ' range-edge' : '') +
-      '" onclick="selectSwapRangeDate(this.dataset.key)"><span class="sd-num">' + d + '</span><span class="sd-duty ' + cls + '">' +
-      (info && info.manual ? '*' : '') + esc(label) + '</span></button>';
+      '" onclick="selectSwapRangeDate(this.dataset.key)">' +
+      '<span class="sd-top"><span class="sd-num">' + d + '</span>' +
+      (edge ? '<span class="sd-edge">' + edge + '</span>' : '') + '</span>' +
+      '<span class="sd-duty ' + cls + '">' + (info && info.manual ? '*' : '') + esc(label) + '</span></button>';
       }
   // 달마다 주 수가 달라져도 달력 높이가 변하지 않도록 6주(42칸) 고정
   var usedCells = firstDow + daysInMonth;
