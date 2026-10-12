@@ -2362,9 +2362,67 @@ function loadMyMonth(force) {
       }
     }
 
-    myMonth = { y: y, m: m, days: me ? me.days : {} };
+    var monthDays = {};
+    if (me && me.days) {
+      Object.keys(me.days).forEach(function (key) { monthDays[key] = Object.assign({}, me.days[key]); });
+    }
 
-    if (me) mySettings = { seq: me.settings.seq || '', anchor: me.settings.anchor || '' };
+    if (me) {
+      mySettings = { seq: me.settings.seq || '', anchor: me.settings.anchor || '' };
+
+      /* 이 기기에서 수정한 DIA/상태를 서버 근무표 위에 적용합니다. */
+      var localMine = ensureLocal(user.employeeId);
+      /* 이전 수정본이 다음 날을 야간으로 덮어쓴 auto-dia 기록을 제거해
+         원래 비번 구분이 복구되도록 합니다. */
+      var overrideCountBeforeCleanup = (localMine.overrides || []).length;
+      localMine.overrides = (localMine.overrides || []).filter(function (r) {
+        return !(r && r[1] === 'auto-dia');
+      });
+      if (localMine.overrides.length !== overrideCountBeforeCleanup) saveLocalChange(user.employeeId, localMine);
+      var localOvMap = {};
+      (localMine.overrides || []).forEach(function (r) {
+        if (r && r.length >= 4) localOvMap[r[0]] = { type: r[1], dia: r[2], status: r[3], updatedAt: r[4] || '' };
+      });
+      Object.keys(monthDays).forEach(function (key) {
+        if (localOvMap[key]) {
+          var localDay = snapBuildDay(key, localMine.seq || mySettings.seq, localMine.anchor || mySettings.anchor, diaList, localOvMap[key], me.name);
+          monthDays[key] = localDay;
+        }
+      });
+
+      /* 비번은 비번으로 유지하되, 직전 날짜가 야간이면 상세 정보만 이어받습니다. */
+      function dutyCode(v) {
+        var t = String(v || '').trim();
+        if (t === '비번') return '비';
+        if (t === '야간') return '야';
+        if (t === '주간') return '주';
+        return t;
+      }
+      Object.keys(monthDays).forEach(function (key) {
+        var todayInfo = monthDays[key];
+        if (!todayInfo || dutyCode(todayInfo.type || todayInfo.label || todayInfo.status) !== '비') return;
+        if (todayInfo.overrideType === 'status' && dutyCode(todayInfo.status || todayInfo.label) !== '비') return;
+        var prevKey = snapShiftKey(key, -1);
+        var prevInfo = monthDays[prevKey];
+        if (!prevInfo && me.days && me.days[prevKey]) prevInfo = me.days[prevKey];
+        if (!prevInfo && mySettings.seq && mySettings.anchor) {
+          prevInfo = snapBaseDay(prevKey, mySettings.seq, mySettings.anchor, diaList, me.name);
+          if (localOvMap[prevKey]) prevInfo = snapBuildDay(prevKey, mySettings.seq, mySettings.anchor, diaList, localOvMap[prevKey], me.name);
+        }
+        if (!prevInfo || dutyCode(prevInfo.type || prevInfo.label || prevInfo.status) !== '야') return;
+        todayInfo.dia = prevInfo.dia || todayInfo.dia || '';
+        todayInfo.start = prevInfo.start || todayInfo.start || '';
+        todayInfo.end = prevInfo.end || todayInfo.end || '';
+        todayInfo.train1 = prevInfo.train1 || todayInfo.train1 || '';
+        todayInfo.train2 = prevInfo.train2 || todayInfo.train2 || '';
+        todayInfo.route = prevInfo.route || todayInfo.route || '';
+        todayInfo.routeDiagram = prevInfo.routeDiagram || todayInfo.routeDiagram || '';
+        todayInfo.nightCarryover = true;
+        todayInfo.label = todayInfo.overrideType === 'status' ? (todayInfo.status || '비번') : (todayInfo.label || '비');
+      });
+    }
+
+    myMonth = { y: y, m: m, days: monthDays };
 
     st.textContent = (me && me.settings.seq && me.settings.anchor)
       ? ''
@@ -2674,7 +2732,7 @@ function renderDayDetail() {
     return;
   }
 
-  var isStatus = info.overrideType === 'status';
+  var isStatus = info.overrideType === 'status' && !info.nightCarryover;
   var diaNo = String(info.dia || '').trim();
   if (!diaNo && !isStatus && diaByNumber(info.label)) diaNo = String(info.label);
 
@@ -2692,8 +2750,8 @@ function renderDayDetail() {
     ? 'DIA : ' + esc(diaNo) + (workType ? ' (' + esc(workType) + ')' : '')
     : esc(info.label);
   var tag = '근무';
-  if (info.label === '휴' || isStatus) tag = '휴무';
-  else if (info.label === '비') tag = '비번';
+  if (info.label === '휴' || (isStatus && String(info.status || '') !== '비번')) tag = '휴무';
+  else if (info.label === '비' || info.label === '비번' || info.nightCarryover) tag = '비번';
   else if (info.label === 'X') tag = '-';
 
   var html = '<div class="dd-date">' + dateText + ' 상세 근무 정보</div>';
@@ -2899,7 +2957,8 @@ function saveScheduleEdit() {
   var targetDateKey = getDateKey(target.y, target.m, target.d);
   var nextDateKey = snapShiftKey(targetDateKey, 1);
   var enteredDiaInfo = dia ? diaByNumber(dia) : null;
-  var isNightDia = !!(dia && enteredDiaInfo && String(enteredDiaInfo.type || '').trim() === '야');
+  var enteredType = String(enteredDiaInfo && enteredDiaInfo.type || '').trim();
+  var isNightDia = !!(dia && enteredDiaInfo && (enteredType === '야' || enteredType === '야간'));
   /* 야간 DIA를 수정하면 다음 날도 같은 야간 DIA를 자동으로 이어 표시합니다.
      기존에 자동 생성된 다음 날 상태/DIA는 먼저 제거합니다. */
   removeAutoNextDayOff(user.employeeId, nextDateKey);
@@ -2922,10 +2981,7 @@ function saveScheduleEdit() {
   /* 서버로 보내지 않고 이 폰에만 저장 (백업은 환경설정에서) */
   snapUpsertOverride(user.employeeId, params.date, params.type, params.dia, params.status);
 
-  if (isNightDia) {
-    /* 자동으로 이어진 야간은 직접 수정(*)으로 표시하지 않습니다. */
-    snapUpsertOverride(user.employeeId, nextDateKey, 'auto-dia', dia, '');
-  }
+  /* 다음 날은 원래의 비번/근무 구분을 유지합니다. 야간 정보는 비번 상세 표시에서만 이어받습니다. */
 
   closeScheduleEdit();
 
