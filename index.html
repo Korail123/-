@@ -325,29 +325,6 @@ input, textarea, select, [contenteditable="true"] {
 .swap-day.in-range{background:#dceeff;outline:1px solid #85bfff}
 .swap-day.range-edge{background:#1769d2;outline:2px solid #0f4fa8}
 .swap-day.range-edge .sd-num,.swap-day.range-edge .sd-duty{color:#fff!important}
-.swap-day.preview-swap{background:#e8f7ec;outline:1px dashed #2e7d32}
-.swap-day.preview-swap.range-edge{background:#1b7a3d;outline:2px solid #0f5a2a}
-.swap-day.preview-swap.range-edge .sd-num,
-.swap-day.preview-swap.range-edge .sd-duty,
-.swap-day.preview-swap.range-edge .sd-old,
-.swap-day.preview-swap.range-edge .sd-arrow,
-.swap-day.preview-swap.range-edge .sd-preview{color:#fff!important}
-.swap-day .sd-stack{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;line-height:1.05;max-width:100%}
-.swap-day .sd-change{display:flex;align-items:center;justify-content:center;gap:2px;max-width:100%;flex-wrap:nowrap}
-.swap-day .sd-old{opacity:.5;text-decoration:line-through;font-size:10px;font-weight:700;letter-spacing:-.3px}
-.swap-day .sd-arrow{font-size:9px;color:#2e7d32;font-weight:800}
-.swap-day .sd-preview{font-size:12px;font-weight:800;letter-spacing:-.3px}
-.swap-day .sd-preview.duty-day{color:#c28b00}.swap-day .sd-preview.duty-off{color:#d32f2f}
-.swap-day .sd-preview.duty-night{color:#1769d2}.swap-day .sd-preview.duty-bi{color:#6c757d}
-.swap-day .sd-preview-tag{font-size:8px;color:#2e7d32;font-weight:800;letter-spacing:-.2px}
-.swap-preview-banner{display:none;margin-top:10px;padding:10px 12px;border-radius:12px;background:linear-gradient(135deg,#eef9f1,#e8f3ff);border:1px solid #b7e0c2;font-size:12px;line-height:1.55;color:#244}
-.swap-preview-banner.show{display:block}
-.swap-preview-banner b{color:#1769d2}
-.swap-preview-banner .pv-title{font-weight:800;color:#1b5e20;margin-bottom:4px}
-.swap-preview-banner .pv-row{display:flex;flex-wrap:wrap;gap:6px 10px;margin-top:4px}
-.swap-preview-banner .pv-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;background:#fff;border:1px solid #d0e6d6;font-size:11px;font-weight:700}
-.swap-preview-banner .pv-chip .from{opacity:.55;text-decoration:line-through}
-.swap-preview-banner .pv-chip .to{color:#1b7a3d}
 .swap-day .sd-star{color:#e53935;font-size:9px}
 .swap-range-summary{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:12px;padding:9px 10px;background:#f5f8fc;border-radius:9px;font-size:12px;color:#475467}
 .swap-range-summary b{color:#1769d2}
@@ -989,7 +966,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <span>종료일 <b id="swap-end-label">선택 전</b></span>
       <button type="button" class="swap-reset" onclick="resetSwapRange()">날짜 다시 선택</button>
     </div>
-    <div id="swap-preview-banner" class="swap-preview-banner" aria-live="polite"></div>
     <div class="swap-nav">
       <button type="button" onclick="changeSwapMonth(-1)">◀ 이전 달</button>
       <b id="swap-month-label" style="font-size:13px"></b>
@@ -1000,7 +976,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <div class="swap-person"><div id="swap-other-title" class="swap-person-title">상대 근무표</div><div id="swap-other-calendar" class="swap-month"></div></div>
     </div>
     <div id="swap-status" class="swap-note" role="status"></div>
-    <div class="swap-note">※ 기간을 고르면 달력에 <b>현재 → 교환 후</b> 미리보기가 표시됩니다. 확정 전에는 저장되지 않습니다.<br>※ 교환 후 변경된 날짜에는 *가 표시됩니다.</div>
+    <div class="swap-note">※ 선택한 기간의 날짜별 근무를 서로 교환합니다. 변경된 날짜에는 *가 표시됩니다.</div>
     <div class="swap-actions" style="flex-wrap:wrap">
       <button type="button" class="swap-cancel" onclick="closeGroupSwap()">닫기</button>
       <button type="button" id="swap-revert" class="swap-cancel" onclick="revertSwapRangeOriginal()" style="border:1px solid #e53935;color:#e53935;background:#fff">원래대로 되돌리기</button>
@@ -3887,21 +3863,9 @@ function swapDutyLabel(info) {
   if (map[status]) return map[status];
   return map[type] || map[label] || type || label || '-';
 }
-function swapDutyClass(label) {
-  var dutyCode = String(label || '').trim();
-  if (dutyCode === '주' || dutyCode === '주간') return 'duty-day';
-  if (dutyCode === '휴' || dutyCode === '휴무') return 'duty-off';
-  if (dutyCode === '비' || dutyCode === '비번') return 'duty-bi';
-  return 'duty-night';
-}
-
-/* 기간이 선택된 칸: 현재 근무 → 교환 후 근무 미리보기 */
 function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
   var el = $(containerId);
   if (!el || !swapCalendarMonth) return;
-  var meId = String(getCurrentUser().employeeId || '');
-  var otherId = swapTargetMember ? String(swapTargetMember.employeeId || '') : '';
-  var partnerId = (String(employeeId) === meId) ? otherId : meId;
   var y = swapCalendarMonth.getFullYear(), m = swapCalendarMonth.getMonth();
   var firstDow = new Date(y, m, 1).getDay();
   var daysInMonth = new Date(y, m + 1, 0).getDate();
@@ -3914,82 +3878,25 @@ function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
     var label = swapDutyLabel(info);
     var inRange = !!(startKey && endKey && key >= startKey && key <= endKey);
     var edge = (key === startKey) ? '시작' : (key === endKey ? '종료' : '');
-    var cls = swapDutyClass(label);
-    var showPreview = inRange && partnerId;
-    var previewLabel = '';
-    var previewCls = '';
-    if (showPreview) {
-      previewLabel = swapDutyLabel(swapMemberInfo(partnerId, key));
-      previewCls = swapDutyClass(previewLabel);
-    }
-    var dutyHtml;
-    if (showPreview) {
-      dutyHtml =
-        '<span class="sd-stack">' +
-          '<span class="sd-change">' +
-            '<span class="sd-old ' + cls + '">' + (info && info.manual ? '*' : '') + esc(label) + '</span>' +
-            '<span class="sd-arrow">→</span>' +
-            '<span class="sd-preview ' + previewCls + '">' + esc(previewLabel) + '</span>' +
-          '</span>' +
-          '<span class="sd-preview-tag">미리보기</span>' +
-        '</span>';
-    } else {
-      dutyHtml = '<span class="sd-duty ' + cls + '">' + (info && info.manual ? '*' : '') + esc(label) + '</span>';
-    }
+    var type = String(info && (info.type || info.label) || '');
+    var dutyCode = swapDutyLabel(info);
+    var cls = (dutyCode === '주' || type === '주' || type === '주간') ? 'duty-day'
+      : (dutyCode === '휴' || type === '휴' || type === '휴무') ? 'duty-off'
+      : (dutyCode === '비' || type === '비' || type === '비번') ? 'duty-bi'
+      : 'duty-night';
     html += '<button type="button" data-key="' + key + '"' +
-      ' class="swap-day swap-pick-date' +
-      (inRange ? (showPreview ? ' preview-swap' : ' in-range') : '') +
-      (edge ? ' range-edge' : '') +
+      ' class="swap-day swap-pick-date' + (inRange ? ' in-range' : '') + (edge ? ' range-edge' : '') +
       '" onclick="selectSwapRangeDate(this.dataset.key)">' +
       '<span class="sd-top"><span class="sd-num">' + d + '</span>' +
       (edge ? '<span class="sd-edge">' + edge + '</span>' : '') + '</span>' +
-      dutyHtml + '</button>';
-  }
+      '<span class="sd-duty ' + cls + '">' + (info && info.manual ? '*' : '') + esc(label) + '</span></button>';
+      }
+  // 달마다 주 수가 달라져도 달력 높이가 변하지 않도록 6주(42칸) 고정
   var usedCells = firstDow + daysInMonth;
   var tail = 42 - usedCells;
   for (var z = 0; z < tail; z++) html += '<div class="swap-day empty"></div>';
   el.innerHTML = html;
 }
-
-function renderSwapPreviewBanner(startKey, endKey) {
-  var banner = $('swap-preview-banner');
-  if (!banner) return;
-  if (!swapTargetMember || !startKey || !endKey || startKey > endKey) {
-    banner.classList.remove('show');
-    banner.innerHTML = '';
-    return;
-  }
-  var daysCount = Math.round((dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000) + 1;
-  if (daysCount > 31) {
-    banner.classList.remove('show');
-    banner.innerHTML = '';
-    return;
-  }
-  var meId = getCurrentUser().employeeId;
-  var otherId = swapTargetMember.employeeId;
-  var otherName = swapTargetMember.name || otherId;
-  var keys = snapDateKeys(startKey, endKey);
-  var chips = '';
-  var maxChips = 8;
-  for (var i = 0; i < keys.length && i < maxChips; i++) {
-    var k = keys[i];
-    var mine = swapDutyLabel(swapMemberInfo(meId, k));
-    var theirs = swapDutyLabel(swapMemberInfo(otherId, k));
-    var p = k.split('-');
-    var short = parseInt(p[1], 10) + '/' + parseInt(p[2], 10);
-    chips += '<span class="pv-chip"><span>' + short + '</span> ' +
-      '<span class="from">' + esc(mine) + '</span>→<span class="to">' + esc(theirs) + '</span></span>';
-  }
-  if (keys.length > maxChips) {
-    chips += '<span class="pv-chip">+' + (keys.length - maxChips) + '일</span>';
-  }
-  banner.innerHTML =
-    '<div class="pv-title">미리보기 · 교환 후 내 근무 (상대: ' + esc(otherName) + ')</div>' +
-    '<div>선택한 <b>' + daysCount + '일</b> 동안 양쪽 달력에 <b>현재 → 교환 후</b> 근무가 표시됩니다. 확정 전에는 저장되지 않습니다.</div>' +
-    '<div class="pv-row">' + chips + '</div>';
-  banner.classList.add('show');
-}
-
 function renderSwapCalendars() {
   if (!swapTargetMember || !swapCalendarMonth) return;
   var startKey = swapRangeStart, endKey = swapRangeEnd;
@@ -3998,12 +3905,10 @@ function renderSwapCalendars() {
   $('swap-end-label').textContent = endKey || (startKey ? '종료일 선택' : '선택 전');
   renderOneSwapCalendar(getCurrentUser().employeeId, 'swap-me-calendar', startKey, endKey);
   renderOneSwapCalendar(swapTargetMember.employeeId, 'swap-other-calendar', startKey, endKey);
-  renderSwapPreviewBanner(startKey, endKey);
   var status = $('swap-status');
   if (startKey && !endKey) status.textContent = '시작일을 선택했어요. 내 근무표 또는 상대 근무표에서 종료일을 선택하세요.';
   else if (startKey && endKey && (dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000 > 30) status.textContent = '한 번에 최대 31일까지만 교환할 수 있습니다.';
-  else if (startKey && endKey) status.textContent = startKey + ' ~ ' + endKey + ' 기간 미리보기입니다. 확인 후 [근무 교환]을 누르세요.';
-  else status.textContent = '달력에서 시작일을 한 번, 종료일을 한 번 누르면 기간이 선택되고 교환 미리보기가 표시됩니다.';
+  else status.textContent = startKey && endKey ? startKey + ' ~ ' + endKey + ' 기간이 선택되었습니다.' : '달력에서 시작일을 한 번, 종료일을 한 번 누르면 기간이 한 번에 선택됩니다.';
   var btn = $('swap-submit');
   if (btn) btn.disabled = swapSubmitting || !startKey || !endKey || startKey > endKey || (dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000 > 30;
 }
