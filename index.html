@@ -303,14 +303,9 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <input type="text" id="login-id" placeholder="사원명을 입력하세요" autocomplete="username" required>
     </div>
 
-    <div class="input-group">
-      <label for="login-pw">인증번호</label>
-      <input type="password" id="login-pw" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="인증번호 4자리 입력" autocomplete="off" required>
-    </div>
-
-    <div class="login-options">
+    <div class="login-options" style="justify-content:flex-start">
       <label class="remember-me">
-        <input type="checkbox" id="remember"> 로그인 정보 저장
+        <input type="checkbox" id="remember" checked> 자동로그인
       </label>
     </div>
 
@@ -339,10 +334,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
     <div class="input-group">
       <label for="signup-code">인증번호</label>
-      <div style="display:flex;gap:8px;align-items:stretch">
-        <input type="password" id="signup-code" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="4자리 인증번호" autocomplete="off" required style="flex:1;min-width:0">
-        <button type="button" class="btn" id="signup-verify-btn" onclick="verifySignupCode()" style="width:auto;min-width:100px;padding:0 14px;margin:0">인증하기</button>
-      </div>
+      <input type="password" id="signup-code" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="4자리 인증번호" autocomplete="off" required style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:14px">
       <div id="signup-verify-message" class="status-message" style="margin-top:6px"></div>
     </div>
 
@@ -3976,177 +3968,107 @@ function saveSelectedDia() {
 /* ============ 로그인 / 회원가입 ============ */
 
 var SAVED_LOGIN_KEY = 'railwaySecretarySavedLogin';
+var PRIVACY_CONSENT_VERSION = '2026-10-12-v1';
+var signupPending = null;
+var signupCodeVerified = false;
 
 function readSavedLogin() {
-
   try {
-
     var raw = LS.getItem(SAVED_LOGIN_KEY);
+    var v = raw ? JSON.parse(raw) : null;
+    return v && v.id && v.auto ? v : null;
+  } catch (e) { return null; }
+}
+function writeSavedLogin(id, auto) {
+  if (auto) LS.setItem(SAVED_LOGIN_KEY, JSON.stringify({ id: id, auto: true }));
+  else LS.removeItem(SAVED_LOGIN_KEY);
+}
+function clearSavedLogin() { LS.removeItem(SAVED_LOGIN_KEY); }
 
-    if (raw) {
-
-      var v = JSON.parse(raw);
-
-      if (v && v.id) return v;
-
-    }
-
-  } catch (e) {}
-
-  return null;
-
+function finishLogin(r, id) {
+  if (!r || !r.success) {
+    $('login-message').textContent = (r && r.message) || '로그인에 실패했습니다. 먼저 회원가입을 완료해주세요.';
+    return;
+  }
+  var employeeId = String(r.employeeId || id || '').trim();
+  var name = String(r.name || id || '').trim();
+  setCurrentUser({ employeeId: employeeId, name: name, token: r.token || ('NAME_' + encodeURIComponent(name)) });
+  $('welcome-name').textContent = name;
+  myMonth = null; groupData = null; mySettings = { seq: '', anchor: '' }; metaLoadedAt = 0;
+  switchSection('main-section');
+  if (r.snapshot) snapApply(employeeId, snapGen, r.snapshot);
+  else refreshSnapshot(true, null);
 }
 
-function writeSavedLogin(id, pw, auto) {
-  LS.setItem(SAVED_LOGIN_KEY, JSON.stringify({ id: id, pw: pw, auto: !!auto }));
-}
-
-function clearSavedLogin() {
-  LS.removeItem(SAVED_LOGIN_KEY);
-}
-
-function doLogin(id, code, isAuto) {
-
-  var msg = $('login-message');
-  var btn = $('login-btn');
-  var loading = $('login-loading');
-
-  msg.textContent = '';
-  btn.disabled = true;
-  loading.textContent = isAuto ? '자동 로그인 중...' : '로그인 확인 중...';
-  loading.style.display = 'block';
-
-  api({ action: 'login', employeeId: id, code: code, ver: snapVersionFor(id) }, function (r) {
-
-    btn.disabled = false;
-    loading.style.display = 'none';
-
+function doLogin(name, isAuto) {
+  name = String(name || '').trim();
+  var msg = $('login-message'), btn = $('login-btn'), loading = $('login-loading');
+  if (!name) { msg.textContent = '사원명을 입력해주세요.'; return; }
+  msg.textContent = ''; btn.disabled = true;
+  loading.textContent = isAuto ? '자동 로그인 중...' : '로그인 중...'; loading.style.display = 'block';
+  api({ action: 'login', name: name, employeeId: name, ver: snapVersionFor(name) }, function (r) {
+    btn.disabled = false; loading.style.display = 'none';
     if (!r || !r.success) {
-
-      msg.textContent = (isAuto ? '자동 로그인 실패: ' : '') + ((r && r.message) || '로그인에 실패했습니다.');
-
-      if (isAuto && r && r.errorCode === 'LOGIN_FAILED') writeSavedLogin(id, '', false);
-
+      msg.textContent = (isAuto ? '자동 로그인 실패: ' : '') + ((r && r.message) || '로그인에 실패했습니다. 회원가입 여부를 확인해주세요.');
+      if (isAuto) clearSavedLogin();
       return;
     }
-
-    if ($('remember').checked) writeSavedLogin(id, '', false);
+    if ($('remember').checked || isAuto) writeSavedLogin(name, true);
     else clearSavedLogin();
-
-    setCurrentUser({ employeeId: r.employeeId, name: r.name, token: r.token });
-
-    $('welcome-name').textContent = r.name;
-
-    myMonth = null;
-    groupData = null;
-    mySettings = { seq: '', anchor: '' };
-    metaLoadedAt = 0;
-
-    switchSection('main-section');
-
-    if (r.snapshot) snapApply(r.employeeId, snapGen, r.snapshot);
-    else refreshSnapshot(true, null);
-
+    finishLogin(r, name);
   });
-
 }
-
 function handleLogin(e) {
-
   e.preventDefault();
-
-  doLogin($('login-id').value.trim(), $('login-pw').value.trim(), false);
-
+  doLogin($('login-id').value.trim(), false);
   return false;
-
 }
-
-var signupCodeVerified = false;
-var signupPending = null;
-var PRIVACY_CONSENT_VERSION = '2026-10-11-v1';
 
 function verifySignupCode() {
-  var code = $('signup-code').value.trim();
+  signupCodeVerified = $('signup-code').value.trim() === '2526';
   var msg = $('signup-verify-message');
-  signupCodeVerified = code === '2526';
-  msg.style.color = signupCodeVerified ? '#16803c' : '#c62828';
-  msg.textContent = signupCodeVerified ? '인증이 완료되었습니다.' : '인증번호가 올바르지 않습니다.';
+  if (msg) { msg.style.color = signupCodeVerified ? '#16803c' : '#c62828'; msg.textContent = signupCodeVerified ? '인증이 완료되었습니다.' : '인증번호가 올바르지 않습니다.'; }
   return signupCodeVerified;
 }
-
 function handleSignup(e) {
   e.preventDefault();
   var name = $('signup-name').value.trim();
+  var code = $('signup-code').value.trim();
   var msg = $('signup-message');
   msg.textContent = '';
-
-  if (!name) {
-    msg.textContent = '사원명을 입력해주세요.';
-    return false;
-  }
-  if (!signupCodeVerified || $('signup-code').value.trim() !== '2526') {
-    msg.textContent = '인증번호 확인을 먼저 완료해주세요.';
-    return false;
-  }
-
-  // 기존 서버 호환을 위해 사원명 값을 내부 식별자로 함께 전달합니다.
-  // 따라서 로그인 화면에서도 사원명을 입력해야 합니다.
+  if (!name) { msg.textContent = '사원명을 입력해주세요.'; return false; }
+  if (code !== '2526') { msg.textContent = '인증번호가 올바르지 않습니다.'; return false; }
   signupPending = { employeeId: name, name: name };
   document.querySelectorAll('input[name="privacy-consent-choice"]').forEach(function (el) { el.checked = false; });
   $('privacy-consent-message').textContent = '';
   $('privacy-consent-panel').classList.add('active');
   return false;
 }
-
-function closePrivacyConsent() {
-  $('privacy-consent-panel').classList.remove('active');
-}
-
+function closePrivacyConsent() { $('privacy-consent-panel').classList.remove('active'); }
 function submitPrivacyConsent() {
   var choice = document.querySelector('input[name="privacy-consent-choice"]:checked');
   var msg = $('privacy-consent-message');
-  if (!choice) {
-    msg.textContent = '동의 또는 비동의를 선택해주세요.';
-    return;
-  }
+  if (!choice) { msg.textContent = '동의 또는 비동의를 선택해주세요.'; return; }
   if (choice.value !== 'agree') {
-    closePrivacyConsent();
-    signupPending = null;
+    closePrivacyConsent(); signupPending = null;
     $('signup-message').textContent = '개인정보 수집·이용에 동의하지 않아 회원가입이 취소되었습니다.';
-    switchSection('signup-section');
     return;
   }
-  if (!signupPending) {
-    msg.textContent = '회원가입 정보가 없습니다. 다시 입력해주세요.';
-    return;
-  }
-
+  if (!signupPending) { msg.textContent = '회원가입 정보가 없습니다. 다시 입력해주세요.'; return; }
   var btn = document.querySelector('#privacy-consent-panel button[onclick="submitPrivacyConsent()"]');
   if (btn) btn.disabled = true;
   msg.textContent = '회원가입 정보를 저장하는 중...';
-
-  var payload = {
-    action: 'signup',
-    employeeId: signupPending.employeeId,
-    name: signupPending.name,
-    verificationCode: '2526',
-    consent: 'agree',
-    consentAt: new Date().toISOString(),
-    consentVersion: PRIVACY_CONSENT_VERSION
-  };
-
-  api(payload, function (r) {
+  api({ action: 'signup', employeeId: signupPending.employeeId, name: signupPending.name,
+        code: '2526', verificationCode: '2526', consent: 'agree',
+        consentAt: new Date().toISOString(), consentVersion: PRIVACY_CONSENT_VERSION }, function (r) {
     if (btn) btn.disabled = false;
-    if (!r || !r.success) {
-      msg.textContent = (r && r.message) || '회원가입 저장에 실패했습니다. 서버 코드(Code.gs)도 새 회원가입 방식에 맞게 수정해야 합니다.';
-      return;
-    }
+    if (!r || !r.success) { msg.textContent = (r && r.message) || '회원가입 저장에 실패했습니다. Apps Script의 signup 함수도 확인해주세요.'; return; }
     closePrivacyConsent();
+    var registeredName = signupPending.name;
     signupPending = null;
-    signupCodeVerified = false;
     $('signup-form').reset();
-    $('signup-message').textContent = '';
-    alert('회원가입이 완료되었습니다. 로그인해주세요.');
+    $('signup-message').textContent = '회원가입이 완료되었습니다. 로그인해주세요.';
+    $('login-id').value = registeredName;
     switchSection('login-section');
   });
 }
@@ -4202,7 +4124,6 @@ function confirmDeleteAccount() {
     SS.removeItem(USER_KEY);
     clearSavedLogin();
     $('login-id').value = '';
-    $('login-pw').value = '';
     $('remember').checked = false;
     closeDeleteAccountPanel();
     alert('회원탈퇴가 완료되었습니다.');
@@ -4211,80 +4132,23 @@ function confirmDeleteAccount() {
 }
 
 function logout() {
-
   stopGroupAutoRefresh();
-
-  groupData = null;
-  myMonth = null;
-  mySettings = { seq: '', anchor: '' };
-  metaLoadedAt = 0;
-
+  groupData = null; myMonth = null; mySettings = { seq: '', anchor: '' }; metaLoadedAt = 0;
   clearDataCache();
-
-  LS.removeItem(USER_KEY);
-  SS.removeItem(USER_KEY);
-
-  var saved = readSavedLogin();
-
-  if (saved) {
-    writeSavedLogin(saved.id, saved.pw, false);
-    $('login-id').value = saved.id;
-    $('login-pw').value = saved.pw;
-    $('remember').checked = true;
-  }
-
+  LS.removeItem(USER_KEY); SS.removeItem(USER_KEY);
+  clearSavedLogin();
+  $('login-id').value = '';
+  $('remember').checked = true;
   switchSection('login-section');
-
 }
 
-/* ============ 시작 시 ============ */
-
+/* 자동로그인: 사이트 데이터가 남아 있으면 저장된 사원명으로 로그인 */
 (function initSavedLogin() {
-
   var saved = readSavedLogin();
-
   if (!saved) return;
-
   $('login-id').value = saved.id;
-  $('login-pw').value = saved.pw;
   $('remember').checked = true;
-
-  if (!saved.auto) return;
-
-  var u = getCurrentUser();
-
-  if (u.token && u.employeeId === saved.id && snapshotUsable()) {
-
-    $('welcome-name').textContent = u.name || '';
-
-    switchSection('main-section');
-
-    api({ action: 'login', employeeId: saved.id, password: saved.pw, ver: snapVersionFor(saved.id) }, function (r) {
-
-      if (r && r.success) {
-
-        setCurrentUser({ employeeId: r.employeeId, name: r.name, token: r.token });
-
-        $('welcome-name').textContent = r.name;
-
-        if (r.snapshot) snapApply(r.employeeId, snapGen, r.snapshot);
-        else refreshSnapshot(true, null);
-
-      } else if (r && r.errorCode === 'LOGIN_FAILED') {
-
-        writeSavedLogin(saved.id, saved.pw, false);
-        logout();
-        $('login-message').textContent = '자동 로그인 실패: ' + (r.message || '로그인 정보를 다시 확인해주세요.');
-
-      }
-
-    });
-
-    return;
-  }
-
-  doLogin(saved.id, saved.pw, true);
-
+  doLogin(saved.id, true);
 })();
 
 /* ============ 화면 스와이프: 달력·근무그룹 이전/다음 ============ */
