@@ -4761,6 +4761,33 @@ function submitPrivacyConsent() {
 var regulationDocuments = [];
 var selectedRegulationIndex = -1;
 
+/* 화면 표시명은 DB의 한글 title/display_name을 우선 사용합니다.
+   한글 표시명이 없는 경우 영문 저장 파일명을 한글 이름으로 변환합니다. */
+function regulationDisplayName(doc) {
+  doc = doc || {};
+  var title = String(doc.title_ko || doc.display_name || doc.displayName || doc.title || '').trim();
+  var raw = String(doc.file_path || doc.path || doc.name || doc.fileName || doc.filename || title || '').trim();
+  var base = raw.split(/[\\/]/).pop().replace(/[?#].*$/, '');
+  var key = base.toLowerCase().replace(/\.pdf$/i, '').replace(/[_\s]+/g, '-');
+  var known = {
+    'bosu-rule': '보수규정',
+    '2026-bosu': '보수규정',
+    'bosu-rule-detail': '보수규정 시행세칙',
+    '2026-bosu-detail': '보수규정 시행세칙',
+    'insa-rule': '인사규정',
+    'insa': '인사규정',
+    'insa-rule-detail': '인사규정 시행세칙',
+    'insa-detail': '인사규정 시행세칙',
+    'work-rule': '취업규칙',
+    'chwieop': '취업규칙'
+  };
+  if (known[key]) return known[key];
+  if (title && /[가-힣]/.test(title)) return title.replace(/\.pdf$/i, '');
+  if (base && /[가-힣]/.test(base)) return base.replace(/\.pdf$/i, '');
+  if (title && !/\.pdf$/i.test(title) && !title.includes('/')) return title;
+  return base.replace(/\.pdf$/i, '') || '규정 PDF';
+}
+
 function openRegulationsPanel() {
   var panel = $('regulations-panel');
   var status = $('regulations-status');
@@ -4789,8 +4816,8 @@ function openRegulationsPanel() {
     var docs = r.documents || r.regulations || r.files || [];
     if (!Array.isArray(docs)) docs = [];
     regulationDocuments = docs.filter(function (d) {
-      var name = String(d.name || d.title || d.fileName || d.filename || '');
-      var mime = String(d.mimeType || d.mime_type || d.contentType || '').toLowerCase();
+      var name = String(d.file_path || d.path || d.name || d.title || d.fileName || d.filename || '');
+      var mime = String(d.mimeType || d.mime_type || d.contentType || 'application/pdf').toLowerCase();
       var url = String(d.url || d.pdfUrl || d.signedUrl || d.signed_url || '');
       return (/\.pdf(?:$|[?#])/i.test(name) || mime === 'application/pdf') && !!url;
     });
@@ -4801,7 +4828,7 @@ function openRegulationsPanel() {
     status.textContent = 'PDF ' + regulationDocuments.length + '개';
     list.innerHTML = '';
     regulationDocuments.forEach(function (doc, i) {
-      var name = String(doc.name || doc.title || doc.fileName || doc.filename || '이름 없는 PDF');
+      var name = regulationDisplayName(doc);
       var label = document.createElement('label');
       label.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #e1e7ef;border-radius:12px;background:#f8fafc;font-size:14px;line-height:1.5;cursor:pointer;overflow-wrap:anywhere';
       var radio = document.createElement('input');
@@ -4826,7 +4853,7 @@ function findSelectedRegulation() {
   if (!doc) { alert('먼저 열람할 PDF 자료를 선택해주세요.'); return; }
   var url = String(doc.url || doc.pdfUrl || doc.signedUrl || doc.signed_url || '');
   if (!/^https:\/\//i.test(url)) { alert('PDF 주소가 안전한 HTTPS 링크가 아닙니다. 관리자에게 확인해주세요.'); return; }
-  var name = String(doc.name || doc.title || doc.fileName || doc.filename || '규정 PDF');
+  var name = regulationDisplayName(doc);
   $('regulations-viewer-title').textContent = name;
   $('regulations-pdf-viewer').src = url;
   $('regulations-open-link').innerHTML = '';
