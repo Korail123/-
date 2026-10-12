@@ -319,6 +319,9 @@ input, textarea, select, [contenteditable="true"] {
 .swap-day .sd-duty{font-size:12px;font-weight:bold;color:#1769d2;overflow:hidden;max-width:100%}
 .swap-day .sd-duty.duty-day{color:#c28b00}.swap-day .sd-duty.duty-off{color:#d32f2f}.swap-day .sd-duty.duty-night{color:#1769d2}
 .swap-day.in-range{background:#dceeff;outline:1px solid #85bfff}
+.swap-day.range-edge{background:#1769d2;outline:2px solid #0f4fa8}
+.swap-day.range-edge .sd-num,.swap-day.range-edge .sd-duty{color:#fff!important}
+.swap-day.range-edge::after{content:attr(data-edge);font-size:8px;line-height:1;color:#fff;font-weight:bold}
 .swap-day .sd-star{color:#e53935;font-size:9px}
 .swap-range-summary{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:12px;padding:9px 10px;background:#f5f8fc;border-radius:9px;font-size:12px;color:#475467}
 .swap-range-summary b{color:#1769d2}
@@ -3665,10 +3668,13 @@ function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
     var info = swapMemberInfo(employeeId, key);
     var label = swapDutyLabel(info);
     var inRange = !!(startKey && endKey && key >= startKey && key <= endKey);
+    var edge = (key === startKey) ? '시작' : (key === endKey ? '종료' : '');
     var type = String(info && (info.type || info.label) || '');
     var cls = type === '주' || type === '주간' ? 'duty-day' : (type === '휴' || type === '휴무' ? 'duty-off' : 'duty-night');
-    html += '<button type="button" data-key="' + key + '" class="swap-day swap-pick-date' + (inRange ? ' in-range' : '') + '" onclick="selectSwapRangeDate(this.dataset.key)"><span class="sd-num">' + d + '</span><span class="sd-duty ' + cls + '">' + (info && info.manual ? '*' : '') + esc(label) + '</span></button>';
-  }
+    html += '<button type="button" data-key="' + key + '"' + (edge ? ' data-edge="' + edge + '"' : '') +
+      ' class="swap-day swap-pick-date' + (inRange ? ' in-range' : '') + (edge ? ' range-edge' : '') +
+      '" onclick="selectSwapRangeDate(this.dataset.key)"><span class="sd-num">' + d + '</span><span class="sd-duty ' + cls + '">' +
+      (info && info.manual ? '*' : '') + esc(label) + '</span></button>';
   // 달마다 주 수가 달라져도 달력 높이가 변하지 않도록 6주(42칸) 고정
   var usedCells = firstDow + daysInMonth;
   var tail = 42 - usedCells;
