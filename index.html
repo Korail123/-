@@ -1645,7 +1645,29 @@ function snapBuildDay(dateKey, seq, anchor, dia, ov, name) {
 
   if (ov) {
 
-    if (ov.type === 'auto-status') {
+    if (ov.type === 'auto-dia') {
+
+      var autoDia = null;
+      for (var ai = 0; ai < dia.length; ai++) {
+        if (String(dia[ai].dia || '').trim().toUpperCase() === String(ov.dia || '').trim().toUpperCase()) {
+          autoDia = dia[ai]; break;
+        }
+      }
+      if (autoDia) {
+        d = {};
+        for (var ak in autoDia) if (Object.prototype.hasOwnProperty.call(autoDia, ak)) d[ak] = autoDia[ak];
+      } else {
+        d = snapEmptyDay();
+        d.dia = String(ov.dia || '').trim().toUpperCase();
+        d.type = '야';
+      }
+      d.manual = false;
+      d.overrideType = '';
+      d.status = '';
+      d.auto = true;
+      d.updatedAt = ov.updatedAt || '';
+
+    } else if (ov.type === 'auto-status') {
 
       d = snapEmptyDay();
       d.type = ov.status || '비';
@@ -1660,7 +1682,7 @@ function snapBuildDay(dateKey, seq, anchor, dia, ov, name) {
       var found = null;
 
       for (var i = 0; i < dia.length; i++) {
-        if (String(dia[i].dia || '').trim() === ov.dia) { found = dia[i]; break; }
+        if (String(dia[i].dia || '').trim().toUpperCase() === String(ov.dia || '').trim().toUpperCase()) { found = dia[i]; break; }
       }
 
       if (found) {
@@ -2828,7 +2850,7 @@ function removeAutoNextDayOff(employeeId, dateKey) {
   var loc = ensureLocal(employeeId);
   var before = loc.overrides.length;
   loc.overrides = loc.overrides.filter(function (r) {
-    return !(r[0] === dateKey && r[1] === 'auto-status');
+    return !(r[0] === dateKey && (r[1] === 'auto-status' || r[1] === 'auto-dia'));
   });
   if (loc.overrides.length !== before) {
     saveLocalChange(employeeId, loc);
@@ -2860,8 +2882,8 @@ function saveScheduleEdit() {
     return;
   }
 
-  if (dia && !/^[0-9]+$/.test(dia)) {
-    msg.textContent = 'DIA 번호는 숫자만 입력해주세요.';
+  if (dia && !/^[A-Z0-9]+$/.test(dia)) {
+    msg.textContent = 'DIA 번호는 영문 대문자와 숫자만 입력해주세요.';
     return;
   }
 
@@ -2875,14 +2897,9 @@ function saveScheduleEdit() {
   var nextDateKey = snapShiftKey(targetDateKey, 1);
   var enteredDiaInfo = dia ? diaByNumber(dia) : null;
   var isNightDia = !!(dia && enteredDiaInfo && String(enteredDiaInfo.type || '').trim() === '야');
-  var autoNextDayOff = false;
-
-  /* 같은 날짜를 다시 수정할 때 이전에 자동 생성한 다음 날 비번은 먼저 제거합니다. */
+  /* 야간 DIA를 수정하면 다음 날도 같은 야간 DIA를 자동으로 이어 표시합니다.
+     기존에 자동 생성된 다음 날 상태/DIA는 먼저 제거합니다. */
   removeAutoNextDayOff(user.employeeId, nextDateKey);
-
-  if (isNightDia) {
-    autoNextDayOff = confirm('다음날 비번이 맞습니까?\n\n[확인] 다음 날을 비번으로 자동 변경\n[취소] 입력한 야간 DIA만 표시');
-  }
 
   var params = {
     action: 'saveScheduleOverride',
@@ -2902,9 +2919,9 @@ function saveScheduleEdit() {
   /* 서버로 보내지 않고 이 폰에만 저장 (백업은 환경설정에서) */
   snapUpsertOverride(user.employeeId, params.date, params.type, params.dia, params.status);
 
-  if (isNightDia && autoNextDayOff) {
-    /* 자동 비번은 별도 자동 상태로 저장해 직접 변경(*)과 구분합니다. */
-    snapUpsertOverride(user.employeeId, nextDateKey, 'auto-status', '', '비');
+  if (isNightDia) {
+    /* 자동으로 이어진 야간은 직접 수정(*)으로 표시하지 않습니다. */
+    snapUpsertOverride(user.employeeId, nextDateKey, 'auto-dia', dia, '');
   }
 
   closeScheduleEdit();
@@ -3298,8 +3315,9 @@ function openGroupInfo(k, key) {
     var prevKey = getDateKey(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate());
     var prevInfo = mem.days ? mem.days[prevKey] : null;
     if (prevInfo && String(prevInfo.type || prevInfo.label || '').trim() === '야' && prevInfo.overrideType !== 'status') {
+      /* 비번의 근무 구분은 '비'로 유지하고, 상세 운행정보만 전날 야간에서 가져옵니다. */
       info = Object.assign({}, info, {
-        dia: prevInfo.dia, type: prevInfo.type, start: prevInfo.start, end: prevInfo.end,
+        dia: prevInfo.dia, start: prevInfo.start, end: prevInfo.end,
         train1: prevInfo.train1, train2: prevInfo.train2, route: prevInfo.route
       });
       infoFromNight = true;
