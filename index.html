@@ -246,6 +246,24 @@ body{padding-bottom:84px}
 .alarm-scale{display:flex;justify-content:space-between;font-size:12px;color:#7a8696;padding:0 2px}
 .alarm-preview{margin:14px 2px 0;padding:10px 12px;border-radius:12px;background:#f0f8ff;border:1px solid #c9e5ff;font-size:13px;color:#445;line-height:1.6}
 .alarm-ring-info{margin:10px 0 18px;font-size:16px;color:#333;line-height:1.7}
+/* 모바일 브라우저의 달력 제목 텍스트 선택/파란색 드래그 방지 */
+#calendar-title,
+#group-calendar-title,
+#vac-cal-title {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+#calendar-title *,
+#group-calendar-title *,
+#vac-cal-title * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
 </style>
 <style>html,body{max-width:100%;overflow-x:hidden}#main-container{max-width:100%;overflow-x:clip}.page-view{min-width:0;max-width:100%;box-sizing:border-box}img,table{max-width:100%}
 .site-link-btn {
@@ -286,8 +304,8 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
 
     <div class="input-group">
-      <label for="login-pw">비밀번호</label>
-      <input type="password" id="login-pw" placeholder="비밀번호를 입력하세요" autocomplete="current-password" required>
+      <label for="login-pw">인증번호</label>
+      <input type="password" id="login-pw" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="인증번호 4자리 입력" autocomplete="off" required>
     </div>
 
     <div class="login-options">
@@ -3992,7 +4010,7 @@ function clearSavedLogin() {
   LS.removeItem(SAVED_LOGIN_KEY);
 }
 
-function doLogin(id, pw, isAuto) {
+function doLogin(id, code, isAuto) {
 
   var msg = $('login-message');
   var btn = $('login-btn');
@@ -4003,7 +4021,7 @@ function doLogin(id, pw, isAuto) {
   loading.textContent = isAuto ? '자동 로그인 중...' : '로그인 확인 중...';
   loading.style.display = 'block';
 
-  api({ action: 'login', employeeId: id, password: pw, ver: snapVersionFor(id) }, function (r) {
+  api({ action: 'login', employeeId: id, code: code, ver: snapVersionFor(id) }, function (r) {
 
     btn.disabled = false;
     loading.style.display = 'none';
@@ -4012,12 +4030,12 @@ function doLogin(id, pw, isAuto) {
 
       msg.textContent = (isAuto ? '자동 로그인 실패: ' : '') + ((r && r.message) || '로그인에 실패했습니다.');
 
-      if (isAuto && r && r.errorCode === 'LOGIN_FAILED') writeSavedLogin(id, pw, false);
+      if (isAuto && r && r.errorCode === 'LOGIN_FAILED') writeSavedLogin(id, '', false);
 
       return;
     }
 
-    if ($('remember').checked) writeSavedLogin(id, pw, true);
+    if ($('remember').checked) writeSavedLogin(id, '', false);
     else clearSavedLogin();
 
     setCurrentUser({ employeeId: r.employeeId, name: r.name, token: r.token });
@@ -4042,7 +4060,7 @@ function handleLogin(e) {
 
   e.preventDefault();
 
-  doLogin($('login-id').value.trim(), $('login-pw').value, false);
+  doLogin($('login-id').value.trim(), $('login-pw').value.trim(), false);
 
   return false;
 
