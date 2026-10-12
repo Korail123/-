@@ -651,6 +651,14 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="dia-dialog" style="max-width:560px;max-height:90vh;overflow:auto">
       <div class="dia-dialog-title">📚 규정 자료</div>
       <div class="dia-dialog-note" style="white-space:normal">목록에서 PDF를 선택한 뒤 ‘찾기’를 누르면 자료가 열립니다.</div>
+      <div id="regulation-upload-admin" style="display:none;margin:12px 0;padding:12px;border:1px solid #dbe5f0;border-radius:12px;background:#f8fbff">
+        <div style="font-weight:bold;margin-bottom:6px">📤 규정 PDF 버킷 업로드 (관리자)</div>
+        <div style="font-size:12px;color:#667085;line-height:1.55;margin-bottom:10px">영문 파일명의 PDF를 선택하면 Supabase Storage의 <code>regulations</code> 버킷에 업로드합니다. 같은 파일명이 있으면 덮어씁니다.</div>
+        <input id="regulation-upload-files" type="file" accept="application/pdf,.pdf" multiple style="display:block;width:100%;box-sizing:border-box;margin:8px 0 10px;font-size:13px">
+        <div id="regulation-upload-selection" style="font-size:12px;line-height:1.5;color:#475467;white-space:pre-wrap;margin-bottom:8px">선택된 파일 없음</div>
+        <button type="button" class="dia-text-btn" id="regulation-upload-button" onclick="uploadRegulationFiles()">선택한 PDF 버킷에 업로드</button>
+        <div id="regulation-upload-status" role="status" style="font-size:12px;line-height:1.6;white-space:pre-wrap;margin-top:8px"></div>
+      </div>
       <div id="regulations-status" style="font-size:13px;color:#687386;margin:8px 4px 12px;line-height:1.6">DB에서 PDF 목록을 불러오는 중...</div>
       <div id="regulations-list" role="radiogroup" aria-label="규정 PDF 목록" style="display:flex;flex-direction:column;gap:8px;max-height:34vh;overflow:auto"></div>
       <div id="regulations-viewer-wrap" style="display:none;margin-top:14px">
@@ -4779,7 +4787,12 @@ function regulationDisplayName(doc) {
     'insa-rule-detail': '인사규정 시행세칙',
     'insa-detail': '인사규정 시행세칙',
     'work-rule': '취업규칙',
-    'chwieop': '취업규칙'
+    'chwieop': '취업규칙',
+    'point-and-call-response-manual-revised-2026-08-25': '지적확인 환호응답 시행요령 매뉴얼',
+    'railway-signals-and-other-markers-rev-2025-01-31': '신호 및 기타표지',
+    'class-8500-emergency-response-manual-2023-11-01': '8500호대 응급조치 매뉴얼',
+    'class-8200-emergency-response-manual-2023-11-01': '8200호대 응급조치 매뉴얼',
+    'diesel-locomotive-dl-emergency-response-manual-2023-11-01': 'DL 응급조치 매뉴얼'
   };
   if (known[key]) return known[key];
   if (title && /[가-힣]/.test(title)) return title.replace(/\.pdf$/i, '');
@@ -4794,6 +4807,11 @@ function openRegulationsPanel() {
   var list = $('regulations-list');
   if (!panel) return;
   panel.classList.add('active');
+  var uploadAdmin = $('regulation-upload-admin');
+  if (uploadAdmin) uploadAdmin.style.display = isBoardAdmin() ? 'block' : 'none';
+  if ($('regulation-upload-status')) $('regulation-upload-status').textContent = '';
+  if ($('regulation-upload-files')) $('regulation-upload-files').value = '';
+  if ($('regulation-upload-selection')) $('regulation-upload-selection').textContent = '선택된 파일 없음';
   $('regulations-viewer-wrap').style.display = 'none';
   $('regulations-pdf-viewer').removeAttribute('src');
   $('regulations-open-link').innerHTML = '';
@@ -4842,6 +4860,93 @@ function openRegulationsPanel() {
       label.appendChild(radio); label.appendChild(title); list.appendChild(label);
     });
   });
+}
+
+/* 관리자 전용 UI. 실제 업로드 권한은 Supabase Storage RLS 정책으로 제한해야 합니다. */
+(function bindRegulationUploadPicker() {
+  function bind() {
+    var input = $('regulation-upload-files');
+    if (!input || input.dataset.bound === '1') return;
+    input.dataset.bound = '1';
+    input.addEventListener('change', function () {
+      var files = Array.prototype.slice.call(input.files || []);
+      $('regulation-upload-selection').textContent = files.length
+        ? files.map(function (f) { return f.name + ' (' + (f.size / 1048576).toFixed(1) + ' MB)'; }).join('\n')
+        : '선택된 파일 없음';
+      if ($('regulation-upload-status')) $('regulation-upload-status').textContent = '';
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+
+function uploadRegulationFiles() {
+  var user = getCurrentUser();
+  var status = $('regulation-upload-status');
+  var input = $('regulation-upload-files');
+  var button = $('regulation-upload-button');
+  if (!user || String(user.employeeId || '') !== BOARD_ADMIN_ID || !user.token) {
+    alert('관리자 계정으로 로그인해야 업로드할 수 있습니다.');
+    return;
+  }
+  if (!input || !input.files || !input.files.length) {
+    if (status) status.textContent = '먼저 업로드할 PDF 파일을 선택해주세요.';
+    return;
+  }
+  var files = Array.prototype.slice.call(input.files);
+  var invalid = files.filter(function (f) {
+    return !/^[A-Za-z0-9][A-Za-z0-9._-]*\.pdf$/i.test(f.name) || (f.type && f.type !== 'application/pdf');
+  });
+  if (invalid.length) {
+    if (status) status.textContent = '영문·숫자·하이픈·밑줄로 된 PDF 파일명만 업로드할 수 있습니다. 파일명을 확인해주세요:\n' + invalid.map(function (f) { return f.name; }).join('\n');
+    return;
+  }
+  var confirmText = files.length + '개 PDF를 regulations 버킷에 업로드합니다. 같은 파일명이 있으면 덮어씁니다. 계속할까요?';
+  if (!window.confirm(confirmText)) return;
+  if (button) button.disabled = true;
+  if (status) status.textContent = '업로드 준비 중...';
+  var results = [];
+  var index = 0;
+  function next() {
+    if (index >= files.length) {
+      if (button) button.disabled = false;
+      var failed = results.filter(function (r) { return !r.ok; });
+      if (status) status.textContent = results.map(function (r) { return (r.ok ? '완료: ' : '실패: ') + r.name + (r.message ? ' — ' + r.message : ''); }).join('\n') +
+        (failed.length ? '\n\n실패한 파일이 있습니다. Storage 버킷 정책(RLS)의 INSERT/UPDATE 권한을 확인해주세요.' : '\n\n버킷 업로드가 완료되었습니다. 규정 목록에 표시하려면 문서 메타데이터/API에도 등록되어 있어야 합니다.');
+      if (!failed.length) {
+        input.value = '';
+        if ($('regulation-upload-selection')) $('regulation-upload-selection').textContent = '선택된 파일 없음';
+      }
+      return;
+    }
+    var file = files[index++];
+    if (status) status.textContent = '업로드 중 (' + index + '/' + files.length + '): ' + file.name;
+    var url = SUPABASE_URL + '/storage/v1/object/regulations/' + encodeURIComponent(file.name);
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/pdf',
+        'x-upsert': 'true'
+      },
+      body: file
+    }).then(function (res) {
+      return res.text().then(function (body) {
+        var message = '';
+        if (!res.ok) {
+          try { var j = JSON.parse(body); message = j.message || j.error || j.error_description || body; }
+          catch (e) { message = body; }
+        }
+        results.push({ ok: res.ok, name: file.name, message: message ? String(message).slice(0, 240) : '' });
+        next();
+      });
+    }).catch(function (err) {
+      results.push({ ok: false, name: file.name, message: err && err.message ? err.message : '네트워크 오류 또는 CORS 오류' });
+      next();
+    });
+  }
+  next();
 }
 
 function findSelectedRegulation() {
