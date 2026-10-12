@@ -2914,3 +2914,3381 @@ function renderDayDetail() {
 
   var html = '<div class="dd-date">' + dateText + ' 상세 근무 정보</div>';
   html += '<div class="dd-main"><span class="dd-dia' + cls + '">' + main + (info.manual ? ' *' : '') +
+          '</span><span class="dd-tag">[ ' + tag + ' ]</span></div>';
+
+  if (startTime) html += '<div class="dd-row">⏰ 출근 시간 : ' + esc(startTime) + '</div>';
+  if (endTime) html += '<div class="dd-row">🏠 퇴근 시간 : ' + esc(endTime) + '</div>';
+  if (train1 || train2) {
+    var train1Date = dateKeyForSelectedDay();
+    var train2Date = train1Date;
+    /* 야간 근무의 두 번째 열차는 다음 날 운행일로 NXLogis에서 조회 */
+    var isNightWork = info.label === '야' || /야간/.test(String(workType || ''));
+    if (isNightWork && train2 && train1Date) {
+      var dateParts = train1Date.split('-').map(Number);
+      var nextDate = new Date(Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2] + 1));
+      train2Date = nextDate.getUTCFullYear() + '-' + String(nextDate.getUTCMonth() + 1).padStart(2, '0') + '-' + String(nextDate.getUTCDate()).padStart(2, '0');
+    }
+    html += '<div class="dd-row">🚂 열차 번호 :' +
+            (train1 ? trainLink(train1, train1Date) : '') +
+            (train2 ? trainLink(train2, train2Date) : '') + '</div>';
+  }
+
+  /* 선택한 날짜의 DIA와 행로표 정보를 한눈에 확인할 수 있도록 하단에 별도 표시 */
+  if (!isStatus && diaNo) {
+    html += '<div class="dd-route">';
+    var diaImageFile = DIA_IMAGE_FILES[diaNo.toUpperCase()];
+    if (diaImageFile) {
+      html += '<div class="dd-dia-image-wrap">' +
+        '<div class="dd-dia-image-title">행로표</div>' +
+        '<img class="dd-dia-image" src="' + DIA_IMAGE_BASE + encodeURIComponent(diaImageFile) + '" alt="DIA ' + esc(diaNo) + ' 행로표" ' +
+        'data-dia="' + esc(diaNo) + '" onclick="openRouteViewer(this.getAttribute(\'data-dia\'))" ' +
+        'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
+        '<div class="dd-dia-image-missing" style="display:none">이미지를 불러오지 못했습니다.</div></div>';
+    } else {
+      html += '<div class="dd-dia-image-wrap"><div class="dd-dia-image-missing">행로표 이미지가 없습니다.</div></div>';
+    }
+    html += '</div>';
+  }
+
+  detail.innerHTML = html;
+
+}
+
+function changeMonth(diff) {
+
+  calendarMonth += diff;
+
+  if (calendarMonth > 11) {
+    calendarMonth = 0;
+    calendarYear++;
+  } else if (calendarMonth < 0) {
+    calendarMonth = 11;
+    calendarYear--;
+  }
+
+  renderCalendar();
+  renderDayDetail();
+  loadMyMonth();
+
+}
+
+function goToday() {
+
+  var t = todayKST();
+
+  calendarYear = t.y;
+  calendarMonth = t.m;
+  selDate = { y: t.y, m: t.m, d: t.d };
+
+  renderCalendar();
+  renderDayDetail();
+  loadMyMonth();
+
+}
+
+/* ============ 근무 변경 팝업 ============ */
+
+var scheduleEditDate = null;
+
+function openScheduleEdit(y, m, d) {
+
+  scheduleEditDate = { y: y, m: m, d: d };
+
+  var panel = $('schedule-edit-panel');
+  var dateEl = $('schedule-edit-date');
+  var input = $('schedule-edit-dia');
+  var options = $('schedule-edit-options');
+
+  if (!panel || !dateEl || !input || !options) return;
+
+  dateEl.textContent = y + '년 ' + (m + 1) + '월 ' + d + '일';
+
+  $('schedule-edit-message').textContent = '';
+
+  input.value = '';
+  options.innerHTML = '';
+
+  var info = getInfo(y, m, d);
+
+  if (info && info.manual && info.overrideType === 'dia') input.value = info.dia || '';
+
+  SCHEDULE_OVERRIDE_OPTIONS.forEach(function (name) {
+
+    var b = document.createElement('button');
+
+    b.type = 'button';
+
+    b.className =
+      'schedule-edit-option' +
+      (info && info.manual && info.overrideType === 'status' && info.status === name ? ' selected' : '');
+
+    b.textContent = name;
+
+    b.onclick = function () {
+
+      input.value = '';
+
+      var all = options.querySelectorAll('.schedule-edit-option');
+
+      for (var i = 0; i < all.length; i++) all[i].classList.remove('selected');
+
+      b.classList.add('selected');
+
+    };
+
+    options.appendChild(b);
+
+  });
+
+  input.oninput = function () {
+
+    var all = options.querySelectorAll('.schedule-edit-option');
+
+    for (var i = 0; i < all.length; i++) all[i].classList.remove('selected');
+
+  };
+
+  panel.classList.add('active');
+
+  setTimeout(function () { input.focus(); }, 80);
+
+}
+
+function closeScheduleEdit() {
+
+  var panel = $('schedule-edit-panel');
+
+  if (panel) panel.classList.remove('active');
+
+  scheduleEditDate = null;
+
+}
+
+/* 야간 DIA 변경 시 자동으로 생성했던 다음 날 비번만 정리합니다. */
+function removeAutoNextDayOff(employeeId, dateKey) {
+  var loc = ensureLocal(employeeId);
+  var before = loc.overrides.length;
+  loc.overrides = loc.overrides.filter(function (r) {
+    return !(r[0] === dateKey && (r[1] === 'auto-status' || r[1] === 'auto-dia'));
+  });
+  if (loc.overrides.length !== before) {
+    saveLocalChange(employeeId, loc);
+    if (snapshotUsable()) {
+      mergeLocalIntoSnapshot();
+      snapAfterLocalChange();
+    }
+  }
+}
+
+function saveScheduleEdit() {
+
+  if (!scheduleEditDate) return;
+
+  var msg = $('schedule-edit-message');
+  var input = $('schedule-edit-dia');
+  var options = $('schedule-edit-options');
+
+  var dia = input ? input.value.trim().toUpperCase() : '';   // 영문은 대문자로 저장 (예: 12b07 → 12B07)
+
+  var selectedStatus = '';
+
+  var selected = options ? options.querySelector('.schedule-edit-option.selected') : null;
+
+  if (selected) selectedStatus = selected.textContent;
+
+  if (!dia && !selectedStatus) {
+    msg.textContent = 'DIA 번호 또는 휴가/근무 상태를 선택하세요.';
+    return;
+  }
+
+  if (dia && !/^[A-Z0-9]+$/.test(dia)) {
+    msg.textContent = 'DIA 번호는 영문 대문자와 숫자만 입력해주세요.';
+    return;
+  }
+
+  if (dia && !diaByNumber(dia)) {
+    if (!confirm('등록된 DIA 목록에 없는 번호입니다. 그래도 이 번호를 저장하시겠습니까?')) return;
+  }
+
+  var user = getCurrentUser();
+  var target = scheduleEditDate;
+  var targetDateKey = getDateKey(target.y, target.m, target.d);
+  var nextDateKey = snapShiftKey(targetDateKey, 1);
+  var enteredDiaInfo = dia ? diaByNumber(dia) : null;
+  var enteredType = String(enteredDiaInfo && enteredDiaInfo.type || '').trim();
+  var isNightDia = !!(dia && enteredDiaInfo && (enteredType === '야' || enteredType === '야간'));
+  /* 야간 DIA를 수정하면 다음 날도 같은 야간 DIA를 자동으로 이어 표시합니다.
+     기존에 자동 생성된 다음 날 상태/DIA는 먼저 제거합니다. */
+  removeAutoNextDayOff(user.employeeId, nextDateKey);
+
+  var params = {
+    action: 'saveScheduleOverride',
+    employeeId: user.employeeId,
+    token: user.token,
+    date: getDateKey(target.y, target.m, target.d)
+  };
+
+  if (dia) {
+    params.type = 'dia';
+    params.dia = dia;
+  } else {
+    params.type = 'status';
+    params.status = selectedStatus;
+  }
+
+  /* 서버로 보내지 않고 이 폰에만 저장 (백업은 환경설정에서) */
+  snapUpsertOverride(user.employeeId, params.date, params.type, params.dia, params.status);
+
+  /* 다음 날은 원래의 비번/근무 구분을 유지합니다. 야간 정보는 비번 상세 표시에서만 이어받습니다. */
+
+  closeScheduleEdit();
+
+  selDate = { y: target.y, m: target.m, d: target.d };
+
+  loadMyMonth();
+
+}
+
+function restoreOriginalSchedule() {
+
+  if (!scheduleEditDate) return;
+
+  var target = scheduleEditDate;
+
+  var dateText = target.y + '년 ' + (target.m + 1) + '월 ' + target.d + '일';
+
+  if (!confirm(dateText + '의 직접 변경을 삭제하고 최초 근무로 되돌리시겠습니까?')) return;
+
+  var user = getCurrentUser();
+  var msg = $('schedule-edit-message');
+
+  msg.textContent = '';
+
+  /* 되돌리기를 선택하면 입력해둔 DIA 번호와 선택한 상태도 함께 지움 */
+  var diaInput = $('schedule-edit-dia');
+  if (diaInput) diaInput.value = '';
+
+  var optBtns = document.querySelectorAll('#schedule-edit-options .schedule-edit-option');
+  for (var oi = 0; oi < optBtns.length; oi++) optBtns[oi].classList.remove('selected');
+
+  var restoredDateKey = getDateKey(target.y, target.m, target.d);
+  removeAutoNextDayOff(user.employeeId, snapShiftKey(restoredDateKey, 1));
+  snapRemoveOverride(user.employeeId, restoredDateKey);
+
+  closeScheduleEdit();
+
+  selDate = { y: target.y, m: target.m, d: target.d };
+
+  loadMyMonth();
+
+  showToast('원래 근무로 복원했습니다.');
+
+}
+
+/* ============ 근무그룹 표 ============ */
+
+var groupWeekStart = null;
+var groupSelKey = null;      // 근무그룹에서 선택한 날짜 (YYYY-MM-DD)
+var groupData = null;
+var groupRows = [];     // 화면에 그려진 근무자 순서
+var groupTimer = null;
+var GROUP_REFRESH_MS = 30000;
+
+function weekStartOf(dt) {
+  return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() - dt.getDay());
+}
+
+function thisWeekStart() {
+  var t = todayKST();
+  return weekStartOf(new Date(t.y, t.m, t.d));
+}
+
+function groupWeekDays() {
+
+  var list = [];
+
+  for (var i = 0; i < 7; i++) {
+
+    var dt = new Date(groupWeekStart.getFullYear(), groupWeekStart.getMonth(), groupWeekStart.getDate() + i);
+
+    list.push({
+      y: dt.getFullYear(),
+      m: dt.getMonth(),
+      d: dt.getDate(),
+      dow: i,
+      key: getDateKey(dt.getFullYear(), dt.getMonth(), dt.getDate())
+    });
+
+  }
+
+  return list;
+
+}
+
+function selectGroupDate(key) {
+
+  groupSelKey = key;
+
+  renderGroupTable();
+
+}
+
+function openGroupSection() {
+
+  groupWeekStart = thisWeekStart();
+  groupSelKey = null;
+  groupData = null;
+
+  switchSection('group-section');
+
+  loadGroupSchedule(false);
+
+  startGroupAutoRefresh();
+
+}
+
+function startGroupAutoRefresh() {
+
+  stopGroupAutoRefresh();
+
+  groupTimer = setInterval(function () {
+    if (document.hidden) return;
+    loadGroupSchedule(true);
+  }, GROUP_REFRESH_MS);
+
+}
+
+function stopGroupAutoRefresh() {
+
+  if (groupTimer) {
+    clearInterval(groupTimer);
+    groupTimer = null;
+  }
+
+}
+
+function changeGroupWeek(diff) {
+
+  groupWeekStart = new Date(groupWeekStart.getFullYear(), groupWeekStart.getMonth(), groupWeekStart.getDate() + diff * 7);
+  groupData = null;
+
+  loadGroupSchedule(false);
+
+}
+
+function goGroupThisWeek() {
+
+  groupWeekStart = thisWeekStart();
+  groupSelKey = null;
+  groupData = null;
+
+  loadGroupSchedule(false);
+
+}
+
+function loadGroupSchedule(silent) {
+
+  var user = getCurrentUser();
+  var status = $('group-status');
+
+  if (!user.token) {
+    renderGroupTable();
+    status.textContent = '로그인 후 이용해주세요.';
+    return;
+  }
+
+  var days = groupWeekDays();
+  var startKey = days[0].key;
+  var endKey = days[6].key;
+
+  var cached = peekData('group', startKey, endKey);
+
+  if (cached) groupData = cached.r;
+
+  renderGroupTable();
+
+  if (!cached && !silent) status.textContent = '근무표를 불러오는 중...';
+
+  fetchData('group', startKey, endKey, !!silent, function (r, fromCache) {
+
+    if (groupWeekDays()[0].key !== startKey) return;
+
+    if (fromCache && silent) return;
+
+    if (!r || !r.success) {
+      status.textContent = (r && r.message) || '불러오지 못했습니다.';
+      return;
+    }
+
+    status.textContent = '';
+
+    groupData = r;
+
+    renderGroupTable();
+
+  });
+
+}
+
+function groupCellClass(label, isStatus) {
+
+  if (isStatus) return 'g-status';
+  if (label === '주') return 'g-day';
+  if (label === '휴') return 'g-off';
+  if (label === '야' || label === '비' || label === 'X') return 'g-night';
+
+  return '';
+
+}
+
+function isLeaveInfo(info) {
+  return !!(info && info.label && (info.overrideType === 'status' || info.label === '휴' || info.label === 'X'));
+}
+
+function renderGroupTable() {
+
+  if (!groupWeekStart) groupWeekStart = thisWeekStart();
+
+  var days = groupWeekDays();
+  var today = todayKST();
+  var todayKey = getDateKey(today.y, today.m, today.d);
+
+  /* 선택 날짜: 이번 주 안에 있으면 그대로, 아니면 오늘(이번 주일 때) 또는 그 주의 첫날 */
+  var selKey = null;
+  var hasToday = false;
+
+  for (var sk = 0; sk < 7; sk++) {
+    if (days[sk].key === groupSelKey) selKey = groupSelKey;
+    if (days[sk].key === todayKey) hasToday = true;
+  }
+
+  if (!selKey) selKey = hasToday ? todayKey : days[0].key;
+
+  var first = days[0];
+  var last = days[6];
+
+  var titleEl = $('group-calendar-title');
+
+  if (titleEl) {
+    titleEl.textContent = first.y + '년 ' + (first.m + 1) + '월 ' + first.d + '일 ~ ' +
+                          (last.y !== first.y ? last.y + '년 ' : '') + (last.m + 1) + '월 ' + last.d + '일';
+  }
+
+  var headRow = $('group-table-head-row');
+  var bodyEl = $('group-table-body');
+  var footEl = $('group-table-foot');
+
+  if (!headRow || !bodyEl || !footEl) return;
+
+  var names = ['일', '월', '화', '수', '목', '금', '토'];
+
+  var headHtml = '<th class="name-col">이름</th>';
+
+  for (var i = 0; i < 7; i++) {
+
+    var dd = days[i];
+
+    var style = dd.dow === 0 || holidayName(dd.y, dd.m, dd.d) ? ' style="color:#e53935;"' : (dd.dow === 6 ? ' style="color:#1a73e8;"' : '');
+
+    var hcls = 'g-hd' + (dd.key === todayKey ? ' g-today' : '') + (dd.key === selKey ? ' g-sel g-sel-t' : '');
+
+    headHtml += '<th class="' + hcls + '" onclick="selectGroupDate(\'' + dd.key + '\')"' + style + '>' +
+                names[dd.dow] + '<br>' + dd.d + '</th>';
+
+  }
+
+  headRow.innerHTML = headHtml;
+
+  var summary = $('group-summary');
+
+  if (!groupData || !groupData.members) {
+    bodyEl.innerHTML = '';
+    footEl.innerHTML = '';
+    if (summary) summary.style.display = 'none';
+    return;
+  }
+
+  var me = getCurrentUser().employeeId;
+
+  var members = groupData.members.slice().sort(function (a, b) {
+    if (a.employeeId === me) return -1;
+    if (b.employeeId === me) return 1;
+    return String(a.name || a.employeeId).localeCompare(String(b.name || b.employeeId), 'ko');
+  });
+
+  /* 내 기기에서 직접 수정한 DIA/상태는 서버 근무표보다 우선해 이번 주 표에도 반영 */
+  var localUser = getCurrentUser();
+  var localMine = ensureLocal(localUser.employeeId);
+  var localOverrideMap = {};
+  (localMine.overrides || []).forEach(function (r) { localOverrideMap[r[0]] = r; });
+  for (var mi = 0; mi < members.length; mi++) {
+    if (members[mi].employeeId !== me || !members[mi].days) continue;
+    for (var di = 0; di < days.length; di++) {
+      var localRow = localOverrideMap[days[di].key];
+      if (!localRow) continue;
+      var localOv = { type: localRow[1], dia: localRow[2], status: localRow[3], updatedAt: localRow[4] };
+      var localDay = snapBuildDay(days[di].key, localMine.seq, localMine.anchor, diaList, localOv, members[mi].name);
+      members[mi].days[days[di].key] = localDay;
+    }
+  }
+
+  groupRows = members;
+
+  var counts = [0, 0, 0, 0, 0, 0, 0];
+  var leaveNames = [[], [], [], [], [], [], []];
+
+  var html = '';
+
+  for (var k = 0; k < members.length; k++) {
+
+    var mem = members[k];
+
+    html += '<tr' + (mem.employeeId === me ? ' class="me"' : '') + '>';
+    html += '<td class="name-col group-member-name">' + esc(mem.name || mem.employeeId) + '</td>';
+
+    for (var j = 0; j < 7; j++) {
+
+      var info = mem.days ? mem.days[days[j].key] : null;
+
+      var text = '-';
+      var cls = '';
+
+      if (info && info.label) {
+
+        text = (info.manual ? '*' : '') + info.label;
+
+        cls = groupCellClass(info.label, info.overrideType === 'status');
+
+      }
+
+      if (isLeaveInfo(info)) {
+        counts[j]++;
+        leaveNames[j].push((mem.name || mem.employeeId) + '(' + info.label + ')');
+      }
+
+      if (days[j].key === todayKey) cls += ' g-today';
+      if (days[j].key === selKey) cls += ' g-sel';
+
+      cls = cls.replace(/^\s+/, '');
+
+      html += '<td' + (cls ? ' class="' + cls + '"' : '') + ' onclick="openGroupInfo(' + k + ',\'' + days[j].key + '\')">' + esc(text) + '</td>';
+
+    }
+
+    html += '</tr>';
+
+  }
+
+  bodyEl.innerHTML = html;
+
+  var foot = '<tr><td class="name-col">휴가·휴무·X</td>';
+
+  for (var c = 0; c < 7; c++) {
+    foot += '<td' + (days[c].key === selKey ? ' class="g-sel g-sel-b"' : '') + '>' + counts[c] + '명</td>';
+  }
+
+  foot += '</tr>';
+
+  footEl.innerHTML = foot;
+
+  var selIdx = 0;
+
+  for (var q = 0; q < 7; q++) {
+    if (days[q].key === selKey) selIdx = q;
+  }
+
+  if (summary) {
+
+    var sd = days[selIdx];
+
+    summary.style.display = 'block';
+
+    summary.innerHTML =
+      '<div class="current-dia-label" style="white-space:nowrap;font-size:clamp(9px,3vw,11px)">' +
+      (sd.m + 1) + '월 ' + sd.d + '일(' + names[sd.dow] + ') 휴가·휴무·X (전체 ' + members.length + '명 중)</div>' +
+      '<div class="current-dia-value">' + counts[selIdx] + '명</div>' +
+      (leaveNames[selIdx].length
+        ? '<div style="margin-top:6px;font-size:14px;color:#444;line-height:1.7;white-space:normal;word-break:keep-all">' +
+          esc(leaveNames[selIdx].join(', ')) + '</div>'
+        : '');
+
+  }
+
+}
+
+/* ---- 근무그룹: 버튼으로 교환 대상 선택 ---- */
+var swapTargetMember = null;
+var swapSelectableMembers = [];
+var swapCalendarMonth = null;
+var swapSubmitting = false;
+var swapRangeStart = '';
+var swapRangeEnd = '';
+
+function openGroupSwapSelector() {
+  if (!snapshotUsable()) {
+    showToast('근무표를 먼저 불러와 주세요.');
+    return;
+  }
+  var me = getCurrentUser();
+  var list = $('group-swap-user-list');
+  if (!list) return;
+  var members = (groupRows || []).filter(function (mem) {
+    return mem && String(mem.employeeId) !== String(me && me.employeeId);
+  });
+  swapSelectableMembers = members;
+  if (!members.length) {
+    list.innerHTML = '<div class="swap-note">선택할 수 있는 그룹원이 없습니다.</div>';
+  } else {
+    list.innerHTML = members.map(function (mem, index) {
+      var id = String(mem.employeeId || '');
+      var name = String(mem.name || id);
+      return '<button type="button" class="group-swap-user-btn" onclick="chooseGroupSwapTargetByIndex(' + index + ')"><span>' + esc(name) + '</span><span class="group-swap-user-id">' + esc(id) + '　›</span></button>';
+    }).join('');
+  }
+  $('group-swap-select-panel').classList.add('active');
+}
+function closeGroupSwapSelector() {
+  var panel = $('group-swap-select-panel');
+  if (panel) panel.classList.remove('active');
+}
+function chooseGroupSwapTargetByIndex(index) {
+  var mem = swapSelectableMembers[index];
+  if (!mem) { showToast('선택한 그룹원을 찾을 수 없습니다.'); return; }
+  closeGroupSwapSelector();
+  openGroupSwap(mem);
+}
+function openGroupSwap(mem) {
+  if (!snapshotUsable()) {
+    showToast('근무표를 먼저 불러와 주세요.');
+    return;
+  }
+  swapTargetMember = { employeeId: String(mem.employeeId), name: String(mem.name || mem.employeeId) };
+  var t = todayKST();
+  var todayKey = getDateKey(t.y, t.m, t.d);
+  swapRangeStart = '';
+  swapRangeEnd = '';
+  swapCalendarMonth = new Date(t.y, t.m, 1);
+  $('swap-me-title').textContent = (getCurrentUser().name || getCurrentUser().employeeId) + ' · 내 근무표';
+  $('swap-other-title').textContent = swapTargetMember.name + ' · 상대 근무표';
+  $('swap-subtitle').textContent = '선택한 사용자의 근무표를 나란히 비교합니다. 기간을 선택한 뒤 교환하세요.';
+  $('swap-status').textContent = '';
+  $('group-swap-panel').classList.add('active');
+  renderSwapCalendars();
+}
+function closeGroupSwap() {
+  var panel = $('group-swap-panel');
+  if (panel) panel.classList.remove('active');
+  swapTargetMember = null;
+  swapSubmitting = false;
+}
+function changeSwapMonth(delta) {
+  if (!swapCalendarMonth) return;
+  swapCalendarMonth = new Date(swapCalendarMonth.getFullYear(), swapCalendarMonth.getMonth() + delta, 1);
+  renderSwapCalendars();
+}
+function resetSwapRange() {
+  swapRangeStart = '';
+  swapRangeEnd = '';
+  renderSwapCalendars();
+}
+function selectSwapRangeDate(key) {
+  if (!swapRangeStart || swapRangeEnd) {
+    // 첫 선택은 시작일, 기간이 이미 완성된 뒤 다시 누르면 새로 시작
+    swapRangeStart = key;
+    swapRangeEnd = '';
+  } else {
+    // 두 번째 선택은 시작일보다 앞서도 종료일로 인정하고 날짜 순서를 정규화
+    if (key < swapRangeStart) {
+      swapRangeEnd = swapRangeStart;
+      swapRangeStart = key;
+    } else {
+      swapRangeEnd = key;
+    }
+  }
+  renderSwapCalendars();
+}
+function renderSwapRangeCalendar() {
+  var el = $('swap-range-calendar');
+  if (!el || !swapCalendarMonth) return;
+  var y = swapCalendarMonth.getFullYear(), m = swapCalendarMonth.getMonth();
+  var firstDow = new Date(y, m, 1).getDay();
+  var daysInMonth = new Date(y, m + 1, 0).getDate();
+  var html = '';
+  ['일','월','화','수','목','금','토'].forEach(function (w) { html += '<div class="swap-wd">' + w + '</div>'; });
+  for (var e = 0; e < firstDow; e++) html += '<div class="swap-day empty"></div>';
+  for (var d = 1; d <= daysInMonth; d++) {
+    var key = getDateKey(y, m, d);
+    var picked = key === swapRangeStart || key === swapRangeEnd;
+    var between = !!(swapRangeStart && swapRangeEnd && key > swapRangeStart && key < swapRangeEnd);
+    var info = swapMemberInfo(getCurrentUser().employeeId, key);
+    var duty = swapDutyLabel(info);
+    html += '<button type="button" data-key="' + key + '" class="swap-range-date' + (picked ? ' range-picked' : (between ? ' range-between' : '')) + '" onclick="selectSwapRangeDate(this.dataset.key)"><span>' + d + '</span><span class="range-duty">' + esc(duty) + '</span></button>';
+  }
+  var tail = (7 - ((firstDow + daysInMonth) % 7)) % 7;
+  for (var z = 0; z < tail; z++) html += '<div class="swap-day empty"></div>';
+  el.innerHTML = html;
+  $('swap-start-label').textContent = swapRangeStart || '선택 전';
+  $('swap-end-label').textContent = swapRangeEnd || (swapRangeStart ? '종료일을 선택하세요' : '선택 전');
+}
+function swapMemberInfo(employeeId, key) {
+  if (!snapshot || !snapshot.raw) return null;
+  var members = snapshot.raw.members || [];
+  var mb = null;
+  for (var i = 0; i < members.length; i++) if (String(members[i].employeeId) === String(employeeId)) { mb = members[i]; break; }
+  if (!mb) return null;
+  var ov = snapshot.ovMap ? snapshot.ovMap[employeeId + '|' + key] : null;
+  return snapDayWithAuto(key, mb, snapshot.raw.dia || [], snapshot.ovMap || {});
+}
+function swapDayAssignment(employeeId, key) {
+  var info = swapMemberInfo(employeeId, key);
+  if (!info || !info.label) return { type: 'status', status: '비번' };
+  if (info.overrideType === 'status') return { type: 'status', status: String(info.status || info.label || '비번') };
+  var diaNo = String(info.dia || '').trim();
+  if (diaNo) return { type: 'dia', dia: diaNo };
+  return { type: 'status', status: String(info.label || info.type || '비번') };
+}
+function swapDutyLabel(info) {
+  if (!info) return '-';
+  var t = String(info.label || info.type || info.status || '').trim();
+  var map = {'주간':'주','야간':'야','비번':'비','휴무':'휴'};
+  t = map[t] || t;
+  return t || '-';
+}
+function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
+  var el = $(containerId);
+  if (!el || !swapCalendarMonth) return;
+  var y = swapCalendarMonth.getFullYear(), m = swapCalendarMonth.getMonth();
+  var firstDow = new Date(y, m, 1).getDay();
+  var daysInMonth = new Date(y, m + 1, 0).getDate();
+  var html = '';
+  ['일','월','화','수','목','금','토'].forEach(function (w) { html += '<div class="swap-wd">' + w + '</div>'; });
+  for (var e = 0; e < firstDow; e++) html += '<div class="swap-day empty"></div>';
+  for (var d = 1; d <= daysInMonth; d++) {
+    var key = getDateKey(y, m, d);
+    var info = swapMemberInfo(employeeId, key);
+    var label = swapDutyLabel(info);
+    var inRange = !!(startKey && endKey && key >= startKey && key <= endKey);
+    var edge = (key === startKey) ? '시작' : (key === endKey ? '종료' : '');
+    var type = String(info && (info.type || info.label) || '');
+    var cls = type === '주' || type === '주간' ? 'duty-day' : (type === '휴' || type === '휴무' ? 'duty-off' : 'duty-night');
+    html += '<button type="button" data-key="' + key + '"' + (edge ? ' data-edge="' + edge + '"' : '') +
+      ' class="swap-day swap-pick-date' + (inRange ? ' in-range' : '') + (edge ? ' range-edge' : '') +
+      '" onclick="selectSwapRangeDate(this.dataset.key)"><span class="sd-num">' + d + '</span><span class="sd-duty ' + cls + '">' +
+      (info && info.manual ? '*' : '') + esc(label) + '</span></button>';
+      }
+  // 달마다 주 수가 달라져도 달력 높이가 변하지 않도록 6주(42칸) 고정
+  var usedCells = firstDow + daysInMonth;
+  var tail = 42 - usedCells;
+  for (var z = 0; z < tail; z++) html += '<div class="swap-day empty"></div>';
+  el.innerHTML = html;
+}
+function renderSwapCalendars() {
+  if (!swapTargetMember || !swapCalendarMonth) return;
+  var startKey = swapRangeStart, endKey = swapRangeEnd;
+  $('swap-month-label').textContent = swapCalendarMonth.getFullYear() + '년 ' + (swapCalendarMonth.getMonth() + 1) + '월';
+  $('swap-start-label').textContent = startKey || '선택 전';
+  $('swap-end-label').textContent = endKey || (startKey ? '종료일 선택' : '선택 전');
+  renderOneSwapCalendar(getCurrentUser().employeeId, 'swap-me-calendar', startKey, endKey);
+  renderOneSwapCalendar(swapTargetMember.employeeId, 'swap-other-calendar', startKey, endKey);
+  var status = $('swap-status');
+  if (startKey && !endKey) status.textContent = '시작일을 선택했어요. 내 근무표 또는 상대 근무표에서 종료일을 선택하세요.';
+  else if (startKey && endKey && (dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000 > 30) status.textContent = '한 번에 최대 31일까지만 교환할 수 있습니다.';
+  else status.textContent = startKey && endKey ? startKey + ' ~ ' + endKey + ' 기간이 선택되었습니다.' : '달력에서 시작일을 한 번, 종료일을 한 번 누르면 기간이 한 번에 선택됩니다.';
+  var btn = $('swap-submit');
+  if (btn) btn.disabled = swapSubmitting || !startKey || !endKey || startKey > endKey || (dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000 > 30;
+}
+function submitGroupSwap() {
+  if (!swapTargetMember || swapSubmitting) return;
+  var user = getCurrentUser();
+  var startKey = swapRangeStart, endKey = swapRangeEnd;
+  if (!startKey || !endKey || startKey > endKey) { $('swap-status').textContent = '교환할 기간을 확인해주세요.'; return; }
+  var count = (dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000 + 1;
+  if (count > 31) { $('swap-status').textContent = '한 번에 최대 31일까지만 교환할 수 있습니다.'; return; }
+  if (!confirm((swapTargetMember.name || swapTargetMember.employeeId) + '님과 ' + startKey + '부터 ' + endKey + '까지의 근무를 서로 교환할까요?')) return;
+  var swaps = [];
+  var keys = snapDateKeys(startKey, endKey);
+  for (var i = 0; i < keys.length; i++) {
+    swaps.push({ date: keys[i], mine: swapDayAssignment(user.employeeId, keys[i]), theirs: swapDayAssignment(swapTargetMember.employeeId, keys[i]) });
+  }
+  swapSubmitting = true;
+  $('swap-submit').disabled = true;
+  $('swap-status').textContent = '양쪽 근무표에 교환을 저장하는 중...';
+  /* 서버는 app_swapschedulerange RPC로 양쪽 계정의 override를 원자적으로 저장해야 합니다. */
+  api({ action: 'swapScheduleRange', employeeId: user.employeeId, token: user.token,
+        targetEmployeeId: swapTargetMember.employeeId, startDate: startKey, endDate: endKey, swaps: swaps }, function (r) {
+    swapSubmitting = false;
+    $('swap-submit').disabled = false;
+    if (!r || !r.success) {
+      $('swap-status').textContent = (r && r.message ? r.message + ' ' : '') + '서버의 app_swapschedulerange(근무교환) API가 구현되어 있는지 확인해주세요. 두 사람의 근무표는 아직 변경되지 않았습니다.';
+      return;
+    }
+    $('swap-status').textContent = '근무 교환이 저장되었습니다. 근무표를 새로 불러옵니다.';
+    syncPending(function () {
+      loadGroupSchedule(false);
+      if (typeof loadMyMonth === 'function') loadMyMonth();
+      renderSwapCalendars();
+    });
+  });
+}
+
+/* ---- 근무그룹: 근무자·날짜를 누르면 다이아 정보 팝업 ---- */
+
+function piRow(k, v) {
+  return '<div class="pi-row"><span class="pi-k">' + k + '</span><b>' + esc(v || '-') + '</b></div>';
+}
+
+function openGroupInfo(k, key) {
+
+  var mem = groupRows[k];
+  var panel = $('group-info-panel');
+  var body = $('group-info-body');
+
+  if (!mem || !panel || !body) return;
+
+  groupSelKey = key;
+  renderGroupTable();
+
+  var p = key.split('-');
+  var wd = ['일', '월', '화', '수', '목', '금', '토'][new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10)).getDay()];
+
+  $('group-info-title').textContent = mem.name || mem.employeeId;
+  $('group-info-date').textContent = parseInt(p[0], 10) + '년 ' + parseInt(p[1], 10) + '월 ' + parseInt(p[2], 10) + '일 (' + wd + ')';
+
+  var info = mem.days ? mem.days[key] : null;
+  // 비번 날짜는 전날이 야간 근무일 때 전날 야간 다이아 정보를 이어서 표시
+  var infoFromNight = false;
+  function normalizeDutyType(v) {
+    var t = String(v || '').trim();
+    if (t === '비번') return '비';
+    if (t === '야간') return '야';
+    if (t === '주간') return '주';
+    if (t === '휴무') return '휴';
+    return t;
+  }
+  if (info && normalizeDutyType(info.label || info.type || info.status) === '비') {
+    var dateParts = key.split('-').map(Number);
+    var prevDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2] - 1);
+    var prevKey = getDateKey(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate());
+    var prevInfo = mem.days ? mem.days[prevKey] : null;
+    if (prevInfo && normalizeDutyType(prevInfo.type || prevInfo.label || prevInfo.status) === '야' && prevInfo.overrideType !== 'status') {
+      /* 비번 구분은 유지하고, 전날 야간의 상세 운행정보만 복사 */
+      info = Object.assign({}, info, {
+        type: '비', label: '비', dia: prevInfo.dia,
+        start: prevInfo.start, end: prevInfo.end,
+        train1: prevInfo.train1, train2: prevInfo.train2,
+        route: prevInfo.route, routeDiagram: prevInfo.routeDiagram
+      });
+      infoFromNight = true;
+    }
+  }
+  var html = '';
+
+  if (!info || !info.label) {
+
+    html = '<div class="pi-none">근무 정보가 없습니다.</div>';
+
+  } else if (info.overrideType === 'status') {
+
+    html += piRow('근무 구분', info.status || info.label);
+    html += '<div class="pi-none">' + (info.manual ? '직접 변경한 근무입니다.' : (info.auto ? '야간 근무 후 비번에 자동 적용된 휴가입니다.' : '')) + '</div>';
+
+  } else {
+
+    var diaNo = String(info.dia || '').trim();
+    var meta = diaNo ? diaByNumber(diaNo) : null;
+    var type = String(info.type || (meta && meta.type) || '').trim();
+    var start = String(info.start || (meta && meta.start) || '').trim();
+    var end = String(info.end || (meta && meta.end) || '').trim();
+    var kind = { '주': '주간', '야': '야간', '비': '비번', '휴': '휴무' }[type] || type || '-';
+    var tone = toneOf(type);
+    var color = tone === 'day' ? '#e5a800' : tone === 'off' ? '#e53935' : '#1a73e8';
+
+    html += '<div class="pi-row"><span class="pi-k">다이아 이름</span><b style="color:' + color + '">' +
+            esc(diaNo || kind) + (info.manual ? ' *' : '') + '</b></div>';
+    html += piRow('근무 구분', infoFromNight ? '비번 (전날 야간 다이아 정보)' : kind);
+    html += piRow('출근 시간', start);
+    html += piRow('퇴근 시간', end);
+    html += piRow('근무 시간', workDurationText(start, end));
+
+    if (diaNo) {
+
+      var url = diaImageUrl(diaNo);
+
+      if (url) {
+
+        html += '<div class="pi-route">' +
+          '<div class="pi-route-cap">행로표</div>' +
+          '<img src="' + url + '" alt="DIA ' + esc(diaNo) + ' 행로표" data-dia="' + esc(diaNo) + '" ' +
+          'onclick="openRouteViewer(this.getAttribute(\'data-dia\'))" ' +
+          'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
+          '<div class="pi-none" style="display:none">이미지를 불러오지 못했습니다.</div></div>';
+
+      } else {
+
+        html += '<div class="pi-route"><div class="pi-none">행로표 이미지가 없습니다.</div></div>';
+
+      }
+    }
+  }
+
+  body.innerHTML = html;
+
+  panel.classList.add('active');
+
+}
+
+function closeGroupInfo() {
+
+  var panel = $('group-info-panel');
+
+  if (panel) panel.classList.remove('active');
+
+}
+
+/* ============ 휴가관리 (사용일 수) ============ */
+
+var vacYear = todayKST().y;
+
+function openVacation() {
+
+  vacYear = todayKST().y;
+  vacSel = '';
+  vacCalMonth = todayKST().m;
+
+  switchSection('vacation-section');
+
+  $('vac-status').textContent = '불러오는 중...';
+
+  loadMeta(function (failMsg) {
+
+    $('vac-status').textContent = failMsg || '';
+
+    renderVacation();
+
+  });
+
+}
+
+function changeVacYear(diff) {
+
+  vacYear += diff;
+
+  renderVacation();
+
+}
+
+var VAC_TYPES = [
+  { key: '연차', label: '연차휴가', color: '#e53935' },
+  { key: '출산휴가', label: '출산휴가', color: '#e0357f' },
+  { key: '육아휴직', label: '육아휴직', color: '#f97316' },
+  { key: '돌봄', label: '돌봄휴직', color: '#a855f7' },
+  { key: '병가', label: '병가', color: '#0a84c8' },
+  { key: '공가', label: '공가', color: '#14b8a6' }
+];
+
+var vacSel = '';
+var vacCalMonth = todayKST().m;
+
+/* 휴가 달력 제목: 한 번 누르면 오늘, 길게 누르면 연/월 선택 */
+(function initVacTitleGesture() {
+  var timer = null, longPressed = false, startX = 0, startY = 0;
+  function bind() {
+    var el = $('vac-cal-title');
+    if (!el || el.dataset.vacBound) return;
+    el.dataset.vacBound = '1';
+    el.addEventListener('pointerdown', function(e) {
+      longPressed = false; startX = e.clientX; startY = e.clientY;
+      timer = setTimeout(function() { longPressed = true; openVacMonthPicker(); }, 550);
+    });
+    ['pointerup','pointercancel','pointerleave'].forEach(function(ev) {
+      el.addEventListener(ev, function() { if (timer) clearTimeout(timer); timer = null; });
+    });
+    el.addEventListener('pointermove', function(e) {
+      if (Math.abs(e.clientX-startX)>12 || Math.abs(e.clientY-startY)>12) { if(timer) clearTimeout(timer); timer=null; }
+    });
+    el.addEventListener('click', function(e) {
+      if (longPressed) { e.preventDefault(); e.stopPropagation(); longPressed=false; return; }
+      var t = todayKST(); vacYear=t.y; vacCalMonth=t.m; renderVacation();
+    });
+  }
+  /* 공통 달력 제목 제스처 핸들러에서 연결 */
+})();
+
+var calendarPickerTarget = 'vacation';
+function bindCalendarTitleGesture(id, target) {
+  var el = $(id);
+  if (!el || el.dataset.titleGestureBound) return;
+  el.dataset.titleGestureBound = '1';
+
+  var timer = null;
+  var longPressed = false;
+  var sx = 0, sy = 0;
+  var suppressClickUntil = 0;
+
+  function cancelTimer() {
+    if (timer) clearTimeout(timer);
+    timer = null;
+  }
+  function beginPress(x, y) {
+    cancelTimer();
+    longPressed = false;
+    sx = x; sy = y;
+    timer = setTimeout(function () {
+      timer = null;
+      longPressed = true;
+      suppressClickUntil = Date.now() + 1000;
+      calendarPickerTarget = target;
+      openCalendarMonthPicker(target);
+      if (navigator.vibrate) { try { navigator.vibrate(25); } catch (_) {} }
+    }, 550);
+  }
+  function movePress(x, y) {
+    if (Math.abs(x - sx) > 12 || Math.abs(y - sy) > 12) cancelTimer();
+  }
+  function endPress() { cancelTimer(); }
+
+  // Pointer 이벤트를 지원하는 브라우저에서는 마우스/펜/터치 모두 처리합니다.
+  if (window.PointerEvent) {
+    el.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      beginPress(e.clientX, e.clientY);
+    });
+    el.addEventListener('pointermove', function (e) { movePress(e.clientX, e.clientY); });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+      el.addEventListener(ev, endPress);
+    });
+  } else {
+    // 구형 WebView/브라우저용 터치 이벤트 대체 처리
+    el.addEventListener('touchstart', function (e) {
+      if (!e.touches || !e.touches.length) return;
+      beginPress(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: true });
+    el.addEventListener('touchmove', function (e) {
+      if (!e.touches || !e.touches.length) return;
+      movePress(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: true });
+    ['touchend', 'touchcancel'].forEach(function (ev) { el.addEventListener(ev, endPress); });
+  }
+
+  el.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  el.addEventListener('click', function (e) {
+    if (longPressed || Date.now() < suppressClickUntil) {
+      e.preventDefault();
+      e.stopPropagation();
+      longPressed = false;
+      return;
+    }
+    if (target === 'schedule') goToday();
+    else if (target === 'group') goGroupThisWeek();
+    else {
+      var t = todayKST();
+      vacYear = t.y;
+      vacCalMonth = t.m;
+      renderVacation();
+    }
+  });
+}
+function openCalendarMonthPicker(target) {
+  calendarPickerTarget = target;
+  if (target === 'schedule') {
+    vacYear = calendarYear;
+    vacCalMonth = calendarMonth;
+  } else if (target === 'group') {
+    vacYear = groupWeekStart.getFullYear();
+    vacCalMonth = groupWeekStart.getMonth();
+  } else {
+    vacYear = vacYear || todayKST().y;
+    vacCalMonth = (typeof vacCalMonth === 'number') ? vacCalMonth : todayKST().m;
+  }
+  openVacMonthPicker();
+}
+function bindAllCalendarTitleGestures() {
+  bindCalendarTitleGesture('calendar-title', 'schedule');
+  bindCalendarTitleGesture('group-calendar-title', 'group');
+  bindCalendarTitleGesture('vac-cal-title', 'vacation');
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindAllCalendarTitleGestures);
+else bindAllCalendarTitleGestures();
+
+function openVacMonthPicker() {
+  var overlay = $('vac-month-picker'), ys = $('vac-pick-year'), ms = $('vac-pick-month');
+  if (!overlay || !ys || !ms) return;
+  var minY = Math.min(todayKST().y - 10, vacYear - 2), maxY = Math.max(todayKST().y + 10, vacYear + 2);
+  ys.innerHTML = '';
+  for (var y=minY; y<=maxY; y++) { var op=document.createElement('option'); op.value=y; op.textContent=y+'년'; ys.appendChild(op); }
+  ys.value=String(vacYear);
+  ms.innerHTML='';
+  for (var m=0; m<12; m++) { var om=document.createElement('option'); om.value=m; om.textContent=(m+1)+'월'; ms.appendChild(om); }
+  ms.value=String(vacCalMonth);
+  overlay.style.display='flex';
+}
+function closeVacMonthPicker() { var el=$('vac-month-picker'); if(el) el.style.display='none'; }
+function applyVacMonthPicker() {
+  var y=parseInt($('vac-pick-year').value,10), m=parseInt($('vac-pick-month').value,10);
+  closeVacMonthPicker();
+  if (calendarPickerTarget === 'schedule') {
+    calendarYear=y; calendarMonth=m; selDate=null; renderCalendar(); renderDayDetail(); loadMyMonth();
+  } else if (calendarPickerTarget === 'group') {
+    groupWeekStart = new Date(y, m, 1); groupWeekStart = new Date(y, m, 1 - groupWeekStart.getDay());
+    groupSelKey=null; groupData=null; loadGroupSchedule(false);
+  } else { vacYear=y; vacCalMonth=m; renderVacation(); }
+}
+
+
+function vacTypeByKey(k) {
+
+  for (var i = 0; i < VAC_TYPES.length; i++) {
+    if (VAC_TYPES[i].key === k) return VAC_TYPES[i];
+  }
+
+  return null;
+
+}
+
+/* 한 해 동안 종류별로 휴가를 쓴 날짜 목록 (야간 뒤 비번 자동 반영 포함) */
+function computeLeaveDates(year) {
+
+  var res = {};
+
+  if (!snapshotUsable()) return res;
+
+  var raw = snapshot.raw;
+  var dia = raw.dia || [];
+  var myId = getCurrentUser().employeeId;
+  var mb = null;
+
+  for (var i = 0; i < raw.members.length; i++) {
+    if (raw.members[i].employeeId === myId) { mb = raw.members[i]; break; }
+  }
+
+  if (!mb) return res;
+
+  var keys = snapDateKeys(year + '-01-01', year + '-12-31');
+
+  for (var n = 0; n < keys.length; n++) {
+
+    var d = snapDayWithAuto(keys[n], mb, dia, snapshot.ovMap);
+
+    if (d && d.overrideType === 'status' && d.status) {
+      if (!res[d.status]) res[d.status] = [];
+      res[d.status].push(keys[n]);
+    }
+
+  }
+
+  return res;
+
+}
+
+function selectVacType(key) {
+
+  if (vacSel === key) {
+    vacSel = '';
+  } else {
+
+    vacSel = key;
+
+    var list = computeLeaveDates(vacYear)[key] || [];
+
+    if (list.length) vacCalMonth = parseInt(list[0].split('-')[1], 10) - 1;
+
+  }
+
+  renderVacation();
+
+}
+
+function changeVacMonth(diff) {
+
+  vacCalMonth += diff;
+
+  if (vacCalMonth > 11) {
+    vacCalMonth = 0;
+    vacYear++;
+  } else if (vacCalMonth < 0) {
+    vacCalMonth = 11;
+    vacYear--;
+  }
+
+  renderVacation();
+
+}
+
+function vacGoMonth(m) {
+
+  vacCalMonth = m;
+
+  renderVacation();
+
+}
+
+function renderVacation() {
+
+  var title = $('vac-title');
+  var cardsEl = $('vac-cards');
+  var user = getCurrentUser();
+
+  if (title) title.textContent = '휴가관리 (' + (user.name || '') + ') - ' + vacYear + '년';
+
+  if (!cardsEl) return;
+
+  if (!snapshotUsable()) {
+    cardsEl.innerHTML = '';
+    $('vac-cal-wrap').style.display = 'none';
+    return;
+  }
+
+  var usage = computeLeaveUsage(vacYear);
+  var html = '';
+
+  for (var i = 0; i < VAC_TYPES.length; i++) {
+
+    var t = VAC_TYPES[i];
+    var n = usage.counts[t.key] || 0;
+    var sel = vacSel === t.key;
+
+    html += '<button type="button" class="vac-card"' +
+      (sel ? ' style="border-color:' + t.color + ';background:' + t.color + '1a"' : '') +
+      ' onclick="selectVacType(\'' + t.key + '\')">' +
+      '<span class="vac-card-name" style="color:' + t.color + '">' + esc(t.label) + '</span>' +
+      '<span class="vac-card-cnt">' + n + ' 일</span></button>';
+
+  }
+
+  cardsEl.innerHTML = html;
+
+  renderVacCalendar();
+
+}
+
+function renderVacCalendar() {
+
+  var wrap = $('vac-cal-wrap');
+  var hint = $('vac-hint');
+  var t = vacTypeByKey(vacSel);
+
+  if (!t) {
+    wrap.style.display = 'none';
+    hint.style.display = 'block';
+    return;
+  }
+
+  wrap.style.display = 'block';
+  hint.style.display = 'none';
+
+  var dates = computeLeaveDates(vacYear)[t.key] || [];
+  var used = {};
+
+  for (var i = 0; i < dates.length; i++) used[dates[i]] = true;
+
+  $('vac-cal-title').innerHTML = esc(vacYear + '년 ' + (vacCalMonth + 1) + '월') +
+    ' <span style="color:' + t.color + '">· ' + esc(t.label) + '</span>';
+
+  var grid = $('vac-cal-grid');
+  var firstDay = new Date(vacYear, vacCalMonth, 1).getDay();
+  var lastDate = new Date(vacYear, vacCalMonth + 1, 0).getDate();
+  var today = todayKST();
+  var g = '';
+
+  for (var e = 0; e < firstDay; e++) g += '<div class="vcell empty"></div>';
+
+  for (var d = 1; d <= lastDate; d++) {
+
+    var hName = holidayName(vacYear, vacCalMonth, d);
+    var dow = new Date(vacYear, vacCalMonth, d).getDay();
+    var cls = 'vcell' + (hName ? ' hol' : '') + (dow === 0 && !hName ? ' sun' : '') + (dow === 6 && !hName ? ' sat' : '');
+    var isUsed = !!used[getDateKey(vacYear, vacCalMonth, d)];
+    var isToday = today.y === vacYear && today.m === vacCalMonth && today.d === d;
+
+    g += '<div class="' + cls + '"><span class="vnum' + (isUsed ? ' used' : '') + (isToday ? ' today' : '') + '"' +
+         (isUsed ? ' style="background:' + t.color + '"' : '') + '>' + d + '</span></div>';
+
+  }
+
+  grid.innerHTML = g;
+
+  var days = ['일', '월', '화', '수', '목', '금', '토'];
+  var box = $('vac-dates');
+  var h = '<div class="current-dia-label">' + esc(t.label) + ' 사용한 날짜 (' + vacYear + '년)</div>';
+
+  if (!dates.length) {
+
+    h += '<div style="margin-top:6px;font-size:14px;color:#7a8696">사용한 날짜가 없습니다.</div>';
+
+  } else {
+
+    h += '<div>';
+
+    for (var k = 0; k < dates.length; k++) {
+
+      var p = dates[k].split('-');
+      var mm = parseInt(p[1], 10);
+      var dd = parseInt(p[2], 10);
+      var w = days[new Date(vacYear, mm - 1, dd).getDay()];
+
+      h += '<span class="vac-chip" style="background:' + t.color + '" onclick="vacGoMonth(' + (mm - 1) + ')">' +
+           mm + '월 ' + dd + '일(' + w + ')</span>';
+
+    }
+
+    h += '</div>';
+
+  }
+
+  box.innerHTML = h;
+
+}
+
+/* ============ 근무패턴 (순서표) ============ */
+
+function openPattern() {
+
+  switchSection('pattern-section');
+
+  $('pattern-status').textContent = '불러오는 중...';
+
+  loadMeta(function (failMsg) {
+
+    $('pattern-status').textContent = failMsg || '';
+
+    renderPattern();
+
+  });
+
+}
+
+function diaTrainMarkup(it, list, index) {
+  var dia = String(it && it.dia || '').trim().toUpperCase();
+  if (dia === '12941' || dia === '12942') {
+    return '<span class="dia-train-numbers"><span>대기</span></span>';
+  }
+  var source = it || {};
+  // 비번은 바로 앞 야간 근무의 대표 열차번호를 이어서 표시
+  if (String(it && it.type || '') === '비' && index > 0 && list && list[index - 1] && String(list[index - 1].type || '') === '야') {
+    source = list[index - 1];
+  }
+  var train1 = String(source.train1 || '').trim();
+  var train2 = String(source.train2 || '').trim();
+  if (!train1 && !train2) return '';
+  return '<span class="dia-train-numbers">' +
+    (train1 ? '<span>' + esc(train1) + '</span>' : '') +
+    (train2 ? '<span>' + esc(train2) + '</span>' : '') +
+    '</span>';
+}
+
+function renderPattern() {
+
+  var listEl = $('pattern-list');
+
+  var t = todayKST();
+  var todayKey = getDateKey(t.y, t.m, t.d);
+  var todayIdx = patternIndexFor(todayKey);
+
+  var html = '';
+
+  var rl = rotList();
+
+  for (var i = 0; i < rl.length; i++) {
+
+    var it = rl[i];
+    var tone = toneOf(it.type);
+    var lc = tone === 'day' ? ' l-day' : tone === 'bi' ? ' l-bi' : tone === 'off' ? ' l-off' : '';
+
+    var trainLabels = diaTrainMarkup(it, rl, i);
+
+    html += '<div class="dia-item dia-name clickable' + lc + (i === todayIdx ? ' selected' : '') + '" onclick="openPatternInfo(' + i + ')">' +
+            '<span class="dia-seq">' + esc(it.seq) + '</span>' +
+            '<span class="dia-number">' + esc(it.dia || it.type || '-') + '</span>' +
+            trainLabels + '</div>';
+
+  }
+
+  listEl.innerHTML = html || '<div class="dia-empty">근무 순서표가 없습니다.</div>';
+
+  if (todayIdx < 0) {
+    $('pattern-status').textContent = '환경설정에서 근무를 먼저 설정하세요.';
+  }
+
+}
+
+/* ---- 근무패턴: 다이아 정보 팝업 ---- */
+
+function parseHM(v) {
+
+  var t = String(v == null ? '' : v);
+  var m = t.match(/(\d{1,2})\s*:\s*(\d{2})/);
+
+  if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+
+  m = t.match(/^\s*(\d{2})(\d{2})\s*$/);
+
+  if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+
+  return NaN;
+
+}
+
+function workDurationText(start, end) {
+
+  var a = parseHM(start);
+  var b = parseHM(end);
+
+  if (isNaN(a) || isNaN(b)) return '';
+
+  var diff = b - a;
+
+  if (diff <= 0) diff += 1440;   // 자정을 넘기는 근무
+
+  var h = Math.floor(diff / 60);
+  var mm = diff % 60;
+
+  return h + '시간' + (mm ? ' ' + mm + '분' : '');
+
+}
+
+function openPatternInfo(i) {
+
+  var list = rotList();
+  var it = list[i];
+  var panel = $('pattern-info-panel');
+  var body = $('pattern-info-body');
+
+  if (!it || !panel || !body) return;
+
+  // 순서표에서 비번을 선택했고 직전 항목이 야간이면 야간 다이아 상세정보를 사용
+  var infoFromNight = false;
+  if (String(it.type || '').trim() === '비' && i > 0 && String(list[i - 1].type || '').trim() === '야') {
+    it = Object.assign({}, it, {
+      dia: list[i - 1].dia, start: list[i - 1].start, end: list[i - 1].end,
+      seq: list[i - 1].seq, train1: list[i - 1].train1, train2: list[i - 1].train2
+    });
+    infoFromNight = true;
+  }
+
+  var type = String(it.type || '').trim();
+  var diaNo = String(it.dia || '').trim();
+  var kindMap = { '주': '주간', '야': '야간', '비': '비번', '휴': '휴무' };
+  var kind = kindMap[type] || type || '-';
+
+  var tone = toneOf(type);
+  var color = tone === 'day' ? '#e5a800' : tone === 'off' ? '#e53935' : '#1a73e8';
+
+  var start = String(it.start || '').trim();
+  var end = String(it.end || '').trim();
+  var dur = workDurationText(start, end);
+
+  function row(k, v) {
+    return '<div class="pi-row"><span class="pi-k">' + k + '</span><b>' + esc(v || '-') + '</b></div>';
+  }
+
+  var html = '';
+
+  html += '<div class="pi-row"><span class="pi-k">다이아 이름</span><b style="color:' + color + '">' +
+          esc(diaNo || kind) + '</b></div>';
+  html += row('근무 구분', infoFromNight ? '비번 (전날 야간 다이아 정보)' : kind);
+  html += row('출근 시간', start);
+  html += row('퇴근 시간', end);
+  html += row('근무 시간', dur);
+
+  var wRules = WEEKDAY_RULES[String(it.seq)];
+
+  if (wRules && diaNo) {
+
+    html += '<div class="pi-row" style="display:block"><span class="pi-k">근무표 요일별 적용 다이아</span></div>';
+
+    var covered = [];
+
+    for (var wc = 0; wc < wRules.length; wc++) covered = covered.concat(wRules[wc].days);
+
+    var rest = [];
+
+    for (var wd = 0; wd < 7; wd++) {
+      if (covered.indexOf(wd) < 0) rest.push(wd);
+    }
+
+    if (rest.length) html += row(weekdayText(rest), diaNo);
+
+    for (var wr = 0; wr < wRules.length; wr++) {
+      html += row(weekdayText(wRules[wr].days), wRules[wr].dia);
+    }
+
+  }
+
+  if (diaNo) {
+
+    var url = diaImageUrl(diaNo);
+
+    if (url) {
+
+      html += '<div class="pi-route">' +
+        '<div class="pi-route-cap">행로표</div>' +
+        '<img src="' + url + '" alt="DIA ' + esc(diaNo) + ' 행로표" data-dia="' + esc(diaNo) + '" ' +
+        'onclick="openRouteViewer(this.getAttribute(\'data-dia\'))" ' +
+        'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
+        '<div class="pi-none" style="display:none">이미지를 불러오지 못했습니다.</div></div>';
+
+    } else {
+
+      html += '<div class="pi-route"><div class="pi-none">행로표 이미지가 없습니다.</div></div>';
+
+    }
+  }
+
+  body.innerHTML = html;
+
+  panel.classList.add('active');
+
+}
+
+function closePatternInfo() {
+
+  var panel = $('pattern-info-panel');
+
+  if (panel) panel.classList.remove('active');
+
+}
+
+/* ============ 환경설정 · 게시판 및 근무 설정 ============ */
+
+var tempSeq = '';
+var BOARD_ADMIN_ID = '199878';
+var activeBoardType = 'notice';
+var activeBoardPost = null;
+var boardEditorType = 'notice';
+var boardEditorPostId = '';
+
+function isBoardAdmin() {
+  var user = getCurrentUser();
+  return String(user && user.employeeId || '') === BOARD_ADMIN_ID;
+}
+function boardUserName(user) {
+  return String((user && (user.name || user.employeeName || user.employeeId)) || '사용자');
+}
+function boardApi(action, extra, cb) {
+  var user = getCurrentUser();
+  var params = { action: action, employeeId: user.employeeId, token: user.token };
+  Object.keys(extra || {}).forEach(function (k) { params[k] = extra[k]; });
+  api(params, function (r) {
+    if (typeof cb === 'function') cb(r || { success: false, message: '서버 응답이 없습니다.' });
+  });
+}
+function openNoticePanel() {
+  var panel = $('notice-panel');
+  var list = $('notice-list');
+  if (panel) panel.classList.add('active');
+  if ($('notice-admin-actions')) $('notice-admin-actions').style.display = isBoardAdmin() ? 'block' : 'none';
+  if (list) list.innerHTML = '<div class="dia-empty">공지사항을 불러오는 중...</div>';
+  if (!getCurrentUser() || getCurrentUser().employeeId === 'guest') {
+    if (list) list.innerHTML = '<div class="dia-empty">로그인 후 공지사항을 확인할 수 있습니다.</div>';
+    return;
+  }
+  boardApi('getAnnouncements', {}, function (r) {
+    if (!list) return;
+    if (!r.success) { list.innerHTML = '<div class="dia-empty">공지사항 서버 연결이 필요합니다. 잠시 후 다시 시도해주세요.</div>'; return; }
+    renderBoardList('notice', r.announcements || r.posts || []);
+  });
+}
+function closeNoticePanel() { var p = $('notice-panel'); if (p) p.classList.remove('active'); }
+function openSuggestionPanel() {
+  var p = $('suggestion-panel'); var list = $('suggestion-list');
+  if (p) p.classList.add('active');
+  if (list) list.innerHTML = '<div class="dia-empty">건의사항을 불러오는 중...</div>';
+  if (!getCurrentUser() || getCurrentUser().employeeId === 'guest') { if (list) list.innerHTML = '<div class="dia-empty">로그인 후 이용해주세요.</div>'; return; }
+  boardApi('getSuggestions', {}, function (r) {
+    if (!list) return;
+    if (!r.success) { list.innerHTML = '<div class="dia-empty">건의사항 서버 연결이 필요합니다. 잠시 후 다시 시도해주세요.</div>'; return; }
+    renderBoardList('suggestion', r.suggestions || r.posts || []);
+  });
+}
+function closeSuggestionPanel() { var p = $('suggestion-panel'); if (p) p.classList.remove('active'); }
+function renderBoardList(type, posts) {
+  var list = $(type === 'notice' ? 'notice-list' : 'suggestion-list');
+  if (!list) return;
+  if (!Array.isArray(posts) || !posts.length) { list.innerHTML = '<div class="dia-empty">등록된 게시물이 없습니다.</div>'; return; }
+  list.innerHTML = posts.map(function (post) {
+    var id = String(post.id || post.postId || '');
+    var title = esc(post.title || (type === 'notice' ? '공지사항' : '건의사항'));
+    var author = esc(post.authorName || post.name || post.employeeId || '사용자');
+    var date = esc(post.createdAt || post.date || '');
+    var content = esc(post.content || post.body || '').replace(/\n/g, '<br>');
+    return '<button type="button" onclick="openBoardDetail(\'' + type + '\',decodeURIComponent(\'' + encodeURIComponent(id) + '\'))" style="display:block;text-align:left;width:100%;padding:12px;margin-bottom:9px;border:1px solid #e1e8ef;border-radius:14px;background:#f8fafc;color:#263445;font:inherit;cursor:pointer">' +
+      '<div style="font-weight:bold;overflow-wrap:anywhere">' + title + '</div>' +
+      '<div style="font-size:11px;color:#8a94a3;margin-top:3px">' + author + (date ? ' · ' + date : '') + '</div>' +
+      '<div style="margin-top:7px;font-size:13px;overflow-wrap:anywhere">' + content + '</div></button>';
+  }).join('');
+}
+function openBoardEditor(type, post) {
+  boardEditorType = type;
+  boardEditorPostId = post ? String(post.id || post.postId || '') : '';
+  if (type === 'notice' && !isBoardAdmin()) { alert('공지사항 작성은 관리자 199878 송주영만 가능합니다.'); return; }
+  var user = getCurrentUser();
+  if (!user || user.employeeId === 'guest') { alert('로그인 후 이용해주세요.'); return; }
+  $('board-editor-title').textContent = (boardEditorPostId ? '게시물 수정' : '게시물 작성');
+  $('board-editor-subject').value = post ? (post.title || '') : '';
+  $('board-editor-content').value = post ? (post.content || post.body || '') : '';
+  $('board-editor-category-wrap').style.display = type === 'suggestion' ? 'block' : 'none';
+  if (post && post.category) $('board-editor-category').value = post.category;
+  $('board-editor-message').textContent = '';
+  $('board-editor-panel').classList.add('active');
+}
+function closeBoardEditor() { var p = $('board-editor-panel'); if (p) p.classList.remove('active'); }
+function saveBoardPost() {
+  var user = getCurrentUser();
+  var title = $('board-editor-subject').value.trim();
+  var content = $('board-editor-content').value.trim();
+  var msg = $('board-editor-message');
+  if (boardEditorType === 'notice' && !isBoardAdmin()) { msg.textContent = '공지사항 작성은 관리자 199878 송주영만 가능합니다.'; return; }
+  if (!title) { msg.textContent = '제목을 입력해주세요.'; return; }
+  if (!content) { msg.textContent = '내용을 입력해주세요.'; return; }
+  msg.textContent = '저장 중...';
+  var extra = { title: title, content: content, category: $('board-editor-category').value, postId: boardEditorPostId, id: boardEditorPostId };
+  var action;
+  if (boardEditorType === 'notice') action = boardEditorPostId ? 'updateAnnouncement' : 'createAnnouncement';
+  else action = boardEditorPostId ? 'updateSuggestion' : 'createSuggestion';
+  boardApi(action, extra, function (r) {
+    if (r && r.success) {
+      closeBoardEditor();
+      if (boardEditorType === 'notice') openNoticePanel(); else openSuggestionPanel();
+    } else {
+      msg.textContent = (r && r.message) || '저장에 실패했습니다. 잠시 후 다시 시도해주세요.';
+    }
+  });
+}
+function openBoardDetail(type, id) {
+  activeBoardType = type;
+  var list = $(type === 'notice' ? 'notice-list' : 'suggestion-list');
+  // Fetch a fresh post and its comments; the server must verify edit/delete permissions.
+  activeBoardPost = { id: id, type: type };
+  $('board-detail-title').textContent = type === 'notice' ? '📢 공지사항' : '💬 건의사항';
+  $('board-detail-meta').textContent = '게시물을 불러오는 중...';
+  $('board-detail-content').textContent = '';
+  $('board-comments').innerHTML = '<div class="dia-empty">댓글을 불러오는 중...</div>';
+  $('board-detail-actions').innerHTML = '';
+  $('board-comment-input').value = '';
+  $('board-comment-message').textContent = '';
+  var commentSection = $('board-comment-section');
+  if (commentSection) commentSection.style.display = type === 'notice' ? 'none' : 'block';
+  $('board-detail-panel').classList.add('active');
+  var action = type === 'notice' ? 'getAnnouncement' : 'getSuggestion';
+  boardApi(action, { postId: id, id: id }, function (r) {
+    if (!r || !r.success) { $('board-detail-meta').textContent = '게시물 상세 조회 기능을 서버에 연결해야 합니다.'; $('board-detail-content').textContent = (r && r.message) || ''; return; }
+    var post = r.post || r.announcement || r.suggestion || r;
+    activeBoardPost = post; activeBoardPost.type = type;
+    $('board-detail-title').textContent = post.title || (type === 'notice' ? '공지사항' : '건의사항');
+    $('board-detail-meta').textContent = (post.authorName || post.name || post.employeeId || '사용자') + (post.createdAt || post.date ? ' · ' + (post.createdAt || post.date) : '');
+    $('board-detail-content').textContent = post.content || post.body || '';
+    var canEdit = type === 'notice' ? isBoardAdmin() : String(post.employeeId || post.authorId || '') === String(getCurrentUser().employeeId);
+    var actions = '';
+    if (canEdit) actions += '<button type="button" class="dia-text-btn" onclick="editActiveBoardPost()">수정</button><button type="button" class="dia-text-btn" onclick="deleteActiveBoardPost()">삭제</button>';
+    $('board-detail-actions').innerHTML = actions;
+  });
+  if (type === 'notice') return; // 공지사항에는 댓글 기능을 제공하지 않음
+  boardApi('getSuggestionComments', { postId: id, id: id }, function (r) {
+    var box = $('board-comments');
+    if (!box) return;
+    if (!r || !r.success) { box.innerHTML = '<div class="dia-empty">댓글 기능을 서버에 연결해야 합니다.</div>'; return; }
+    var comments = r.comments || [];
+    box.innerHTML = comments.length ? comments.map(function (c) {
+      var cid = String(c.id || c.commentId || '');
+      var owner = String(c.employeeId || c.authorId || '') === String(getCurrentUser().employeeId);
+      return '<div class="board-comment-item"><div style="font-size:11px;color:#8792a1">' + esc(c.authorName || c.name || c.employeeId || '사용자') + (c.createdAt ? ' · ' + esc(c.createdAt) : '') + '</div><div style="white-space:pre-wrap;overflow-wrap:anywhere;margin:5px 0">' + esc(c.content || c.text || '') + '</div>' + (owner ? '<button type="button" class="dia-text-btn" onclick="editBoardComment(decodeURIComponent(\'' + encodeURIComponent(cid) + '\'),decodeURIComponent(\'' + encodeURIComponent(c.content || c.text || '') + '\'))">수정</button><button type="button" class="dia-text-btn" onclick="deleteBoardComment(decodeURIComponent(\'' + encodeURIComponent(cid) + '\'))">삭제</button>' : '') + '</div>';
+    }).join('') : '<div class="dia-empty">아직 댓글이 없습니다.</div>';
+  });
+}
+function closeBoardDetail() { var p = $('board-detail-panel'); if (p) p.classList.remove('active'); }
+function editActiveBoardPost() { if (!activeBoardPost) return; openBoardEditor(activeBoardType, activeBoardPost); }
+function deleteActiveBoardPost() {
+  if (!activeBoardPost || !confirm('이 게시물을 삭제할까요?')) return;
+  if (activeBoardType === 'notice' && !isBoardAdmin()) { alert('관리자만 삭제할 수 있습니다.'); return; }
+  boardApi(activeBoardType === 'notice' ? 'deleteAnnouncement' : 'deleteSuggestion', { postId: activeBoardPost.id || activeBoardPost.postId, id: activeBoardPost.id || activeBoardPost.postId }, function (r) {
+    if (r && r.success) { closeBoardDetail(); if (activeBoardType === 'notice') openNoticePanel(); else openSuggestionPanel(); }
+    else alert((r && r.message) || '삭제에 실패했습니다. 서버 권한 확인이 필요합니다.');
+  });
+}
+function submitBoardComment() {
+  if (activeBoardType === 'notice') { return; }
+  var user = getCurrentUser(); var content = $('board-comment-input').value.trim(); var msg = $('board-comment-message');
+  if (!user || user.employeeId === 'guest') { msg.textContent = '로그인 후 이용해주세요.'; return; }
+  if (!content) { msg.textContent = '댓글 내용을 입력해주세요.'; return; }
+  if (!activeBoardPost) return;
+  boardApi('addSuggestionComment', { postId: activeBoardPost.id || activeBoardPost.postId, id: activeBoardPost.id || activeBoardPost.postId, content: content }, function (r) {
+    if (r && r.success) openBoardDetail(activeBoardType, String(activeBoardPost.id || activeBoardPost.postId));
+    else msg.textContent = (r && r.message) || '댓글 등록 기능을 서버에 연결해야 합니다.';
+  });
+}
+function editBoardComment(commentId, oldContent) {
+  var content = prompt('댓글을 수정해주세요.', oldContent || '');
+  if (content === null) return;
+  content = content.trim(); if (!content) { alert('댓글 내용을 입력해주세요.'); return; }
+  boardApi('updateSuggestionComment', { postId: activeBoardPost.id || activeBoardPost.postId, commentId: commentId, id: commentId, content: content }, function (r) {
+    if (r && r.success) openBoardDetail(activeBoardType, String(activeBoardPost.id || activeBoardPost.postId)); else alert((r && r.message) || '댓글 수정 기능을 서버에 연결해야 합니다.');
+  });
+}
+function deleteBoardComment(commentId) {
+  if (!confirm('이 댓글을 삭제할까요?')) return;
+  boardApi('deleteSuggestionComment', { postId: activeBoardPost.id || activeBoardPost.postId, commentId: commentId, id: commentId }, function (r) {
+    if (r && r.success) openBoardDetail(activeBoardType, String(activeBoardPost.id || activeBoardPost.postId)); else alert((r && r.message) || '댓글 삭제 기능을 서버에 연결해야 합니다.');
+  });
+}
+
+/* ============ 백업 / 동기화 ============ */
+
+function openBackupPanel() {
+
+  $('backup-message').textContent = '';
+  $('backup-message').style.color = '';
+  renderBackupInfo();
+  $('backup-panel').classList.add('active');
+
+}
+
+function closeBackupPanel() {
+  $('backup-panel').classList.remove('active');
+}
+
+function renderBackupInfo() {
+
+  var u = getCurrentUser();
+  var loc = readLocal(u.employeeId);
+  var el = $('backup-info');
+
+  if (!el) return;
+
+  var n = loc ? loc.overrides.length : 0;
+
+  el.innerHTML =
+    '이 폰 근무설정: <b>' + (loc && loc.seq ? '설정됨' : '없음') + '</b><br>' +
+    '이 폰 근무변경·휴가: <b>' + n + '건</b><br>' +
+    '백업 상태: <b>' + (loc && loc.dirty ? '백업 대기 중 (곧 자동 백업)' : '최신') + '</b><br>' +
+    '마지막 백업: <b>' + esc(loc && loc.backedUpAt ? loc.backedUpAt : '없음') + '</b>';
+
+}
+
+function backupMsg(text, color) {
+
+  var m = $('backup-message');
+
+  m.style.color = color || '';
+  m.textContent = text;
+
+}
+
+var autoBackupBusy = false;
+var autoBackupTimer = null;
+var autoBackupFailShown = false;
+
+/* 이 폰의 근무설정·휴가를 서버로 백업. cb({success, message}) */
+function backupNow(cb) {
+
+  var u = getCurrentUser();
+
+  function done(r) { if (cb) cb(r); }
+
+  if (!u.token) { done({ success: false, message: '로그인 후 이용해주세요.' }); return; }
+
+  var loc = ensureLocal(u.employeeId);
+
+  if (!loc.seq && !loc.overrides.length && !loc.dirty) {
+    done({ success: false, message: '백업할 근무설정·휴가 데이터가 이 폰에 없습니다.' });
+    return;
+  }
+
+  if (autoBackupBusy) { done({ success: false, message: '백업 중입니다. 잠시 후 다시 시도해주세요.' }); return; }
+
+  autoBackupBusy = true;
+
+  var sentRev = loc.rev || 0;
+
+  postApi({
+    action: 'backupData',
+    employeeId: u.employeeId,
+    token: u.token,
+    seq: loc.seq,
+    anchor: loc.anchor,
+    overrides: loc.overrides
+  }, function (r) {
+
+    autoBackupBusy = false;
+
+    if (r && r.success) {
+
+      var cur = ensureLocal(u.employeeId);
+
+      cur.backedUpAt = stampNow();
+
+      /* 백업하는 사이 또 바꾼 내용이 있으면 dirty를 유지하고 한 번 더 백업 */
+      if ((cur.rev || 0) === sentRev) cur.dirty = false;
+
+      writeLocal(u.employeeId, cur);
+
+      if (cur.dirty) scheduleAutoBackup(1000);
+
+      refreshSnapshot(true, null);
+
+    }
+
+    done(r);
+
+  });
+
+}
+
+function scheduleAutoBackup(delay) {
+
+  if (autoBackupTimer) clearTimeout(autoBackupTimer);
+
+  autoBackupTimer = setTimeout(runAutoBackup, delay || 1500);
+
+}
+
+function runAutoBackup() {
+
+  autoBackupTimer = null;
+
+  var u = getCurrentUser();
+
+  if (!u.token) return;
+
+  var loc = readLocal(u.employeeId);
+
+  if (!loc || !loc.dirty) return;
+
+  if (autoBackupBusy) { scheduleAutoBackup(3000); return; }
+
+  backupNow(function (r) {
+
+    if (!r || !r.success) {
+      if (!autoBackupFailShown) {
+        showToast('서버 백업에 실패했습니다. 연결되면 자동으로 다시 시도합니다.');
+        autoBackupFailShown = true;
+      }
+    } else {
+      autoBackupFailShown = false;
+    }
+
+    var p = $('backup-panel');
+
+    if (p && p.classList.contains('active')) renderBackupInfo();
+
+  });
+
+}
+
+/* 백업 못 한 변경이 남아 있으면 다시 시도 (시작할 때, 인터넷이 다시 연결될 때, 화면으로 돌아올 때, 1분마다) */
+(function initAutoBackup() {
+
+  setTimeout(runAutoBackup, 4000);
+
+  setInterval(runAutoBackup, 60000);
+
+  window.addEventListener('online', function () { runAutoBackup(); });
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) runAutoBackup();
+  });
+
+})();
+
+function doBackup() {
+
+  var btn = $('backup-upload-btn');
+
+  btn.disabled = true;
+  backupMsg('백업하는 중...', '#666');
+
+  backupNow(function (r) {
+
+    btn.disabled = false;
+
+    if (!r || !r.success) {
+      backupMsg((r && r.message) || '백업하지 못했습니다.');
+      return;
+    }
+
+    renderBackupInfo();
+    backupMsg('백업이 완료되었습니다.', '#16803c');
+
+  });
+
+}
+
+function doRestore() {
+
+  var u = getCurrentUser();
+
+  if (!u.token) { backupMsg('로그인 후 이용해주세요.'); return; }
+
+  if (!confirm('서버 백업으로 이 폰의 근무설정·휴가 데이터를 덮어씁니다. 계속할까요?')) return;
+
+  var btn = $('backup-download-btn');
+
+  btn.disabled = true;
+  backupMsg('불러오는 중...', '#666');
+
+  api({ action: 'restoreData', employeeId: u.employeeId, token: u.token }, function (r) {
+
+    btn.disabled = false;
+
+    if (!r || !r.success) {
+      backupMsg((r && r.message) || '불러오지 못했습니다.');
+      return;
+    }
+
+    if (!r.found) {
+      backupMsg('서버에 저장된 백업이 없습니다. 먼저 백업하기를 눌러주세요.');
+      return;
+    }
+
+    writeLocal(u.employeeId, {
+      seq: String(r.seq || ''),
+      anchor: String(r.anchor || ''),
+      overrides: r.overrides || [],
+      backedUpAt: r.updatedAt || stampNow()
+    });
+
+    mySettings = { seq: String(r.seq || ''), anchor: String(r.anchor || '') };
+    myMonth = null;
+
+    if (snapshotUsable()) {
+      mergeLocalIntoSnapshot();
+      snapAfterLocalChange();
+    }
+
+    renderBackupInfo();
+    backupMsg('불러오기가 완료되었습니다.', '#16803c');
+
+    refreshSnapshot(true, null);
+
+  });
+
+}
+
+/* 전체 데이터 초기화: 서버 RPC가 성공한 경우에만 로컬 캐시를 비웁니다.
+   서버에는 app_resetalldata RPC가 필요하며, 회원정보 테이블은 삭제 대상에서 제외해야 합니다. */
+function openResetAllDataPanel() {
+  var check = $('reset-all-data-confirm-check');
+  var msg = $('reset-all-data-message');
+  var btn = $('reset-all-data-confirm-btn');
+  if (check) check.checked = false;
+  if (msg) { msg.textContent = ''; msg.style.color = ''; }
+  if (btn) btn.disabled = false;
+  $('reset-all-data-panel').classList.add('active');
+}
+
+function closeResetAllDataPanel() {
+  var panel = $('reset-all-data-panel');
+  if (panel) panel.classList.remove('active');
+}
+
+function confirmResetAllData() {
+  var user = getCurrentUser();
+  var check = $('reset-all-data-confirm-check');
+  var msg = $('reset-all-data-message');
+  var btn = $('reset-all-data-confirm-btn');
+  if (!user || !user.token || user.employeeId === 'guest') {
+    msg.style.color = '#c62828'; msg.textContent = '로그인 후 이용해주세요.'; return;
+  }
+  if (!isBoardAdmin()) {
+    msg.style.color = '#c62828'; msg.textContent = '전체 초기화는 관리자만 실행할 수 있습니다.'; return;
+  }
+  if (!check || !check.checked) {
+    msg.style.color = '#c62828'; msg.textContent = '초기화 동의 항목을 체크해주세요.'; return;
+  }
+  if (!confirm('마지막 확인입니다. 회원정보를 제외한 모든 사용자의 서비스 데이터가 삭제될 수 있습니다. 정말 초기화할까요?')) return;
+  btn.disabled = true;
+  msg.style.color = '#666';
+  msg.textContent = '서버 데이터 초기화 요청 중...';
+  api({ action: 'resetAllData', employeeId: user.employeeId, token: user.token }, function (r) {
+    btn.disabled = false;
+    if (!r || !r.success) {
+      msg.style.color = '#c62828';
+      msg.textContent = (r && r.message) || '초기화하지 못했습니다. 서버에 app_resetalldata RPC가 배포되어 있는지 확인해주세요. 데이터는 변경하지 않았습니다.';
+      return;
+    }
+    /* 서버 초기화 성공 후에만 이 브라우저의 서비스 캐시/근무변경 데이터를 삭제 */
+    try {
+      var keys = [];
+      for (var i = 0; i < LS.length; i++) {
+        var key = LS.key(i);
+        if (key && (key.indexOf('railwayLocal_v1_') === 0 || key === 'railwaySecretarySnapshot_v2')) keys.push(key);
+      }
+      keys.forEach(function (key) { LS.removeItem(key); });
+    } catch (e) {}
+    snapshot = null;
+    mySettings = { seq: '', anchor: '' };
+    myMonth = null;
+    closeResetAllDataPanel();
+    showToast('회원정보를 제외한 서비스 데이터 초기화가 완료되었습니다.');
+    refreshSnapshot(true, null);
+  });
+}
+
+function openSettings() {
+
+  switchSection('settings-section');
+
+  if (typeof renderAlarmSub === 'function') renderAlarmSub();
+
+  loadMeta(function () {});
+
+}
+
+function openDiaSelector() {
+
+  var panel = $('dia-panel');
+
+  var t = todayKST();
+  var idx = patternIndexFor(getDateKey(t.y, t.m, t.d));
+
+  tempSeq = idx >= 0 ? String(rotList()[idx].seq) : '';
+
+  $('dia-warning').textContent = '';
+
+  renderDiaSelector();
+
+  if (panel) panel.classList.add('active');
+
+  if (!rotList().length) {
+    loadMeta(function (failMsg) {
+      $('dia-warning').textContent = failMsg || '';
+      renderDiaSelector();
+    });
+  }
+
+}
+
+function renderDiaSelector() {
+
+  var listEl = $('dia-list');
+
+  if (!rotList().length) {
+    listEl.innerHTML = '<div class="dia-empty">근무 순서를 불러오는 중...</div>';
+    
+    return;
+  }
+
+  listEl.innerHTML = '';
+
+  rotList().forEach(function (it) {
+
+    var tone = toneOf(it.type);
+    var lc = tone === 'day' ? ' l-day' : tone === 'bi' ? ' l-bi' : tone === 'off' ? ' l-off' : '';
+
+    var b = document.createElement('div');
+
+    b.className = 'dia-item dia-name' + lc + (String(it.seq) === tempSeq ? ' selected' : '');
+
+    var currentRotation = rotList();
+    var trainLabels = diaTrainMarkup(it, currentRotation, currentRotation.findIndex(function (x) { return String(x.seq) === String(it.seq); }));
+    b.innerHTML = '<span class="dia-seq">' + esc(it.seq) + '</span>' +
+                  '<span class="dia-number">' + esc(it.dia || it.type || '-') + '</span>' +
+                  trainLabels;
+
+    b.onclick = function () {
+      tempSeq = String(it.seq);
+      renderDiaSelector();
+    };
+
+    listEl.appendChild(b);
+
+  });
+
+}
+
+function closeDiaSelector() {
+
+  var panel = $('dia-panel');
+
+  if (panel) panel.classList.remove('active');
+
+}
+
+function saveSelectedDia() {
+
+  var warn = $('dia-warning');
+
+  if (!tempSeq) {
+    warn.textContent = '오늘의 DIA를 선택해주세요.';
+    return;
+  }
+
+  var user = getCurrentUser();
+  var t = todayKST();
+
+  var anchorKey = getDateKey(t.y, t.m, t.d);
+
+  mySettings = { seq: tempSeq, anchor: anchorKey };
+
+  myMonth = null;
+
+  /* 서버로 보내지 않고 이 폰에만 저장 (백업은 환경설정에서) */
+  snapSetSettings(user.employeeId, tempSeq, anchorKey);
+
+  warn.textContent = '';
+
+  closeDiaSelector();
+
+}
+
+/* ============ 로그인 / 회원가입 ============ */
+
+var SAVED_LOGIN_KEY = 'railwaySecretarySavedLogin';
+
+function readSavedLogin() {
+
+  try {
+
+    var raw = LS.getItem(SAVED_LOGIN_KEY);
+
+    if (raw) {
+
+      var v = JSON.parse(raw);
+
+      if (v && v.id) return v;
+
+    }
+
+  } catch (e) {}
+
+  return null;
+
+}
+
+function writeSavedLogin(id, name, auto) {
+  // 비밀번호는 없으며 사원번호·이름과 자동로그인 설정만 저장합니다.
+  LS.setItem(SAVED_LOGIN_KEY, JSON.stringify({ id: id, name: name || '', auto: !!auto }));
+}
+
+function clearSavedLogin() {
+  LS.removeItem(SAVED_LOGIN_KEY);
+}
+
+function doLogin(id, name, isAuto) {
+
+  var msg = $('login-message');
+  var btn = $('login-btn');
+  var loading = $('login-loading');
+
+  msg.textContent = '';
+  btn.disabled = true;
+  loading.textContent = isAuto ? '자동 로그인 중...' : '로그인 확인 중...';
+  loading.style.display = 'block';
+
+  api({ action: 'login', employeeId: id, name: name, ver: snapVersionFor(id) }, function (r) {
+
+    btn.disabled = false;
+    loading.style.display = 'none';
+
+    if (!r || !r.success) {
+
+      msg.textContent = (isAuto ? '자동 로그인 실패: ' : '') + ((r && r.message) || '로그인에 실패했습니다.');
+
+      if (isAuto && r && r.errorCode === 'LOGIN_FAILED') writeSavedLogin(id, name, false);
+
+      return;
+    }
+
+    if ($('remember').checked) writeSavedLogin(id, name, false);
+    else clearSavedLogin();
+
+    setCurrentUser({ employeeId: r.employeeId, name: r.name, token: r.token });
+
+    $('welcome-name').textContent = r.name;
+
+    myMonth = null;
+    groupData = null;
+    mySettings = { seq: '', anchor: '' };
+    metaLoadedAt = 0;
+
+    switchSection('main-section');
+
+    if (r.snapshot) snapApply(r.employeeId, snapGen, r.snapshot);
+    syncPending();
+
+  });
+
+}
+
+function handleLogin(e) {
+
+  e.preventDefault();
+
+  var empno = $('login-empno').value.trim();
+  var nm = $('login-id').value.trim();
+
+  if (!empno || !nm) {
+    $('login-message').textContent = '사원번호와 이름을 모두 입력해주세요.';
+    return false;
+  }
+
+  doLogin(empno, nm, false);
+
+  return false;
+
+}
+
+var signupCodeVerified = false;
+var signupPending = null;
+var PRIVACY_CONSENT_VERSION = '2026-10-11-v1';
+
+function verifySignupCode() {
+
+  var code = $('signup-code').value.trim();
+  var msg = $('signup-verify-message');
+  var btn = $('signup-verify-btn');
+
+  signupCodeVerified = false;
+  msg.style.color = '#666';
+  msg.textContent = '확인 중...';
+
+  if (btn) btn.disabled = true;
+
+  api({ action: 'verifyCode', code: code }, function (r) {
+
+    if (btn) btn.disabled = false;
+
+    signupCodeVerified = !!(r && r.success);
+    msg.style.color = signupCodeVerified ? '#16803c' : '#c62828';
+    msg.textContent = signupCodeVerified
+      ? '인증이 완료되었습니다.'
+      : ((r && r.message) || '인증번호가 올바르지 않습니다.');
+
+  });
+
+  return false;
+
+}
+
+function handleSignup(e) {
+  e.preventDefault();
+  var empno = $('signup-empno').value.trim();
+  var name = $('signup-name').value.trim();
+  var msg = $('signup-message');
+  msg.style.color = '';
+  msg.textContent = '';
+
+  if (!empno) {
+    msg.textContent = '사원번호를 입력해주세요.';
+    return false;
+  }
+  if (!/^[0-9A-Za-z]+$/.test(empno)) {
+    msg.textContent = '사원번호는 숫자(영문)로만 입력해주세요.';
+    return false;
+  }
+  if (!name) {
+    msg.textContent = '이름을 입력해주세요.';
+    return false;
+  }
+  if (!signupCodeVerified) {
+    msg.textContent = '인증번호 확인을 먼저 완료해주세요.';
+    return false;
+  }
+
+  // 사원번호가 회원 식별자이고, 로그인할 때 사원번호와 이름을 함께 확인합니다.
+  signupPending = { employeeId: empno, name: name };
+  document.querySelectorAll('input[name="privacy-consent-choice"]').forEach(function (el) { el.checked = false; });
+  $('privacy-consent-message').textContent = '';
+  $('privacy-consent-panel').classList.add('active');
+  return false;
+}
+
+function closePrivacyConsent() {
+  $('privacy-consent-panel').classList.remove('active');
+}
+
+function submitPrivacyConsent() {
+  var choice = document.querySelector('input[name="privacy-consent-choice"]:checked');
+  var msg = $('privacy-consent-message');
+  if (!choice) {
+    msg.textContent = '동의 또는 비동의를 선택해주세요.';
+    return;
+  }
+  if (choice.value !== 'agree') {
+    closePrivacyConsent();
+    signupPending = null;
+    $('signup-message').textContent = '개인정보 수집·이용에 동의하지 않아 회원가입이 취소되었습니다.';
+    switchSection('signup-section');
+    return;
+  }
+  if (!signupPending) {
+    msg.textContent = '회원가입 정보가 없습니다. 다시 입력해주세요.';
+    return;
+  }
+
+  var btn = document.querySelector('#privacy-consent-panel button[onclick="submitPrivacyConsent()"]');
+  if (btn) btn.disabled = true;
+  msg.textContent = '회원가입 정보를 저장하는 중...';
+
+  var payload = {
+    action: 'signup',
+    employeeId: signupPending.employeeId,
+    name: signupPending.name,
+    verificationCode: $('signup-code').value.trim(),
+    consent: 'agree',
+    consentAt: new Date().toISOString(),
+    consentVersion: PRIVACY_CONSENT_VERSION
+  };
+
+  api(payload, function (r) {
+    if (btn) btn.disabled = false;
+    if (!r || !r.success) {
+      msg.textContent = (r && r.message) || '회원가입 저장에 실패했습니다.';
+      return;
+    }
+    closePrivacyConsent();
+    signupPending = null;
+    signupCodeVerified = false;
+    $('signup-form').reset();
+    $('signup-message').textContent = '';
+    alert('회원가입이 완료되었습니다. 로그인해주세요.');
+    switchSection('login-section');
+  });
+}
+
+
+var regulationDocuments = [];
+var selectedRegulationIndex = -1;
+
+/* 화면 표시명은 DB의 한글 title/display_name을 우선 사용합니다.
+   한글 표시명이 없는 경우 영문 저장 파일명을 한글 이름으로 변환합니다. */
+function regulationDisplayName(doc) {
+  doc = doc || {};
+  var title = String(doc.title_ko || doc.display_name || doc.displayName || doc.title || '').trim();
+  var raw = String(doc.file_path || doc.path || doc.name || doc.fileName || doc.filename || title || '').trim();
+  var base = raw.split(/[\\/]/).pop().replace(/[?#].*$/, '');
+  var key = base.toLowerCase().replace(/\.pdf$/i, '').replace(/[_\s]+/g, '-');
+  var known = {
+    'bosu-rule': '보수규정',
+    '2026-bosu': '보수규정',
+    'bosu-rule-detail': '보수규정 시행세칙',
+    '2026-bosu-detail': '보수규정 시행세칙',
+    'insa-rule': '인사규정',
+    'insa': '인사규정',
+    'insa-rule-detail': '인사규정 시행세칙',
+    'insa-detail': '인사규정 시행세칙',
+    'work-rule': '취업규칙',
+    'chwieop': '취업규칙',
+    'point-and-call-response-manual-revised-2026-08-25': '지적확인 환호응답 시행요령 매뉴얼',
+    'railway-signals-and-other-markers-rev-2025-01-31': '신호 및 기타표지',
+    'class-8500-emergency-response-manual-2023-11-01': '8500호대 응급조치 매뉴얼',
+    'class-8200-emergency-response-manual-2023-11-01': '8200호대 응급조치 매뉴얼',
+    'diesel-locomotive-dl-emergency-response-manual-2023-11-01': 'DL 응급조치 매뉴얼'
+  };
+  if (known[key]) return known[key];
+  if (title && /[가-힣]/.test(title)) return title.replace(/\.pdf$/i, '');
+  if (base && /[가-힣]/.test(base)) return base.replace(/\.pdf$/i, '');
+  if (title && !/\.pdf$/i.test(title) && !title.includes('/')) return title;
+  return base.replace(/\.pdf$/i, '') || '규정 PDF';
+}
+
+function openRegulationsPanel() {
+  var panel = $('regulations-panel');
+  var status = $('regulations-status');
+  var list = $('regulations-list');
+  if (!panel) return;
+  panel.classList.add('active');
+  var uploadAdmin = $('regulation-upload-admin');
+  if (uploadAdmin) uploadAdmin.style.display = isBoardAdmin() ? 'block' : 'none';
+  if ($('regulation-upload-status')) $('regulation-upload-status').textContent = '';
+  if ($('regulation-upload-files')) $('regulation-upload-files').value = '';
+  if ($('regulation-upload-selection')) $('regulation-upload-selection').textContent = '선택된 파일 없음';
+  $('regulations-viewer-wrap').style.display = 'none';
+  $('regulations-pdf-viewer').removeAttribute('src');
+  $('regulations-open-link').innerHTML = '';
+  regulationDocuments = [];
+  selectedRegulationIndex = -1;
+  list.innerHTML = '';
+  status.textContent = 'DB에서 PDF 목록을 불러오는 중...';
+  var user = getCurrentUser();
+  if (!user || !user.employeeId || user.employeeId === 'guest' || !user.token) {
+    status.textContent = '로그인 후 규정 자료를 확인할 수 있습니다.';
+    return;
+  }
+  /* 서버에는 app_regulations RPC가 있어야 하며, 로그인 토큰을 검증한 뒤 PDF 메타데이터만 반환해야 합니다. */
+  api({ action: 'getRegulations', employeeId: user.employeeId, token: user.token }, function (r) {
+    if (!panel.classList.contains('active')) return;
+    if (!r || !r.success) {
+      status.textContent = (r && r.message) || '규정 목록을 불러오지 못했습니다. Supabase의 app_regulations 목록 API 설정을 확인해주세요.';
+      return;
+    }
+    var docs = r.documents || r.regulations || r.files || [];
+    if (!Array.isArray(docs)) docs = [];
+    regulationDocuments = docs.filter(function (d) {
+      var name = String(d.file_path || d.path || d.name || d.title || d.fileName || d.filename || '');
+      var mime = String(d.mimeType || d.mime_type || d.contentType || 'application/pdf').toLowerCase();
+      var url = String(d.url || d.pdfUrl || d.signedUrl || d.signed_url || '');
+      return (/\.pdf(?:$|[?#])/i.test(name) || mime === 'application/pdf') && !!url;
+    });
+    if (!regulationDocuments.length) {
+      status.textContent = '열 수 있는 PDF가 없습니다. 서버 응답에 PDF 이름과 접근 가능한 URL이 포함되어 있는지 확인해주세요.';
+      return;
+    }
+    status.textContent = 'PDF ' + regulationDocuments.length + '개';
+    list.innerHTML = '';
+    regulationDocuments.forEach(function (doc, i) {
+      var name = regulationDisplayName(doc);
+      var label = document.createElement('label');
+      label.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #e1e7ef;border-radius:12px;background:#f8fafc;font-size:14px;line-height:1.5;cursor:pointer;overflow-wrap:anywhere';
+      var radio = document.createElement('input');
+      radio.type = 'radio'; radio.name = 'regulation-pdf-choice'; radio.value = String(i); radio.style.flex = '0 0 auto';
+      radio.addEventListener('change', function () {
+        selectedRegulationIndex = i;
+        Array.prototype.forEach.call(list.children, function (el) { el.style.borderColor = '#e1e7ef'; el.style.background = '#f8fafc'; });
+        label.style.borderColor = '#2684ff'; label.style.background = '#eef6ff';
+      });
+      var title = document.createElement('span'); title.textContent = name; title.style.flex = '1';
+      label.appendChild(radio); label.appendChild(title); list.appendChild(label);
+    });
+  });
+}
+
+/* 관리자 전용 UI. 실제 업로드 권한은 Supabase Storage RLS 정책으로 제한해야 합니다. */
+(function bindRegulationUploadPicker() {
+  function bind() {
+    var input = $('regulation-upload-files');
+    if (!input || input.dataset.bound === '1') return;
+    input.dataset.bound = '1';
+    input.addEventListener('change', function () {
+      var files = Array.prototype.slice.call(input.files || []);
+      $('regulation-upload-selection').textContent = files.length
+        ? files.map(function (f) { return f.name + ' (' + (f.size / 1048576).toFixed(1) + ' MB)'; }).join('\n')
+        : '선택된 파일 없음';
+      if ($('regulation-upload-status')) $('regulation-upload-status').textContent = '';
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+
+function uploadRegulationFiles() {
+  var user = getCurrentUser();
+  var status = $('regulation-upload-status');
+  var input = $('regulation-upload-files');
+  var button = $('regulation-upload-button');
+  if (!user || String(user.employeeId || '') !== BOARD_ADMIN_ID || !user.token) {
+    alert('관리자 계정으로 로그인해야 업로드할 수 있습니다.');
+    return;
+  }
+  if (!input || !input.files || !input.files.length) {
+    if (status) status.textContent = '먼저 업로드할 PDF 파일을 선택해주세요.';
+    return;
+  }
+  var files = Array.prototype.slice.call(input.files);
+  var invalid = files.filter(function (f) {
+    return !/^[A-Za-z0-9][A-Za-z0-9._-]*\.pdf$/i.test(f.name) || (f.type && f.type !== 'application/pdf');
+  });
+  if (invalid.length) {
+    if (status) status.textContent = '영문·숫자·하이픈·밑줄로 된 PDF 파일명만 업로드할 수 있습니다. 파일명을 확인해주세요:\n' + invalid.map(function (f) { return f.name; }).join('\n');
+    return;
+  }
+  var confirmText = files.length + '개 PDF를 regulations 버킷에 업로드합니다. 같은 파일명이 있으면 덮어씁니다. 계속할까요?';
+  if (!window.confirm(confirmText)) return;
+  if (button) button.disabled = true;
+  if (status) status.textContent = '업로드 준비 중...';
+  var results = [];
+  var index = 0;
+  function next() {
+    if (index >= files.length) {
+      if (button) button.disabled = false;
+      var failed = results.filter(function (r) { return !r.ok; });
+      if (status) status.textContent = results.map(function (r) { return (r.ok ? '완료: ' : '실패: ') + r.name + (r.message ? ' — ' + r.message : ''); }).join('\n') +
+        (failed.length ? '\n\n실패한 파일이 있습니다. Storage 버킷 정책(RLS)의 INSERT/UPDATE 권한을 확인해주세요.' : '\n\n버킷 업로드가 완료되었습니다. 규정 목록에 표시하려면 문서 메타데이터/API에도 등록되어 있어야 합니다.');
+      if (!failed.length) {
+        input.value = '';
+        if ($('regulation-upload-selection')) $('regulation-upload-selection').textContent = '선택된 파일 없음';
+      }
+      return;
+    }
+    var file = files[index++];
+    if (status) status.textContent = '업로드 중 (' + index + '/' + files.length + '): ' + file.name;
+    var url = SUPABASE_URL + '/storage/v1/object/regulations/' + encodeURIComponent(file.name);
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/pdf',
+        'x-upsert': 'true'
+      },
+      body: file
+    }).then(function (res) {
+      return res.text().then(function (body) {
+        var message = '';
+        if (!res.ok) {
+          try { var j = JSON.parse(body); message = j.message || j.error || j.error_description || body; }
+          catch (e) { message = body; }
+        }
+        results.push({ ok: res.ok, name: file.name, message: message ? String(message).slice(0, 240) : '' });
+        next();
+      });
+    }).catch(function (err) {
+      results.push({ ok: false, name: file.name, message: err && err.message ? err.message : '네트워크 오류 또는 CORS 오류' });
+      next();
+    });
+  }
+  next();
+}
+
+function findSelectedRegulation() {
+  if (selectedRegulationIndex < 0 || !regulationDocuments[selectedRegulationIndex]) {
+    var checked = document.querySelector('input[name="regulation-pdf-choice"]:checked');
+    if (checked) selectedRegulationIndex = Number(checked.value);
+  }
+  var doc = regulationDocuments[selectedRegulationIndex];
+  if (!doc) { alert('먼저 열람할 PDF 자료를 선택해주세요.'); return; }
+  var url = String(doc.url || doc.pdfUrl || doc.signedUrl || doc.signed_url || '');
+  if (!/^https:\/\//i.test(url)) { alert('PDF 주소가 안전한 HTTPS 링크가 아닙니다. 관리자에게 확인해주세요.'); return; }
+  var name = regulationDisplayName(doc);
+  $('regulations-viewer-title').textContent = name;
+  $('regulations-pdf-viewer').src = url;
+  $('regulations-open-link').innerHTML = '';
+  var a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = '새 탭에서 PDF 열기'; a.style.color = '#1769d2';
+  $('regulations-open-link').appendChild(a);
+  $('regulations-viewer-wrap').style.display = 'block';
+}
+
+function closeRegulationsPanel() {
+  var panel = $('regulations-panel');
+  if (panel) panel.classList.remove('active');
+  var viewer = $('regulations-pdf-viewer');
+  if (viewer) viewer.removeAttribute('src');
+  regulationDocuments = [];
+  selectedRegulationIndex = -1;
+}
+
+function openSitesPanel() {
+  const panel = document.getElementById('sites-panel');
+  if (panel) panel.style.display = 'flex';
+}
+function closeSitesPanel() {
+  const panel = document.getElementById('sites-panel');
+  if (panel) panel.style.display = 'none';
+}
+
+function openDeleteAccountPanel() {
+  var u = getCurrentUser();
+  $('delete-account-message').textContent = '';
+  if (!u || !u.employeeId || u.employeeId === 'guest' || !u.token) {
+    alert('로그인한 사용자만 회원탈퇴를 할 수 있습니다.');
+    return;
+  }
+  $('delete-account-panel').classList.add('active');
+}
+
+function closeDeleteAccountPanel() {
+  $('delete-account-panel').classList.remove('active');
+}
+
+function confirmDeleteAccount() {
+  var u = getCurrentUser();
+  var msg = $('delete-account-message');
+  var btn = $('delete-account-confirm-btn');
+  if (!u || !u.employeeId || !u.token) {
+    msg.textContent = '로그인 세션을 확인할 수 없습니다. 다시 로그인해주세요.';
+    return;
+  }
+  if (!confirm('정말 탈퇴할까요? 이 작업은 되돌릴 수 없습니다.')) return;
+
+  btn.disabled = true;
+  msg.textContent = '회원정보 삭제를 요청하는 중...';
+  api({ action: 'deleteAccount', employeeId: u.employeeId, token: u.token }, function (r) {
+    btn.disabled = false;
+    if (!r || !r.success) {
+      msg.textContent = (r && r.message) || '회원탈퇴 서버 처리가 완료되지 않았습니다. 잠시 후 다시 시도해주세요.';
+      return;
+    }
+    stopGroupAutoRefresh();
+    groupData = null;
+    myMonth = null;
+    mySettings = { seq: '', anchor: '' };
+    metaLoadedAt = 0;
+    try { LS.removeItem(localKey(u.employeeId)); } catch (e) {}
+    clearDataCache();
+    LS.removeItem(USER_KEY);
+    SS.removeItem(USER_KEY);
+    clearSavedLogin();
+    $('login-empno').value = '';
+    $('login-id').value = '';
+    $('remember').checked = false;
+    closeDeleteAccountPanel();
+    alert('회원탈퇴가 완료되었습니다.');
+    switchSection('login-section');
+  });
+}
+
+function logout() {
+
+  stopGroupAutoRefresh();
+
+  groupData = null;
+  myMonth = null;
+  mySettings = { seq: '', anchor: '' };
+  metaLoadedAt = 0;
+
+  clearDataCache();
+
+  LS.removeItem(USER_KEY);
+  SS.removeItem(USER_KEY);
+
+  var saved = readSavedLogin();
+
+  if (saved) {
+    writeSavedLogin(saved.id, saved.name, false);
+    $('login-empno').value = saved.id;
+    $('login-id').value = saved.name || '';
+    $('remember').checked = true;
+  }
+
+  switchSection('login-section');
+
+}
+
+/* ============ 시작 시 ============ */
+
+(function initSavedLogin() {
+
+  var saved = readSavedLogin();
+
+  if (!saved) return;
+
+  $('login-empno').value = saved.id;
+  $('login-id').value = saved.name || '';
+  $('remember').checked = true;
+
+  if (!saved.auto) return;
+
+  var u = getCurrentUser();
+
+  if (u.token && u.employeeId === saved.id && snapshotUsable()) {
+
+    $('welcome-name').textContent = u.name || '';
+
+    switchSection('main-section');
+
+    api({ action: 'login', employeeId: saved.id, name: saved.name || '', ver: snapVersionFor(saved.id) }, function (r) {
+
+      if (r && r.success) {
+
+        setCurrentUser({ employeeId: r.employeeId, name: r.name, token: r.token });
+
+        $('welcome-name').textContent = r.name;
+
+        if (r.snapshot) snapApply(r.employeeId, snapGen, r.snapshot);
+        else refreshSnapshot(true, null);
+
+      } else if (r && r.errorCode === 'LOGIN_FAILED') {
+
+        writeSavedLogin(saved.id, saved.name, false);
+        logout();
+        $('login-message').textContent = '자동 로그인 실패: ' + (r.message || '로그인 정보를 다시 확인해주세요.');
+
+      }
+
+    });
+
+    return;
+  }
+
+  doLogin(saved.id, saved.name || '', true);
+
+})();
+
+/* ============ 화면 스와이프: 달력·근무그룹 이전/다음 ============ */
+
+function attachSwipe(el, onPrev, onNext) {
+
+  if (!el) return;
+
+  var sx = 0, sy = 0, st = 0, ok = false, dxNow = 0;
+
+  function blocked(target) {
+    if (document.querySelector('.dia-modal.active, .schedule-edit-modal.active, .route-viewer.active')) return true;
+    for (var n = target; n && n !== el; n = n.parentNode) {
+      if (!n.tagName) continue;
+      var tag = n.tagName.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+      if (n.scrollWidth > n.clientWidth + 2) {
+        var ox = window.getComputedStyle(n).overflowX;
+        if (ox === 'auto' || ox === 'scroll') return true;
+      }
+    }
+    return false;
+  }
+
+  function resetPosition() {
+    el.style.transform = '';
+    el.style.transition = '';
+    el.style.willChange = '';
+  }
+
+  el.addEventListener('touchstart', function (e) {
+    if (e.touches.length !== 1 || blocked(e.target)) { ok = false; return; }
+    ok = true;
+    dxNow = 0;
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+    st = Date.now();
+    // 손가락을 따라 움직이도록 드래그 중에는 전환 효과를 끔
+    el.style.transition = 'none';
+    el.style.willChange = 'transform';
+  }, { passive: true });
+
+  el.addEventListener('touchmove', function (e) {
+    if (!ok || !e.touches.length) return;
+    var dx = e.touches[0].clientX - sx;
+    var dy = e.touches[0].clientY - sy;
+    // 세로 스크롤은 그대로 두고, 가로로 움직일 때만 손가락을 따라 이동
+    if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy) * 1.15) return;
+    dxNow = dx;
+    el.style.transform = 'translate3d(' + (dx * 0.85) + 'px,0,0)';
+  }, { passive: true });
+
+  el.addEventListener('touchcancel', function () {
+    if (!ok) return;
+    ok = false;
+    resetPosition();
+  }, { passive: true });
+
+  el.addEventListener('touchend', function (e) {
+    if (!ok || !e.changedTouches.length) return;
+    ok = false;
+
+    var dx = e.changedTouches[0].clientX - sx;
+    var dy = e.changedTouches[0].clientY - sy;
+    var elapsed = Date.now() - st;
+    var valid = elapsed <= 900 && Math.abs(dx) >= 60 && Math.abs(dx) >= Math.abs(dy) * 1.6;
+
+    // 손가락을 놓으면 화면 슬라이드 애니메이션 없이 바로 원위치
+    resetPosition();
+    if (!valid) return;
+
+    if (dx < 0) onNext(); else onPrev();
+  }, { passive: true });
+
+}
+
+(function initSwipe() {
+
+  attachSwipe($('schedule-section'),
+    function () {
+      if (calendarYear <= CAL_MIN_Y && calendarMonth === 0) return;
+      changeMonth(-1);
+    },
+    function () { changeMonth(1); });
+
+  attachSwipe($('group-section'),
+    function () { changeGroupWeek(-1); },
+    function () { changeGroupWeek(1); });
+
+  attachSwipe($('vacation-section'),
+    function () { if ($('vac-cal-wrap').style.display !== 'none') changeVacMonth(-1); },
+    function () { if ($('vac-cal-wrap').style.display !== 'none') changeVacMonth(1); });
+
+})();
+
+/* ============ 출근 알람 ============ */
+
+var alarmRingTimer = null;
+
+function alarmKey() {
+  return 'alarmCfg_' + (getCurrentUser().employeeId || '');
+}
+
+function getAlarmCfg() {
+
+  var cfg = { on: false, min: 60 };
+
+  try {
+
+    var raw = LS.getItem(alarmKey());
+
+    if (raw) {
+      var o = JSON.parse(raw);
+      cfg.on = !!o.on;
+      if (o.min >= 10 && o.min <= 180) cfg.min = Math.round(o.min / 10) * 10;
+    }
+
+  } catch (e) {}
+
+  return cfg;
+
+}
+
+function alarmMinText(min) {
+
+  var h = Math.floor(min / 60);
+  var m = min % 60;
+
+  return (h ? h + '시간' + (m ? ' ' + m + '분' : '') : m + '분') + ' 전';
+
+}
+
+function renderAlarmSub() {
+
+  var el = $('alarm-sub');
+
+  if (!el) return;
+
+  var cfg = getAlarmCfg();
+
+  el.textContent = cfg.on ? '※ 출근 ' + alarmMinText(cfg.min) + ' 알람 켜짐' : '※ 꺼짐 · 출근 시간 전에 알려드려요';
+
+}
+
+function findMyMember() {
+
+  if (!snapshotUsable()) return null;
+
+  var raw = snapshot.raw;
+  var myId = getCurrentUser().employeeId;
+
+  for (var i = 0; i < raw.members.length; i++) {
+    if (raw.members[i].employeeId === myId) return raw.members[i];
+  }
+
+  return null;
+
+}
+
+/* 그날 주간·야간 출근이 있으면 출근 정보, 비번·휴무·휴가·X는 null */
+function alarmWorkInfo(dateKey) {
+
+  var mb = findMyMember();
+
+  if (!mb) return null;
+
+  var d = snapDayWithAuto(dateKey, mb, snapshot.raw.dia || [], snapshot.ovMap);
+
+  if (!d || d.overrideType === 'status') return null;
+
+  var type = String(d.type || '').trim();
+
+  if (type !== '주' && type !== '야') return null;
+
+  var sm = parseHM(d.start);
+
+  if (isNaN(sm)) return null;
+
+  return { dia: String(d.dia || ''), type: type, start: String(d.start).trim(), end: String(d.end || '').trim(), startMin: sm };
+
+}
+
+function alarmStartMs(dateKey, startMin) {
+
+  var p = dateKey.split('-');
+
+  return Date.UTC(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10)) - 9 * 3600000 + startMin * 60000;
+
+}
+
+function alarmClockText(totalMin) {
+
+  var t = ((totalMin % 1440) + 1440) % 1440;
+
+  return pad2(Math.floor(t / 60)) + ':' + pad2(t % 60);
+
+}
+
+function alarmDaysChanged() {
+
+  try {
+    LS.setItem('alarmDays_' + (getCurrentUser().employeeId || ''), $('alarm-days').value);
+  } catch (e) {}
+
+}
+
+function openAlarmSettings() {
+
+  var cfg = getAlarmCfg();
+
+  try {
+    var sd = LS.getItem('alarmDays_' + (getCurrentUser().employeeId || ''));
+    if (sd) $('alarm-days').value = sd;
+  } catch (e) {}
+
+  $('alarm-on').checked = cfg.on;
+  $('alarm-range').value = String((180 - cfg.min) / 10);
+
+  alarmUiUpdate();
+
+  $('alarm-panel').classList.add('active');
+
+}
+
+function closeAlarmSettings() {
+  $('alarm-panel').classList.remove('active');
+}
+
+function alarmUiMin() {
+  return 180 - parseInt($('alarm-range').value, 10) * 10;
+}
+
+function alarmUiUpdate() {
+
+  var min = alarmUiMin();
+  var rng = $('alarm-range');
+  var pct = (parseInt(rng.value, 10) / 17) * 100;
+
+  rng.style.background = 'linear-gradient(to right,#1a73e8 ' + pct + '%,#dbe3ee ' + pct + '%)';
+
+  $('alarm-value').textContent = '출근 ' + alarmMinText(min);
+
+  var on = $('alarm-on').checked;
+
+  rng.disabled = !on;
+  rng.style.opacity = on ? '1' : '.45';
+  $('alarm-value').style.color = on ? '#1a73e8' : '#9aa5b4';
+
+  var t = todayKST();
+  var w = alarmWorkInfo(getDateKey(t.y, t.m, t.d));
+  var pv = $('alarm-preview');
+
+  if (!snapshotUsable()) {
+    pv.textContent = '근무 정보를 불러오는 중입니다.';
+  } else if (!w) {
+    pv.textContent = '오늘은 출근 근무(주간·야간)가 없어 알람이 울리지 않습니다.';
+  } else {
+    pv.innerHTML = '오늘 ' + esc(w.dia || (w.type === '주' ? '주간' : '야간')) + ' · 출근 <b>' + esc(w.start) + '</b><br>' +
+                   '알람 시각 <b>' + alarmClockText(w.startMin - min) + '</b>';
+  }
+
+}
+
+
+/* 폰 캘린더용 알람 파일(.ics): 웹이 꺼져 있어도 캘린더 앱이 알람을 울려줌 */
+
+function icsStamp(ms) {
+
+  var d = new Date(ms);
+
+  return d.getUTCFullYear() + pad2(d.getUTCMonth() + 1) + pad2(d.getUTCDate()) + 'T' +
+         pad2(d.getUTCHours()) + pad2(d.getUTCMinutes()) + '00Z';
+
+}
+
+function buildAlarmIcs(min, days) {
+
+  var t = todayKST();
+  var nowMs = Date.now();
+  var seq = Math.floor(nowMs / 1000);
+  var lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//KORAIL Railway Secretary//Alarm//KO',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'X-WR-CALNAME:출근 알람'
+  ];
+  var count = 0;
+
+  for (var add = 0; add < days; add++) {
+
+    var dt = new Date(Date.UTC(t.y, t.m, t.d + add));
+    var key = getDateKey(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate());
+    var w = alarmWorkInfo(key);
+
+    if (!w) continue;
+
+    var startMs = alarmStartMs(key, w.startMin);
+    var endMin = parseHM(w.end);
+    var diff = isNaN(endMin) ? 60 : endMin - w.startMin;
+
+    if (diff <= 0) diff += 1440;
+
+    var endMs = startMs + diff * 60000;
+    var title = '출근 ' + (w.dia || (w.type === '주' ? '주간' : '야간')) + ' ' + w.start;
+
+    lines.push(
+      'BEGIN:VEVENT',
+      'UID:korail-alarm-' + key.replace(/-/g, '') + '@railway-secretary',
+      'DTSTAMP:' + icsStamp(nowMs),
+      'SEQUENCE:' + seq,
+      'DTSTART:' + icsStamp(startMs),
+      'DTEND:' + icsStamp(endMs),
+      'SUMMARY:' + title,
+      'DESCRIPTION:출근 ' + alarmMinText(min) + ' 알람',
+      'BEGIN:VALARM',
+      'ACTION:DISPLAY',
+      'DESCRIPTION:' + title,
+      'TRIGGER:-PT' + min + 'M',
+      'END:VALARM',
+      'END:VEVENT'
+    );
+
+    count++;
+
+  }
+
+  lines.push('END:VCALENDAR');
+
+  return { text: lines.join('\r\n') + '\r\n', count: count };
+
+}
+
+function exportAlarmIcs() {
+
+  if (!snapshotUsable()) {
+    showToast('근무 정보를 불러온 뒤 다시 눌러주세요.');
+    return;
+  }
+
+  var min = alarmUiMin();
+  var days = parseInt($('alarm-days').value, 10) || 60;
+  var ics = buildAlarmIcs(min, days);
+
+  if (!ics.count) {
+    showToast('앞으로 ' + days + '일 안에 출근 근무가 없습니다.');
+    return;
+  }
+
+  downloadIcs(ics.text, '출근알람.ics');
+
+  showToast('출근 ' + alarmMinText(min) + ' 알람 ' + ics.count + '일치 파일을 만들었습니다. 열어서 캘린더에 추가하세요.');
+
+}
+
+function downloadIcs(text, fileName) {
+
+  try {
+
+    var blob = new Blob([text], { type: 'text/calendar;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+
+  } catch (e) {
+
+    window.open('data:text/calendar;charset=utf-8,' + encodeURIComponent(text));
+
+  }
+
+}
+
+/* 지금 바로 팝업·소리·진동·알림 테스트 */
+function testAlarmRing() {
+
+  if ('Notification' in window && Notification.permission === 'default') {
+    try { Notification.requestPermission(); } catch (e) {}
+  }
+
+  fireAlarm({ dia: '', type: '주', start: '', test: true }, '', alarmUiMin());
+
+}
+
+/* 약 2분 뒤 캘린더 알람이 울리는지 확인하는 테스트 일정 */
+function testAlarmIcs() {
+
+  var nowMs = Date.now();
+  var startMs = Math.ceil((nowMs + 3 * 60000) / 60000) * 60000;   // 약 3분 뒤 시작, 1분 전 알람
+  var lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//KORAIL Railway Secretary//Alarm Test//KO',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    'UID:korail-alarm-test-' + nowMs + '@railway-secretary',
+    'DTSTAMP:' + icsStamp(nowMs),
+    'DTSTART:' + icsStamp(startMs),
+    'DTEND:' + icsStamp(startMs + 10 * 60000),
+    'SUMMARY:출근 알람 테스트',
+    'DESCRIPTION:캘린더 알람 테스트 일정입니다. 확인 후 삭제하세요.',
+    'BEGIN:VALARM',
+    'ACTION:DISPLAY',
+    'DESCRIPTION:출근 알람 테스트',
+    'TRIGGER:-PT1M',
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ];
+
+  downloadIcs(lines.join('\r\n') + '\r\n', '출근알람_테스트.ics');
+
+  showToast('테스트 파일을 열어 캘린더에 추가하세요. 약 2분 뒤 알람이 울립니다.');
+
+}
+
+function saveAlarmSettings() {
+
+  var cfg = { on: $('alarm-on').checked, min: alarmUiMin() };
+
+  try {
+    LS.setItem(alarmKey(), JSON.stringify(cfg));
+  } catch (e) {}
+
+  if (cfg.on && 'Notification' in window && Notification.permission === 'default') {
+    try { Notification.requestPermission(); } catch (e) {}
+  }
+
+  closeAlarmSettings();
+  renderAlarmSub();
+
+  showToast(cfg.on ? '출근 ' + alarmMinText(cfg.min) + ' 알람을 켰습니다.' : '출근 알람을 껐습니다.');
+
+}
+
+function alarmBeep() {
+
+  try {
+
+    var AC = window.AudioContext || window.webkitAudioContext;
+
+    if (!AC) return;
+
+    var ctx = new AC();
+
+    for (var i = 0; i < 4; i++) {
+
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      var t0 = ctx.currentTime + i * 0.4;
+
+      osc.type = 'sine';
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.5, t0 + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.32);
+
+    }
+
+    setTimeout(function () { try { ctx.close(); } catch (e) {} }, 2200);
+
+  } catch (e) {}
+
+}
+
+function fireAlarm(w, key, min) {
+
+  var msg = w.test
+    ? '알람 테스트입니다. 소리·진동·알림이 오는지 확인하세요.'
+    : (w.dia || (w.type === '주' ? '주간' : '야간')) + ' · 출근 ' + w.start + ' (' + alarmMinText(min).replace(' 전', '') + ' 전)';
+
+  $('alarm-ring-body').innerHTML = (w.test ? '' : '출근 시간이 다가오고 있어요.<br>') + '<b>' + esc(msg) + '</b>';
+  $('alarm-ring-panel').classList.add('active');
+
+  var rounds = 0;
+
+  function ring() {
+    alarmBeep();
+    try { if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400]); } catch (e) {}
+  }
+
+  ring();
+
+  if (alarmRingTimer) clearInterval(alarmRingTimer);
+
+  alarmRingTimer = setInterval(function () {
+    rounds++;
+    if (rounds >= 10) { clearInterval(alarmRingTimer); alarmRingTimer = null; return; }
+    ring();
+  }, 3000);
+
+  try {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('출근 알람', { body: msg });
+    }
+  } catch (e) {}
+
+}
+
+function closeAlarmRing() {
+
+  if (alarmRingTimer) { clearInterval(alarmRingTimer); alarmRingTimer = null; }
+
+  $('alarm-ring-panel').classList.remove('active');
+
+}
+
+function runAlarmCheck() {
+
+  if (!getCurrentUser().token) return;
+
+  var cfg = getAlarmCfg();
+
+  if (!cfg.on || !snapshotUsable()) return;
+
+  var t = todayKST();
+  var nowMs = Date.now();
+  var firedKey = 'alarmFired_' + getCurrentUser().employeeId;
+
+  for (var add = 0; add < 2; add++) {      // 오늘, 내일 새벽 출근까지 확인
+
+    var dt = new Date(Date.UTC(t.y, t.m, t.d + add));
+    var key = getDateKey(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate());
+    var w = alarmWorkInfo(key);
+
+    if (!w) continue;
+
+    var startMs = alarmStartMs(key, w.startMin);
+    var alarmMs = startMs - cfg.min * 60000;
+
+    if (nowMs >= alarmMs && nowMs < startMs) {
+
+      var mark = key + '|' + cfg.min;
+
+      if (LS.getItem(firedKey) === mark) continue;
+
+      try { LS.setItem(firedKey, mark); } catch (e) {}
+
+      fireAlarm(w, key, cfg.min);
+
+      return;
+
+    }
+  }
+
+}
+
+(function initAlarm() {
+
+  setInterval(runAlarmCheck, 20000);
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) runAlarmCheck();
+  });
+
+  setTimeout(runAlarmCheck, 3000);
+
+})();
+
+
+
+/* ============ 공통 뒤로가기 / 왼쪽 가장자리 스와이프 ============
+   팝업은 닫고, 다른 화면은 직전 화면으로 복귀. 메인에서는 브라우저 뒤로 이동. */
+function closeTopOverlayForBack() {
+  var overlays = [
+    ['regulations-panel', closeRegulationsPanel],
+    ['route-viewer', closeRouteViewer],
+    ['alarm-ring-panel', closeAlarmRing],
+    ['schedule-edit-panel', closeScheduleEdit],
+    ['group-info-panel', closeGroupInfo],
+    ['pattern-info-panel', closePatternInfo],
+    ['privacy-consent-panel', closePrivacyConsent],
+    ['board-editor-panel', closeBoardEditor],
+    ['board-detail-panel', closeBoardDetail],
+    ['notice-panel', closeNoticePanel],
+    ['suggestion-panel', closeSuggestionPanel],
+    ['dia-panel', closeDiaSelector],
+    ['alarm-panel', closeAlarmSettings],
+    ['backup-panel', closeBackupPanel]
+  ];
+  for (var i = 0; i < overlays.length; i++) {
+    var el = document.getElementById(overlays[i][0]);
+    if (el && el.classList.contains('active')) {
+      overlays[i][1]();
+      return true;
+    }
+  }
+  return false;
+}
+
+function currentPageSection() {
+  var active = document.querySelector('.page-view.active');
+  return active ? active.id : 'main-section';
+}
+
+function returnToPreviousSection() {
+  var current = currentPageSection();
+  var previous = null;
+  while (appSectionHistory.length) {
+    var candidate = appSectionHistory.pop();
+    if (candidate && candidate !== current && document.getElementById(candidate)) {
+      previous = candidate;
+      break;
+    }
+  }
+  if (!previous) previous = current === 'signup-section' ? 'login-section' : 'main-section';
+  suppressSectionHistory = true;
+  switchSection(previous);
+  suppressSectionHistory = false;
+}
+
+function goBackToBrowserPreviousPage(fromPopState) {
+  // 일반 웹사이트는 브라우저의 홈 페이지 URL을 알 수 없으므로 브라우저 기록으로 이동합니다.
+  try {
+    if (fromPopState) history.back();
+    else history.go(-2); // 앱이 추가한 현재 페이지 상태 1개를 건너뛰고 이전 페이지로
+  } catch (e) {}
+}
+
+function handleAppBack(fromPopState) {
+  if (closeTopOverlayForBack()) return;
+  var section = currentPageSection();
+  if (section === 'main-section') {
+    goBackToBrowserPreviousPage(!!fromPopState);
+    return;
+  }
+  if (section === 'login-section') {
+    goBackToBrowserPreviousPage(!!fromPopState);
+    return;
+  }
+  returnToPreviousSection();
+}
+
+(function installGlobalBackNavigation() {
+  // 브라우저 뒤로가기: 비메인 화면에서는 앱 내부의 직전 화면으로, 메인에서는 브라우저 기록으로 이동
+  try { history.pushState({ railwaySecretaryBack: true }, '', location.href); } catch (e) {}
+  window.addEventListener('popstate', function () {
+    var section = currentPageSection();
+    if (section === 'main-section' || section === 'login-section') {
+      handleAppBack(true);
+      return;
+    }
+    handleAppBack(true);
+    // 앱 화면 안에서 뒤로가기를 처리했을 때만 상태를 복구해 브라우저를 이탈하지 않게 함
+    try { history.pushState({ railwaySecretaryBack: true }, '', location.href); } catch (e) {}
+  });
+
+  // 화면 왼쪽 가장자리에서 오른쪽으로 밀면 직전 화면으로 이동
+  var startX = 0, startY = 0, startedAtEdge = false;
+  document.addEventListener('touchstart', function (e) {
+    if (!e.touches || e.touches.length !== 1) { startedAtEdge = false; return; }
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    startedAtEdge = startX <= 28;
+  }, { passive: true });
+  document.addEventListener('touchend', function (e) {
+    if (!startedAtEdge || !e.changedTouches || !e.changedTouches.length) return;
+    startedAtEdge = false;
+    var dx = e.changedTouches[0].clientX - startX;
+    var dy = e.changedTouches[0].clientY - startY;
+    if (dx >= 85 && Math.abs(dx) > Math.abs(dy) * 1.4) handleAppBack(false);
+  }, { passive: true });
+})();
+
+
+
+</script>
+
+<script>
+// Prevent Android/WebView text-selection handles and long-press context menus
+// while preserving normal interaction with form controls and existing long-press handlers.
+(function () {
+  function isEditable(el) {
+    return !!(el && el.closest && el.closest('input, textarea, select, [contenteditable="true"]'));
+  }
+  document.addEventListener('selectstart', function (e) {
+    if (!isEditable(e.target)) e.preventDefault();
+  }, true);
+  document.addEventListener('contextmenu', function (e) {
+    if (!isEditable(e.target)) e.preventDefault();
+  }, true);
+  document.addEventListener('dragstart', function (e) {
+    if (!isEditable(e.target)) e.preventDefault();
+  }, true);
+})();
+</script>
+</body>
+</html>
