@@ -1104,30 +1104,29 @@ document.addEventListener('DOMContentLoaded', function () {
   setInterval(tick, 1000);
 
 })();
-/* 서버 보관함에 있는 근무 교환 내용을 이 폰에 반영 */
+/* 서버 보관함에 있는 근무 교환 내용을 이 폰에 반영
+   (자동 새로고침·백업 직전·화면 복귀 때도 호출되므로 보관함부터 바로 확인한다) */
 function syncPending(done) {
   var u = getCurrentUser();
   if (!u.token) { if (done) done(); return; }
-  refreshSnapshot(true, function (ok) {
-    if (!ok || !snapshotUsable()) { if (done) done(); return; }
-    api({ action: 'getPending', employeeId: u.employeeId, token: u.token }, function (r) {
-      var applied = 0;
-      if (r && r.success && r.items && r.items.length) {
-        r.items.forEach(function (it) {
-          if (it[1] === 'clear') snapRemoveOverride(u.employeeId, it[0]);
-          else snapUpsertOverride(u.employeeId, it[0], it[1], it[2], it[3], it[4], it[5]);
-          applied++;
-        });
-        showToast('근무 교환 ' + r.items.length + '일치가 반영되었습니다.');
-      }
+  api({ action: 'getPending', employeeId: u.employeeId, token: u.token }, function (r) {
+    var applied = 0;
+    if (r && r.success && r.items && r.items.length) {
+      r.items.forEach(function (it) {
+        if (it[1] === 'clear') snapRemoveOverride(u.employeeId, it[0]);
+        else snapUpsertOverride(u.employeeId, it[0], it[1], it[2], it[3], it[4], it[5]);
+        applied++;
+      });
+      showToast('근무 교환 ' + r.items.length + '일치가 반영되었습니다.');
+    }
+    function finish() {
       if (applied) {
-        try {
-          if (typeof refreshUiAfterSwap === 'function') refreshUiAfterSwap();
-          else if (typeof onSnapshotUpdated === 'function') onSnapshotUpdated();
-        } catch (e) {}
+        try { refreshUiAfterSwap(); } catch (e) {}
       }
       if (done) done();
-    });
+    }
+    if (applied) refreshSnapshot(true, function () { finish(); });
+    else finish();
   });
 }
 /* 수동 백업 및 실시간 동기화 (새로고침 버튼 동작) */
@@ -1434,6 +1433,18 @@ function snapCompareJson(raw) {
   return JSON.stringify({ d: raw.dia, m: raw.members, o: raw.overrides });
 }
 
+/* 서버 DB의 근무 구분이 잘못된 다이아를 화면에서 바로잡음 (12401 = 주간) */
+var DIA_TYPE_FIX = { '12401': '주' };
+
+function fixDiaTypes(list) {
+
+  for (var i = 0; i < list.length; i++) {
+    var k = String(list[i].dia || '').trim().toUpperCase();
+    if (DIA_TYPE_FIX[k]) list[i].type = DIA_TYPE_FIX[k];
+  }
+
+}
+
 function buildSnapIndex() {
 
   var map = {};
@@ -1461,7 +1472,7 @@ function buildSnapIndex() {
   snapshot.ovMap = map;
 
   /* 다이아 목록은 서버 스냅샷과 항상 같게 유지 (근무표·근무그룹이 먼저 열려도 교환 근무 정보가 뜨도록) */
-  if (snapshot.raw && snapshot.raw.dia && snapshot.raw.dia.length) diaList = snapshot.raw.dia;
+  if (snapshot.raw && snapshot.raw.dia && snapshot.raw.dia.length) { fixDiaTypes(snapshot.raw.dia); diaList = snapshot.raw.dia; }
 
 }
 
@@ -2151,7 +2162,102 @@ function stampNow() {
 
 }
 
-/* 이 폰의 내 데이터를 화면 계산용 스냅샷에 덮어씀 (다른 사람 데이터는 서버 백업 그대로) */
+/* ============ 근무 교환 상대 쪽 변경 내용 보관 ============
+   교환하면 상대의 근무도 바뀌어야 하지만, 상대 폰이 서버 보관함을 가져가기 전에는
+   서버 데이터에 상대 변경이 없을 수 있습니다. 그동안 새로고침해도 상대 칸이 원래대로
+   돌아가지 않도록 이 폰에 따로 보관해 두었다가, 서버가 같은 내용을 가지면 자동으로 정리합니다. */
+
+var SHADOW_PREFIX = 'railwaySwapShadow_v1_';
+var SHADOW_TTL_MS = 14 * 86400000;
+
+function readShadow(id) {
+
+  try {
+    var a = JSON.parse(LS.getItem(SHADOW_PREFIX + id) || '[]');
+    return Array.isArray(a) ? a : [];
+  } catch (e) {
+    return [];
+  }
+
+}
+
+function writeShadow(id, a) {
+  try { LS.setItem(SHADOW_PREFIX + id, JSON.stringify(a)); } catch (e) {}
+}
+
+function shadowPut(myId, empId, items) {
+
+  var list = readShadow(myId);
+  var now = Date.now();
+  var dates = {};
+
+  items.forEach(function (it) { dates[it.date] = true; });
+
+  list = list.filter(function (s) {
+    return !(String(s.e) === String(empId) && dates[s.date]);
+  });
+
+  items.forEach(function (it) {
+    list.push({
+      e: String(empId), date: it.date, type: it.type,
+      dia: it.dia || '', status: it.status || '',
+      pid: it.partnerId ? String(it.partnerId) : '',
+      pname: it.partnerName ? String(it.partnerName) : '',
+      t: now
+    });
+  });
+
+  writeShadow(myId, list);
+
+}
+
+function applyShadowToSnapshot() {
+
+  if (!snapshot || !snapshot.raw) return;
+
+  var myId = snapshot.owner;
+  var list = readShadow(myId);
+
+  /* 이전에 끼워 넣은 보관 행(9번째 값 'shadow')은 먼저 빼고, 진짜 서버 행과 비교 */
+  var rows = (snapshot.raw.overrides || []).filter(function (r) { return r[8] !== 'shadow'; });
+  var now = Date.now();
+  var keep = [];
+
+  list.forEach(function (s) {
+
+    if (now - s.t > SHADOW_TTL_MS) return;
+
+    var srv = null;
+
+    for (var i = 0; i < rows.length; i++) {
+      if (String(rows[i][0]) === s.e && String(rows[i][1] || '').slice(0, 10) === s.date) { srv = rows[i]; break; }
+    }
+
+    if (s.type === 'clear') {
+      if (!srv) return;                                   // 서버도 이미 지워짐 → 보관 종료
+    } else if (srv && String(srv[2]) === s.type && String(srv[3] || '') === s.dia && String(srv[4] || '') === s.status) {
+      return;                                             // 서버가 같은 내용을 가짐 → 보관 종료
+    }
+
+    keep.push(s);
+
+    rows = rows.filter(function (r) {
+      return !(String(r[0]) === s.e && String(r[1] || '').slice(0, 10) === s.date);
+    });
+
+    if (s.type !== 'clear') {
+      rows.push([s.e, s.date, s.type, s.dia, s.status, stampNow(), s.pid, s.pname, 'shadow']);
+    }
+
+  });
+
+  snapshot.raw.overrides = rows;
+
+  writeShadow(myId, keep);
+
+}
+
+/* 이 폰의 내 데이터를 화면 계산용 스냅샷에 덮어씀 (다른 사람 데이터는 서버 백업 그대로, 교환 상대 보관분은 위에 얹음) */
 function mergeLocalIntoSnapshot() {
 
   if (!snapshot || !snapshot.raw) return;
@@ -2159,24 +2265,28 @@ function mergeLocalIntoSnapshot() {
   var id = snapshot.owner;
   var loc = readLocal(id);
 
-  if (!loc) return;
+  if (loc) {
 
-  var members = snapshot.raw.members || [];
+    var members = snapshot.raw.members || [];
 
-  for (var i = 0; i < members.length; i++) {
-    if (members[i].employeeId === id) {
-      members[i].seq = String(loc.seq || '');
-      members[i].anchor = String(loc.anchor || '');
+    for (var i = 0; i < members.length; i++) {
+      if (members[i].employeeId === id) {
+        members[i].seq = String(loc.seq || '');
+        members[i].anchor = String(loc.anchor || '');
+      }
     }
+
+    var rows = (snapshot.raw.overrides || []).filter(function (r) { return r[0] !== id; });
+
+    for (var j = 0; j < loc.overrides.length; j++) {
+      rows.push([id].concat(loc.overrides[j]));
+    }
+
+    snapshot.raw.overrides = rows;
+
   }
 
-  var rows = (snapshot.raw.overrides || []).filter(function (r) { return r[0] !== id; });
-
-  for (var j = 0; j < loc.overrides.length; j++) {
-    rows.push([id].concat(loc.overrides[j]));
-  }
-
-  snapshot.raw.overrides = rows;
+  applyShadowToSnapshot();
 
   buildSnapIndex();
 
@@ -2491,6 +2601,7 @@ function applyMetaFromSnapshot() {
   }
 
   diaList = raw.dia || [];
+  fixDiaTypes(diaList);
   mySettings = { seq: mine ? (mine.seq || '') : '', anchor: mine ? (mine.anchor || '') : '' };
 
 }
@@ -3326,7 +3437,8 @@ function startGroupAutoRefresh() {
 
   groupTimer = setInterval(function () {
     if (document.hidden) return;
-    loadGroupSchedule(true);
+    /* 상대방이 교환한 내용이 보관함에 있으면 먼저 가져온 뒤 표를 새로 그림 */
+    syncPending(function () { loadGroupSchedule(true); });
   }, GROUP_REFRESH_MS);
 
 }
@@ -3688,7 +3800,9 @@ function resetSwapRange() {
   renderSwapCalendars();
 }
 
-/* 근무교환/되돌리기 결과를 두 사람 달력에 바로 반영 (items: [{date,type,dia,status}], type 'clear' = 직접변경 삭제) */
+/* 근무교환/되돌리기 결과를 두 사람 달력에 바로 반영 (items: [{date,type,dia,status}], type 'clear' = 직접변경 삭제)
+   - 내 쪽: 이 폰의 내 근무 데이터에 저장
+   - 상대 쪽: 서버가 상대 데이터를 따라잡을 때까지 이 폰에 보관해 계속 보여줌 */
 function swapApplyLocal(employeeId, items) {
   if (!items || !items.length) return;
   var me = getCurrentUser().employeeId;
@@ -3699,21 +3813,9 @@ function swapApplyLocal(employeeId, items) {
     });
     return;
   }
+  shadowPut(me, employeeId, items);
   if (!snapshot || !snapshot.raw) return;
-  var dates = {};
-  items.forEach(function (it) { dates[it.date] = it; });
-  var rows = (snapshot.raw.overrides || []).filter(function (r) {
-    return !(String(r[0]) === String(employeeId) && dates[String(r[1] || '').slice(0, 10)]);
-  });
-  items.forEach(function (it) {
-    if (it.type !== 'clear') {
-      rows.push([
-        employeeId, it.date, it.type, it.dia || '', it.status || '', stampNow(),
-        it.partnerId ? String(it.partnerId) : '', it.partnerName ? String(it.partnerName) : ''
-      ]);
-    }
-  });
-  snapshot.raw.overrides = rows;
+  applyShadowToSnapshot();
   buildSnapIndex();
   persistSnapshot();
 }
@@ -4977,6 +5079,7 @@ function scheduleAutoBackup(delay) {
 
 }
 
+/* 백업 전에 서버 보관함(상대가 교환한 내용)을 먼저 가져와 덮어쓰기를 막는다 */
 function runAutoBackup() {
 
   autoBackupTimer = null;
@@ -4985,26 +5088,30 @@ function runAutoBackup() {
 
   if (!u.token) return;
 
-  var loc = readLocal(u.employeeId);
+  syncPending(function () {
 
-  if (!loc || !loc.dirty) return;
+    var loc = readLocal(u.employeeId);
 
-  if (autoBackupBusy) { scheduleAutoBackup(3000); return; }
+    if (!loc || !loc.dirty) return;
 
-  backupNow(function (r) {
+    if (autoBackupBusy) { scheduleAutoBackup(3000); return; }
 
-    if (!r || !r.success) {
-      if (!autoBackupFailShown) {
-        showToast('서버 백업에 실패했습니다. 연결되면 자동으로 다시 시도합니다.');
-        autoBackupFailShown = true;
+    backupNow(function (r) {
+
+      if (!r || !r.success) {
+        if (!autoBackupFailShown) {
+          showToast('서버 백업에 실패했습니다. 연결되면 자동으로 다시 시도합니다.');
+          autoBackupFailShown = true;
+        }
+      } else {
+        autoBackupFailShown = false;
       }
-    } else {
-      autoBackupFailShown = false;
-    }
 
-    var p = $('backup-panel');
+      var p = $('backup-panel');
 
-    if (p && p.classList.contains('active')) renderBackupInfo();
+      if (p && p.classList.contains('active')) renderBackupInfo();
+
+    });
 
   });
 
@@ -5146,7 +5253,7 @@ function confirmResetAllData() {
       var keys = [];
       for (var i = 0; i < LS.length; i++) {
         var key = LS.key(i);
-        if (key && (key.indexOf('railwayLocal_v1_') === 0 || key === 'railwaySecretarySnapshot_v2')) keys.push(key);
+        if (key && (key.indexOf('railwayLocal_v1_') === 0 || key.indexOf(SHADOW_PREFIX) === 0 || key === 'railwaySecretarySnapshot_v2')) keys.push(key);
       }
       keys.forEach(function (key) { LS.removeItem(key); });
     } catch (e) {}
@@ -5761,6 +5868,7 @@ function confirmDeleteAccount() {
     mySettings = { seq: '', anchor: '' };
     metaLoadedAt = 0;
     try { LS.removeItem(localKey(u.employeeId)); } catch (e) {}
+    try { LS.removeItem(SHADOW_PREFIX + u.employeeId); } catch (e) {}
     clearDataCache();
     LS.removeItem(USER_KEY);
     SS.removeItem(USER_KEY);
