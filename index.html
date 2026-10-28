@@ -454,6 +454,20 @@ input, textarea, select, [contenteditable="true"] {
 }
 </style>
 
+
+<style id="group-swap-four-rows-enforced">
+/* 근무교환 대상 목록: 팝업에서 정확히 4행이 보이고 초과 인원은 목록 안에서 스크롤 */
+#group-swap-select-panel #group-swap-user-list.group-swap-user-list{
+  display:flex !important; flex-direction:column !important; flex-wrap:nowrap !important;
+  gap:8px !important; height:200px !important; min-height:0 !important;
+  max-height:200px !important; overflow-y:auto !important; overflow-x:hidden !important;
+  box-sizing:border-box !important; align-items:stretch !important;
+}
+#group-swap-select-panel #group-swap-user-list .group-swap-user-btn{
+  display:flex !important; flex:0 0 44px !important; height:44px !important; min-height:44px !important;
+  max-height:44px !important; width:100% !important; box-sizing:border-box !important;
+}
+</style>
 </head>
 
 <body>
