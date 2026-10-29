@@ -3146,6 +3146,17 @@ var DIA_IMAGE_FILES = {
   '12901':'dia_12901.png', '12902':'dia_12902.png', '12932':'dia_12932.png', '12B07':'dia_12B07.png', '12937':'dia_12937.png'
 };
 
+/* 다이어 정보 팝업에서 행로표가 늦게 뜨지 않도록 페이지 초기화 시 이미지들을 미리 캐시에 준비 */
+var DIA_IMAGE_PRELOAD_CACHE = {};
+(function preloadDiaImages() {
+  Object.keys(DIA_IMAGE_FILES).forEach(function (diaNo) {
+    var img = new Image();
+    DIA_IMAGE_PRELOAD_CACHE[diaNo] = img;
+    img.decoding = 'async';
+    img.src = DIA_IMAGE_BASE + encodeURIComponent(DIA_IMAGE_FILES[diaNo]);
+  });
+})();
+
 function dateKeyForSelectedDay() {
   if (!selDate) return '';
   return getDateKey(selDate.y, selDate.m, selDate.d);
@@ -4421,7 +4432,7 @@ function openGroupInfo(k, key) {
 
         html += '<div class="pi-route">' +
           '<div class="pi-route-cap">행로표</div>' +
-          '<img src="' + url + '" alt="DIA ' + esc(diaNo) + ' 행로표" data-dia="' + esc(diaNo) + '" ' +
+          '<img src="' + url + '" alt="DIA ' + esc(diaNo) + ' 행로표" data-dia="' + esc(diaNo) + '" loading="eager" decoding="async" fetchpriority="high" ' +
           'onclick="openRouteViewer(this.getAttribute(\'data-dia\'))" ' +
           'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
           '<div class="pi-none" style="display:none">이미지를 불러오지 못했습니다.</div></div>';
@@ -5056,7 +5067,7 @@ function closePatternInfo() {
   function detachBoardPages() {
     var host = document.getElementById('main-container');
     if (!host) return;
-    ['notice-panel', 'suggestion-panel'].forEach(function (id) {
+    ['notice-panel', 'suggestion-panel', 'board-editor-panel', 'board-detail-panel'].forEach(function (id) {
       var el = document.getElementById(id);
       /* 게시판을 body 바깥에 두면 화면 오른쪽으로 분리되므로,
          다른 .page-view 화면처럼 main-container 안에서 같은 흐름을 사용한다. */
