@@ -582,27 +582,32 @@ html body #main-section .menu-grid > .menu-btn img.menu-art {
   html body #main-section .menu-grid > .menu-btn { min-height: 78px !important; padding: 3px 0 !important; font-size: 10px !important; }
   html body #main-section .menu-grid > .menu-btn img.menu-art { width: 42px !important; height: 42px !important; }
 }
-<style id="menu-grid-4col">
-/* 메인 메뉴: 한 줄 4개 × 2줄 (갤럭시 S25 기준) */
-.menu-grid{
-  grid-template-columns:repeat(4,minmax(0,1fr))!important;
-  gap:10px 4px!important;
+</style>
+
+
+<style id="galaxy-s25-main-menu-final-override">
+/* 최종 우선순위 보정: 메인 메뉴 한 행 4개, 총 2행 */
+html body #main-section.page-view > div.menu-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  grid-auto-flow: row !important;
+  grid-auto-rows: minmax(78px, auto) !important;
+  gap: 6px 3px !important;
+  width: 100% !important; max-width: 100% !important;
+  box-sizing: border-box !important;
 }
-.menu-btn{
-  min-height:92px!important;
-  padding:6px 0!important;
-  gap:6px!important;
-  font-size:12px!important;
-  letter-spacing:-.6px;
-  white-space:nowrap;
+html body #main-section.page-view > div.menu-grid > button.menu-btn {
+  display: flex !important; flex-direction: column !important;
+  align-items: center !important; justify-content: center !important;
+  width: 100% !important; min-width: 0 !important; max-width: 100% !important;
+  min-height: 78px !important; height: auto !important;
+  margin: 0 !important; padding: 3px 0 !important; gap: 4px !important;
+  font-size: 10px !important; line-height: 1.15 !important;
+  box-sizing: border-box !important;
 }
-/* 아이콘이 칸 폭에 맞게 줄어들도록 */
-.menu-btn .menu-art{
-  width:100%!important;
-  max-width:62px;
-  height:auto!important;
-  aspect-ratio:88/72;
-  object-fit:contain;
+html body #main-section.page-view > div.menu-grid > button.menu-btn img.menu-art {
+  display: block !important; width: 42px !important; height: 42px !important;
+  max-width: 100% !important; object-fit: contain !important; flex: 0 0 auto !important;
 }
 </style>
 
