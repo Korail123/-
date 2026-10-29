@@ -468,6 +468,50 @@ input, textarea, select, [contenteditable="true"] {
   max-height:44px !important; width:100% !important; box-sizing:border-box !important;
 }
 </style>
+
+<style id="main-menu-four-rows-and-swap-user-grid">
+/* 메인 메뉴: 화면 크기와 관계없이 2열로 배치해 8개 메뉴가 정확히 4행 */
+#main-section .menu-grid{
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  grid-auto-flow:row !important;
+  gap:8px !important;
+}
+#main-section .menu-grid > .menu-btn{min-width:0 !important;width:100% !important;box-sizing:border-box !important;}
+/* 근무교환 대상: 세로 한 줄 대신 4열 카드형, 인원 수에 따라 다음 행 생성 */
+#group-swap-select-panel #group-swap-user-list.group-swap-user-list{
+  display:grid !important;
+  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+  grid-auto-flow:row !important;
+  align-items:stretch !important;
+  gap:8px !important;
+  height:auto !important; min-height:0 !important; max-height: min(52vh, 360px) !important;
+  overflow-y:auto !important; overflow-x:hidden !important;
+  box-sizing:border-box !important; padding:2px !important;
+}
+#group-swap-select-panel #group-swap-user-list .group-swap-user-btn{
+  display:flex !important; flex:initial !important;
+  flex-direction:column !important; align-items:center !important; justify-content:center !important;
+  gap:3px !important; width:100% !important; min-width:0 !important;
+  height:68px !important; min-height:68px !important; max-height:68px !important;
+  padding:5px 2px !important; box-sizing:border-box !important;
+  text-align:center !important; overflow:hidden !important;
+}
+#group-swap-select-panel #group-swap-user-list .group-swap-user-btn > span{
+  display:block !important; width:100% !important; min-width:0 !important;
+  overflow-wrap:anywhere !important; word-break:break-word !important;
+  white-space:normal !important; line-height:1.25 !important; font-size:12px !important;
+}
+#group-swap-select-panel #group-swap-user-list .group-swap-user-btn .group-swap-user-id{
+  font-size:10px !important; opacity:.8 !important;
+}
+@media(max-width:480px){
+  #group-swap-select-panel #group-swap-user-list.group-swap-user-list{grid-template-columns:repeat(4,minmax(0,1fr)) !important;gap:5px !important;max-height:52vh !important;}
+  #group-swap-select-panel #group-swap-user-list .group-swap-user-btn{height:64px !important;min-height:64px !important;max-height:64px !important;padding:4px 1px !important;}
+  #group-swap-select-panel #group-swap-user-list .group-swap-user-btn > span{font-size:11px !important;}
+  #group-swap-select-panel #group-swap-user-list .group-swap-user-btn .group-swap-user-id{font-size:9px !important;}
+}
+</style>
 </head>
 
 <body>
