@@ -582,6 +582,28 @@ html body #main-section .menu-grid > .menu-btn img.menu-art {
   html body #main-section .menu-grid > .menu-btn { min-height: 78px !important; padding: 3px 0 !important; font-size: 10px !important; }
   html body #main-section .menu-grid > .menu-btn img.menu-art { width: 42px !important; height: 42px !important; }
 }
+<style id="menu-grid-4col">
+/* 메인 메뉴: 한 줄 4개 × 2줄 (갤럭시 S25 기준) */
+.menu-grid{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:10px 4px!important;
+}
+.menu-btn{
+  min-height:92px!important;
+  padding:6px 0!important;
+  gap:6px!important;
+  font-size:12px!important;
+  letter-spacing:-.6px;
+  white-space:nowrap;
+}
+/* 아이콘이 칸 폭에 맞게 줄어들도록 */
+.menu-btn .menu-art{
+  width:100%!important;
+  max-width:62px;
+  height:auto!important;
+  aspect-ratio:88/72;
+  object-fit:contain;
+}
 </style>
 
 </head>
