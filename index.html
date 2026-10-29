@@ -512,6 +512,78 @@ input, textarea, select, [contenteditable="true"] {
   #group-swap-select-panel #group-swap-user-list .group-swap-user-btn .group-swap-user-id{font-size:9px !important;}
 }
 </style>
+
+<style id="galaxy-s25-main-menu-layout-fix">
+/* Galaxy S25 모바일 메인 메뉴: 2열 × 4행 */
+html body #main-section.page-view > .menu-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  grid-auto-columns: auto !important;
+  grid-auto-flow: row !important;
+  grid-auto-rows: minmax(100px, auto) !important;
+  gap: 8px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+html body #main-section.page-view > .menu-grid > button.menu-btn {
+  display: flex !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  min-height: 100px !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+@media (max-width: 600px) {
+  html body #main-section.page-view > .menu-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+  html body #main-section.page-view > .menu-grid > button.menu-btn {
+    min-height: 96px !important; padding: 6px 2px !important;
+  }
+  html body #main-section.page-view > .menu-grid > button.menu-btn img.menu-art {
+    width: 64px !important; height: 58px !important; object-fit: contain !important;
+  }
+}
+</style>
+
+
+<style id="galaxy-s25-main-menu-4columns-2rows-final">
+/* 갤럭시 S25 메인화면: 한 행 4개 × 2행 */
+html body #main-section .menu-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  grid-auto-flow: row !important;
+  grid-auto-rows: minmax(84px, auto) !important;
+  gap: 6px 4px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: 0 !important; margin-right: 0 !important;
+  box-sizing: border-box !important;
+}
+html body #main-section .menu-grid > .menu-btn {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important; justify-content: center !important;
+  width: 100% !important; min-width: 0 !important; max-width: 100% !important;
+  min-height: 84px !important; height: auto !important;
+  margin: 0 !important; padding: 4px 1px !important;
+  gap: 4px !important; font-size: 11px !important; line-height: 1.15 !important;
+  box-sizing: border-box !important;
+}
+html body #main-section .menu-grid > .menu-btn img.menu-art {
+  display: block !important; width: 48px !important; height: 48px !important;
+  max-width: 100% !important; object-fit: contain !important; flex: 0 0 auto !important;
+}
+@media (max-width: 600px) {
+  html body #main-section .menu-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 5px 3px !important; }
+  html body #main-section .menu-grid > .menu-btn { min-height: 78px !important; padding: 3px 0 !important; font-size: 10px !important; }
+  html body #main-section .menu-grid > .menu-btn img.menu-art { width: 42px !important; height: 42px !important; }
+}
+</style>
+
 </head>
 
 <body>
