@@ -641,7 +641,7 @@ html body #main-section.page-view > div.menu-grid > button.menu-btn img.menu-art
 
 <!-- 최상단 헤더 영역 (새로고침 버튼 & 시계) -->
 <div class="top-bar">
-  <button type="button" class="refresh-btn" onclick="triggerManualSync()" title="새로고침 (다른 사람 근무 동기화)" aria-label="새로고침"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg></button>
+  <button type="button" class="refresh-btn" onclick="window.location.reload()" title="새로고침" aria-label="새로고침"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg></button>
   <div id="liveClock" class="live-clock">시간을 불러오는 중...</div>
 </div>
 
@@ -2744,7 +2744,7 @@ function adoptBackupIfNoLocal(owner) {
 
 }
 
-/* 변경 저장: 이 폰에 저장하고 곧바로 서버 백업을 예약 (실패하면 dirty 표시가 남아 나중에 자동 재시도) */
+/* 변경사항은 우선 이 기기에 저장하고, 서버 자동백업은 30분 주기로 실행 */
 function saveLocalChange(id, loc) {
 
   loc.dirty = true;
@@ -2752,7 +2752,7 @@ function saveLocalChange(id, loc) {
 
   writeLocal(id, loc);
 
-  scheduleAutoBackup(1500);
+  /* 개별 수정 직후에는 서버에 올리지 않는다. 30분 주기 백업에서 처리한다. */
 
 }
 
@@ -5671,9 +5671,12 @@ function backupNow(cb) {
 
 function scheduleAutoBackup(delay) {
 
-  if (autoBackupTimer) clearTimeout(autoBackupTimer);
-
-  autoBackupTimer = setTimeout(runAutoBackup, delay || 1500);
+  /* 기존 기능 호출부와의 호환성을 위해 함수는 유지한다.
+     자동 서버 백업은 개별 호출 시점이 아니라 30분 주기 타이머에서만 실행한다. */
+  if (autoBackupTimer) {
+    clearTimeout(autoBackupTimer);
+    autoBackupTimer = null;
+  }
 
 }
 
@@ -5715,25 +5718,19 @@ function runAutoBackup() {
 
 }
 
-/* 백업 못 한 변경이 남아 있으면 다시 시도 (시작할 때, 인터넷이 다시 연결될 때, 화면으로 돌아올 때, 1분마다) */
+/* 자동 서버 백업은 30분마다 실행한다.
+   개별 수정 직후, 온라인 복귀 직후에는 즉시 백업하지 않는다. */
 (function initAutoBackup() {
 
-  setTimeout(runAutoBackup, 4000);
+  setInterval(runAutoBackup, 30 * 60 * 1000);
 
-  setInterval(runAutoBackup, 60000);
-
-  window.addEventListener('online', function () { runAutoBackup(); });
-
-  /* 실시간 동기화: 화면이 켜져 있는 동안 30초마다 상대가 한 교환을 가져오고 서버 변경분을 반영 */
+  /* 실시간 동기화: 화면이 켜져 있는 동안 30초마다 상대가 한 교환을 가져오고 서버 변경분을 반영
+     이 동기화는 백업본을 갱신하는 작업이 아니라 교환 데이터 반영 작업이다. */
   setInterval(function () {
     var cu = getCurrentUser();
     if (document.hidden || !cu || !cu.token || autoBackupBusy) return;
     syncPending(function () { refreshSnapshot(true, null); });
   }, 30000);
-
-  document.addEventListener('visibilitychange', function () {
-    if (!document.hidden) runAutoBackup();
-  });
 
 })();
 
@@ -5787,26 +5784,19 @@ function doRestore() {
       return;
     }
 
-    /* 현재 폰 데이터와 서버에 기록된 내 근무변경(교환 포함)을 백업과 합쳐서, 불러오기로 교환 기록이 사라지지 않게 함 */
+    /* 복원 직전 데이터는 별도 보관하고, 서버 백업 시점의 데이터로 정확히 교체한다.
+       현재 기기/실시간 스냅샷의 최신 수정사항을 섞으면 복원이 무효화되므로 병합하지 않는다. */
     keepLocalCopy(u.employeeId, '불러오기 직전');
     var curLoc = ensureLocal(u.employeeId);
-    var serverRows = [];
-    if (snapshot && snapshot.raw && snapshot.owner === u.employeeId) {
-      (snapshot.raw.overrides || []).forEach(function (row) {
-        if (String(row[0]) === String(u.employeeId) && row[9] !== 'shadow' && row[8] !== 'shadow') serverRows.push(row.slice(1));
-      });
-    }
-    var mergedRows = mergeOverrideRows(curLoc.overrides, mergeOverrideRows(r.overrides || [], serverRows));
     writeLocal(u.employeeId, {
-      seq: String(r.seq || curLoc.seq || ''),
-      anchor: String(r.anchor || curLoc.anchor || ''),
-      overrides: mergedRows,
+      seq: String(r.seq || ''),
+      anchor: String(r.anchor || ''),
+      overrides: Array.isArray(r.overrides) ? r.overrides : [],
       backedUpAt: r.updatedAt || stampNow(),
       base: true,
-      dirty: true,
+      dirty: false,
       rev: (curLoc.rev || 0) + 1
     });
-    scheduleAutoBackup(800);
 
     mySettings = { seq: String(r.seq || ''), anchor: String(r.anchor || '') };
     myMonth = null;
