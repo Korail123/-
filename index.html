@@ -365,8 +365,9 @@ input, textarea, select, [contenteditable="true"] {
 .swap-day .sd-edge{display:inline-block;font-size:8px;line-height:1;font-weight:800;padding:1px 3px;border-radius:4px;background:rgba(255,255,255,.28);color:#fff;white-space:nowrap;letter-spacing:-.4px}
  .swap-pick-date{width:100%;padding:2px 1px;border:0;color:inherit;font:inherit;text-align:center;cursor:pointer;} .swap-pick-date:focus-visible{outline:2px solid #1769d2;outline-offset:1px;}
 .swap-day .sd-duty{font-size:12px;font-weight:800;color:#1769d2;overflow:visible;max-width:100%;letter-spacing:-.3px;line-height:1.15;flex:none}
-.swap-day .sd-duty.duty-day{color:#c28b00}.swap-day .sd-duty.duty-off{color:#d32f2f}.swap-day .sd-duty.duty-night{color:#1769d2}
-.swap-day .sd-duty.duty-bi{color:#6c757d}
+/* 근무표·근무그룹과 같은 색: 주간=노랑, 야간·비번=파랑, 휴무·휴가·휴직 등=빨강 */
+.swap-day .sd-duty.duty-day{color:#e5a800}.swap-day .sd-duty.duty-off{color:#e53935}.swap-day .sd-duty.duty-night{color:#1a73e8}
+.swap-day .sd-duty.duty-bi{color:#1a73e8}.swap-day .sd-duty.duty-none{color:#98a2b3}
 .swap-day.in-range{background:#dceeff;outline:1px solid #85bfff}
 .swap-day.range-edge{background:#1769d2;outline:2px solid #0f4fa8}
 .swap-day.range-edge .sd-num,.swap-day.range-edge .sd-duty{color:#fff!important}
@@ -3874,7 +3875,10 @@ function loadGroupSchedule(silent) {
 
   var cached = peekData('group', startKey, endKey);
 
-  if (cached) groupData = cached.r;
+  /* 폰에 근무 데이터가 있으면 서버를 기다리지 않고 바로 명단을 만들어 둔다 (명단이 비어 보이는 일 방지) */
+  if (cached) {
+    try { groupData = buildLocalRange('group', startKey, endKey); } catch (e) {}
+  }
 
   renderGroupTable();
 
@@ -3884,10 +3888,10 @@ function loadGroupSchedule(silent) {
 
     if (groupWeekDays()[0].key !== startKey) return;
 
-    if (fromCache && silent) return;
-
     if (!r || !r.success) {
-      status.textContent = (r && r.message) || '불러오지 못했습니다.';
+      /* 실패해도 이미 그려진 명단은 지우지 않고 다시 불러오기 버튼을 보여줌 */
+      if (!silent || !groupData) status.textContent = (r && r.message) || '불러오지 못했습니다.';
+      renderGroupTable();
       return;
     }
 
@@ -3990,10 +3994,25 @@ function renderGroupTable() {
 
   var summary = $('group-summary');
 
-  if (!groupData || !groupData.members) {
-    bodyEl.innerHTML = '';
+  /* 명단 데이터가 비어 있으면 폰에 있는 근무 데이터로 즉시 다시 만든다 */
+  if ((!groupData || !groupData.members || !groupData.members.length) && snapshotUsable()) {
+    try { groupData = buildLocalRange('group', days[0].key, days[6].key); } catch (e) {}
+  }
+
+  if (!groupData || !groupData.members || !groupData.members.length) {
+    bodyEl.innerHTML = '<tr><td colspan="8" style="padding:18px 8px;text-align:center;color:#667085;font-size:13px;">' +
+      '명단을 불러오는 중입니다.<br><button type="button" onclick="groupData=null;loadGroupSchedule(false)" ' +
+      'style="margin-top:8px;padding:7px 14px;border:0;border-radius:8px;background:#1769d2;color:#fff;font-weight:bold;">다시 불러오기</button></td></tr>';
     footEl.innerHTML = '';
     if (summary) summary.style.display = 'none';
+    /* 곧바로 한 번 더 시도 (서버 응답이 늦거나 일시적으로 실패한 경우) */
+    if (!window.__groupRetryTimer && getCurrentUser().token) {
+      window.__groupRetryTimer = setTimeout(function () {
+        window.__groupRetryTimer = null;
+        var gs = $('group-section');
+        if (gs && gs.classList.contains('active') && (!groupData || !groupData.members || !groupData.members.length)) loadGroupSchedule(true);
+      }, 2500);
+    }
     return;
   }
 
@@ -4369,10 +4388,12 @@ function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
     var edge = (key === startKey) ? '시작' : (key === endKey ? '종료' : '');
     var type = String(info && (info.type || info.label) || '');
     var dutyCode = swapDutyLabel(info);
-    var cls = (dutyCode === '주' || type === '주' || type === '주간') ? 'duty-day'
-      : (dutyCode === '휴' || type === '휴' || type === '휴무') ? 'duty-off'
-      : (dutyCode === '비' || type === '비' || type === '비번') ? 'duty-bi'
-      : 'duty-night';
+    var isStatusDay = !!(info && info.overrideType === 'status');
+    var cls = (!info || dutyCode === '-' || dutyCode === '') ? 'duty-none'
+      : isStatusDay ? 'duty-off'
+      : dutyCode === '주' ? 'duty-day'
+      : (dutyCode === '야' || dutyCode === '비') ? 'duty-night'
+      : 'duty-off';   /* 휴·X·휴가·연차·휴직 등 나머지는 모두 빨강 */
     html += '<button type="button" data-key="' + key + '"' +
       ' class="swap-day swap-pick-date' + (inRange ? ' in-range' : '') + (edge ? ' range-edge' : '') +
       '" onclick="selectSwapRangeDate(this.dataset.key)">' +
