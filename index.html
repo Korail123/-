@@ -367,6 +367,7 @@ input, textarea, select, [contenteditable="true"] {
 .swap-day .sd-duty{font-size:12px;font-weight:800;color:#1769d2;overflow:visible;max-width:100%;letter-spacing:-.3px;line-height:1.15;flex:none}
 /* 근무표·근무그룹과 같은 색: 주간=노랑, 야간·비번=파랑, 휴무·휴가·휴직 등=빨강 */
 .swap-day .sd-duty.duty-day{color:#e5a800}.swap-day .sd-duty.duty-off{color:#e53935}.swap-day .sd-duty.duty-night{color:#1a73e8}
+.swap-day .sd-duty{white-space:nowrap!important;word-break:keep-all!important;overflow-wrap:normal!important}
 .swap-day .sd-duty.duty-bi{color:#1a73e8}.swap-day .sd-duty.duty-none{color:#98a2b3}
 .swap-day.in-range{background:#dceeff;outline:1px solid #85bfff}
 .swap-day.range-edge{background:#1769d2;outline:2px solid #0f4fa8}
@@ -4392,7 +4393,7 @@ function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
     var cls = (!info || dutyCode === '-' || dutyCode === '') ? 'duty-none'
       : isStatusDay ? 'duty-off'
       : dutyCode === '주' ? 'duty-day'
-      : (dutyCode === '야' || dutyCode === '비') ? 'duty-night'
+      : (dutyCode === '야' || dutyCode === '비' || dutyCode === 'X') ? 'duty-night'
       : 'duty-off';   /* 휴·X·휴가·연차·휴직 등 나머지는 모두 빨강 */
     html += '<button type="button" data-key="' + key + '"' +
       ' class="swap-day swap-pick-date' + (inRange ? ' in-range' : '') + (edge ? ' range-edge' : '') +
@@ -4407,6 +4408,24 @@ function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
   for (var z = 0; z < tail; z++) html += '<div class="swap-day empty"></div>';
   el.innerHTML = html;
 }
+/* 칸보다 긴 글자(*연차, *공가 등)는 글자 크기를 줄여서 1줄에 맞춤 */
+function fitSwapDutyText() {
+  var list = document.querySelectorAll('.swap-day .sd-duty');
+  for (var i = 0; i < list.length; i++) {
+    var s = list[i], cell = s.parentElement;
+    s.style.fontSize = '';
+    if (!cell || !cell.clientWidth) continue;          // 팝업이 아직 안 보이면 측정 불가
+    var avail = cell.clientWidth - 2;
+    var fs = parseFloat(window.getComputedStyle(s).fontSize) || 11;
+    var guard = 0;
+    while (s.scrollWidth > avail && fs > 6 && guard++ < 40) {
+      fs -= 0.5;
+      s.style.fontSize = fs + 'px';
+    }
+  }
+}
+window.addEventListener('resize', function () { fitSwapDutyText(); });
+
 function renderSwapCalendars() {
   if (!swapTargetMember || !swapCalendarMonth) return;
   var startKey = swapRangeStart, endKey = swapRangeEnd;
@@ -4415,6 +4434,8 @@ function renderSwapCalendars() {
   $('swap-end-label').textContent = endKey || (startKey ? '종료일 선택' : '선택 전');
   renderOneSwapCalendar(getCurrentUser().employeeId, 'swap-me-calendar', startKey, endKey);
   renderOneSwapCalendar(swapTargetMember.employeeId, 'swap-other-calendar', startKey, endKey);
+  fitSwapDutyText();
+  setTimeout(fitSwapDutyText, 60);   /* 팝업이 막 열린 직후에도 다시 맞춤 */
   var status = $('swap-status');
   if (startKey && !endKey) status.textContent = '시작일을 선택했어요. 내 근무표 또는 상대 근무표에서 종료일을 선택하세요.';
   else if (startKey && endKey && (dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000 > 30) status.textContent = '한 번에 최대 31일까지만 교환할 수 있습니다.';
