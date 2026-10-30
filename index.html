@@ -138,6 +138,11 @@ h1{font-size:20px;color:#333;margin-bottom:20px}.page-heading-icon{display:inlin
 .schedule-edit-label{display:block;margin-bottom:7px;font-size:13px;color:#555;font-weight:bold}
 .schedule-edit-input{width:100%;padding:11px 12px;border:1px solid #d9e0e8;border-radius:9px;font-size:15px;outline:none}
 .schedule-edit-input:focus{border-color:#1a8fd8}
+.schedule-edit-dia-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;align-items:center}
+.schedule-edit-credit-btn{padding:10px 8px;border:1px solid #dfe5ec;border-radius:9px;background:#f7f9fb;color:#444;font-size:12px;font-weight:bold;white-space:nowrap;cursor:pointer}
+.schedule-edit-credit-btn.selected{background:#bfe6fb;border-color:#1a8fd8;color:#126da5}
+.cell-credit{display:inline-block;margin:2px auto 0;padding:2px 6px;border:1.5px solid #e53935;border-radius:999px;background:#fff;color:#e53935;font-size:9px;font-weight:800;line-height:1.2;white-space:nowrap}
+@media(max-width:380px){.schedule-edit-dia-row{grid-template-columns:minmax(0,1fr) auto auto;gap:4px}.schedule-edit-credit-btn{padding:9px 5px;font-size:10px}}
 .schedule-edit-options{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 .schedule-edit-option{padding:10px 5px;border:1px solid #dfe5ec;border-radius:9px;background:#f7f9fb;color:#444;font-size:13px;font-weight:bold;cursor:pointer;text-align:center}
 .schedule-edit-option.selected{background:#bfe6fb;border-color:#1a8fd8;color:#126da5}
@@ -1257,7 +1262,11 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
     <div class="schedule-edit-input-group">
       <label class="schedule-edit-label" for="schedule-edit-dia">DIA 번호 직접 입력</label>
-      <input id="schedule-edit-dia" class="schedule-edit-input" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="20" placeholder="예: 12602 / 12B07">
+      <div class="schedule-edit-dia-row">
+        <input id="schedule-edit-dia" class="schedule-edit-input" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="20" placeholder="예: 12602 / 12B07">
+        <button type="button" id="schedule-edit-wait-credit" class="schedule-edit-credit-btn" onclick="selectScheduleCredit('대기충당')">대기충당</button>
+        <button type="button" id="schedule-edit-off-credit" class="schedule-edit-credit-btn" onclick="selectScheduleCredit('휴무충당')">휴무충당</button>
+      </div>
     </div>
 
     <div class="schedule-edit-input-group">
@@ -2117,7 +2126,29 @@ function snapBuildDay(dateKey, seq, anchor, dia, ov, name) {
       d.auto = true;
       d.updatedAt = ov.updatedAt || '';
 
-    } else if (ov.type === 'dia') {
+    } else if (ov.type === 'combined' || ov.type === 'status-credit') {
+
+      var combinedFound = null;
+      if (ov.dia) {
+        for (var ci = 0; ci < dia.length; ci++) {
+          if (String(dia[ci].dia || '').trim().toUpperCase() === String(ov.dia || '').trim().toUpperCase()) { combinedFound = dia[ci]; break; }
+        }
+      }
+      if (combinedFound) {
+        d = {};
+        for (var ck in combinedFound) if (Object.prototype.hasOwnProperty.call(combinedFound, ck)) d[ck] = combinedFound[ck];
+      } else {
+        d = snapBaseDay(dateKey, seq, anchor, dia, name);
+      }
+      d.manual = true;
+      d.overrideType = 'combined';
+      d.status = String(ov.status || '');
+      d.creditStatus = (ov.status === '대기충당' || ov.status === '휴무충당') ? String(ov.status) : '';
+      d.dutyStatus = String(ov.dutyStatus || '');
+      if (d.dutyStatus) d.type = d.dutyStatus;
+      d.dia = String(ov.dia || d.dia || '');
+
+    } else if (ov.type === 'dia' || ov.type === 'dia-credit') {
 
       var found = null;
 
@@ -2136,8 +2167,9 @@ function snapBuildDay(dateKey, seq, anchor, dia, ov, name) {
       }
 
       d.manual = true;
-      d.overrideType = 'dia';
+      d.overrideType = ov.type === 'dia-credit' ? 'dia-credit' : 'dia';
       d.status = '';
+      d.creditStatus = ov.type === 'dia-credit' ? String(ov.status || '') : '';
 
     } else {
 
@@ -2146,6 +2178,7 @@ function snapBuildDay(dateKey, seq, anchor, dia, ov, name) {
       d.manual = true;
       d.overrideType = 'status';
       d.status = ov.status || ov.dia;
+      d.creditStatus = (d.status === '대기충당' || d.status === '휴무충당') ? d.status : '';
 
     }
 
@@ -2704,14 +2737,14 @@ function saveLocalChange(id, loc) {
 
 }
 
-function snapUpsertOverride(employeeId, date, type, dia, status, partnerId, partnerName) {
+function snapUpsertOverride(employeeId, date, type, dia, status, partnerId, partnerName, dutyStatus) {
 
   var loc = ensureLocal(employeeId);
 
   loc.overrides = loc.overrides.filter(function (r) { return r[0] !== date; });
   loc.overrides.push([
     date, type, dia || '', status || '', stampNow(),
-    partnerId ? String(partnerId) : '', partnerName ? String(partnerName) : ''
+    partnerId ? String(partnerId) : '', partnerName ? String(partnerName) : '', dutyStatus ? String(dutyStatus) : ''
   ]);
 
   saveLocalChange(employeeId, loc);
@@ -3095,7 +3128,7 @@ function loadMyMonth(force) {
       (localMine.overrides || []).forEach(function (r) {
         if (r && r.length >= 4) localOvMap[r[0]] = {
           type: r[1], dia: r[2], status: r[3], updatedAt: r[4] || '',
-          partnerId: r[5] || '', partnerName: r[6] || ''
+          partnerId: r[5] || '', partnerName: r[6] || '', dutyStatus: r[7] || ''
         };
       });
       Object.keys(monthDays).forEach(function (key) {
@@ -3196,7 +3229,13 @@ function renderCalendar() {
 
     if (!hName && cell.classList.contains('today')) sideText = '오늘';
 
-    if (info && info.label) {
+    var creditStatus = info && (info.creditStatus === '대기충당' || info.creditStatus === '휴무충당')
+      ? info.creditStatus
+      : (info && (info.status === '대기충당' || info.status === '휴무충당')
+        ? info.status
+        : (info && (info.label === '대기충당' || info.label === '휴무충당') ? info.label : ''));
+
+    if (info && info.label && info.label !== creditStatus) {
 
       var isStatus = info.overrideType === 'status';
       var tone = isStatus ? 'status' : toneOf(info.label);
@@ -3211,6 +3250,11 @@ function renderCalendar() {
         cell.classList.add('swapped');
       }
 
+    }
+
+    /* 충당 표시는 기본 근무명 유무와 무관하게 날짜 아래에 독립적으로 표시 */
+    if (creditStatus) {
+      labelHtml += '<div class="cell-credit">' + esc(creditStatus) + '</div>';
     }
 
     cell.innerHTML =
@@ -3569,6 +3613,23 @@ function goToday() {
 /* ============ 근무 변경 팝업 ============ */
 
 var scheduleEditDate = null;
+var scheduleEditCredit = '';
+
+function selectScheduleCredit(value) {
+  /* 충당 구분은 DIA 입력과 독립적으로 선택·유지합니다. */
+  scheduleEditCredit = (scheduleEditCredit === value) ? '' : value;
+  var waitBtn = $('schedule-edit-wait-credit');
+  var offBtn = $('schedule-edit-off-credit');
+  if (waitBtn) waitBtn.classList.toggle('selected', scheduleEditCredit === '대기충당');
+  if (offBtn) offBtn.classList.toggle('selected', scheduleEditCredit === '휴무충당');
+}
+
+function clearScheduleCreditSelection() {
+  scheduleEditCredit = '';
+  ['schedule-edit-wait-credit','schedule-edit-off-credit'].forEach(function (id) {
+    var b = $(id); if (b) b.classList.remove('selected');
+  });
+}
 
 function openScheduleEdit(y, m, d) {
 
@@ -3587,10 +3648,12 @@ function openScheduleEdit(y, m, d) {
 
   input.value = '';
   options.innerHTML = '';
+  clearScheduleCreditSelection();
 
   var info = getInfo(y, m, d);
+  if (info && info.manual && (info.status === '대기충당' || info.status === '휴무충당' || info.creditStatus === '대기충당' || info.creditStatus === '휴무충당')) selectScheduleCredit(info.creditStatus || info.status);
 
-  if (info && info.manual && info.overrideType === 'dia') input.value = info.dia || '';
+  if (info && info.manual && (info.overrideType === 'dia' || info.overrideType === 'dia-credit' || info.overrideType === 'combined')) input.value = info.dia || '';
 
   SCHEDULE_OVERRIDE_OPTIONS.forEach(function (name) {
 
@@ -3600,13 +3663,11 @@ function openScheduleEdit(y, m, d) {
 
     b.className =
       'schedule-edit-option' +
-      (info && info.manual && info.overrideType === 'status' && info.status === name ? ' selected' : '');
+      (info && info.manual && ((info.overrideType === 'status' && info.status === name) || info.dutyStatus === name) ? ' selected' : '');
 
     b.textContent = name;
 
     b.onclick = function () {
-
-      input.value = '';
 
       var all = options.querySelectorAll('.schedule-edit-option');
 
@@ -3621,11 +3682,7 @@ function openScheduleEdit(y, m, d) {
   });
 
   input.oninput = function () {
-
-    var all = options.querySelectorAll('.schedule-edit-option');
-
-    for (var i = 0; i < all.length; i++) all[i].classList.remove('selected');
-
+    /* DIA 입력 시에도 선택한 주·야·비·휴·X와 충당 구분을 그대로 유지합니다. */
   };
 
   panel.classList.add('active');
@@ -3639,6 +3696,7 @@ function closeScheduleEdit() {
   var panel = $('schedule-edit-panel');
 
   if (panel) panel.classList.remove('active');
+  clearScheduleCreditSelection();
 
   scheduleEditDate = null;
 
@@ -3670,14 +3728,12 @@ function saveScheduleEdit() {
 
   var dia = input ? input.value.trim().toUpperCase() : '';   // 영문은 대문자로 저장 (예: 12b07 → 12B07)
 
-  var selectedStatus = '';
-
+  var selectedDutyStatus = '';
   var selected = options ? options.querySelector('.schedule-edit-option.selected') : null;
+  if (selected) selectedDutyStatus = selected.textContent;
 
-  if (selected) selectedStatus = selected.textContent;
-
-  if (!dia && !selectedStatus) {
-    msg.textContent = 'DIA 번호 또는 휴가/근무 상태를 선택하세요.';
+  if (!dia && !selectedDutyStatus && !scheduleEditCredit) {
+    msg.textContent = 'DIA 번호, 근무 상태 또는 충당 구분을 선택하세요.';
     return;
   }
 
@@ -3708,16 +3764,27 @@ function saveScheduleEdit() {
     date: getDateKey(target.y, target.m, target.d)
   };
 
-  if (dia) {
+  if ((dia || scheduleEditCredit) && selectedDutyStatus) {
+    params.type = 'combined';
+    params.dia = dia;
+    params.status = scheduleEditCredit;
+  } else if (dia && scheduleEditCredit) {
+    params.type = 'combined';
+    params.dia = dia;
+    params.status = scheduleEditCredit;
+  } else if (dia) {
     params.type = 'dia';
     params.dia = dia;
+  } else if (scheduleEditCredit) {
+    params.type = 'status-credit';
+    params.status = scheduleEditCredit;
   } else {
     params.type = 'status';
-    params.status = selectedStatus;
+    params.status = selectedDutyStatus;
   }
 
   /* 서버로 보내지 않고 이 폰에만 저장 (백업은 환경설정에서) */
-  snapUpsertOverride(user.employeeId, params.date, params.type, params.dia, params.status);
+  snapUpsertOverride(user.employeeId, params.date, params.type, params.dia, params.status, '', '', selectedDutyStatus);
 
   /* 야간 근무를 넣으면 다음 날은 무조건 비번으로 설정합니다.
      (다음 날에 직접 변경 기록이 있더라도 비번으로 덮어씁니다.) */
@@ -3748,6 +3815,7 @@ function restoreOriginalSchedule() {
   /* 되돌리기를 선택하면 입력해둔 DIA 번호와 선택한 상태도 함께 지움 */
   var diaInput = $('schedule-edit-dia');
   if (diaInput) diaInput.value = '';
+  clearScheduleCreditSelection();
 
   var optBtns = document.querySelectorAll('#schedule-edit-options .schedule-edit-option');
   for (var oi = 0; oi < optBtns.length; oi++) optBtns[oi].classList.remove('selected');
@@ -7647,6 +7715,21 @@ html body #main-container > #main-section .login-success-card{
       timer = setTimeout(function(){ card.classList.remove('is-playing'); timer = null; }, dur + 800);
     });
   };
+
+  /* 메인화면으로 들어올 때마다(하단 메뉴, 뒤로가기, 로그인 등) 열차 애니메이션 실행 */
+  function hookSwitch(){
+    var orig = window.switchSection;
+    if (typeof orig !== 'function' || orig.__trainHooked) return;
+    var wrapped = function(id){
+      var r = orig.apply(this, arguments);
+      if (id === 'main-section') window.playWelcomeTrain();
+      return r;
+    };
+    wrapped.__trainHooked = true;
+    window.switchSection = wrapped;
+  }
+  hookSwitch();
+  window.addEventListener('load', hookSwitch);
 })();
 </script>
 
