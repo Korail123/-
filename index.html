@@ -1796,6 +1796,7 @@ function snapApply(owner, gen, r) {
 
   /* 이 폰에 저장된 내 데이터가 없으면 서버 백업(또는 예전 데이터)을 한 번 가져오고, 있으면 이 폰 데이터를 우선 적용 */
   adoptBackupIfNoLocal(owner);
+  adoptServerOverrides(owner, r);
   mergeLocalIntoSnapshot();
 
   var json = snapCompareJson(snapshot.raw);
@@ -2405,7 +2406,44 @@ function writeLocal(id, o) {
 }
 
 function ensureLocal(id) {
-  return readLocal(id) || { seq: '', anchor: '', overrides: [], backedUpAt: '' };
+  return readLocal(id) || { seq: '', anchor: '', overrides: [], backedUpAt: '', base: false };
+}
+
+/* 로컬 데이터 안전 보관(최근 5개): 불러오기·병합 직전의 내 데이터를 따로 남겨 두어 언제든 되살릴 수 있게 함 */
+function keepLocalCopy(id, why) {
+  try {
+    var loc = readLocal(id);
+    if (!loc || (!loc.seq && !(loc.overrides && loc.overrides.length))) return;
+    var key = 'railwayLocalBak_v1_' + id;
+    var a = JSON.parse(LS.getItem(key) || '[]');
+    if (!Array.isArray(a)) a = [];
+    a.push({ t: stampNow(), why: why || '', loc: loc });
+    while (a.length > 5) a.shift();
+    LS.setItem(key, JSON.stringify(a));
+  } catch (e) {}
+}
+
+/* 두 근무변경 목록을 날짜 기준으로 합침: 같은 날짜는 수정시각이 더 늦은 쪽(같으면 primary)을 사용 */
+/* 서버는 '2026-10-29 02:18:10.11+00'(UTC), 폰은 '2026-10-29 11:18:10'(한국시간) 형식이라 한국시간 형식으로 통일 */
+function normStamp(s) {
+  s = String(s || '');
+  var m = s.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(\.\d+)?([+-]\d{2})(?::?(\d{2}))?$/);
+  if (!m) return s.slice(0, 19);
+  var d = new Date(m[1] + 'T' + m[2] + (m[3] || '') + m[4] + ':' + (m[5] || '00'));
+  if (isNaN(d.getTime())) return s.slice(0, 19);
+  var k = new Date(d.getTime() + 9 * 3600000);
+  return k.getUTCFullYear() + '-' + pad2(k.getUTCMonth() + 1) + '-' + pad2(k.getUTCDate()) + ' ' +
+    pad2(k.getUTCHours()) + ':' + pad2(k.getUTCMinutes()) + ':' + pad2(k.getUTCSeconds());
+}
+
+function mergeOverrideRows(primary, secondary) {
+  var map = {};
+  (secondary || []).forEach(function (r) { map[r[0]] = r; });
+  (primary || []).forEach(function (r) {
+    var o = map[r[0]];
+    if (!o || normStamp(r[4]) >= normStamp(o[4])) map[r[0]] = r;
+  });
+  return Object.keys(map).sort().map(function (k) { return map[k]; });
 }
 
 function stampNow() {
@@ -2547,10 +2585,82 @@ function mergeLocalIntoSnapshot() {
 
 }
 
+/* 서버에 저장된 내 근무변경(상대가 교환한 내용 포함)을 이 폰 데이터에 반영.
+   - 이 폰에 보낼 변경이 없으면(dirty 아님) 서버 내용을 그대로 따라감
+   - 보낼 변경이 있으면 마지막 백업 이후 서버에서 새로 생긴/바뀐 날짜만 가져와 합침 (내 변경은 지우지 않음) */
+function adoptServerOverrides(owner, raw) {
+
+  var loc = readLocal(owner);
+
+  if (!loc || !raw || (!loc.seq && !(loc.overrides && loc.overrides.length))) return false;
+
+  var server = [];
+
+  (raw.overrides || []).forEach(function (r) {
+    if (String(r[0]) !== String(owner) || r[8] === 'shadow') return;
+    var row = r.slice(1);
+    row[0] = String(row[0] || '').slice(0, 10);
+    row[4] = normStamp(row[4]);
+    server.push(row);
+  });
+
+  function sig(r) { return [r[0], r[1], r[2] || '', r[3] || ''].join('|'); }
+
+  var localByDate = {};
+  loc.overrides.forEach(function (r) { localByDate[r[0]] = r; });
+
+  var result = null;
+
+  if (!loc.dirty && loc.base === true) {
+
+    var a = server.map(sig).sort().join('#');
+    var b = loc.overrides.map(sig).sort().join('#');
+
+    if (a === b) return false;
+
+    /* 서버 내용을 따르되, 같은 근무면 이 폰에 있던 교환 상대 표시는 유지 */
+    result = server.map(function (r) {
+      var o = localByDate[r[0]];
+      if (o && sig(o) === sig(r) && o[5]) { r[5] = o[5]; r[6] = o[6] || ''; }
+      return r;
+    });
+
+  } else {
+
+    var since = String(loc.backedUpAt || '');
+    var changed = false;
+    result = loc.overrides.slice();
+    var idx = {};
+    result.forEach(function (r, i) { idx[r[0]] = i; });
+
+    server.forEach(function (r) {
+      var o = localByDate[r[0]];
+      if (!o) {
+        if (r[4] > since) { result.push(r); changed = true; }
+      } else if (sig(o) !== sig(r) && r[4] > normStamp(o[4])) {
+        result[idx[r[0]]] = r; changed = true;
+      }
+    });
+
+    if (!changed) return false;
+
+  }
+
+  keepLocalCopy(owner, '서버 근무교환 반영 전');
+
+  loc.overrides = result;
+  writeLocal(owner, loc);
+
+  return true;
+
+}
+
 /* 이 폰에 내 데이터가 아직 없을 때만, 서버에 있는 내 백업(또는 예전 저장분)을 폰으로 가져옴 */
 function adoptBackupIfNoLocal(owner) {
 
-  if (readLocal(owner) || !snapshot || !snapshot.raw) return;
+  var curLoc = readLocal(owner);
+  if (curLoc && (curLoc.seq || (curLoc.overrides && curLoc.overrides.length) || curLoc.base !== false)) return;
+  if (!snapshot || !snapshot.raw) return;
 
   var mine = null;
   var members = snapshot.raw.members || [];
@@ -2570,7 +2680,7 @@ function adoptBackupIfNoLocal(owner) {
 
   if (!mine.seq && !ov.length) return;
 
-  writeLocal(owner, { seq: String(mine.seq || ''), anchor: String(mine.anchor || ''), overrides: ov, backedUpAt: '' });
+  writeLocal(owner, { seq: String(mine.seq || ''), anchor: String(mine.anchor || ''), overrides: ov, backedUpAt: '', base: true });
 
   showToast('서버에 저장돼 있던 근무설정·휴가 데이터를 이 폰으로 가져왔습니다.');
 
@@ -4158,6 +4268,7 @@ function revertSwapRangeOriginal() {
     swapApplyLocal(user.employeeId, mineItems);
     swapApplyLocal(targetId, theirItems);
     refreshUiAfterSwap();
+    scheduleAutoBackup(200);
     $('swap-status').textContent = (r.count ? r.count + '일치 근무를 원래대로 되돌렸습니다.' : '되돌릴 교환 기록이 없습니다.');
     syncPending(function () {
       swapApplyLocal(targetId, theirItems);
@@ -4330,6 +4441,7 @@ function submitGroupSwap() {
     swapApplyLocal(user.employeeId, mineItems);
     swapApplyLocal(partnerId, theirItems);
     refreshUiAfterSwap();
+    scheduleAutoBackup(200);   /* 교환 직후 즉시 백업 */
     $('swap-status').textContent = '근무 교환이 완료되었습니다. 두 근무표·근무그룹에 바로 반영됩니다.';
     syncPending(function () {
       swapApplyLocal(partnerId, theirItems);
@@ -5327,6 +5439,33 @@ function backupNow(cb) {
 
   if (autoBackupBusy) { done({ success: false, message: '백업 중입니다. 잠시 후 다시 시도해주세요.' }); return; }
 
+  /* 이 폰 데이터가 서버 백업을 기준으로 만들어졌는지 확인되지 않았으면(처음·초기화 직후),
+     그대로 올리면 서버의 기존 근무교환·휴가 데이터가 지워질 수 있으므로 서버 데이터와 먼저 합친다 */
+  if (loc.base !== true) {
+    autoBackupBusy = true;
+    api({ action: 'restoreData', employeeId: u.employeeId, token: u.token }, function (r) {
+      autoBackupBusy = false;
+      if (!r || !r.success) {
+        done({ success: false, message: '서버 데이터를 확인하지 못해 백업을 미뤘습니다. (기존 데이터 보호)' });
+        return;
+      }
+      var cur = ensureLocal(u.employeeId);
+      if (r.found) {
+        keepLocalCopy(u.employeeId, '백업 전 서버 데이터와 병합');
+        if (!cur.seq) cur.seq = String(r.seq || '');
+        if (!cur.anchor) cur.anchor = String(r.anchor || '');
+        cur.overrides = mergeOverrideRows(cur.overrides, r.overrides || []);
+        cur.dirty = true;
+        cur.rev = (cur.rev || 0) + 1;
+      }
+      cur.base = true;
+      writeLocal(u.employeeId, cur);
+      if (snapshotUsable()) { mergeLocalIntoSnapshot(); snapAfterLocalChange(); }
+      backupNow(cb);
+    });
+    return;
+  }
+
   autoBackupBusy = true;
 
   var sentRev = loc.rev || 0;
@@ -5420,6 +5559,13 @@ function runAutoBackup() {
 
   window.addEventListener('online', function () { runAutoBackup(); });
 
+  /* 실시간 동기화: 화면이 켜져 있는 동안 30초마다 상대가 한 교환을 가져오고 서버 변경분을 반영 */
+  setInterval(function () {
+    var cu = getCurrentUser();
+    if (document.hidden || !cu || !cu.token || autoBackupBusy) return;
+    syncPending(function () { refreshSnapshot(true, null); });
+  }, 30000);
+
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) runAutoBackup();
   });
@@ -5455,7 +5601,7 @@ function doRestore() {
 
   if (!u.token) { backupMsg('로그인 후 이용해주세요.'); return; }
 
-  if (!confirm('서버 백업으로 이 폰의 근무설정·휴가 데이터를 덮어씁니다. 계속할까요?')) return;
+  if (!confirm('서버 백업을 불러옵니다. 이 폰에만 있는 근무교환·휴가 기록은 지우지 않고 함께 합칩니다. 계속할까요?')) return;
 
   var btn = $('backup-download-btn');
 
@@ -5476,12 +5622,26 @@ function doRestore() {
       return;
     }
 
+    /* 현재 폰 데이터와 서버에 기록된 내 근무변경(교환 포함)을 백업과 합쳐서, 불러오기로 교환 기록이 사라지지 않게 함 */
+    keepLocalCopy(u.employeeId, '불러오기 직전');
+    var curLoc = ensureLocal(u.employeeId);
+    var serverRows = [];
+    if (snapshot && snapshot.raw && snapshot.owner === u.employeeId) {
+      (snapshot.raw.overrides || []).forEach(function (row) {
+        if (String(row[0]) === String(u.employeeId) && row[8] !== 'shadow') serverRows.push(row.slice(1));
+      });
+    }
+    var mergedRows = mergeOverrideRows(curLoc.overrides, mergeOverrideRows(r.overrides || [], serverRows));
     writeLocal(u.employeeId, {
-      seq: String(r.seq || ''),
-      anchor: String(r.anchor || ''),
-      overrides: r.overrides || [],
-      backedUpAt: r.updatedAt || stampNow()
+      seq: String(r.seq || curLoc.seq || ''),
+      anchor: String(r.anchor || curLoc.anchor || ''),
+      overrides: mergedRows,
+      backedUpAt: r.updatedAt || stampNow(),
+      base: true,
+      dirty: true,
+      rev: (curLoc.rev || 0) + 1
     });
+    scheduleAutoBackup(800);
 
     mySettings = { seq: String(r.seq || ''), anchor: String(r.anchor || '') };
     myMonth = null;
