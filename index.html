@@ -682,6 +682,27 @@ img.menu-art, .bn-btn .nav-art, .ui-icon, .heading-art, .board-title-art, .detai
 .mp-row b{color:#1b2b45;font-weight:700;text-align:right;overflow-wrap:anywhere}
 .mypage-subtitle{display:flex;align-items:center;gap:6px;margin:4px 6px 8px;font-size:16px;font-weight:800;color:#16386b}
 .mypage-subtitle img{width:26px;height:26px;object-fit:contain}
+.mypage-box{margin:0 4px 16px;padding:12px 14px;border-radius:14px;background:#fff;border:1px solid #e1e9f4;box-shadow:0 2px 8px rgba(20,60,110,.05);text-align:left}
+.mp-badge{display:inline-block;margin-top:5px;padding:2px 8px;border-radius:999px;background:#e3eefc;color:#1d5fc4;font-size:11px;font-weight:700}
+.mp-month{font-size:12px;color:#6b7a90;margin-bottom:8px;font-weight:700}
+.mp-chips{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:8px}
+.mp-chip{display:flex;flex-direction:column;align-items:center;padding:7px 0;border-radius:10px;background:#f4f7fb}
+.mp-chip span{font-size:11px;color:#6b7a90}
+.mp-chip b{font-size:17px;color:#1b2b45;margin-top:1px}
+.mp-chip.c-day b{color:#e5a800}.mp-chip.c-night b{color:#1a73e8}.mp-chip.c-off b{color:#6c757d}.mp-chip.c-rest b,.mp-chip.c-leave b{color:#e53935}
+.mp-empty{font-size:12px;color:#8a96a8;text-align:center;padding:6px 0}
+.mp-swap{display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid #eef2f7;font-size:13px}
+.mp-swap:last-child{border-bottom:0}
+.mp-swap.up .mp-swap-date{color:#1a73e8}
+.mp-swap-date{flex:none;width:62px;font-weight:700;color:#56657a}
+.mp-swap-who{flex:1;display:flex;align-items:center;gap:4px;color:#16386b;font-weight:700;min-width:0}
+.mp-swap-who .swap-ico{width:20px;height:20px}
+.mp-swap-duty{flex:none;color:#6b7a90;font-size:12px}
+.mp-field{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;font-size:13px;color:#56657a}
+.mp-field input,.mp-field select{padding:7px 8px;border:1px solid #cfd8e3;border-radius:8px;font-size:13px;background:#fff;color:#1b2b45}
+.mp-selects{display:flex;gap:6px}
+.mp-tenure{margin-top:6px;padding-top:8px;border-top:1px dashed #dbe5f1;font-size:13px;color:#56657a}
+.mp-tenure b{color:#1d5fc4}
 /* ===== 스크롤바 숨김 (스크롤은 그대로 가능) ===== */
 html,body,*{scrollbar-width:none;-ms-overflow-style:none}
 html::-webkit-scrollbar,body::-webkit-scrollbar,*::-webkit-scrollbar{display:none;width:0;height:0;background:transparent}
@@ -919,6 +940,21 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <!-- 마이페이지: 내 정보 + 휴가관리 -->
   <h1 class="screen-title"><span class="page-heading-icon" aria-hidden="true"><img class="heading-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="마이페이지" alt="" decoding="async"></span>마이페이지</h1>
   <div id="mypage-profile" class="mypage-profile"></div>
+  <div class="mypage-subtitle"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무시간" alt="" aria-hidden="true">이번 달 근무 통계</div>
+  <div id="mypage-stats" class="mypage-box"></div>
+  <div class="mypage-subtitle"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무교환" alt="" aria-hidden="true">근무교환 내역</div>
+  <div id="mypage-swaps" class="mypage-box"></div>
+  <div class="mypage-subtitle"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무설정" alt="" aria-hidden="true">입사일 · 직급 설정</div>
+  <div class="mypage-box">
+    <label class="mp-field"><span>입사일</span><input type="date" id="mp-join" onchange="saveMyProfileField()"></label>
+    <div class="mp-field"><span>직급 · 호봉</span>
+      <span class="mp-selects">
+        <select id="mp-grade" onchange="saveMyProfileField()"></select>
+        <select id="mp-step" onchange="saveMyProfileField()"></select>
+      </span>
+    </div>
+    <div id="mp-tenure" class="mp-tenure"></div>
+  </div>
   <div class="mypage-subtitle"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="휴가관리" alt="" aria-hidden="true">휴가관리</div>
 
   <div class="sch-head" style="margin-bottom:10px;">
@@ -5182,6 +5218,163 @@ function avatarFor(user) {
   return AVATARS_M[avatarHash(key) % AVATARS_M.length];
 }
 
+/* ============ 마이페이지: 내 프로필(입사일·직급·호봉) ============
+   이 폰(로컬 데이터 loc.profile)에 저장하고, 자동 백업 때 서버로도 함께 보냄 */
+function getMyProfile() {
+  var u = getCurrentUser();
+  var loc = ensureLocal(u.employeeId);
+  var pf = loc.profile || {};
+  return { joinDate: String(pf.joinDate || ''), grade: String(pf.grade || ''), step: String(pf.step || '') };
+}
+
+function saveMyProfileField() {
+  var u = getCurrentUser();
+  if (!u.token) return;
+  var loc = ensureLocal(u.employeeId);
+  loc.profile = {
+    joinDate: $('mp-join').value || '',
+    grade: $('mp-grade').value || '',
+    step: $('mp-step').value || '',
+    updatedAt: stampNow()
+  };
+  saveLocalChange(u.employeeId, loc);     /* 변경 표시 + 잠시 뒤 자동 서버 백업 */
+  renderMyTenure();
+  renderMyPageProfile();
+  showToast('저장했습니다.');
+}
+
+/* 근속 기간: 입사일부터 오늘까지 (예: 3년 2개월 · 1,158일) */
+function tenureText(joinDate) {
+  var m = String(joinDate || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return '';
+  var t = todayKST();
+  var y = +m[1], mo = +m[2] - 1, d = +m[3];
+  var start = Date.UTC(y, mo, d), today = Date.UTC(t.y, t.m, t.d);
+  if (today < start) return '입사 전';
+  var days = Math.floor((today - start) / 86400000) + 1;   /* 입사일 당일 = 1일째 */
+  var years = t.y - y, months = t.m - mo;
+  if (t.d < d) months--;
+  if (months < 0) { years--; months += 12; }
+  var txt = (years > 0 ? years + '년 ' : '') + months + '개월';
+  return txt + ' · ' + days.toLocaleString('ko-KR') + '일째';
+}
+
+function myProfileBadge() {
+  var pf = getMyProfile();
+  var parts = [];
+  if (pf.grade) parts.push(pf.grade + '급' + (pf.step ? ' ' + pf.step + '호봉' : ''));
+  var tn = tenureText(pf.joinDate);
+  if (tn && tn !== '입사 전') parts.push('근속 ' + tn.split(' · ')[0]);
+  return parts.join(' · ');
+}
+
+function renderMyTenure() {
+  var el = $('mp-tenure');
+  if (!el) return;
+  var pf = getMyProfile();
+  var tn = tenureText(pf.joinDate);
+  el.innerHTML = tn ? '근속 <b>' + esc(tn) + '</b>' : '<span style="color:#8a96a8">입사일을 입력하면 근속 기간이 표시됩니다.</span>';
+}
+
+/* ============ 마이페이지: 이번 달 근무 통계 ============ */
+function myMonthStats() {
+  var mb = findMyMember();
+  if (!mb || !snapshotUsable()) return null;
+  var t = todayKST();
+  var last = new Date(Date.UTC(t.y, t.m + 1, 0)).getUTCDate();
+  var st = { y: t.y, m: t.m, day: 0, night: 0, off: 0, rest: 0, leave: 0, x: 0, minutes: 0, swaps: 0, leaveKinds: {} };
+  for (var d = 1; d <= last; d++) {
+    var key = getDateKey(t.y, t.m, d);
+    var info = snapDayWithAuto(key, mb, snapshot.raw.dia || [], snapshot.ovMap);
+    if (!info) continue;
+    if (info.swapPartnerName || info.swapPartnerId) st.swaps++;
+    if (info.overrideType === 'status') {
+      var sname = String(info.status || info.label || '').trim();
+      if (/^(비|비번)$/.test(sname)) st.off++;
+      else if (/^휴무$/.test(sname)) st.rest++;
+      else if (sname === 'X') st.x++;
+      else { st.leave++; st.leaveKinds[sname] = (st.leaveKinds[sname] || 0) + 1; }
+      continue;
+    }
+    var type = String(info.type || info.label || '').trim();
+    if (type === '주' || type === '야') {
+      if (type === '주') st.day++; else st.night++;
+      var meta = info.dia ? diaByNumber(info.dia) : null;
+      var a = parseHM(info.start || (meta && meta.start)), b = parseHM(info.end || (meta && meta.end));
+      if (!isNaN(a) && !isNaN(b)) { var diff = b - a; if (diff <= 0) diff += 1440; st.minutes += diff; }
+    } else if (type === '비') st.off++;
+    else if (type === '휴') st.rest++;
+    else if (type === 'X') st.x++;
+  }
+  return st;
+}
+
+function renderMyStats() {
+  var box = $('mypage-stats');
+  if (!box) return;
+  var st = myMonthStats();
+  if (!st) { box.innerHTML = '<div class="mp-empty">근무표를 불러오는 중입니다.</div>'; return; }
+  var h = Math.floor(st.minutes / 60), mm = st.minutes % 60;
+  function chip(label, n, cls) { return '<div class="mp-chip ' + cls + '"><span>' + label + '</span><b>' + n + '</b></div>'; }
+  var leaveTxt = Object.keys(st.leaveKinds).map(function (k) { return k + ' ' + st.leaveKinds[k]; }).join(' · ');
+  box.innerHTML =
+    '<div class="mp-month">' + st.y + '년 ' + (st.m + 1) + '월</div>' +
+    '<div class="mp-chips">' + chip('주간', st.day, 'c-day') + chip('야간', st.night, 'c-night') + chip('비번', st.off, 'c-off') +
+      chip('휴무', st.rest, 'c-rest') + chip('휴가', st.leave, 'c-leave') + '</div>' +
+    '<div class="mp-row"><span>총 근무시간</span><b>' + h + '시간' + (mm ? ' ' + mm + '분' : '') + '</b></div>' +
+    '<div class="mp-row"><span>근무 일수</span><b>' + (st.day + st.night) + '일</b></div>' +
+    '<div class="mp-row"><span>근무교환</span><b>' + st.swaps + '회</b></div>' +
+    (leaveTxt ? '<div class="mp-row"><span>휴가 내역</span><b>' + esc(leaveTxt) + '</b></div>' : '');
+}
+
+/* ============ 마이페이지: 근무교환 내역 (최근 순) ============ */
+function renderMySwaps() {
+  var box = $('mypage-swaps');
+  if (!box) return;
+  var mb = findMyMember();
+  if (!mb || !snapshotUsable()) { box.innerHTML = '<div class="mp-empty">근무표를 불러오는 중입니다.</div>'; return; }
+  var prefix = mb.employeeId + '|';
+  var list = [];
+  Object.keys(snapshot.ovMap || {}).forEach(function (k) {
+    if (k.indexOf(prefix) !== 0) return;
+    var ov = snapshot.ovMap[k];
+    if (!ov || !(ov.partnerName || ov.partnerId)) return;
+    var date = k.slice(prefix.length);
+    var info = snapDayWithAuto(date, mb, snapshot.raw.dia || [], snapshot.ovMap);
+    list.push({ date: date, partner: String(ov.partnerName || ov.partnerId), info: info });
+  });
+  list.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+  if (!list.length) { box.innerHTML = '<div class="mp-empty">아직 근무교환 내역이 없습니다.</div>'; return; }
+  var todayKey = todayKeyKST();
+  box.innerHTML = list.slice(0, 15).map(function (it) {
+    var p = it.date.split('-');
+    var w = ['일', '월', '화', '수', '목', '금', '토'][new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])).getUTCDay()];
+    var lab = it.info ? String(it.info.label || '') : '';
+    var dia = it.info && it.info.dia && it.info.overrideType !== 'status' ? ' · DIA ' + it.info.dia : '';
+    return '<div class="mp-swap' + (it.date >= todayKey ? ' up' : '') + '">' +
+      '<span class="mp-swap-date">' + (+p[1]) + '/' + (+p[2]) + '(' + w + ')</span>' +
+      '<span class="mp-swap-who"><i class="swap-ico"></i>' + esc(it.partner) + '님</span>' +
+      '<span class="mp-swap-duty">' + esc(lab + dia) + '</span></div>';
+  }).join('') + (list.length > 15 ? '<div class="mp-empty">최근 15건만 표시합니다.</div>' : '');
+}
+
+function renderMyPageExtras() {
+  var g = $('mp-grade'), sp = $('mp-step');
+  if (g && !g.options.length) {
+    g.innerHTML = '<option value="">급 선택</option>' + [1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (n) { return '<option value="' + n + '">' + n + '급</option>'; }).join('');
+    var h = '<option value="">호봉 선택</option>';
+    for (var i = 1; i <= 40; i++) h += '<option value="' + i + '">' + i + '호봉</option>';
+    sp.innerHTML = h;
+  }
+  var pf = getMyProfile();
+  if ($('mp-join')) $('mp-join').value = pf.joinDate;
+  if (g) g.value = pf.grade;
+  if (sp) sp.value = pf.step;
+  renderMyTenure();
+  renderMyStats();
+  renderMySwaps();
+}
+
 /* 마이페이지 상단 내 정보 카드: 이름·사원번호·오늘 근무·출근 알람·운휴 알림 */
 function renderMyPageProfile() {
   var box = $('mypage-profile');
@@ -5202,7 +5395,8 @@ function renderMyPageProfile() {
   try { if (getNxCfg().on) nx = '켜짐'; } catch (e) {}
   box.innerHTML =
     '<div class="mp-head"><div class="mp-avatar">' + avatarSvg(avatarFor(u), 64) + '</div>' +
-    '<div><div class="mp-name">' + esc(u.name || '-') + '님</div><div class="mp-id">사원번호 ' + esc(u.employeeId || '-') + '</div></div></div>' +
+    '<div><div class="mp-name">' + esc(u.name || '-') + '님</div><div class="mp-id">사원번호 ' + esc(u.employeeId || '-') + '</div>' +
+    (myProfileBadge() ? '<div class="mp-badge">' + esc(myProfileBadge()) + '</div>' : '') + '</div></div>' +
     '<div class="mp-rows">' +
       '<div class="mp-row"><span>오늘 근무</span><b>' + esc(today) + '</b></div>' +
       '<div class="mp-row"><span>출근 알람</span><b>' + esc(alarm) + '</b></div>' +
@@ -5218,6 +5412,7 @@ function openVacation() {
 
   switchSection('vacation-section');
   renderMyPageProfile();
+  renderMyPageExtras();
 
   $('vac-status').textContent = '불러오는 중...';
 
@@ -6109,6 +6304,7 @@ function backupNow(cb) {
         keepLocalCopy(u.employeeId, '백업 전 서버 데이터와 병합');
         if (!cur.seq) cur.seq = String(r.seq || '');
         if (!cur.anchor) cur.anchor = String(r.anchor || '');
+        if (!cur.profile && r.profile && typeof r.profile === 'object') cur.profile = r.profile;
         cur.overrides = mergeOverrideRows(cur.overrides, r.overrides || []);
         cur.dirty = true;
         cur.rev = (cur.rev || 0) + 1;
@@ -6131,7 +6327,8 @@ function backupNow(cb) {
     token: u.token,
     seq: loc.seq,
     anchor: loc.anchor,
-    overrides: loc.overrides
+    overrides: loc.overrides,
+    profile: loc.profile || null      /* 입사일·직급·호봉 (서버 SQL 반영 후 함께 저장됨) */
   }, function (r) {
 
     autoBackupBusy = false;
@@ -6256,6 +6453,7 @@ function doRestore() {
       seq: String(r.seq || ''),
       anchor: String(r.anchor || ''),
       overrides: Array.isArray(r.overrides) ? r.overrides : [],
+      profile: (r.profile && typeof r.profile === 'object') ? r.profile : (curLoc.profile || null),
       backedUpAt: r.updatedAt || stampNow(),
       base: true,
       dirty: false,
