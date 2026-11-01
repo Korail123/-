@@ -3515,6 +3515,32 @@ function renderCalendar() {
 
   }
 
+  fitSwapBadges(grid);
+
+}
+
+/* 근무교환 이름표가 칸보다 넓으면 높이는 그대로 두고 가로만 살짝 줄여 이름 전체가 보이게 함 */
+function fitSwapBadges(root) {
+  function run() {
+    var list = (root || document).querySelectorAll('.cell-swap');
+    for (var i = 0; i < list.length; i++) {
+      var el = list[i];
+      el.style.transform = '';
+      var cell = el.parentElement;
+      while (cell && !cell.classList.contains('cell')) cell = cell.parentElement;
+      if (!cell) continue;
+      var room = cell.clientWidth - 2;
+      var w = el.offsetWidth;
+      if (room > 0 && w > room) el.style.transform = 'scaleX(' + (room / w).toFixed(3) + ')';
+    }
+  }
+  run();
+  try { requestAnimationFrame(run); } catch (e) {}
+}
+
+if (!window.__fitSwapResize) {
+  window.__fitSwapResize = true;
+  window.addEventListener('resize', function () { fitSwapBadges($('calendar-grid')); });
 }
 
 /* GitHub에 저장된 DIA PNG와 NXLogis 열차 조회 연결 */
@@ -8061,12 +8087,11 @@ function noticeCheckNew(gen) {
     var firstTime = !seen;
     var limit = Date.now() - NOTICE_FIRST_DAYS * 86400000;
 
-    var fresh = posts.filter(function (p) {
-      var id = noticeId(p);
-      if (!id) return false;
-      if (firstTime) return noticeTime(p) >= limit;
-      return !seen.ids[id];
-    });
+    /* 등록된 공지 중 가장 최신 1건만 확인: 그 공지를 아직 안 봤을 때만 팝업 */
+    var sorted = posts.filter(function (p) { return noticeId(p); }).slice();
+    sorted.sort(function (a, b) { return noticeTime(b) - noticeTime(a); });
+    var latest = sorted[0];
+    var showLatest = !!latest && (firstTime ? noticeTime(latest) >= limit : !seen.ids[noticeId(latest)]);
 
     /* 지금 목록에 있는 공지는 모두 본 것으로 저장 (목록에서 사라진 공지 ID는 정리) */
     var next = { ids: {} };
@@ -8077,19 +8102,14 @@ function noticeCheckNew(gen) {
     });
     noticeSeenSave(next);
 
-    if (!fresh.length) return;
+    if (!showLatest) return;
 
-    /* 새 공지 중 가장 최신 1건만 요약해서 표시 */
-    fresh.sort(function (a, b) { return noticeTime(b) - noticeTime(a); });
-    var latest = fresh[0];
-    var moreCount = fresh.length - 1;
-
-    if (latest.content || latest.body) { noticeShowPopup(latest, moreCount); return; }
+    if (latest.content || latest.body) { noticeShowPopup(latest); return; }
     boardApi('getAnnouncement', { postId: noticeId(latest), id: noticeId(latest) }, function (d) {
       if (gen !== loginPopupGen) return;
       var post = d && d.success ? (d.post || d.announcement || d) : null;
       if (post) latest.content = post.content || post.body || '';
-      noticeShowPopup(latest, moreCount);
+      noticeShowPopup(latest);
     });
   });
 }
@@ -8107,7 +8127,7 @@ function noticeSummary(text) {
 
 var noticePopupPostId = '';
 
-function noticeShowPopup(post, moreCount) {
+function noticeShowPopup(post) {
   noticePopupPostId = noticeId(post);
   var t = noticeTime(post);
   var dateText = t ? new Date(t).toLocaleDateString('ko-KR') : '';
@@ -8117,8 +8137,7 @@ function noticeShowPopup(post, moreCount) {
       '<div style="font-size:16px;font-weight:700;color:#1a2b4c;overflow-wrap:anywhere">' + esc(post.title || '공지사항') + '</div>' +
       (dateText ? '<div style="font-size:11px;color:#8792a1;margin:3px 0 0">' + esc(dateText) + '</div>' : '') +
       (summary ? '<div style="font-size:13px;color:#334;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:8px">' + esc(summary) + '</div>' : '') +
-    '</div>' +
-    (moreCount > 0 ? '<div style="font-size:11px;color:#7a8696;text-align:center;margin-top:8px">외 ' + moreCount + '건의 새 공지가 있어요</div>' : '');
+    '</div>';
   $('notice-popup-panel').classList.add('active');
 }
 
@@ -8322,7 +8341,8 @@ body{padding:0!important}
 /* ===== 근무 교환 표시 ===== */
 .cell.swapped .cell-lbl{margin-top:2px}
 /* 근무교환 표시: 휴무충당·대기충당 동그라미(.cell-credit)와 같은 크기·모양 */
-.cell-swap{display:inline-block;flex-shrink:0;box-sizing:border-box;margin:2px auto 0;max-width:96%;padding:2px 6px;border:1.5px solid #1769d2;border-radius:999px;background:#1769d2;color:#fff;font-size:9px;font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:top}
+/* 이름은 말줄임 없이 전부 표시 (높이·모양은 충당 표시와 동일) */
+.cell-swap{display:inline-block;flex-shrink:0;align-self:center;box-sizing:border-box;margin:2px 0 0;padding:2px 3px;border:1.5px solid #1769d2;border-radius:999px;background:#1769d2;color:#fff;font-size:9px;font-weight:800;line-height:1.2;letter-spacing:-.4px;white-space:nowrap;overflow:visible;vertical-align:top;transform-origin:center top}
 .dd-swap{display:flex;align-items:center;gap:8px;margin:6px 0;padding:7px 10px;border-radius:10px;background:#eaf3ff;border:1px solid #b6d9ff;text-align:left}
 .dd-swap b{display:block;font-size:14px;color:#0f3d75}
 .dd-swap small{display:block;font-size:11px;color:#667085;margin-top:1px}
