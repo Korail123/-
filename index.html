@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+https://crew.korail.com/extrCrewMg.do?method=getExtrCrewWrkPsttList<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -5397,7 +5397,7 @@ function renderMySwaps() {
   }).join('') + (list.length > 15 ? '<div class="mp-empty">최근 15건만 표시합니다.</div>' : '');
 }
 
-/* 마이페이지 섹션 접기/펼치기 (내 정보 카드 제외), 상태는 이 폰에 기억 */
+/* 마이페이지 섹션 접기/펼치기 (내 정보 카드 제외, 기본 접힘), 상태는 이 폰에 기억 */
 function mySecState() {
   try { return JSON.parse(LS.getItem('mpCollapsed_' + (getCurrentUser().employeeId || '')) || '{}') || {}; } catch (e) { return {}; }
 }
@@ -5406,7 +5406,8 @@ function applyMySections() {
   var secs = document.querySelectorAll('#vacation-section .mp-sec');
   for (var i = 0; i < secs.length; i++) {
     var key = secs[i].getAttribute('data-sec');
-    var closed = !!st[key];
+    /* 기본값은 접힘. 사용자가 펼친 항목만 펼친 상태로 기억 */
+    var closed = Object.prototype.hasOwnProperty.call(st, key) ? !!st[key] : true;
     secs[i].classList.toggle('collapsed', closed);
     var btn = secs[i].querySelector('.mp-toggle');
     if (btn) btn.setAttribute('aria-expanded', closed ? 'false' : 'true');
@@ -5414,7 +5415,8 @@ function applyMySections() {
 }
 function toggleMySection(key) {
   var st = mySecState();
-  st[key] = !st[key];
+  var closed = Object.prototype.hasOwnProperty.call(st, key) ? !!st[key] : true;
+  st[key] = !closed;
   try { LS.setItem('mpCollapsed_' + (getCurrentUser().employeeId || ''), JSON.stringify(st)); } catch (e) {}
   applyMySections();
 }
@@ -8492,6 +8494,39 @@ function closeNoticePopup() {
   if (p) p.classList.remove('active');
 }
 
+/* 근무설정(오늘의 본 근무)이 아직 없는 사용자는 메인화면에서 근무설정 팝업을 띄움
+   서버(회원 정보)와 이 폰 모두에 설정이 없을 때만 = 회원가입 후 처음 들어온 사람 */
+function myWorkSettingMissing() {
+  var u = getCurrentUser();
+  var loc = ensureLocal(u.employeeId);
+  if (loc.seq && loc.anchor) return false;
+  var mb = findMyMember();
+  if (mb && mb.seq && mb.anchor) return false;
+  if (mySettings && mySettings.seq && mySettings.anchor) return false;
+  return true;
+}
+function promptWorkSettingIfNeeded(gen) {
+  var tries = 0;
+  var t = setInterval(function () {
+    tries++;
+    if (gen !== loginPopupGen || !getCurrentUser().token) { clearInterval(t); return; }
+    if (!snapshotUsable() || !findMyMember()) { if (tries > 60) clearInterval(t); return; }   /* 최대 약 15초 대기 */
+    clearInterval(t);
+    if (!myWorkSettingMissing()) return;
+    var go = function () {
+      if (gen !== loginPopupGen) return;
+      if (currentPageSection() !== 'main-section') switchSection('main-section');
+      var dp = $('dia-panel');
+      if (dp && !dp.classList.contains('active')) {
+        openDiaSelector();
+        showToast('처음 오셨네요! 오늘의 본 근무를 먼저 설정해주세요.');
+      }
+    };
+    /* 환영 열차 애니메이션이 끝난 뒤 띄움 */
+    setTimeout(go, 1200);
+  }, 250);
+}
+
 /* 로그인(또는 저장된 세션으로 앱을 다시 열 때)마다 실행 */
 var loginPopupGen = 0;
 function runLoginPopups() {
@@ -8499,6 +8534,7 @@ function runLoginPopups() {
   loginPopupGen++;
   var gen = loginPopupGen;
   closeNoticePopup();
+  promptWorkSettingIfNeeded(gen);   /* 근무설정이 없는 사용자(처음 가입자): 근무설정 팝업 */
   nxLoginCheck(gen);         /* 열차 운휴: 로그인할 때마다 즉시 결과 팝업 */
   noticeCheckNew(gen);       /* 새 공지사항: 사용자별 최초 1회 (운휴 팝업 위에 표시) */
 }
@@ -9017,7 +9053,7 @@ html body #main-container > #main-section .login-success-card{
 /* 오른쪽→왼쪽 진행 */
 #welcome-card.is-playing .welcome-train.rtl{animation-name:welcomeTrainPassRev}
 /* 열차 상하 진동 없음: 좌→우 이동만 */
-#welcome-card.is-playing .welcome-rail{animation:welcomeRailFade var(--pass,3600ms) ease both}
+#welcome-card.is-playing .welcome-rail{animation:welcomeRailFade var(--scene,var(--pass,3600ms)) ease both}
 /* 열차 꼬리가 완전히 지나간 뒤에 환영 문구가 나타남 */
 #welcome-card.is-playing .welcome-msg{animation:welcomeMsgIn .6s cubic-bezier(.2,.8,.2,1) var(--msg-delay,3500ms) both}
 
@@ -9035,7 +9071,7 @@ html body #main-container > #main-section .login-success-card{
 .welcome-station svg{display:block;height:100%;width:auto}
 .welcome-station.at-right{right:6px}
 .welcome-station.at-left{left:6px}
-#welcome-card.is-playing .welcome-station{animation:welcomeRailFade var(--pass,3600ms) ease both}
+#welcome-card.is-playing .welcome-station{animation:welcomeRailFade var(--scene,var(--pass,3600ms)) ease both}
 /* ===== 5현시 신호기 2기 (열차가 다가오면 진행 → 감속 → 주의 → 경계, 밟으면 정지) =====
    등 배치(위→아래): 1 황 · 2 적 · 3 녹 · 4 황 */
 html body #main-container > #main-section #welcome-card.login-success-card{min-height:76px!important;--train-w:700px!important}
@@ -9043,7 +9079,7 @@ html body #main-container > #main-section #welcome-card.login-success-card{min-h
 #welcome-card .welcome-train{bottom:9px!important;z-index:2}
 /* 신호기는 열차 뒤쪽(기둥은 열차에 가려지고, 머리는 열차 지붕 위로 보임) */
 .welcome-signal{position:absolute;top:10px;bottom:9px;width:14px;margin-left:-7px;opacity:0;z-index:1;display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 1px 1.5px rgba(15,61,117,.28))}
-#welcome-card.is-playing .welcome-signal{animation:welcomeRailFade var(--pass,3600ms) ease both}
+#welcome-card.is-playing .welcome-signal{animation:welcomeRailFade var(--scene,var(--pass,3600ms)) ease both}
 /* 둥글둥글한 머리 + 동그란 꼭지 */
 .sig-head{position:relative;width:11px;padding:2.5px 0;border-radius:6px;background:linear-gradient(180deg,#3a4a63,#222d3d);display:flex;flex-direction:column;align-items:center;gap:1px;box-shadow:inset 0 0 0 1.2px rgba(255,255,255,.18),inset 0 -2px 0 rgba(0,0,0,.25)}
 .sig-head::before{content:'';position:absolute;top:-3px;left:50%;width:4.5px;height:4.5px;margin-left:-2.25px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#7f8fa8,#2c3a50)}
@@ -9108,10 +9144,21 @@ html body #main-container > #main-section #welcome-card.login-success-card{min-h
   }
   function trackSignal(card, train, sigs, rtl) {
     if (sigRaf) cancelAnimationFrame(sigRaf);
+    var cleared = false;
     function step() {
       if (!card.classList.contains('is-playing')) { sigRaf = null; return; }
       var tr = train.getBoundingClientRect();
+      var cr = card.getBoundingClientRect();
       var cw = card.clientWidth || 360;
+      /* 열차가 화면을 완전히 빠져나가면 모든 신호기를 다시 '진행'으로 */
+      if (cleared || (!rtl ? tr.left >= cr.right - 6 : tr.right <= cr.left + 6)) {
+        if (!cleared) {
+          cleared = true;
+          for (var c = 0; c < sigs.length; c++) { sigs[c].__stepped = false; setSignalAspect(sigs[c], '진행'); }
+        }
+        sigRaf = requestAnimationFrame(step);
+        return;
+      }
       for (var i = 0; i < sigs.length; i++) {
         /* 한 번 밟은 신호기는 끝날 때까지 정지 유지 */
         if (sigs[i].getAttribute('data-aspect') === '정지' && sigs[i].__stepped) continue;
@@ -9160,7 +9207,9 @@ html body #main-container > #main-section #welcome-card.login-success-card{min-h
       if (train) train.style.setProperty('--train-w', tw + 'px');
       card.style.setProperty('--card-w', w + 'px');
       card.style.setProperty('--pass', dur + 'ms');
-      card.style.setProperty('--msg-delay', (dur - 100) + 'ms');
+      /* 레일·신호기·역 이름판은 열차가 지나간 뒤 약 0.9초 더 보이며 '진행' 신호를 보여준 다음 사라짐 */
+      card.style.setProperty('--scene', (dur + 900) + 'ms');
+      card.style.setProperty('--msg-delay', (dur + 800) + 'ms');
       /* 역 이름판: 진행 방향 맨 끝(왼→오면 오른쪽 끝, 오→왼이면 왼쪽 끝)
          왼쪽→오른쪽으로 갈 때는 화살표 모양 노란 띠를 반대로(오른쪽을 가리키게) */
       var station = card.querySelector('.welcome-station');
@@ -9181,7 +9230,7 @@ html body #main-container > #main-section #welcome-card.login-success-card{min-h
       void card.offsetWidth;
       card.classList.add('is-playing');
       if (sigs.length && train) trackSignal(card, train, sigs, rtl);
-      timer = setTimeout(function(){ card.classList.remove('is-playing'); timer = null; }, dur + 800);
+      timer = setTimeout(function(){ card.classList.remove('is-playing'); timer = null; }, dur + 1700);
     });
   };
 
