@@ -2407,10 +2407,10 @@ function snapShiftKey(key, delta) {
 
 }
 
-/* 하루치 근무 계산. 전날이 '야간'이고 그 야간을 연차·휴가 등으로 바꿨으면,
-   오늘이 비번(직접 변경 없음)일 때 비번도 같은 근무로 자동 변경하고 * 로 표시합니다.
-   - 야간 날짜를 '근무상태(연차 등)'로 바꾼 경우
-   - 야간 DIA + 근무상태(연차 등)를 함께 저장한 경우 */
+/* 하루치 근무 계산. 전날이 '야간'이고 그 야간을 연차·휴가·휴무 등 어떤 근무상태로 바꿨든,
+   오늘이 비번(직접 변경 없음 또는 야간 입력으로 자동 생성된 비번)이면 비번도 같은 종류로 자동 변경하고 * 로 표시합니다.
+   - 야간 날짜를 '근무상태(연차·휴무·병가 등)'로 바꾼 경우
+   - 야간 DIA + 근무상태를 함께 저장한 경우 */
 function snapNightCarryStatus(po, diaList) {
 
   if (!po) return '';
@@ -2424,10 +2424,10 @@ function snapNightCarryStatus(po, diaList) {
 
   st = st.trim();
 
-  /* 휴가·휴무·주간근무는 다음 날 비번으로 전파하지 않습니다. */
+  /* 실제 근무 구분(주간·야간·비번)과 충당 표시만 제외하고, 연차·휴가·휴무 등은 모두 비번에도 똑같이 적용 */
   function excludedCarryLabel(value) {
     var v = String(value || '').replace(/\s+/g, '').toUpperCase();
-    return !v || /연차|휴가|휴직|출산|육아|돌봄|병가|공가/.test(v) || /^(휴무|주간|주|야간|야|비|비번|DAY)$/.test(v);
+    return !v || /^(주간|주|야간|야|비|비번|DAY|대기충당|휴무충당)$/.test(v);
   }
 
   if (st) return excludedCarryLabel(st) ? '' : st;
@@ -2447,48 +2447,58 @@ function snapNightCarryStatus(po, diaList) {
   return '';
 }
 
-function snapDayWithAuto(dateKey, mb, dia, ovMap) {
+/* 비번 날짜에 전날 야간의 근무상태를 이어서 적용 (적용되면 * 표시용 manual=true) */
+function snapApplyNightCarry(d, dateKey, seq, anchor, name, dia, po) {
 
-  var d = snapBuildDay(dateKey, mb.seq, mb.anchor, dia, ovMap[mb.employeeId + '|' + dateKey], mb.name);
+  if (!d || String(d.type || '').trim() !== '비') return d;
 
-  if (!d.manual && String(d.type || '').trim() === '비') {
+  /* 사용자가 비번 날짜를 직접 바꾼 경우는 그대로 두고,
+     변경 없음 또는 야간 입력 때 자동으로 만든 비번(auto-status)일 때만 이어서 적용 */
+  var autoOff = d.auto && d.overrideType !== 'status';
+  if (d.manual && !autoOff) return d;
 
-    var pk = snapShiftKey(dateKey, -1);
-    var po = ovMap[mb.employeeId + '|' + pk];
-    var carry = snapNightCarryStatus(po, dia);
+  var carry = snapNightCarryStatus(po, dia);
+  if (!carry) return d;
 
-    if (carry) {
+  var pk = snapShiftKey(dateKey, -1);
+  var pb = snapBaseDay(pk, seq, anchor, dia, name);
+  var wasNight = String(pb.type || '').trim() === '야';
 
-      var pb = snapBaseDay(pk, mb.seq, mb.anchor, dia, mb.name);
-      var wasNight = String(pb.type || '').trim() === '야';
-
-      if (!wasNight && po.dia) {
-        var wanted = String(po.dia).trim().toUpperCase();
-        for (var di = 0; di < dia.length; di++) {
-          if (String(dia[di].dia || '').trim().toUpperCase() === wanted) {
-            var dt0 = String(dia[di].type || '').trim();
-            wasNight = (dt0 === '야' || dt0 === '야간');
-            break;
-          }
-        }
-      }
-
-      if (wasNight) {
-
-        d = snapEmptyDay();
-        d.type = carry;
-        d.manual = true;            /* 야간 따라 자동 변경된 비번 → * 표시 */
-        d.overrideType = 'status';
-        d.status = carry;
-        d.auto = true;
-        d.updatedAt = po.updatedAt || '';
-        d.label = carry;
-
+  if (!wasNight && po.dia) {
+    var wanted = String(po.dia).trim().toUpperCase();
+    for (var di = 0; di < dia.length; di++) {
+      if (String(dia[di].dia || '').trim().toUpperCase() === wanted) {
+        var dt0 = String(dia[di].type || '').trim();
+        wasNight = (dt0 === '야' || dt0 === '야간');
+        break;
       }
     }
   }
 
-  return d;
+  /* 야간 입력으로 자동 생성된 비번이면 전날은 야간이었던 것 */
+  if (!wasNight && autoOff) wasNight = true;
+
+  if (!wasNight) return d;
+
+  var c = snapEmptyDay();
+  c.type = carry;
+  c.manual = true;            /* 야간 따라 자동 변경된 비번 → * 표시 */
+  c.overrideType = 'status';
+  c.status = carry;
+  c.auto = true;
+  c.nightCarryStatus = true;
+  c.updatedAt = po.updatedAt || '';
+  c.label = carry;
+  return c;
+
+}
+
+function snapDayWithAuto(dateKey, mb, dia, ovMap) {
+
+  var d = snapBuildDay(dateKey, mb.seq, mb.anchor, dia, ovMap[mb.employeeId + '|' + dateKey], mb.name);
+
+  return snapApplyNightCarry(d, dateKey, mb.seq, mb.anchor, mb.name, dia,
+    ovMap[mb.employeeId + '|' + snapShiftKey(dateKey, -1)]);
 
 }
 
@@ -3334,8 +3344,13 @@ function loadMyMonth(force) {
       });
       Object.keys(monthDays).forEach(function (key) {
         if (localOvMap[key]) {
-          var localDay = snapBuildDay(key, localMine.seq || mySettings.seq, localMine.anchor || mySettings.anchor, diaList, localOvMap[key], me.name);
-          monthDays[key] = localDay;
+          var lSeq = localMine.seq || mySettings.seq, lAnchor = localMine.anchor || mySettings.anchor;
+          var localDay = snapBuildDay(key, lSeq, lAnchor, diaList, localOvMap[key], me.name);
+          /* 전날 야간에 연차·휴무 등을 썼으면 비번에도 같은 종류를 적용(* 표시) */
+          var prevOvKey = snapShiftKey(key, -1);
+          var prevOv = localOvMap[prevOvKey] ||
+            (snapshotUsable() && snapshot.ovMap ? snapshot.ovMap[user.employeeId + '|' + prevOvKey] : null);
+          monthDays[key] = snapApplyNightCarry(localDay, key, lSeq, lAnchor, me.name, diaList, prevOv);
         }
       });
 
@@ -7758,57 +7773,128 @@ function nxCheckNow() {
   }, true);
 }
 
-/* 로그인할 때 운휴 조회 결과 팝업: 운휴가 있으면 목록, 없으면 '열차 운휴가 없습니다' */
-function nxShowLoginResult(list) {
-  if (!Array.isArray(list) || !getNxCfg().on || !getCurrentUser().token) return;
+/* ===== 로그인할 때 운휴 결과 팝업 (즉시 표시) =====
+   근무표가 준비되는 즉시(0.01초 간격 확인) 팝업을 먼저 띄우고,
+   - 저장된 최근 조회 결과가 있으면 그 결과를 바로 보여주고
+   - 없으면 '조회 중' 상태로 띄운 뒤
+   서버 조회가 끝나면 같은 팝업 안의 내용을 최신 결과로 바꿉니다. */
+var nxLoginShownSig = null;
 
-  var s = nxSummarize(list);
-
-  if (s.cancelled.length) { nxShowRing(s.cancelled, false); return; }
-
-  /* 서버 조회가 전부 실패하면 '없음'으로 단정하지 않고 짧게 안내만 */
-  if (s.allFailed) { showToast('열차 운휴 여부를 확인하지 못했습니다. 환경설정에서 다시 조회해주세요.'); return; }
-
-  nxShowNone(list.length
-    ? '오늘·내일·모레 내 근무표 열차 ' + list.length + '건을 확인했어요.' +
-      (s.unknown ? '<br>(' + s.unknown + '건은 확인하지 못했어요)' : '')
-    : '오늘·내일·모레 조회할 열차(주간·야간 근무)가 없습니다.');
+function nxLoginSig(s) {
+  return s.cancelled.map(function (it) { return it.id; }).join(',');
 }
 
-function nxShowNone(note) {
-  if ($('nx-ring-panel').classList.contains('active')) return;
-  nxShowing = [];
-  $('nx-ring-emoji').textContent = '✅';
-  $('nx-ring-body').innerHTML = '<div style="margin:6px 0;font-size:16px;font-weight:700;color:#1e7e34">열차 운휴가 없습니다.</div>' +
-    (note ? '<div style="font-size:12px;color:#7a8696;margin-top:6px">' + note + '</div>' : '');
-  $('nx-ring-panel').classList.add('active');
+function nxLoginRender(list, opts) {
+  opts = opts || {};
+  var panel = $('nx-ring-panel');
+  var body = $('nx-ring-body');
+  var emoji = $('nx-ring-emoji');
+  if (!panel || !body || !emoji) return;
+
+  if (opts.loading) {
+    nxShowing = [];
+    emoji.textContent = '🔍';
+    body.innerHTML = '<div style="margin:6px 0;font-size:15px;font-weight:700;color:#1a2b4c">열차 운휴를 조회하고 있어요…</div>' +
+      '<div style="font-size:12px;color:#7a8696;margin-top:6px">오늘·내일·모레 내 근무표 열차 ' + list.length + '건</div>';
+    nxLoginShownSig = null;
+  } else {
+    var s = nxSummarize(list);
+    var sig = nxLoginSig(s);
+
+    if (s.cancelled.length) {
+      nxShowing = s.cancelled.slice();
+      emoji.textContent = '🚫';
+      body.innerHTML = '내 근무표의 열차가 운휴입니다.<br>' + s.cancelled.map(function (it) {
+        return '<div style="margin:6px 0"><b>' + esc(nxDateText(it.date)) + '</b> · <b style="color:#c62828">' +
+          esc(it.train) + '호 열차 운휴</b></div>';
+      }).join('') +
+        '<div style="font-size:12px;color:#7a8696;margin-top:6px">NXLogis에서 자세히 확인하세요.</div>';
+      /* 처음 보여주거나 운휴 목록이 바뀌었을 때만 소리·진동 */
+      if (sig !== nxLoginShownSig) {
+        try { alarmBeep(); } catch (e) {}
+        try { if (navigator.vibrate) navigator.vibrate([400, 200, 400]); } catch (e) {}
+      }
+    } else if (s.allFailed) {
+      nxShowing = [];
+      emoji.textContent = '⚠️';
+      body.innerHTML = '<div style="margin:6px 0;font-size:15px;font-weight:700;color:#c62828">운휴 여부를 확인하지 못했습니다.</div>' +
+        '<div style="font-size:12px;color:#7a8696;margin-top:6px">환경설정 › 열차 운휴 알림에서 다시 조회해주세요.</div>';
+    } else {
+      nxShowing = [];
+      emoji.textContent = '✅';
+      body.innerHTML = '<div style="margin:6px 0;font-size:16px;font-weight:700;color:#1e7e34">열차 운휴가 없습니다.</div>' +
+        '<div style="font-size:12px;color:#7a8696;margin-top:6px">' +
+        (list.length
+          ? '오늘·내일·모레 내 근무표 열차 ' + list.length + '건을 확인했어요.' +
+            (s.unknown ? '<br>(' + s.unknown + '건은 확인하지 못했어요)' : '')
+          : '오늘·내일·모레 조회할 열차(주간·야간 근무)가 없습니다.') +
+        '</div>';
+    }
+    nxLoginShownSig = sig;
+  }
+
+  panel.setAttribute('data-login', '1');
+  panel.classList.add('active');
 }
 
-/* 로그인 직후 근무표가 준비되면 운휴를 조회해 결과 팝업 표시 */
+/* 캐시에 이 목록의 결과가 모두 있는지 (확인 실패 항목 없이) */
+function nxCacheCovers(list) {
+  return list.length > 0 && list.every(function (it) {
+    var st = nxStatus[it.id];
+    return st && !st.fail && (st.state === 'ok' || st.state === 'cancel');
+  });
+}
+
 var nxLoginTimer = null;
 function nxLoginCheck(gen) {
   if (nxLoginTimer) { clearInterval(nxLoginTimer); nxLoginTimer = null; }
   if (!getNxCfg().on) return;
 
   var tries = 0;
+
+  function start() {
+    if (nxLoginTimer) { clearInterval(nxLoginTimer); nxLoginTimer = null; }
+    if (gen !== loginPopupGen || !getCurrentUser().token || !getNxCfg().on) return;
+
+    var list = nxCollectTrains();
+
+    /* 3일간 조회할 열차가 없으면 서버를 기다릴 필요 없이 바로 결과 표시 */
+    if (!list.length) { nxLoginRender(list); return; }
+
+    /* 1) 즉시 표시: 저장된 결과(24시간 이내)가 있으면 그 결과, 없으면 '조회 중' */
+    nxCacheLoad(24 * 3600000);
+    var fromCache = nxCacheCovers(list);
+    nxLoginRender(list, { loading: !fromCache });
+
+    /* 2) 바로 서버 조회 → 같은 팝업 내용을 최신 결과로 교체 */
+    nxBusy = false;
+    nxLastFetch = 0;
+    nxRefresh(true, function (fresh) {
+      if (gen !== loginPopupGen || !Array.isArray(fresh)) return;
+
+      var panel = $('nx-ring-panel');
+      var stillOpen = panel.classList.contains('active') && panel.getAttribute('data-login') === '1';
+      var s = nxSummarize(fresh);
+
+      /* 서버가 전부 실패했으면 이미 보여준 저장 결과는 그대로 둠 */
+      if (s.allFailed && fromCache) return;
+
+      if (stillOpen) { nxLoginRender(fresh); return; }
+
+      /* 사용자가 먼저 닫았더라도 새로운 운휴가 확인되면 다시 알림 */
+      if (s.cancelled.length && nxLoginSig(s) !== nxLoginShownSig) nxLoginRender(fresh);
+    }, true);
+  }
+
+  /* 근무표가 이미 준비됐으면 지체 없이 바로 시작 */
+  if (snapshotUsable() && findMyMember()) { start(); return; }
+
   nxLoginTimer = setInterval(function () {
     tries++;
     if (gen !== loginPopupGen || !getCurrentUser().token) { clearInterval(nxLoginTimer); nxLoginTimer = null; return; }
-    if (nxBusy && tries < 90) return;
-    var ready = snapshotUsable() && findMyMember();
-    if (!ready && tries < 90) return;            /* 최대 약 30초 대기 */
-
-    clearInterval(nxLoginTimer);
-    nxLoginTimer = null;
-    if (!ready || !getNxCfg().on) return;         /* 근무표를 못 불러왔으면 '운휴 없음'으로 단정하지 않음 */
-
-    nxBusy = false;
-    nxLastFetch = 0;
-    nxRefresh(true, function (list) {
-      if (gen !== loginPopupGen) return;
-      nxShowLoginResult(list);
-    }, true);
-  }, 350);
+    if (snapshotUsable() && findMyMember()) { start(); return; }
+    if (tries >= 3000) { clearInterval(nxLoginTimer); nxLoginTimer = null; }   /* 최대 약 30초 대기 */
+  }, 10);
 }
 
 function nxTestPopup() {
@@ -7823,6 +7909,7 @@ function todayKeyKST() {
 function nxShowRing(items, isTest) {
 
   nxShowing = isTest ? [] : items.slice();
+  $('nx-ring-panel').removeAttribute('data-login');
   $('nx-ring-emoji').textContent = '🚫';
 
   var rows = items.map(function (it) {
@@ -7847,6 +7934,7 @@ function nxShowRing(items, isTest) {
 }
 
 function closeNxRing() {
+  $('nx-ring-panel').removeAttribute('data-login');
   var ack = nxAckLoad();
   var limit = Date.now() - 7 * 86400000;
   Object.keys(ack).forEach(function (k) { if (ack[k] < limit) delete ack[k]; });
@@ -7883,10 +7971,12 @@ function nxCacheSave() {
   try { LS.setItem('nxLast_' + nxEmp(), JSON.stringify({ at: Date.now(), st: nxStatus })); } catch (e) {}
 }
 
-function nxCacheLoad() {
+function nxCacheLoad(maxAge) {
   try {
     var o = JSON.parse(LS.getItem('nxLast_' + nxEmp()) || 'null');
-    if (o && o.st && Date.now() - o.at < 30 * 60000) nxStatus = o.st;
+    if (o && o.st && Date.now() - o.at < (maxAge || 30 * 60000)) {
+      Object.keys(o.st).forEach(function (k) { if (!nxStatus[k]) nxStatus[k] = o.st[k]; });
+    }
   } catch (e) {}
 }
 
@@ -8051,11 +8141,8 @@ function runLoginPopups() {
   loginPopupGen++;
   var gen = loginPopupGen;
   closeNoticePopup();
-  setTimeout(function () {
-    if (gen !== loginPopupGen) return;
-    noticeCheckNew(gen);     /* 새 공지사항: 사용자별 최초 1회 */
-    nxLoginCheck(gen);       /* 열차 운휴: 로그인할 때마다 결과 팝업 */
-  }, 600);
+  nxLoginCheck(gen);         /* 열차 운휴: 로그인할 때마다 즉시 결과 팝업 */
+  noticeCheckNew(gen);       /* 새 공지사항: 사용자별 최초 1회 (운휴 팝업 위에 표시) */
 }
 
 /* ============ 공통 뒤로가기 / 왼쪽 가장자리 스와이프 ============
