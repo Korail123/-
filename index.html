@@ -9483,5 +9483,23 @@ html body #main-container > #main-section #welcome-card.login-success-card{min-h
 })();
 </script>
 
+<style id="hide-scrollbars-final">
+/* ===== 모든 화면 스크롤바 숨김 (스크롤은 그대로) — 맨 마지막에 두어 다른 규칙보다 우선 ===== */
+html, body, *, *::before, *::after {
+  scrollbar-width: none !important;          /* 크롬·엣지·파이어폭스(최신) */
+  -ms-overflow-style: none !important;       /* 옛 엣지·IE */
+}
+html::-webkit-scrollbar, body::-webkit-scrollbar, *::-webkit-scrollbar,
+*::-webkit-scrollbar-thumb, *::-webkit-scrollbar-track, *::-webkit-scrollbar-corner {
+  display: none !important;                  /* 삼성 인터넷·안드로이드 WebView·사파리 */
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+  -webkit-appearance: none !important;
+}
+/* 가로로 밀려서 하단 스크롤바가 생기지 않도록 화면 폭을 넘는 부분은 잘라냄 */
+html, body { max-width: 100% !important; overflow-x: hidden !important; }
+#main-container, #main-container > .page-view, #main-container > .board-page { max-width: 100% !important; overflow-x: hidden !important; }
+</style>
 </body>
 </html>
