@@ -9306,7 +9306,7 @@ html body #main-container > #main-section .login-success-card{
 .welcome-station.at-right{right:6px}
 .welcome-station.at-left{left:6px}
 #welcome-card.is-playing .welcome-station{animation:welcomeRailFade var(--scene,var(--pass,3600ms)) ease both}
-/* ===== 5현시 신호기 2기 (열차가 다가오면 진행 → 감속 → 주의 → 경계, 밟으면 정지) =====
+/* ===== 5현시 신호기 2기 (진행 → 밟으면 정지 → 후부 통과 후 정지·경계·주의·감속·진행) =====
    등 배치(위→아래): 1 황 · 2 적 · 3 녹 · 4 황 */
 html body #main-container > #main-section #welcome-card.login-success-card{min-height:76px!important;--train-w:700px!important}
 #welcome-card .welcome-rail{top:auto!important;bottom:2px}
@@ -9365,40 +9365,34 @@ html body #main-container > #main-section #welcome-card.login-success-card{min-h
       lamp.className = 'sl sl' + n + (on[n] ? ' on-' + on[n] : '');
     }
   }
-  /* 열차 위치를 매 프레임 확인: 앞머리가 신호기를 지나면 감속 → 주의 → 경계, 꼬리가 지나면 정지 */
+  /* 신호기 동작 (실제 폐색신호처럼)
+     - 열차가 오기 전: 진행
+     - 앞머리가 신호기를 밟으면: 정지 (열차가 지나가는 동안 계속 정지)
+     - 후부(꼬리)가 신호기를 통과하면: 정지 → 경계 → 주의 → 감속 → 진행 순서로 차례로 풀림 */
   var sigRaf = null;
-  /* 앞머리와 신호기 사이 거리(카드 폭 기준)로 현시 결정
-     멀리 → 진행, 다가올수록 감속 → 주의 → 경계, 앞머리가 신호기를 밟으면 즉시 정지 */
-  function aspectFor(tr, sx, rtl, cw) {
-    var head = rtl ? tr.left : tr.right;
-    var d = rtl ? (head - sx) : (sx - head);     /* 남은 거리, 0 이하면 이미 밟음 */
-    if (d <= 0) return '정지';
-    var r = d / (cw || 360);
-    return r > 0.45 ? '진행' : r > 0.30 ? '감속' : r > 0.15 ? '주의' : '경계';
-  }
+  var SIGNAL_RELEASE = ['정지', '경계', '주의', '감속', '진행'];
+  var SIGNAL_STEP_MS = 280;      /* 한 단계씩 바뀌는 간격 */
   function trackSignal(card, train, sigs, rtl) {
     if (sigRaf) cancelAnimationFrame(sigRaf);
-    var cleared = false;
-    function step() {
+    for (var k = 0; k < sigs.length; k++) sigs[k].__tailAt = 0;
+    function step(now) {
       if (!card.classList.contains('is-playing')) { sigRaf = null; return; }
       var tr = train.getBoundingClientRect();
-      var cr = card.getBoundingClientRect();
-      var cw = card.clientWidth || 360;
-      /* 열차가 화면을 완전히 빠져나가면 모든 신호기를 다시 '진행'으로 */
-      if (cleared || (!rtl ? tr.left >= cr.right - 6 : tr.right <= cr.left + 6)) {
-        if (!cleared) {
-          cleared = true;
-          for (var c = 0; c < sigs.length; c++) { sigs[c].__stepped = false; setSignalAspect(sigs[c], '진행'); }
-        }
-        sigRaf = requestAnimationFrame(step);
-        return;
-      }
       for (var i = 0; i < sigs.length; i++) {
-        /* 한 번 밟은 신호기는 끝날 때까지 정지 유지 */
-        if (sigs[i].getAttribute('data-aspect') === '정지' && sigs[i].__stepped) continue;
         var sr = sigs[i].getBoundingClientRect();
-        var asp = aspectFor(tr, sr.left + sr.width / 2, rtl, cw);
-        if (asp === '정지') sigs[i].__stepped = true;
+        var sx = sr.left + sr.width / 2;
+        var headPassed = !rtl ? tr.right >= sx : tr.left <= sx;
+        var tailPassed = !rtl ? tr.left > sx : tr.right < sx;
+        var asp;
+        if (sigs[i].__tailAt || tailPassed) {
+          if (!sigs[i].__tailAt) sigs[i].__tailAt = now || performance.now();
+          var idx = Math.min(SIGNAL_RELEASE.length - 1, Math.floor(((now || performance.now()) - sigs[i].__tailAt) / SIGNAL_STEP_MS));
+          asp = SIGNAL_RELEASE[idx];
+        } else if (headPassed) {
+          asp = '정지';
+        } else {
+          asp = '진행';
+        }
         setSignalAspect(sigs[i], asp);
       }
       sigRaf = requestAnimationFrame(step);
@@ -9441,9 +9435,9 @@ html body #main-container > #main-section #welcome-card.login-success-card{min-h
       if (train) train.style.setProperty('--train-w', tw + 'px');
       card.style.setProperty('--card-w', w + 'px');
       card.style.setProperty('--pass', dur + 'ms');
-      /* 레일·신호기·역 이름판은 열차가 지나간 뒤 약 0.9초 더 보이며 '진행' 신호를 보여준 다음 사라짐 */
-      card.style.setProperty('--scene', (dur + 900) + 'ms');
-      card.style.setProperty('--msg-delay', (dur + 800) + 'ms');
+      /* 레일·신호기·역 이름판은 열차가 지나간 뒤 약 1.5초 더 보이며, 신호가 정지→경계→주의→감속→진행으로 풀린 다음 사라짐 */
+      card.style.setProperty('--scene', (dur + 1500) + 'ms');
+      card.style.setProperty('--msg-delay', (dur + 1400) + 'ms');
       /* 역 이름판: 진행 방향 맨 끝(왼→오면 오른쪽 끝, 오→왼이면 왼쪽 끝)
          왼쪽→오른쪽으로 갈 때는 화살표 모양 노란 띠를 반대로(오른쪽을 가리키게) */
       var station = card.querySelector('.welcome-station');
@@ -9464,7 +9458,7 @@ html body #main-container > #main-section #welcome-card.login-success-card{min-h
       void card.offsetWidth;
       card.classList.add('is-playing');
       if (sigs.length && train) trackSignal(card, train, sigs, rtl);
-      timer = setTimeout(function(){ card.classList.remove('is-playing'); timer = null; }, dur + 1700);
+      timer = setTimeout(function(){ card.classList.remove('is-playing'); timer = null; }, dur + 2300);
     });
   };
 
@@ -9499,9 +9493,29 @@ html::-webkit-scrollbar, body::-webkit-scrollbar, *::-webkit-scrollbar,
   background: transparent !important;
   -webkit-appearance: none !important;
 }
-/* 가로로 밀려서 하단 스크롤바가 생기지 않도록 화면 폭을 넘는 부분은 잘라냄 */
-html, body { max-width: 100% !important; overflow-x: hidden !important; }
-#main-container, #main-container > .page-view, #main-container > .board-page { max-width: 100% !important; overflow-x: hidden !important; }
+/* ===== 모바일 브라우저(사파리·삼성 인터넷·네이버 앱·크롬)용 =====
+   모바일 브라우저는 '문서 전체' 스크롤바(오른쪽에 잠깐 나타나는 회색 막대)를 CSS로 숨길 수 없음.
+   그래서 문서 자체는 움직이지 않게 고정하고, 화면 내용(#main-container)이 스스로 스크롤되게 바꿈.
+   또 그 스크롤 상자를 화면보다 30px 넓게 만들어, 스크롤 막대가 생기더라도 화면 밖(오른쪽)에 그려져 잘려 보이지 않게 함. */
+html, body {
+  height: 100% !important; min-height: 0 !important; max-width: 100% !important;
+  overflow: hidden !important; overscroll-behavior: none;
+}
+body { padding: 0 !important; margin: 0 !important; }
+#main-container.container, #main-container.container.wide {
+  height: 100% !important; min-height: 0 !important;
+  width: calc(100% + 30px) !important; max-width: none !important;
+  padding: 8px 40px 0 10px !important;          /* 오른쪽 30px은 화면 밖으로 밀려나는 몫 */
+  overflow-x: hidden !important; overflow-y: auto !important;
+  overscroll-behavior-y: contain;
+  box-sizing: border-box !important;
+}
+/* 아래 메뉴 막대에 마지막 내용이 가리지 않도록 맨 아래 여백 (사파리 옛 버전도 확실히 적용되도록 빈 칸으로 넣음) */
+#main-container.container::after {
+  content: ""; display: block; flex: 0 0 auto; width: 100%;
+  height: calc(90px + env(safe-area-inset-bottom));
+}
+#main-container > .page-view, #main-container > .board-page { max-width: 100% !important; overflow-x: hidden !important; }
 </style>
 </body>
 </html>
