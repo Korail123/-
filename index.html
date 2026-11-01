@@ -618,6 +618,13 @@ html body #main-section.page-view > div.menu-grid > button.menu-btn img.menu-art
 }
 </style>
 
+
+<style id="nx-setting-icon-size">
+/* 열차 운휴 알림 아이콘도 환경설정의 다른 아이콘과 동일한 정사각형 크기 */
+#settings-section .setting-icon .nx-setting-icon{width:44px!important;height:44px!important;max-width:44px!important;max-height:44px!important;object-fit:contain!important;display:block!important}
+@media(max-width:480px){#settings-section .setting-icon .nx-setting-icon{width:44px!important;height:44px!important}}
+</style>
+
 </head>
 
 <body>
@@ -915,6 +922,15 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <span class="setting-arrow">›</span>
   </button>
 
+  <button type="button" class="setting-card" onclick="openNxSettings()">
+    <span class="setting-icon"><img class="ui-icon nx-setting-icon" src="data:image/webp;base64,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" alt="열차 운휴 알림"></span>
+    <span class="setting-text">
+      <span class="setting-title">열차 운휴 알림</span>
+      <span id="nx-sub" class="setting-sub">※ 내 다이아 열차가 운휴이면 팝업으로 알려드려요</span>
+    </span>
+    <span class="setting-arrow">›</span>
+  </button>
+
   <button type="button" class="setting-card" onclick="openRegulationsPanel()">
     <span class="setting-icon" style="background:#fff"><img class="ui-icon" src="data:image/webp;base64,UklGRqQIAABXRUJQVlA4IJgIAAAwKgCdASq0AH4APlEkjkUjoiMS205QOAUEoG+BzMT0TH6y/Ocx1y9H7eB8ueer/LerbzAP1T6Vn7XeoD7K/da9A/oAf2D/EelH7NX7gewB5YP7afCr+3f7a+0h//9ZJUb6S/2IfZ/e9AW/lv+hzAL2V+xf67jW7kTj6aAH5K/Wv1+s+r5f/nf/P7hP6w/8nebjw/eY8r4W34OFlmZedOoegjC3Vkfl1FA/2Fxolo4nk+cGlKSYh80D/5BtXEblFN9Ovi7eI2/oKKo33rb3UFDEDN7xmE0YblDcyZUJaseGmD2PHfviA6c3uR7uTMThvRFCTJyfbNii19VAx9mU9h7yJJ74AJGB6Ebczrl4PlcG6eSJRpcGsjsgyKpMFx/aZh407Yjt675rjuS5vNKz3qdOndxF2mvMu9hlfplZ/NAXz2S+EdNIWpU4wBV7z3vZPqc59aY6NGuILUAAAP79sTyvr5Sk/5q+MrFryn3YywcPbjqTXE8+Ksy5Cd0Sxq+aDU/i/mLYphKpOv43tFdoLWJEaLgjKcFQCPMCo2LXjrtLRsOuZ1XwKsxWWDg+2yvzmXPCALTAQMvnZZ+MiPGuy4ufq3LexAS1q7X0r8OXG1gP3uehJdnQmow0upt5X9Tc4MgteRf3WwEJTXpvlJiiJTEXz6FdJnlItan49Y3ID6WblE+o9F+0Av/lzcB9WKe5T9oXEZlJzHrsDWSLFQMbMoNfcyLqLXfKRXQ0RqBmFkb5xG0nFFdVcpWdnbmW2yeqEsbpj3g/ZVewead8XGsn/sCrOXtknS5K9a9nvZUpB23StiduSjZH09cEAjsXnstBRRt4Sm/O7Ihb1gZAoINXNS795okLHi9e3ge1BHrxJi5C4aazPzCYA2QfnZJIDolkpc8/VHMino2pmwHf8UedO1OZ4ktosKrplnwHT2aY9AzXP/5EgfbIkwrTL+RVzoqWy6aIR2KrLlm5F9ftCzOgbxFNXQrvfxV3i7y/JJ3FOkkD2FuOSDfhrEgGHAFR47Ik87ViYgl9EDCU8t9Lc7FnfK1fP9ZdtVDOaMyZafPYLz+OG/0cXMw5tM0yQOz+tEiSUfVeSYhlRiNB+X/72XAJR4XWl1BWqiVsu32qQcoCM1KUP96D5AGtwq2tr7+zgQ1LemXtLscWM4XpFoKz5ZUVnxAeOPt9+mftmwS186A1+lqEx97pVhl7UjdTmR/6jYdk0/ox9kISCpfHptKBjjvDBVvEs+cts/fFHs3m0MiAtkWIA7s4esPp1+L9KTLa3S4w/h8eGhm2wX+IE027C+79hKSHlEw3BATU+CDs239IJOmU9x0sZ/TVVdWkfbQ5ozWW519MHiiX/EoVLucOrP76+dmpPwYMlFYkeDCtFevu0RsLW13X7gZxUWuyMkSlb5p5GGAYzHFGSu9EoWFfXozsC5yuFwhnVpsgM2La5HqQU+Hs2bkpzUykkjbvtSPOnEaH6AzA2jPbNPT/kPXx4IHjWo6Qwxn1BpQBz1KDPi0RfKGVWPt/LPuiBDw3wK0sS++w8Oo37/v8ayLHPnfIdvA3poqOuLBT+qYxa/Ysx57nUOz4FiNXQ+Buexp+btvtOns0AFH2V4PY/kDbOniZZrhq6Y4y/NzjgUvETJJYW3plCGTvtIfrd9ojfcCzTvRyOxpKg2fZXopzo1GY5R/uhMc0e/7gF0A3RSG/PdvWgCS1XUfCdVZmKDUYuplULUvGKXi0OtINqz+0EgAAkB2nFYBf4OjpKVjpnemUZRH9l56jLr7htZgMu/ZKB/0NNJ88vNzf2g71XdCmJ6gYC4s1AeqIlcJtoZjpALEVxscis5C8V+XsTJgMAmgfsma3/NeUrLOWedmjVaT3ehY+i5ZdI6vzcO9xAlruDhme4v7IRebvG98QNxfEwLnDy2YU45tgTpDI1FPQfX18EjCPBoZ/nGijauz8vztATypOsL/0xqH0nZ2zbE35kUfVs9SnYUdCvrJZtznWIRjBTge60APJMLN7gbm/a0g8IpOME1t5VToE9H/sjt/Ev/8R5X4uB7kPSvf7JgByHbFw9p+iluUuEb/nwSuEv9zIyMnxcZFdmInL4Vftp34hDURHaQPdoOUfIrWBHvy36vzkvfP0ct647aKxX8Mp+4W4DruvTRf4RW6Dkskwv/JwYrf8xD47uf9fgYo6verUMtb6DS/zUXAf1EW7hWqxoWsv54XBzN+RVcPmfd73IF0SN+iu+8ROSFcvWhvM3xqJGFwikW9/NxdlbN9urSmsb4LWh5jx0hoL9R6niBbW3K3Y4ZrpZuMZq5HXbAdVsGWQJXATEsujkyU1kCgfSZJ7U9PxYksjUX5SOcF42oiw0x4N/n8P2OFku5568oHolMOS3ntfHv/Trnw/V2vwN9wQ1hkRIl66HKsfrE9wFNRHL8obcuHUNcRem+MowDrkeNqUrW+UhtNlJlWsAh56H1Nhv+yEF4SCH90bBfuiQecBko9dSESbzL9Lm2GSeEspp8wvwCRzw4Ildo1IpTu8df1Guf++1yV+qf6zxrJhjhkLLAnZ+oh/K1Vr1Cxd8onJ7gzBsYFoWfAR/KBqyBuz1AAG/xlJBh1Lf0fxfhEsft2B9B9l0J4nt3/xonCA3F+ICr123x16couPnh9MSEYGHJn014TjKrd0GuQYN/yZRqsJBaXD9pUtLGha27DE7MhLeBqtn8nrLeDU6/DO3k0K7+liG/1p/cOOXtnr44czKvcwc2QFPS8S4iHq0KyzeVYfnRHwKlHBGpGhb/qxrknC/y/C88y/F4eI/WFQZgt6o7IxhV77i0UID3xtRDaSn+4NLf53+mD64uLggTihvA6jwDQmMEK/iW9Jeev9P05OwhJmH+zXGydb5aP/ap9iMJHWCmI9zWCPNMgyuVsp4pn2Mt54c2mIR4clLHug8eApp/eWJ2JnC+C5KsAA" alt="" aria-hidden="true" decoding="async"></span>
     <span class="setting-text">
@@ -1174,6 +1190,38 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <button type="button" class="dia-text-btn" onclick="saveAlarmSettings()">확인</button>
       <button type="button" class="dia-text-btn" onclick="closeAlarmSettings()">닫기</button>
     </div>
+  </div>
+</div>
+
+<!-- 열차 운휴 알림 설정 팝업 -->
+<div id="nx-panel" class="dia-modal" onclick="if(event.target===this)closeNxSettings()">
+  <div class="dia-dialog">
+    <div class="dia-dialog-title">열차 운휴 알림</div>
+    <div class="dia-dialog-note" style="white-space:normal">
+      ※ 오늘·내일·모레, 총 3일간의 근무표 열차번호만 NXLogis.kr에서 자동 조회합니다.<br>
+      ※ '열차 운휴'가 나오면 어느 날 어떤 열차인지 팝업으로 알려드립니다.<br>
+      ※ 앱을 켤 때마다 자동으로 조회하고, 다시 앱으로 돌아올 때도 확인합니다.
+    </div>
+    <label class="alarm-toggle"><span>운휴 알림 사용</span><input type="checkbox" id="nx-on"></label>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button type="button" class="btn" style="margin:0;background:#1a73e8;padding:11px 4px;font-size:13px" onclick="nxCheckNow()">🔍 지금 조회</button>
+      <button type="button" class="btn" style="margin:0;background:#f57c00;padding:11px 4px;font-size:13px" onclick="nxTestPopup()">🔔 팝업 테스트</button>
+    </div>
+    <div id="nx-result" style="margin:10px 4px 0;font-size:12px;color:#445;line-height:1.7;white-space:normal"></div>
+    <div class="dia-dialog-actions">
+      <button type="button" class="dia-text-btn" onclick="saveNxSettings()">확인</button>
+      <button type="button" class="dia-text-btn" onclick="closeNxSettings()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 열차 운휴 알림 팝업 -->
+<div id="nx-ring-panel" class="dia-modal" style="z-index:410">
+  <div class="dia-dialog" style="text-align:center">
+    <div style="font-size:42px;margin-top:4px">🚫</div>
+    <div class="dia-dialog-title" style="text-align:center">열차 운휴 알림</div>
+    <div id="nx-ring-body" class="alarm-ring-info"></div>
+    <button type="button" class="btn" onclick="closeNxRing()">확인</button>
   </div>
 </div>
 
@@ -1715,6 +1763,7 @@ function fixDiaTypes(list) {
 }
 
 function buildSnapIndex() {
+  snapInjectTrain3();
   var map = {};
   var rows = (snapshot && snapshot.raw && snapshot.raw.overrides) || [];
 
@@ -1756,6 +1805,85 @@ function persistSnapshot() {
   } catch (e) {}
 
 }
+
+/* DIA 테이블의 대표열차번호3(train3)을 따로 받아 DIA 목록에 합칩니다.
+   (서버의 근무표 불러오기 함수가 train3을 내려주지 않아도 보이도록) */
+var dia3Map = null;
+try { dia3Map = JSON.parse(LS.getItem('dia3Map_v1') || 'null'); } catch (e) { dia3Map = null; }
+
+function snapInjectTrain3() {
+
+  if (!dia3Map || !snapshot || !snapshot.raw || !snapshot.raw.dia) return false;
+
+  var list = snapshot.raw.dia;
+  var changed = false;
+
+  for (var i = 0; i < list.length; i++) {
+    var it = list[i];
+    if (!it) continue;
+    var v = dia3Map[String(it.dia || '').trim().toUpperCase()] || '';
+    if (String(it.train3 || '') !== v) { it.train3 = v; changed = true; }
+  }
+
+  return changed;
+
+}
+
+function dia3Fetch() {
+
+  if (!getCurrentUser().token) return;
+
+  var headers = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY };
+  if (/^eyJ/.test(SUPABASE_KEY)) headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
+
+  fetch(SUPABASE_URL + '/rest/v1/rpc/app_dia_train3', { method: 'POST', headers: headers, body: '{}' })
+    .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+    .then(function (rows) {
+
+      if (!Array.isArray(rows)) return;
+
+      var map = {};
+      var keys = ['dia', 'dia_no', 'diano', 'dia_number', 'dia_code', 'code'];
+
+      rows.forEach(function (row) {
+        if (!row) return;
+        var k = '';
+        for (var i = 0; i < keys.length; i++) {
+          if (row[keys[i]] != null && String(row[keys[i]]).trim()) { k = String(row[keys[i]]).trim().toUpperCase(); break; }
+        }
+        if (k) map[k] = String(row.train3 == null ? '' : row.train3).trim();
+      });
+
+      dia3Map = map;
+      try { LS.setItem('dia3Map_v1', JSON.stringify(map)); } catch (e) {}
+
+      if (snapInjectTrain3()) {
+        snapAfterLocalChange();
+        onSnapshotUpdated();
+      }
+
+    })
+    .catch(function () {});
+
+}
+
+(function dia3Start() {
+
+  var tries = 0;
+
+  var timer = setInterval(function () {
+    tries++;
+    if (tries > 1000) { clearInterval(timer); return; }
+    if (!getCurrentUser().token || !snapshotUsable()) return;
+    clearInterval(timer);
+    dia3Fetch();
+  }, 300);
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) dia3Fetch();
+  });
+
+})();
 
 try {
 
@@ -1914,7 +2042,7 @@ function snapDateKeys(startKey, endKey) {
 }
 
 function snapEmptyDay() {
-  return { dia: '', type: '', start: '', end: '', train1: '', train2: '' };
+  return { dia: '', type: '', start: '', end: '', train1: '', train2: '', train3: '' };
 }
 
 /* ============ 순환 다이아 목록 · 요일별 적용 다이아 ============ */
@@ -2086,7 +2214,7 @@ function snapBaseDay(dateKey, seq, anchor, dia, name) {
   return {
     dia: String(it.dia || ''), type: String(it.type || ''),
     start: String(it.start || ''), end: String(it.end || ''),
-    train1: String(it.train1 || ''), train2: String(it.train2 || '')
+    train1: String(it.train1 || ''), train2: String(it.train2 || ''), train3: String(it.train3 || '')
   };
 
 }
@@ -2271,7 +2399,46 @@ function snapShiftKey(key, delta) {
 
 }
 
-/* 하루치 근무 계산. 전날이 '야간 + 휴가'이고 오늘이 비번(직접 변경 없음)이면 비번도 같은 휴가로 처리 */
+/* 하루치 근무 계산. 전날이 '야간'이고 그 야간을 연차·휴가 등으로 바꿨으면,
+   오늘이 비번(직접 변경 없음)일 때 비번도 같은 근무로 자동 변경하고 * 로 표시합니다.
+   - 야간 날짜를 '근무상태(연차 등)'로 바꾼 경우
+   - 야간 DIA + 근무상태(연차 등)를 함께 저장한 경우 */
+function snapNightCarryStatus(po, diaList) {
+
+  if (!po) return '';
+
+  var st = '';
+  if (po.type === 'status' || po.type === 'status-credit' || po.type === 'combined') {
+    st = String(po.status || po.dutyStatus || '');
+  } else if (po.dutyStatus) {
+    st = String(po.dutyStatus || '');
+  }
+
+  st = st.trim();
+
+  /* 휴가·휴무·주간근무는 다음 날 비번으로 전파하지 않습니다. */
+  function excludedCarryLabel(value) {
+    var v = String(value || '').replace(/\s+/g, '').toUpperCase();
+    return !v || /연차|휴가|휴직|출산|육아|돌봄|병가|공가/.test(v) || /^(휴무|주간|주|야간|야|비|비번|DAY)$/.test(v);
+  }
+
+  if (st) return excludedCarryLabel(st) ? '' : st;
+
+  /* DIA 변경으로 야간 날짜의 근무종류가 바뀐 경우도 같은 종류를 다음 날 비번에 반영 */
+  if (po.dia && Array.isArray(diaList)) {
+    var wanted = String(po.dia).trim().toUpperCase();
+    for (var i = 0; i < diaList.length; i++) {
+      if (String(diaList[i].dia || '').trim().toUpperCase() !== wanted) continue;
+      var changedType = String(diaList[i].type || diaList[i].dutyType || '').trim();
+      var changedLabel = String(diaList[i].name || diaList[i].label || changedType).trim();
+      if (excludedCarryLabel(changedType) || excludedCarryLabel(changedLabel)) return '';
+      return changedLabel || changedType;
+    }
+  }
+
+  return '';
+}
+
 function snapDayWithAuto(dateKey, mb, dia, ovMap) {
 
   var d = snapBuildDay(dateKey, mb.seq, mb.anchor, dia, ovMap[mb.employeeId + '|' + dateKey], mb.name);
@@ -2280,21 +2447,34 @@ function snapDayWithAuto(dateKey, mb, dia, ovMap) {
 
     var pk = snapShiftKey(dateKey, -1);
     var po = ovMap[mb.employeeId + '|' + pk];
+    var carry = snapNightCarryStatus(po, dia);
 
-    if (po && po.type === 'status' && po.status) {
+    if (carry) {
 
       var pb = snapBaseDay(pk, mb.seq, mb.anchor, dia, mb.name);
+      var wasNight = String(pb.type || '').trim() === '야';
 
-      if (String(pb.type || '').trim() === '야') {
+      if (!wasNight && po.dia) {
+        var wanted = String(po.dia).trim().toUpperCase();
+        for (var di = 0; di < dia.length; di++) {
+          if (String(dia[di].dia || '').trim().toUpperCase() === wanted) {
+            var dt0 = String(dia[di].type || '').trim();
+            wasNight = (dt0 === '야' || dt0 === '야간');
+            break;
+          }
+        }
+      }
+
+      if (wasNight) {
 
         d = snapEmptyDay();
-        d.type = po.status;
-        d.manual = false;
+        d.type = carry;
+        d.manual = true;            /* 야간 따라 자동 변경된 비번 → * 표시 */
         d.overrideType = 'status';
-        d.status = po.status;
+        d.status = carry;
         d.auto = true;
         d.updatedAt = po.updatedAt || '';
-        d.label = po.status;
+        d.label = carry;
 
       }
     }
@@ -3176,6 +3356,7 @@ function loadMyMonth(force) {
         todayInfo.end = prevInfo.end || todayInfo.end || '';
         todayInfo.train1 = prevInfo.train1 || todayInfo.train1 || '';
         todayInfo.train2 = prevInfo.train2 || todayInfo.train2 || '';
+        todayInfo.train3 = prevInfo.train3 || todayInfo.train3 || '';
         todayInfo.route = prevInfo.route || todayInfo.route || '';
         todayInfo.routeDiagram = prevInfo.routeDiagram || todayInfo.routeDiagram || '';
         todayInfo.nightCarryover = true;
@@ -3530,6 +3711,7 @@ function renderDayDetail() {
   var endTime = info.end || (diaMeta && diaMeta.end) || '';
   var train1 = info.train1 || (diaMeta && diaMeta.train1) || '';
   var train2 = info.train2 || (diaMeta && diaMeta.train2) || '';
+  var train3 = info.train3 || (diaMeta && diaMeta.train3) || '';
   var workType = info.type || (diaMeta && diaMeta.type) || '';
 
   var tone = isStatus ? 'off' : toneOf(info.label);
@@ -3555,19 +3737,20 @@ function renderDayDetail() {
 
   if (startTime) html += '<div class="dd-row dd-icon-row"><img class="detail-art" src="data:image/webp;base64,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" alt="" aria-hidden="true" decoding="async" loading="lazy"><span>출근 시간 : ' + esc(startTime) + '</span></div>';
   if (endTime) html += '<div class="dd-row dd-icon-row"><img class="detail-art" src="data:image/webp;base64,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" alt="" aria-hidden="true" decoding="async" loading="lazy"><span>퇴근 시간 : ' + esc(endTime) + '</span></div>';
-  if (train1 || train2) {
+  if (train1 || train2 || train3) {
     var train1Date = dateKeyForSelectedDay();
     var train2Date = train1Date;
     /* 야간 근무의 두 번째 열차는 다음 날 운행일로 NXLogis에서 조회 */
     var isNightWork = info.label === '야' || /야간/.test(String(workType || ''));
-    if (isNightWork && train2 && train1Date) {
+    if (isNightWork && (train2 || train3) && train1Date) {
       var dateParts = train1Date.split('-').map(Number);
       var nextDate = new Date(Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2] + 1));
       train2Date = nextDate.getUTCFullYear() + '-' + String(nextDate.getUTCMonth() + 1).padStart(2, '0') + '-' + String(nextDate.getUTCDate()).padStart(2, '0');
     }
     html += '<div class="dd-row dd-icon-row"><img class="detail-art" src="data:image/webp;base64,UklGRqwSAABXRUJQVlA4IKASAAAQTgCdASq+AIcAPikQh0KhoSETuU34GAKEoAzQTkl8+4fkZ7YVjfuf4k9g/+O8fubv8z56PHn+S/t39g/6v+o+cn+A9VX5b/4HuAfqB52/qf/ab1E/yD+3ftl7zH9T/0P949zP7K/8D9gPkA/l/9b9I72Df2z9gn9a//x6537M/CT/Wv93+3ftL/+j2AP//iKPEvye+PfWb+uf8jQWfdT6j/V/2N/eH/fcMB6hf41/If6V+P39p/azbcvwz+Bf1K+Z/3f8rf7bz7fVX/Ae4B/Gv5h/b/zI/u///6kugH/JP6j/s/7d+6v+u+l7+M/3n+J/LX3N/kf9w/1P+E/eT/L/YL/Hv5z/m/7N/h/+p/hf/3/1fvF9en7K+x1+0p1mo+uVuGv2mN1hbT+kRiiplMPz7La+OUimWegDrQmHMJkRX71EPnoa9UdqqoPneMzcKEskJkZUq8+XwU2zEXgLO1odU24/BrmEtXPAp0FrytCqCm5zW7cgRzNmq9D0gfS4FO3AU0src91QM50EnyF7Cx2fX9P6Pb2LBwmZMtsCHZ6+q1ccvfeVQqpbHx2dBj6RTdLk1WyTPcTKuGd0bdyinyZx8lDdcW0lzrUoxHY+U+KBhq9A5WgaiVAMlEhjC0ayRKG3po3mXBh1WW3/thyc0l95bjifVX3Ys1xSgb19BgYCr32n5TyhbDUGemWAeb66jmmBnxu3ZGYfvFElvT6imPtlsARrpMXtkyCXkKEfDb2hMSR+B2J+8Ai0oG5ShUWZyNRsEkftHhQFMhbMkcZVZXfioN7wHDxbD7Nwmap7NY+p8qW0HX5n+Yn76uySceMP/DcpMKSwz0TiugAA/v8ytMrTNMIvSiPMnXqfpqIl9YJl2rC6Cqm2W19rOn6ybArugUXeE3ZaCcV6RfV20A9wYfl8/uDnqCNj5wBJvLmGjlodoYHRnOCDAUhARiHlf/PFXzewfDAXMN9tvHLeJaTO3zTpiX2/cldKh2gKiiUBwp9WywF+AkBa+MTfqD/EY+cePWPdSO5m2s4KXMbfFYR5E5Hgf2Bf8tRfYn6/GoVDGAkEw+w1tvQd9XAoDNwc6E5cBKdGaB+20BABDTE+XorL5WExmotRmqd0tnAsgRwDj5BDgDYOptUXSCRJQbPhFKbF1pUy7cDkFoBcw3GwmAJHdH1xhPLwmg4uDNe+ur6y8/UMWCbIT397nUS/5aKsHCR5UomTk2IfavkTatLM3HlDWZ705kw3F2Z4Nsk7/OK/gZ70koCsdpyAoTS3QL2HKm9pUL7klS49VJssVJltA8dHaPlaETdywV9fDVX9O0uZXIEV+9iAKRWoAWHgorttLJBFWHGzaOwGsY9Vs1oP/liB2FITlee9ECw17StkdIMhblIGXa9aSlQ82A3hmIGT+2nQ9R1rRwOpNDz110T8Hi8pZtV4/qvft4oeDLiY3t5hOHZ4YQdqKFAxSNM3oNRwbkJmnsG/KSQaHNPXEe4SUlsj8ktL6SNiUpe8RHQQq1Z8BC/H//D987ygP0h+IaVFkyjpMdvutjPaNGk8XgA4XgYRhkxrRq0tZatwvxekVZ/D/WEJ9dmPGyQIHSB32N2C8VGs0sqZ4VkXWDPOZSRg6gDy+7ZR4FHwUTs+d/tng6McKcNfXKIhvx/QPVvm7LjHzAePALifx1lLnXE84TNayaIRQojN6MXVsXwAt6u2R/2AlggCVR958/EQaNrif66JrPfxyxYuGa9TT6PYg34XuvCw2QrK4oFlxzwDbmieybUtSaJ/WAMrxeMkDnghZ/xNS8RyRp8Tzs0ugBTFbj5IaOI6bCG1piksrabuDcA7af4TXxXNqoGa1wkPO9EMCD8S6X91xaPjYzLakEVM6nLOFsHJpjxeTnSL20cmXZ23Rt2reNp9Gv+B6FZ9uDdN90FWRCLGBvL27CLTJdjUxU8y2ZkWAQHpQkSLt9uBP14QTFDvbSCvx0QZmwzZz3alwI8jQdVS3k/TP96xsPnqBIYp1RPWhn4okNYqpKR5nifVMAC935/LdWzYZRkWoLzf/xjFDMrKzbV/J1F3H50583rjAQzxeP9QRSWIErE78vsvkIZaIoeGigzHoeXUMSghAONWIRgh5XJhsSG2hNK/o10xdIhePFEwA1rffkFVMr13UMcv4bi3S5GeATpH+CcbQki91Y9wdgbJWt3Aro7fkhR2rDJHuk9S0SOY/Voo5MLPOyADeg/DaltgUu/80C+vx8pSgA1KqinKS+DWewRbom6Jvws3LcKTd77A65zoidj8gxnAHZsAZfHyWDxAO+1PlHytr+yB5D515c8PMALbm0Hlhgod7cPMj6GrPWTNnyErA3TjV85ApUGSAOH68MNj5OeK0Vn+KmKDsErDK2TJZr3z+WHVp6Kxa38HtyddGg7gV1/kd7beCrgT6XIyeFfXMRO5kffhjagw9uMe3h2kC4lzLSZaONTEBY1DTxMxglyRI1gIOyGqKDsclNdmsn1NCpLl2AMb6cNmIYIbDSU24CmOBDKiMd1mrjwR4nlXBLVujK2cx9KNxRjwubZFomcn7L4NFrSwqH1hi7nP4ZCOluCqykGMF8C5Ohr/z1Mpvc4TVFyEn7CKGV3F9goZKimMicbRopXot8NkF4zl6WllGr7S8RcVIvEVeZN7ONT4MjITANQuKcu4ZpCTPl03kxmAXDHYcqIHPl1/wRpoprPw0MHqJsc36aPvw7layNTM+1jWwstYpckkLAGfw6sa5W29drTQfIc+JZ2dCEEElh8jHts2QsJIxfEsbBL9IPZXnJdTJKJgAHxtdjSDMkhYzLfWfuWaCf47lkj3tWvfiaNl02pgExQ0Um7FoU/tG4mzuMq+0LgCbkn/MWJh2uiIEhYU6Vg9E+Ugzd99lBitb+VGRs4jGv46QEceTY864QfhEh7hr8lhCDbiOWfv8rJQ+nHRA49BF6Z+YjqZsl/5v5xf+e1auO2Hnl389YmEzeGam0FQJp+spoHfh0f0ejYuAUDEXSNodTQvSQ4IKKZKJF9jH43KqX3LNntALz9N0/0nBHuKWTxVkWBKqO9ZcbgEMNMbRqvI/7EineDREjYIdgLFmO8Iz/YAPX78AUvjX5gtZQFMLBZLdaRL4S5ZCRv1+gEO/KuRDK/4Cd3igYjhBAQM5GstfA4KaWbXYa16RvXx+OOUfWphkL8lRX+buTPLduPKtMAjFEAflguTBXT2zZgL3whOlGRDH0VgK3Vo+F4406TbeXc2ji+XdCRY/hg/DruaR2cRAreV2ZpL80rzES4BHZ1W9bvQNl2ZopYymMWFRe5O6Kz73MZ5jn3EO8TAmSzc1etCfc/4gA3ch1+aFPNIznZslGA/KZJYM7nEDuTtzlE2NmkvhlNyytOGd2oV16DuzaVGqRDinZX6RArEt0T+6dAqHUKvQqlYr6vflqJeSmS4SwcRLm9BIAJenndgJZCxNpnv92XE1OWMjnvb2Qm9A0LleFa8PLxposMi6PLOsqEElEKg3EU60l9MsMmrAlCssIxFEZzFMeXFpmAPYXGgfHTQXq+mv8/YFzaYE05nLTnuIdHFhcLFnU0PlbeEAFnlU0arpdHGYLxbMMvoRk0tBJgPjTx3ztuHAs0kk3Ja43mzWSN6PxKwjHM9rg/BP3lD7ZuAhLJOIOsiAeO/O2cYO5o+qSJ3+wS8L0xVpyxiiquZ9UdAf1xL5QBIsUqlUoMYMuY4EYIhRvKCh5QaqLZXt1RYOrfuiFLYo9Me9wieSpbSSVH4mW9FRV86O4Owt/glTx9WwUNypbYd+HnD18TKpLdFJ8a7M5xh1iwXYmusQ5py5lc49z0JKCbJSu/wp45XLAwEOZjSgnznXkKTuQgb548nnUb+sTkz2yIx//kR/kSSneCHWxLqLUY2HtBZ98Y4IGoEmIkUOvu7pKJWBYHuZw81OiExHCTaB5rhI/bK06SILpDBV7E4dUItMC9hlfFlp/JMKSn4m6dvyKvFRFjY3iurFXDSK3EuoEzlkXSw9LnB4kEzXJd+hT4K7evREy0t8uPMKY3bfl+PteBshJ30ik/cvGhtUBkjtBoCiImAJAb+x3OnU8g07ij7Eb+1z4Z0G/vz3//uU/IXww9ijSmGEU9XyOS6V6GGjoyPYdPi83EIH1UP1H2aL/4hjeQTKncHnEUvGyUrZ3nXSGm1+4Iwv5dYBJ9asAHX7IV/vi/dBneUdVPNSq4c8ADPKCr11oyAkXlrKHAsGupVjSVI2U8KFLkWvWXe8feTvzoXJPMTXKueUhLe75Mp2sDlfyHPeuooB5EUL+0ovjADM47N0qx46TKAzzJW1apHNW7CwqDVdQbT7CBCs35NjEaOZXWtzMU79vHUM1WHaLOxX58MzVEIh3NECHKyUdgu/zb0xJDvLkuxG0/jnM4mNLuvUaJHY1Ux5b7Wzmti5YplPCJI+PnMr236p9+xonW5D44yqLmcHiiW0B+mCj8ajc/rsvzcfb+E15eviBXHrIGzWEfY/1AS9huh5Y6sk3KgHdtuJohQNTTgfwut77zOPUWrwltPTpML5j0/bSTwDZHGhXhtXo50DRtH/W9nuMffiV9+03YUHU++VaPznzlTAUtOsPiMdghLatOqwjY6Vx5PA6pG3rIg6NyeGKbskwHjQngS0/woyW/NZIB7HmR79819JW2448bzXZH7/3lbUsfgcTb8q6RiFsgul5jEDqw9guVzSkyCKSF9T7nfysGI4rATxNVV7sUXVi1FmRueB6t6mNFN4DKn1/kzJ8OhjMCFU9WoJSonAEgTf6dPKq85WZM4HE9vn+9oLtFA1mORDrkRAxMebc1SXxsiwk4RZyB4rOxtE+aocEL7jS72T0kybTn04IZn6rXoGVH7eoAraoVu+PwkHy8ph/12wIJ2vW7enn+z+C3cwGUS04zgYbS9bR+jmhnOpl92uOX7vEeXRK65tqANpeYQj78ARkddGV2Ko2PKEvqwEaqf2BR25NZQZ6ODo3PbGYNsI9XYv4H33fojuXrW1ga9jCKYpkMjeNbplXz9ZazT+ihSgCYWpOELtOzrn1KmGlxk0bMmY24zV00+QqjDnn560v2gffgfaP8MG5KKoIDIdO2m+NRi3R27cd7YC79w0kOkKyqQvSbFVQNylXy+V75FQ8Can8EHOK9/l3hOJvJ1mFtrURwPdJ8bprsTl/B+vCYLu3jJq/4UBmMejbJFb0NvDAi7eLQGuAeTDIqcuQU25MbiGx5enYiBjCSB0cXCvVDDEwN7aieS2iup/jP6wQNHPRwrXskeU6mhEW++2zLDuLyhF55gKcKpLfvu1q/ib3YpIi4JTdAgu1wiENuGiCTLkkQhVYkS+HXH/FN5419XyBI5jY9A1JD03PUXDKB6XvBA1HwVs2BWDfVeIDGA9PweCSs1waVS7m+ItKyrJ3n5Gqgf3jESTdNQK+mwsurw4Frcng13jviv4Cd+OU8G5k4XfBg1ri0emyBgcM0/zB3bn6sNPQj1b3UYdFJLu4j23I0TnGuDRIUCfH/4lHr63T6AEUi2+dx4Xm/UiPdf1hvY1VrB4H36/hJBdW+O2me15eR505eV/SPn+Mp6K7VzqQjm7xy4YT0CYCeupPOKEQE5Tny7Fi7wEqG6UU58rP/5+Z1ziE0jRai053pv+6lVyZgjD7+C4PWpCaqTy1Tfxoj/6Uo1ZpLJAHTfZkJ8IfhAfpfyyJkBO4GsfdQLRR/i5LMhy+/X46dg6IGMmSnjkS5FXFwgJvIQQBkIf2rcm65H6H5gDaA6/EKagXMIlpZP3MXCIpijA5KDyTFJGoQHkeTeE/Ufb9/7yX/yY1dKu8bueUTYjfYbeNKpUP5B2eRA1ewL9EwqBykYx4YVIA+1yiH35RB0ScAfSp3rSFOk+L2ArfctcB1kmnTjDer4Zhc+WJA2LQsEavvE7FFw54P1zYpbefV4sy4jmzRo7y/+Iryn6a6WXQtopK7IkqbGY2V4aBA+iASPG0P+tmBN9YqmJYJmH/+lPnLc9A3/toSMJCuM+9x5s+1XjLPtnFD+lmK5V6B9Zedai0cMDk+v3z65yxvlqubQ0q2bozT44jiamGxGKWZy6OkBO1TNmndbluOEzF3txm2tMQp6hc7D6WxfwKyt3z8Fs/y93/qCm9ZHRiNIV1/Kn6TcwecLRvaG7Tc6NC2l3I3h6DOJyQ5/s47AKa/VHXDSxFhrnxE539Ed5k4ylw3H/+hAhFMfrwFJdOj5WJfB4U2Dx0Fa0cIreSOC1dDA/VgdGEKOmqTuUfKs+oXWJtZrS3oVzo4qukuiYM4y6H5WYmeuCocJayQ9LOxioYaJIHfPep2ySwBHkkUWoAkN/RJX8+JLAJ0giuGBfZpYs0FytuwhGnXLClQA" alt="" aria-hidden="true" decoding="async" loading="lazy"><span>열차 번호 :</span>' +
             (train1 ? trainLink(train1, train1Date) : '') +
-            (train2 ? trainLink(train2, train2Date) : '') + '</div>';
+            (train2 ? trainLink(train2, train2Date) : '') +
+            (train3 ? trainLink(train3, train2Date) : '') + '</div>';
   }
 
   /* 선택한 날짜의 DIA와 행로표 정보를 한눈에 확인할 수 있도록 하단에 별도 표시 */
@@ -4660,7 +4843,7 @@ function openGroupInfo(k, key) {
       info = Object.assign({}, info, {
         type: '비', label: '비', dia: prevInfo.dia,
         start: prevInfo.start, end: prevInfo.end,
-        train1: prevInfo.train1, train2: prevInfo.train2,
+        train1: prevInfo.train1, train2: prevInfo.train2, train3: prevInfo.train3,
         route: prevInfo.route, routeDiagram: prevInfo.routeDiagram
       });
       infoFromNight = true;
@@ -4678,7 +4861,7 @@ function openGroupInfo(k, key) {
     if (info.swapPartnerName || info.swapPartnerId) {
       html += piRow('근무 교환', String(info.swapPartnerName || info.swapPartnerId) + '님과 교환');
     }
-    html += '<div class="pi-none">' + (info.manual ? '직접 변경한 근무입니다.' : (info.auto ? '야간 근무 후 비번에 자동 적용된 휴가입니다.' : '')) + '</div>';
+    html += '<div class="pi-none">' + (info.auto ? '야간 근무 변경에 따라 비번도 자동 변경되었습니다. (*)' : (info.manual ? '직접 변경한 근무입니다.' : '')) + '</div>';
 
   } else {
 
@@ -4704,8 +4887,9 @@ function openGroupInfo(k, key) {
     /* 근무표 상세정보와 동일하게 다이아의 열차번호를 표시하고 NXLogis 조회로 연결 */
     var train1 = String(info.train1 || (meta && meta.train1) || '').trim();
     var train2 = String(info.train2 || (meta && meta.train2) || '').trim();
+    var train3 = String(info.train3 || (meta && meta.train3) || '').trim();
     var trainDateKey = infoFromNight && typeof prevKey !== 'undefined' ? prevKey : key;
-    if ((type === '야' || infoFromNight) && train2 && trainDateKey) {
+    if ((type === '야' || infoFromNight) && (train2 || train3) && trainDateKey) {
       var trainDateParts = trainDateKey.split('-').map(Number);
       var train2Date = new Date(Date.UTC(trainDateParts[0], trainDateParts[1] - 1, trainDateParts[2] + 1));
       var train2DateKey = train2Date.getUTCFullYear() + '-' + String(train2Date.getUTCMonth() + 1).padStart(2, '0') + '-' + String(train2Date.getUTCDate()).padStart(2, '0');
@@ -4715,7 +4899,8 @@ function openGroupInfo(k, key) {
     html += '<div class="pi-row"><span class="pi-k">열차 번호</span><b>' +
       (train1 ? trainLink(train1, trainDateKey) : '') +
       (train2 ? (train1 ? ' ' : '') + trainLink(train2, train2DateKey) : '') +
-      ((!train1 && !train2) ? '-' : '') + '</b></div>';
+      (train3 ? ((train1 || train2) ? ' ' : '') + trainLink(train3, train2DateKey) : '') +
+      ((!train1 && !train2 && !train3) ? '-' : '') + '</b></div>';
 
     if (diaNo) {
 
@@ -5176,10 +5361,12 @@ function diaTrainMarkup(it, list, index) {
   }
   var train1 = String(source.train1 || '').trim();
   var train2 = String(source.train2 || '').trim();
-  if (!train1 && !train2) return '';
+  var train3 = String(source.train3 || '').trim();
+  if (!train1 && !train2 && !train3) return '';
   return '<span class="dia-train-numbers">' +
     (train1 ? '<span>' + esc(train1) + '</span>' : '') +
     (train2 ? '<span>' + esc(train2) + '</span>' : '') +
+    (train3 ? '<span>' + esc(train3) + '</span>' : '') +
     '</span>';
 }
 
@@ -5267,7 +5454,7 @@ function openPatternInfo(i) {
   if (String(it.type || '').trim() === '비' && i > 0 && String(list[i - 1].type || '').trim() === '야') {
     it = Object.assign({}, it, {
       dia: list[i - 1].dia, start: list[i - 1].start, end: list[i - 1].end,
-      seq: list[i - 1].seq, train1: list[i - 1].train1, train2: list[i - 1].train2
+      seq: list[i - 1].seq, train1: list[i - 1].train1, train2: list[i - 1].train2, train3: list[i - 1].train3
     });
     infoFromNight = true;
   }
@@ -5870,6 +6057,7 @@ function openSettings() {
   switchSection('settings-section');
 
   if (typeof renderAlarmSub === 'function') renderAlarmSub();
+  if (typeof renderNxSub === 'function') renderNxSub();
 
   loadMeta(function () {});
 
@@ -6035,6 +6223,8 @@ function doLogin(id, name, isAuto) {
     else clearSavedLogin();
 
     setCurrentUser({ employeeId: r.employeeId, name: r.name, token: r.token });
+    nxStatus = {};
+    nxLastFetch = 0;
 
     $('welcome-name').textContent = r.name;
 
@@ -6070,6 +6260,23 @@ function doLogin(id, name, isAuto) {
 
     if (r.snapshot) snapApply(r.employeeId, snapGen, r.snapshot);
     syncPending();
+
+    /* 운휴 알림이 켜져 있으면 로그인할 때마다 최신 운휴 결과를 다시 조회해 팝업 표시 */
+    if (getNxCfg().on) {
+      var nxLoginTries = 0;
+      var nxLoginTimer = setInterval(function () {
+        nxLoginTries++;
+        if (nxBusy && nxLoginTries < 60) return;
+        if (nxLoginTries >= 60 || (snapshotUsable() && findMyMember())) {
+          clearInterval(nxLoginTimer);
+          if (!getNxCfg().on) return;
+          nxLastFetch = 0;
+          nxRefresh(true, function (list) {
+            if (Array.isArray(list)) nxNotify(true);
+          });
+        }
+      }, 350);
+    }
 
   });
 
@@ -7187,12 +7394,442 @@ function runAlarmCheck() {
 
 
 
+
+/* ============ 열차 운휴 알림 (NXLogis) ============
+   오늘·내일·모레 내 근무표의 열차번호를 Supabase 함수(nx-check)가 NXLogis에서 조회하고,
+   '열차 운휴'가 나온 열차는 어느 날 어떤 열차인지 팝업으로 알립니다. */
+
+var nxBusy = false;
+var nxLastFetch = 0;
+var nxStatus = {};          /* 'YYYY-MM-DD|열차번호' → { state: 'cancel'|'ok'|'unknown', fail: bool } */
+var nxShowing = [];
+var NX_REFRESH_MS = 60000;      /* 앱을 다시 볼 때 연속 조회 방지 */
+
+function nxEmp() { return getCurrentUser().employeeId || ''; }
+
+function getNxCfg() {
+  var c = { on: false };
+  try {
+    var raw = LS.getItem('nxCfg_' + nxEmp());
+    if (raw) c.on = !!JSON.parse(raw).on;
+  } catch (e) {}
+  return c;
+}
+
+/* 이미 확인한 운휴(날짜|열차)는 다시 띄우지 않음 */
+function nxAckLoad() {
+  try { return JSON.parse(LS.getItem('nxAck_' + nxEmp()) || '{}') || {}; } catch (e) { return {}; }
+}
+
+function nxAckSave(o) {
+  try { LS.setItem('nxAck_' + nxEmp(), JSON.stringify(o)); } catch (e) {}
+}
+
+function renderNxSub() {
+  var el = $('nx-sub');
+  if (!el) return;
+  el.textContent = getNxCfg().on
+    ? '※ 켜짐 · 로그인할 때 근무표의 앞으로 31일간 열차 운휴를 확인해요'
+    : '※ 꺼짐 · 내 근무표 열차가 운휴이면 팝업으로 알려드려요';
+}
+
+function openNxSettings() {
+  $('nx-on').checked = getNxCfg().on;
+  $('nx-result').textContent = '';
+  $('nx-panel').classList.add('active');
+}
+
+function closeNxSettings() { $('nx-panel').classList.remove('active'); }
+
+function saveNxSettings() {
+  var on = $('nx-on').checked;
+  try { LS.setItem('nxCfg_' + nxEmp(), JSON.stringify({ on: on })); } catch (e) {}
+  if (on && 'Notification' in window && Notification.permission === 'default') {
+    try { Notification.requestPermission(); } catch (e) {}
+  }
+  nxStatus = {};
+  nxLastFetch = 0;
+  closeNxSettings();
+  renderNxSub();
+  showToast(on ? '열차 운휴 알림을 켰습니다.' : '열차 운휴 알림을 껐습니다.');
+  if (on) setTimeout(function () { nxRefresh(true); }, 500);
+}
+
+function nxDateText(dateKey) {
+  var p = dateKey.split('-');
+  var w = ['일', '월', '화', '수', '목', '금', '토'][new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])).getUTCDay()];
+  return p[0] + '년 ' + parseInt(p[1], 10) + '월 ' + parseInt(p[2], 10) + '일(' + w + ')';
+}
+
+/* 오늘부터 31일간 근무표의 모든 주간·야간 열차를 수집. 야간 후속 열차는 다음 날 운행일로 조회 */
+function nxCollectTrains() {
+
+  var out = [];
+  var mb = findMyMember();
+
+  if (!mb || !snapshotUsable()) return out;
+
+  var t = todayKST();
+  var seen = {};
+  var rangeDays = 31;
+  var allowedDates = {};
+
+  /* 오늘부터 31일간 근무표에 편성된 열차를 전부 수집 */
+  for (var dayOffset = 0; dayOffset < rangeDays; dayOffset++) {
+    var allowedDt = new Date(Date.UTC(t.y, t.m, t.d + dayOffset));
+    var allowedKey = getDateKey(
+      allowedDt.getUTCFullYear(),
+      allowedDt.getUTCMonth(),
+      allowedDt.getUTCDate()
+    );
+    allowedDates[allowedKey] = true;
+  }
+
+  function add(trainRaw, dateKey) {
+    if (!allowedDates[dateKey]) return;
+
+    /* 영문 접두어가 있는 열차번호(M6129 등)와 숫자 열차번호를 모두 보존 */
+    var raw = String(trainRaw || '').trim().replace(/\s+/g, '');
+    var m = raw.match(/[A-Za-z]+\d{1,6}|\d{1,6}/);
+    if (!m) return;
+
+    var trainNo = m[0].toUpperCase();
+    var id = dateKey + '|' + trainNo;
+    if (seen[id]) return;
+
+    seen[id] = true;
+    out.push({ id: id, train: trainNo, date: dateKey });
+  }
+
+  for (var n = 0; n < rangeDays; n++) {
+    var dt = new Date(Date.UTC(t.y, t.m, t.d + n));
+    var key = getDateKey(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate());
+    var d = snapDayWithAuto(key, mb, snapshot.raw.dia || [], snapshot.ovMap);
+
+    if (!d || d.overrideType === 'status') continue;
+
+    var type = String(d.type || '').trim();
+    if (type !== '주' && type !== '야') continue;
+
+    var meta = d.dia ? diaByNumber(d.dia) : null;
+    var train1 = d.train1 || (meta && meta.train1) || '';
+    var train2 = d.train2 || (meta && meta.train2) || '';
+    var train3 = d.train3 || (meta && meta.train3) || '';
+
+    add(train1, key);
+
+    /* 야간의 후속 열차는 다음 날 운행일 기준으로 조회 */
+    var followDate = type === '야' ? snapShiftKey(key, 1) : key;
+    add(train2, followDate);
+    add(train3, followDate);
+  }
+
+  out.sort(function (a, b) {
+    return a.date === b.date
+      ? a.train.localeCompare(b.train, 'en', { numeric: true })
+      : (a.date < b.date ? -1 : 1);
+  });
+
+  return out;
+}
+
+/* Supabase 함수 nx-check 호출 (NXLogis 조회는 서버가 대신 함). 실패하면 이유를 함께 돌려줌 */
+function nxCallServer(items, cb) {
+
+  var batchSize = 30;
+  var allResults = [];
+  var offset = 0;
+
+  var headers = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY };
+  if (/^eyJ/.test(SUPABASE_KEY)) headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
+
+  function nextBatch() {
+    if (offset >= items.length) {
+      cb(allResults, '');
+      return;
+    }
+
+    var batch = items.slice(offset, offset + batchSize);
+    offset += batch.length;
+
+    var ctl = null, timer = null;
+    try {
+      ctl = new AbortController();
+      timer = setTimeout(function () { ctl.abort(); }, 40000);
+    } catch (e) {}
+
+    fetch(SUPABASE_URL + '/functions/v1/smart-handler', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({
+        items: batch.map(function (it) {
+          return { train: it.train, date: it.date };
+        })
+      }),
+      signal: ctl ? ctl.signal : undefined
+    })
+      .then(function (r) {
+        if (!r.ok) {
+          var err = new Error('http');
+          err.status = r.status;
+          throw err;
+        }
+        return r.json();
+      })
+      .then(function (j) {
+        if (timer) clearTimeout(timer);
+        if (!j || !Array.isArray(j.results)) {
+          cb(null, '서버 응답 형식이 올바르지 않습니다.');
+          return;
+        }
+        allResults = allResults.concat(j.results);
+        nextBatch();
+      })
+      .catch(function (e) {
+        if (timer) clearTimeout(timer);
+        if (e && e.status) {
+          cb(null, e.status === 404
+            ? '서버 함수 smart-handler가 없습니다 (Supabase에 deploy 필요)'
+            : e.status === 401 || e.status === 403
+              ? '서버 함수 인증 오류 (HTTP ' + e.status + ') · Verify JWT 설정 확인'
+              : '서버 함수 오류 (HTTP ' + e.status + ')');
+          return;
+        }
+        cb(null, '인터넷 또는 Supabase 서버 연결 오류: ' + String(e));
+      });
+  }
+
+  if (!items.length) {
+    cb([], '');
+    return;
+  }
+
+  nextBatch();
+}
+
+/* NXLogis 자동 조회는 Supabase Edge Function에서만 수행한다.
+   브라우저에서 nxlogis.kr을 직접 fetch하면 CORS 오류가 발생하므로 직접 조회 fallback은 사용하지 않는다. */
+function nxRefresh(force, done) {
+
+  if (nxBusy) { if (done) done(null); return; }
+  if (!force && !getNxCfg().on) { if (done) done(null); return; }
+  if (!force && Date.now() - nxLastFetch < NX_REFRESH_MS) { if (done) done(null); return; }
+
+  var list = nxCollectTrains();
+
+  if (!list.length) { nxLastFetch = Date.now(); if (done) done(list); return; }
+
+  nxBusy = true;
+
+  function finish() {
+    nxBusy = false;
+    nxLastFetch = Date.now();
+    nxCacheSave();
+    nxNotify();
+    if (done) done(list);
+  }
+
+  nxCallServer(list, function (results, why) {
+
+    /* 서버 응답이 없거나 형식이 잘못되면 정상 운행으로 간주하지 않는다. */
+    if (!Array.isArray(results)) {
+      list.forEach(function (it) {
+        nxStatus[it.id] = {
+          state: 'unknown',
+          fail: true,
+          why: why || 'Supabase 서버 조회 실패'
+        };
+      });
+      finish();
+      return;
+    }
+
+    var map = {};
+    function nxNormalizeDateKey(value) {
+      var digits = String(value || '').replace(/[^0-9]/g, '');
+      if (digits.length === 8) {
+        return digits.slice(0, 4) + '-' + digits.slice(4, 6) + '-' + digits.slice(6, 8);
+      }
+      return String(value || '').trim();
+    }
+    results.forEach(function (r) {
+      if (!r || !r.train || !r.date) return;
+      var state = ['cancel', 'ok', 'unknown'].indexOf(r.state) >= 0
+        ? r.state : 'unknown';
+      var resultKey = nxNormalizeDateKey(r.date) + '|' + String(r.train).trim();
+      map[resultKey] = state;
+    });
+
+    list.forEach(function (it) {
+      var key = nxNormalizeDateKey(it.date) + '|' + String(it.train).trim();
+      var found = Object.prototype.hasOwnProperty.call(map, key);
+      nxStatus[it.id] = {
+        state: found ? map[key] : 'unknown',
+        fail: !found || map[key] === 'unknown',
+        why: !found
+          ? '서버 응답에 해당 열차 정보가 없습니다'
+          : map[key] === 'unknown'
+            ? 'NXLogis에서 운행 정보를 확인하지 못했습니다'
+            : ''
+      };
+    });
+
+    finish();
+  });
+}
+
+function nxCheckNow() {
+  var box = $('nx-result');
+  box.textContent = '조회 중...';
+  nxBusy = false;
+  nxRefresh(true, function (list) {
+    if (!list || !list.length) {
+      box.textContent = '앞으로 31일간 조회할 열차(주간·야간 근무)가 없습니다.';
+      return;
+    }
+
+    var cancelled = list.filter(function (it) {
+      return nxStatus[it.id] && nxStatus[it.id].state === 'cancel';
+    });
+
+    if (cancelled.length) {
+      cancelled.sort(function (a, b) {
+        return a.date === b.date ? (Number(a.train) - Number(b.train)) : (a.date < b.date ? -1 : 1);
+      });
+      box.innerHTML = cancelled.map(function (it) {
+        return '<div style="margin:5px 0;color:#c62828;font-weight:700">' +
+          esc(nxDateText(it.date)) + ' · ' + esc(it.train) + '호 · 열차운휴</div>';
+      }).join('');
+      return;
+    }
+
+    var hasUnknown = list.some(function (it) {
+      return !nxStatus[it.id] || nxStatus[it.id].state === 'unknown' || nxStatus[it.id].fail;
+    });
+    box.textContent = hasUnknown
+      ? '운휴 여부를 확인하지 못한 열차가 있습니다. 잠시 후 다시 조회해주세요.'
+      : '운휴 열차가 없습니다.';
+  });
+}
+
+function nxTestPopup() {
+  nxShowRing([{ id: 'test', train: '0000', date: todayKeyKST() }], true);
+}
+
+function todayKeyKST() {
+  var t = todayKST();
+  return getDateKey(t.y, t.m, t.d);
+}
+
+function nxShowRing(items, isTest) {
+
+  nxShowing = isTest ? [] : items.slice();
+
+  var rows = items.map(function (it) {
+    return '<div style="margin:6px 0"><b>' + esc(nxDateText(it.date)) + '</b> · <b style="color:#c62828">' +
+      esc(it.train) + '호 열차 운휴</b></div>';
+  }).join('');
+
+  $('nx-ring-body').innerHTML = (isTest ? '팝업 테스트입니다.<br>' : '내 근무표의 열차가 운휴입니다.<br>') + rows +
+    (isTest ? '' : '<div style="font-size:12px;color:#7a8696;margin-top:6px">NXLogis에서 자세히 확인하세요.</div>');
+  $('nx-ring-panel').classList.add('active');
+
+  try { alarmBeep(); } catch (e) {}
+  try { if (navigator.vibrate) navigator.vibrate([400, 200, 400]); } catch (e) {}
+  try {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('열차 운휴 알림', {
+        body: items.map(function (it) { return nxDateText(it.date) + ' ' + it.train + '호 운휴'; }).join(', ')
+      });
+    }
+  } catch (e) {}
+
+}
+
+function closeNxRing() {
+  var ack = nxAckLoad();
+  var limit = Date.now() - 7 * 86400000;
+  Object.keys(ack).forEach(function (k) { if (ack[k] < limit) delete ack[k]; });
+  nxShowing.forEach(function (it) { ack[it.id] = Date.now(); });
+  nxAckSave(ack);
+  nxShowing = [];
+  $('nx-ring-panel').classList.remove('active');
+}
+
+/* 새로 확인된 운휴 열차를 한 팝업에 모아 알림 */
+function nxNotify(forceShow) {
+
+  if (!getNxCfg().on || !getCurrentUser().token) return;
+  if ($('nx-ring-panel').classList.contains('active')) return;
+
+  var ack = nxAckLoad();
+  var fresh = [];
+
+  Object.keys(nxStatus).forEach(function (id) {
+    if (nxStatus[id].state !== 'cancel' || (!forceShow && ack[id])) return;
+    var p = id.split('|');
+    fresh.push({ id: id, date: p[0], train: p[1] });
+  });
+
+  if (!fresh.length) return;
+
+  fresh.sort(function (a, b) { return a.id < b.id ? -1 : 1; });
+  nxShowRing(fresh, false);
+
+}
+
+/* 마지막 조회 결과를 폰에 저장해 두었다가, 켜자마자 먼저 보여줌 (30분 이내 것만) */
+function nxCacheSave() {
+  try { LS.setItem('nxLast_' + nxEmp(), JSON.stringify({ at: Date.now(), st: nxStatus })); } catch (e) {}
+}
+
+function nxCacheLoad() {
+  try {
+    var o = JSON.parse(LS.getItem('nxLast_' + nxEmp()) || 'null');
+    if (o && o.st && Date.now() - o.at < 30 * 60000) nxStatus = o.st;
+  } catch (e) {}
+}
+
+/* 페이지를 켜면: 근무표가 준비되는 즉시(0.3초 간격 확인) 저장된 결과로 먼저 알리고, 바로 서버 조회 */
+(function initNx() {
+
+  var tries = 0;
+
+  var starter = setInterval(function () {
+
+    tries++;
+
+    if (tries > 1000) { clearInterval(starter); return; }      /* 약 5분 */
+
+    if (!getCurrentUser().token || !snapshotUsable() || !findMyMember()) return;
+
+    clearInterval(starter);
+
+    renderNxSub();
+
+    if (!getNxCfg().on) return;
+
+    nxCacheLoad();
+    nxNotify();               /* 저장된 결과로 즉시 */
+    nxLastFetch = 0;
+    nxRefresh(false);         /* 이어서 최신 결과 조회 */
+
+  }, 300);
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) nxRefresh(false);
+  });
+
+})();
+
 /* ============ 공통 뒤로가기 / 왼쪽 가장자리 스와이프 ============
    팝업은 닫고, 다른 화면은 직전 화면으로 복귀. 메인에서는 브라우저 뒤로 이동. */
 function closeTopOverlayForBack() {
   var overlays = [
     ['regulations-panel', closeRegulationsPanel],
     ['route-viewer', closeRouteViewer],
+    ['nx-ring-panel', closeNxRing],
+    ['nx-panel', closeNxSettings],
     ['alarm-ring-panel', closeAlarmRing],
     ['schedule-edit-panel', closeScheduleEdit],
     ['group-info-panel', closeGroupInfo],
