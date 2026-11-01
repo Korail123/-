@@ -5240,7 +5240,35 @@ function saveMyProfileField() {
   saveLocalChange(u.employeeId, loc);     /* 변경 표시 + 잠시 뒤 자동 서버 백업 */
   renderMyTenure();
   renderMyPageProfile();
-  showToast('저장했습니다.');
+  pushMyProfile(loc.profile);
+}
+
+/* 서버(members.profile)에 프로필 저장: Supabase 함수 app_saveprofile */
+function pushMyProfile(pf) {
+  var u = getCurrentUser();
+  if (!u.token) return;
+  api({ action: 'saveProfile', employeeId: u.employeeId, token: u.token, profile: pf }, function (r) {
+    showToast(r && r.success ? '저장했습니다. (서버 백업 완료)' : '이 폰에 저장했습니다. (서버 백업은 다음에 다시 시도)');
+    if (!(r && r.success)) { var loc = ensureLocal(u.employeeId); loc.profilePending = true; writeLocal(u.employeeId, loc); }
+    else { var l2 = ensureLocal(u.employeeId); if (l2.profilePending) { delete l2.profilePending; writeLocal(u.employeeId, l2); } }
+  });
+}
+
+/* 마이페이지를 열 때: 폰에 프로필이 없으면 서버에서 받아오고, 못 보낸 변경이 있으면 다시 보냄 */
+function syncMyProfile() {
+  var u = getCurrentUser();
+  if (!u.token) return;
+  var loc = ensureLocal(u.employeeId);
+  if (loc.profile && loc.profilePending) { pushMyProfile(loc.profile); return; }
+  if (loc.profile && loc.profile.joinDate !== undefined && (loc.profile.joinDate || loc.profile.grade || loc.profile.step)) return;
+  api({ action: 'getProfile', employeeId: u.employeeId, token: u.token }, function (r) {
+    if (!r || !r.success || !r.profile || typeof r.profile !== 'object') return;
+    var l = ensureLocal(u.employeeId);
+    if (l.profile && (l.profile.joinDate || l.profile.grade || l.profile.step)) return;
+    l.profile = r.profile;
+    writeLocal(u.employeeId, l);
+    if (currentPageSection() === 'vacation-section') { renderMyPageExtras(); renderMyPageProfile(); }
+  });
 }
 
 /* 근속 기간: 입사일부터 오늘까지 (예: 3년 2개월 · 1,158일) */
@@ -5373,6 +5401,7 @@ function renderMyPageExtras() {
   renderMyTenure();
   renderMyStats();
   renderMySwaps();
+  if (!renderMyPageExtras.__synced) { renderMyPageExtras.__synced = true; syncMyProfile(); }
 }
 
 /* 마이페이지 상단 내 정보 카드: 이름·사원번호·오늘 근무·출근 알람·운휴 알림 */
@@ -8432,6 +8461,7 @@ function closeNoticePopup() {
 /* 로그인(또는 저장된 세션으로 앱을 다시 열 때)마다 실행 */
 var loginPopupGen = 0;
 function runLoginPopups() {
+  renderMyPageExtras.__synced = false;
   loginPopupGen++;
   var gen = loginPopupGen;
   closeNoticePopup();
