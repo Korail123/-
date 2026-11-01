@@ -673,7 +673,8 @@ img.menu-art, .bn-btn .nav-art, .ui-icon, .heading-art, .board-title-art, .detai
 .mypage-profile{margin:4px 4px 14px;padding:14px;border-radius:16px;background:#f1f6fd;border:1px solid #dbe7f6}
 .mp-head{display:flex;align-items:center;gap:12px;text-align:left}
 .mp-head > div:last-child{text-align:left}
-.mp-avatar{flex:none;width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#3b8ff0,#1d5fc4);color:#fff;font-weight:800;font-size:19px;display:flex;align-items:center;justify-content:center}
+.mp-avatar{flex:none;width:64px;height:64px;border-radius:50%;overflow:hidden;box-shadow:0 2px 6px rgba(22,56,107,.18),0 0 0 2px #fff}
+.mp-avatar svg{display:block;width:64px;height:64px}
 .mp-name{font-size:17px;font-weight:800;color:#16386b}
 .mp-id{font-size:12px;color:#6b7a90;margin-top:2px}
 .mp-rows{margin-top:10px;border-top:1px dashed #cfdced;padding-top:6px}
@@ -5073,6 +5074,114 @@ function closeGroupInfo() {
 
 var vacYear = todayKST().y;
 
+/* ============ 마이페이지 캐릭터 (20~30대 기관사, SVG로 직접 그림) ============ */
+var AVATAR_FEMALE_NAMES = ['민현주', '박유진', '워니', '이보아', '임다빈'];
+var AVATAR_SKIN = ['#f8d8c2', '#f3cbad', '#efc19f', '#f9e0cf'];
+var AVATAR_HAIR = ['#2a1c15', '#3b2a21', '#4b3427', '#1d1c21', '#5b3c2b'];
+var AVATAR_BG = ['#fde2e4', '#ece4ff', '#dff3e8', '#d9f2f7', '#fff1c7', '#ffe5d6', '#dbeafe', '#e6f4d4', '#fbe3f3', '#e3e8ff', '#d7f5ef', '#fff5d9', '#ffe0e0', '#e8ecf2', '#f1e6d8'];
+/* 여자 7종, 남자 8종 */
+var AVATARS_F = [
+  { hair: 'ponytail', skin: 0, hc: 0, bg: 0 },
+  { hair: 'long', skin: 3, hc: 1, bg: 1 },
+  { hair: 'bob', skin: 1, hc: 3, bg: 2 },
+  { hair: 'bun', skin: 0, hc: 2, bg: 3 },
+  { hair: 'bobbang', skin: 2, hc: 0, bg: 4 },
+  { hair: 'wavy', skin: 3, hc: 4, bg: 5 },
+  { hair: 'ponytail', skin: 1, hc: 1, bg: 6, glasses: true }
+];
+var AVATARS_M = [
+  { hair: 'short', skin: 1, hc: 0, bg: 7 },
+  { hair: 'sidepart', skin: 0, hc: 1, bg: 8 },
+  { hair: 'wavy_m', skin: 2, hc: 3, bg: 9 },
+  { hair: 'short', skin: 3, hc: 2, bg: 10, glasses: true },
+  { hair: 'crew', skin: 2, hc: 3, bg: 11 },
+  { hair: 'bangs', skin: 0, hc: 0, bg: 12 },
+  { hair: 'curly', skin: 1, hc: 4, bg: 13 },
+  { hair: 'sidepart', skin: 3, hc: 0, bg: 14, glasses: true }
+];
+var avatarSeq = 0;
+
+function avatarSvg(c, size) {
+  var id = 'avc' + (++avatarSeq);
+  var skin = AVATAR_SKIN[c.skin], hair = AVATAR_HAIR[c.hc], bg = AVATAR_BG[c.bg];
+  var navy = '#203a6b', navyD = '#16294d', gold = '#e9b43c';
+  var back = '', front = '', fringe = '';
+  switch (c.hair) {
+    case 'ponytail': back = '<path d="M76 46 C92 50 94 70 88 92 C86 98 80 96 81 90 C84 74 82 60 74 52 Z" fill="' + hair + '"/>';
+      front = '<path d="M39 47 C40 56 41 60 43 62 L45 48 Z M81 47 C80 56 79 60 77 62 L75 48 Z" fill="' + hair + '"/>'; break;
+    case 'long': back = '<path d="M37 46 C34 66 34 86 38 98 L82 98 C86 86 86 66 83 46 Z" fill="' + hair + '"/>';
+      front = '<path d="M39 46 C39 58 40 64 43 70 L45 48 Z M81 46 C81 58 80 64 77 70 L75 48 Z" fill="' + hair + '"/>'; break;
+    case 'bob': back = '<path d="M36 46 C34 60 35 74 40 80 L80 80 C85 74 86 60 84 46 Z" fill="' + hair + '"/>';
+      front = '<path d="M39 46 C39 60 40 68 44 74 L46 48 Z M81 46 C81 60 80 68 76 74 L74 48 Z" fill="' + hair + '"/>'; break;
+    case 'bun': back = '<circle cx="84" cy="66" r="7" fill="' + hair + '"/>';
+      front = '<path d="M39 47 C40 54 41 58 43 60 L45 48 Z M81 47 C80 54 79 58 77 60 L75 48 Z" fill="' + hair + '"/>'; break;
+    case 'bobbang': fringe = '<path d="M44 53 Q52 59 60 55.5 Q68 59 76 53 Z" fill="' + hair + '"/>'; back = '<path d="M37 46 C35 58 36 70 40 76 L80 76 C84 70 85 58 83 46 Z" fill="' + hair + '"/>';
+      front = '<path d="M41 47 L79 47 C78 53 70 55 62 53 C55 55 47 55 41 51 Z M39 46 C39 58 41 66 44 72 L46 48 Z M81 46 C81 58 79 66 76 72 L74 48 Z" fill="' + hair + '"/>'; break;
+    case 'wavy': back = '<path d="M36 46 C30 62 38 70 33 84 C38 96 50 94 50 94 L70 94 C70 94 82 96 87 84 C82 70 90 62 84 46 Z" fill="' + hair + '"/>';
+      front = '<path d="M39 46 C38 58 41 66 43 72 L46 48 Z M81 46 C82 58 79 66 77 72 L74 48 Z" fill="' + hair + '"/>'; break;
+    case 'short': front = '<path d="M39 47 C39 52 40 56 41 58 L44 48 Z M81 47 C81 52 80 56 79 58 L76 48 Z" fill="' + hair + '"/>'; break;
+    case 'sidepart': fringe = '<path d="M44 52 Q50 58 58 55 Q52 56 47 52 Z" fill="' + hair + '"/>'; front = '<path d="M41 47 L66 47 C62 51 54 52 46 51 Z M39 47 C39 52 40 56 41 58 L44 48 Z M81 47 C81 52 80 56 79 58 L76 48 Z" fill="' + hair + '"/>'; break;
+    case 'wavy_m': fringe = '<path d="M62 54 Q68 60 76 53 Q70 56 66 54 Z" fill="' + hair + '"/>'; front = '<path d="M41 47 C46 52 52 49 56 52 C60 49 66 52 70 49 C74 51 77 50 79 47 Z M38 47 C37 53 39 57 41 59 L44 48 Z M82 47 C83 53 81 57 79 59 L76 48 Z" fill="' + hair + '"/>'; break;
+    case 'crew': front = '<path d="M40 47 C40 50 40.5 53 41.5 55 L43.5 48 Z M80 47 C80 50 79.5 53 78.5 55 L76.5 48 Z" fill="' + hair + '"/>'; break;
+    case 'bangs': fringe = '<path d="M45 53 Q48 58 52 55 Q55 59 59 55.5 Q62 59 66 55.5 Q70 58 75 53 Z" fill="' + hair + '"/>'; front = '<path d="M42 47 L78 47 C76 53 68 52 64 55 C60 51 52 54 46 51 Z M39 47 C39 52 40 56 41 58 L44 48 Z M81 47 C81 52 80 56 79 58 L76 48 Z" fill="' + hair + '"/>'; break;
+    case 'curly': fringe = '<path d="M44 53 q2 4 5 2 q2 4 5 1 q3 4 6 1 q3 4 6 0 q3 3 6 -1 q2 2 4 -1 Z" fill="' + hair + '"/>'; front = '<path d="M40 47 C38 51 42 53 40 57 C43 58 44 54 45 49 Z M80 47 C82 51 78 53 80 57 C77 58 76 54 75 49 Z M46 47 C48 52 52 50 54 52 C56 49 60 52 62 50 C65 52 68 49 70 51 C72 49 74 50 75 47 Z" fill="' + hair + '"/>'; break;
+  }
+  var fem = /ponytail|long|bob|bun|wavy$/.test(c.hair);
+  var eyes = '<ellipse cx="52" cy="60" rx="2.1" ry="2.6" fill="#2b2420"/><ellipse cx="68" cy="60" rx="2.1" ry="2.6" fill="#2b2420"/>' +
+    '<circle cx="52.7" cy="59.2" r=".7" fill="#fff"/><circle cx="68.7" cy="59.2" r=".7" fill="#fff"/>' +
+    (fem ? '<path d="M48.5 57.5 l-1.6-1.2 M71.5 57.5 l1.6-1.2" stroke="#2b2420" stroke-width="1" stroke-linecap="round"/>' : '');
+  var brows = '<path d="M48.5 54.2 Q52 52.6 55.3 54" stroke="' + hair + '" stroke-width="1.6" fill="none" stroke-linecap="round"/>' +
+              '<path d="M64.7 54 Q68 52.6 71.5 54.2" stroke="' + hair + '" stroke-width="1.6" fill="none" stroke-linecap="round"/>';
+  var glasses = c.glasses ? '<g fill="none" stroke="#3a3f4a" stroke-width="1.3"><circle cx="52" cy="60" r="5"/><circle cx="68" cy="60" r="5"/><path d="M57 60 h6"/></g>' : '';
+  var svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="' + size + '" height="' + size + '" aria-hidden="true">' +
+    '<defs><clipPath id="' + id + '"><circle cx="60" cy="60" r="60"/></clipPath></defs>' +
+    '<g clip-path="url(#' + id + ')">' +
+    '<rect width="120" height="120" fill="' + bg + '"/>' +
+    '<circle cx="18" cy="22" r="2" fill="#fff" opacity=".7"/><circle cx="100" cy="30" r="1.6" fill="#fff" opacity=".7"/><circle cx="96" cy="96" r="2.2" fill="#fff" opacity=".5"/>' +
+    back +
+    /* 몸: 기관사 정복 */
+    '<path d="M12 120 C14 97 33 86 60 86 C87 86 106 97 108 120 Z" fill="' + navy + '"/>' +
+    '<path d="M22 98 l9 -6 M98 98 l-9 -6" stroke="' + gold + '" stroke-width="2.4" stroke-linecap="round"/>' +
+    '<path d="M48 86 L60 106 L72 86 Z" fill="#f4f7fb"/>' +
+    '<path d="M48 86 L60 106 L52 120 L44 120 L41 96 Z M72 86 L60 106 L68 120 L76 120 L79 96 Z" fill="' + navyD + '" opacity=".55"/>' +
+    '<path d="M57 90 h6 l1.6 15 l-4.6 5 l-4.6 -5 Z" fill="#2c4a86"/><path d="M57.3 95 l5.6 -2.4 M57.6 100 l5.6 -2.4" stroke="' + gold + '" stroke-width="1.1"/>' +
+    '<rect x="56.6" y="87.5" width="6.8" height="3.6" rx="1" fill="#24407a"/>' +
+    '<rect x="75" y="101" width="9" height="7" rx="1.3" fill="#2f8ef0"/><rect x="77" y="103.4" width="5" height="2.2" rx=".6" fill="#fff"/>' +
+    '<circle cx="66" cy="114" r="1.4" fill="' + gold + '"/><circle cx="54" cy="114" r="1.4" fill="' + gold + '"/>' +
+    /* 목·얼굴 */
+    '<rect x="53" y="73" width="14" height="15" rx="6" fill="' + skin + '"/><path d="M53 80 Q60 85 67 80 L67 84 Q60 89 53 84 Z" fill="#000" opacity=".07"/>' +
+    '<circle cx="39" cy="60" r="4.6" fill="' + skin + '"/><circle cx="81" cy="60" r="4.6" fill="' + skin + '"/>' +
+    '<ellipse cx="60" cy="58" rx="21" ry="23" fill="' + skin + '"/>' +
+    front + brows + eyes + glasses +
+    '<ellipse cx="46.5" cy="66.5" rx="4" ry="2.4" fill="#ff8f8f" opacity=".42"/><ellipse cx="73.5" cy="66.5" rx="4" ry="2.4" fill="#ff8f8f" opacity=".42"/>' +
+    '<path d="M60 62 q-1.2 3 .4 3.6" stroke="#d9a587" stroke-width="1.1" fill="none" stroke-linecap="round"/>' +
+    '<path d="M55.5 69.5 Q60 73.5 64.5 69.5" stroke="#b4544a" stroke-width="1.6" fill="' + (fem ? '#e9877e' : 'none') + '" stroke-linecap="round"/>' +
+    /* 기관사 모자 */
+    '<path d="M35 45 C34 30 46 22 61 22 C77 22 88 30 86 43 L86.5 48 Q60 56 35.5 48 Z" fill="' + navy + '"/>' +
+    '<path d="M42 30 C50 25 70 24 80 30" stroke="#ffffff" stroke-width="1.2" opacity=".18" fill="none"/>' +
+    '<circle cx="61" cy="33" r="4.6" fill="' + gold + '"/><circle cx="61" cy="33" r="2.4" fill="' + navy + '"/><circle cx="61" cy="33" r="1.1" fill="' + gold + '"/>' +
+    '<path d="M34 47 Q60 55 88 47 L86.5 51.5 Q60 59.5 35.5 51.5 Z" fill="#131a28"/>' +
+    fringe +
+    '</g></svg>';
+  return svg;
+}
+
+function avatarHash(str) {
+  var h = 2166136261;
+  for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
+/* 사용자별 캐릭터: 지정된 여성 이름은 각자 다른 여자 캐릭터, 그 외는 사원번호로 남자 캐릭터를 고정 랜덤 배정 */
+function avatarFor(user) {
+  var name = String((user && user.name) || '').trim();
+  var fi = AVATAR_FEMALE_NAMES.indexOf(name);
+  if (fi >= 0) return AVATARS_F[fi % AVATARS_F.length];
+  var key = String((user && (user.employeeId || user.name)) || 'guest');
+  return AVATARS_M[avatarHash(key) % AVATARS_M.length];
+}
+
 /* 마이페이지 상단 내 정보 카드: 이름·사원번호·오늘 근무·출근 알람·운휴 알림 */
 function renderMyPageProfile() {
   var box = $('mypage-profile');
@@ -5092,7 +5201,7 @@ function renderMyPageProfile() {
   try { var ac = getAlarmCfg(); if (ac.on) alarm = '출근 ' + alarmMinText(ac.min); } catch (e) {}
   try { if (getNxCfg().on) nx = '켜짐'; } catch (e) {}
   box.innerHTML =
-    '<div class="mp-head"><div class="mp-avatar">' + esc(String(u.name || '?').slice(0, 1)) + '</div>' +
+    '<div class="mp-head"><div class="mp-avatar">' + avatarSvg(avatarFor(u), 64) + '</div>' +
     '<div><div class="mp-name">' + esc(u.name || '-') + '님</div><div class="mp-id">사원번호 ' + esc(u.employeeId || '-') + '</div></div></div>' +
     '<div class="mp-rows">' +
       '<div class="mp-row"><span>오늘 근무</span><b>' + esc(today) + '</b></div>' +
