@@ -3917,8 +3917,8 @@ window.onCrewRoster = function (data) {
 var CREW_FN_SLUG = 'clever-action';
 var CREW_AUTO_MS = 2 * 3600000;     /* 자동 조회는 2시간에 한 번까지 */
 
-/* CREW 연동은 현재 관리자(199878 송주영)만 사용 가능 */
-var CREW_ALLOWED_IDS = ['199878'];
+/* CREW 연동은 허용된 사원번호만 사용 가능 */
+var CREW_ALLOWED_IDS = ['199878', '198990'];   /* 199878 송주영(관리자), 198990 워니 */
 function crewAllowed() { return CREW_ALLOWED_IDS.indexOf(String(getCurrentUser().employeeId || '')) >= 0; }
 
 /* CREW 비밀번호: 이 폰(브라우저 저장소)에만 저장. 서버·백업 데이터에는 절대 넣지 않음 */
@@ -3968,7 +3968,7 @@ function clearCrewLogin() {
    silent=true 는 로그인할 때 자동 실행(알림 최소화) */
 var crewBusy = false;
 function requestCrewRoster(silent, fromSave, ymKey) {
-  if (!crewAllowed()) { if (!silent) showToast('CREW 연동은 현재 관리자만 사용할 수 있습니다.'); return; }
+  if (!crewAllowed()) { if (!silent) showToast('CREW 연동은 허용된 사용자만 사용할 수 있습니다.'); return; }
   /* 해당 월 1일~말일 (기본: 이번 달, 근무표에서 누르면 그 날짜의 달) */
   var t = todayKST(), y = t.y, m = t.m;
   var mk = String(ymKey || '').match(/^(\d{4})-(\d{2})/);
