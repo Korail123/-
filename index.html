@@ -8774,11 +8774,11 @@ html body #main-container > #main-section #welcome-card.login-success-card{min-h
       var flip = (front === 'left' && !rtl) || (front === 'right' && rtl);
       cur.style.transform = flip ? 'scaleX(-1)' : '';
     }
-    /* 최고속도 기준 통과 시간: 320km/h = 2.0초, 나머지는 속도에 반비례 (2.0 × 320 ÷ 속도)
+    /* 최고속도 기준 통과 시간: 320km/h = 2.0초, 나머지는 속도에 반비례 (2.0 × 320 ÷ 속도), 최대 3초
        KTX-청룡·KTX-적룡(320) 2.0초 · KTX-산천·SRT(305) ≈ 2.1초 · KTX-이음(260) ≈ 2.5초
-       ITX-새마을·ITX-마음·새마을호(150) ≈ 4.3초 */
+       ITX-새마을·ITX-마음·새마을호(150) 3.0초 */
     var speed = cur ? (parseFloat(cur.getAttribute('data-speed')) || 260) : 260;
-    var dur = Math.round(2000 * 320 / speed);
+    var dur = Math.min(3000, Math.round(2000 * 320 / speed));
     requestAnimationFrame(function(){
       var w = card.clientWidth || 360;
       /* --train-w(기본 열차 길이)를 기준으로, 두 열차의 높이가 같아지도록 길이를 맞춤 */
