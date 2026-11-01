@@ -682,8 +682,14 @@ img.menu-art, .bn-btn .nav-art, .ui-icon, .heading-art, .board-title-art, .detai
 .mp-row b{color:#1b2b45;font-weight:700;text-align:right;overflow-wrap:anywhere}
 .mypage-subtitle{display:flex;align-items:center;gap:6px;margin:4px 6px 8px;font-size:16px;font-weight:800;color:#16386b}
 .mypage-subtitle img{width:26px;height:26px;object-fit:contain}
+.mp-sec{margin-bottom:4px}
+.mp-toggle{width:calc(100% - 12px);border:0;background:none;cursor:pointer;padding:4px 2px;text-align:left;font-family:inherit}
+.mp-chev{margin-left:auto;width:9px;height:9px;border-right:2.5px solid #6b7a90;border-bottom:2.5px solid #6b7a90;transform:rotate(45deg);transition:transform .2s;margin-right:6px;margin-top:-4px}
+.mp-sec.collapsed .mp-chev{transform:rotate(-45deg);margin-top:0}
+.mp-sec.collapsed .mp-sec-body{display:none}
+.mp-sec.collapsed .mp-toggle{margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #e6edf6;border-radius:0}
 .mypage-box{margin:0 4px 16px;padding:12px 14px;border-radius:14px;background:#fff;border:1px solid #e1e9f4;box-shadow:0 2px 8px rgba(20,60,110,.05);text-align:left}
-.mp-badge{display:inline-block;margin-top:5px;padding:2px 8px;border-radius:999px;background:#e3eefc;color:#1d5fc4;font-size:11px;font-weight:700}
+.mp-badge{display:inline-block;margin-top:5px;padding:2px 8px;border-radius:999px;background:#e3eefc;color:#1d5fc4;font-size:11px;font-weight:700;white-space:normal;line-height:1.5}
 .mp-month{font-size:12px;color:#6b7a90;margin-bottom:8px;font-weight:700}
 .mp-chips{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:8px}
 .mp-chip{display:flex;flex-direction:column;align-items:center;padding:7px 0;border-radius:10px;background:#f4f7fb}
@@ -940,7 +946,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <!-- 마이페이지 순서: 내 정보 → 입사일·직급 설정 → 휴가관리 → 이번 달 근무 통계 → 근무교환 내역 -->
   <h1 class="screen-title"><span class="page-heading-icon" aria-hidden="true"><img class="heading-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="마이페이지" alt="" decoding="async"></span>마이페이지</h1>
   <div id="mypage-profile" class="mypage-profile"></div>
-  <div class="mypage-subtitle"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="입사직급" alt="" aria-hidden="true">입사일 · 직급 설정</div>
+  <div class="mp-sec" data-sec="join"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('join')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="입사직급" alt="" aria-hidden="true">입사일 · 직급 설정<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
   <div class="mypage-box">
     <label class="mp-field"><span>입사일</span><input type="date" id="mp-join" onchange="saveMyProfileField()"></label>
     <div class="mp-field"><span>직급 · 호봉</span>
@@ -949,9 +955,9 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <select id="mp-step" onchange="saveMyProfileField()"></select>
       </span>
     </div>
-    <div id="mp-tenure" class="mp-tenure"></div>
   </div>
-  <div class="mypage-subtitle"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="휴가관리" alt="" aria-hidden="true">휴가관리</div>
+  </div></div>
+  <div class="mp-sec" data-sec="vac"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('vac')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="휴가관리" alt="" aria-hidden="true">휴가관리<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
 
   <div class="sch-head" style="margin-bottom:10px;">
     <button type="button" class="sch-nav plain" onclick="changeVacYear(-1)">◀&#xFE0E;</button>
@@ -987,11 +993,14 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   </div>
 
   <div class="sch-note" style="margin:10px 4px 14px">※ 야간+비번은 1일, 야간·주간 동일 휴가는 3일로 계산합니다.</div>
+  </div></div>
 
-  <div class="mypage-subtitle"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무통계" alt="" aria-hidden="true">이번 달 근무 통계</div>
+  <div class="mp-sec" data-sec="stats"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('stats')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무통계" alt="" aria-hidden="true">이번 달 근무 통계<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
   <div id="mypage-stats" class="mypage-box"></div>
-  <div class="mypage-subtitle"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무교환내역" alt="" aria-hidden="true">근무교환 내역</div>
+  </div></div>
+  <div class="mp-sec" data-sec="swaps"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('swaps')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무교환내역" alt="" aria-hidden="true">근무교환 내역<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
   <div id="mypage-swaps" class="mypage-box"></div>
+  </div></div>
 
 </div>
 
@@ -5293,10 +5302,11 @@ function myProfileBadge() {
   var parts = [];
   if (pf.grade) parts.push(pf.grade + '급' + (pf.step ? ' ' + pf.step + '호봉' : ''));
   var tn = tenureText(pf.joinDate);
-  if (tn && tn !== '입사 전') parts.push('근속 ' + tn.split(' · ')[0]);
+  if (tn && tn !== '입사 전') parts.push('근속 ' + tn);      /* 예: 근속 3년 7개월 · 1,341일째 */
   return parts.join(' · ');
 }
 
+/* 근속·직급 표시는 프로필 카드에만 (설정 칸에는 입력만) */
 function renderMyTenure() {
   var el = $('mp-tenure');
   if (!el) return;
@@ -5387,6 +5397,28 @@ function renderMySwaps() {
   }).join('') + (list.length > 15 ? '<div class="mp-empty">최근 15건만 표시합니다.</div>' : '');
 }
 
+/* 마이페이지 섹션 접기/펼치기 (내 정보 카드 제외), 상태는 이 폰에 기억 */
+function mySecState() {
+  try { return JSON.parse(LS.getItem('mpCollapsed_' + (getCurrentUser().employeeId || '')) || '{}') || {}; } catch (e) { return {}; }
+}
+function applyMySections() {
+  var st = mySecState();
+  var secs = document.querySelectorAll('#vacation-section .mp-sec');
+  for (var i = 0; i < secs.length; i++) {
+    var key = secs[i].getAttribute('data-sec');
+    var closed = !!st[key];
+    secs[i].classList.toggle('collapsed', closed);
+    var btn = secs[i].querySelector('.mp-toggle');
+    if (btn) btn.setAttribute('aria-expanded', closed ? 'false' : 'true');
+  }
+}
+function toggleMySection(key) {
+  var st = mySecState();
+  st[key] = !st[key];
+  try { LS.setItem('mpCollapsed_' + (getCurrentUser().employeeId || ''), JSON.stringify(st)); } catch (e) {}
+  applyMySections();
+}
+
 function renderMyPageExtras() {
   var g = $('mp-grade'), sp = $('mp-step');
   if (g && !g.options.length) {
@@ -5402,6 +5434,7 @@ function renderMyPageExtras() {
   renderMyTenure();
   renderMyStats();
   renderMySwaps();
+  applyMySections();
   if (!renderMyPageExtras.__synced) { renderMyPageExtras.__synced = true; syncMyProfile(); }
 }
 
