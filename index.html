@@ -1553,11 +1553,14 @@ var el = document.getElementById('app-toast');
 if (!el) {
 el = document.createElement('div');
 el.id = 'app-toast';
-el.style.cssText = 'position:fixed;left:50%;bottom:96px;transform:translateX(-50%);max-width:88%;padding:11px 16px;border-radius:12px;background:rgba(30,30,30,.92);color:#fff;font-size:13px;line-height:1.5;z-index:600;display:none;text-align:center';
+el.style.cssText = 'position:fixed;left:50%;bottom:96px;transform:translateX(-50%);max-width:94%;padding:10px 16px;border-radius:999px;background:rgba(30,30,30,.92);color:#fff;font-size:13px;line-height:1.4;z-index:600;display:none;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;letter-spacing:-.2px';
 document.body.appendChild(el);
 }
-el.textContent = text;
+el.textContent = String(text == null ? '' : text).replace(/\s*\n+\s*/g, ' ');
+el.title = el.textContent;
 el.style.display = 'block';
+el.style.fontSize = '13px';
+for (var fs = 13; fs > 10.5 && el.scrollWidth > el.clientWidth + 1; fs -= 0.5) el.style.fontSize = fs + 'px';
 if (toastTimer) clearTimeout(toastTimer);
 toastTimer = setTimeout(function () { el.style.display = 'none'; }, 3000);
 }
@@ -2533,7 +2536,7 @@ if (rows[j][0] === owner) ov.push(rows[j].slice(1));
 }
 if (!mine.seq && !ov.length) return;
 writeLocal(owner, { seq: String(mine.seq || ''), anchor: String(mine.anchor || ''), overrides: ov, backedUpAt: '', base: true });
-showToast('서버에 저장돼 있던 근무설정·휴가 데이터를 이 폰으로 가져왔습니다.');
+showToast('서버의 근무설정·휴가 데이터를 가져왔어요.');
 }
 function saveLocalChange(id, loc) {
 loc.dirty = true;
@@ -2980,7 +2983,7 @@ if (!n) return false;
 var url = nxLogisTrainUrl(n, dateKey);
 var popup = window.open(url, 'nxlogisTrainSearch', 'popup=yes,width=1100,height=800,resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=yes,status=no');
 if (!popup) {
-showToast('팝업이 차단되었습니다. 브라우저에서 이 사이트의 팝업을 허용해 주세요.');
+showToast('팝업이 차단됐어요. 브라우저에서 허용해주세요.');
 } else {
 try { popup.focus(); } catch (e) {}
 }
@@ -3092,7 +3095,7 @@ window.onCrewRoster = function (data) {
 try { if (typeof data === 'string') data = JSON.parse(data); } catch (e) { data = null; }
 if (!data) return;
 if (data.error) {
-showToast(data.error === 'LOGIN' ? '승무원 정보를 보려면 crew.korail.com에 먼저 로그인해주세요.' : '승무원 정보를 불러오지 못했습니다.');
+showToast(data.error === 'LOGIN' ? 'CREW에 먼저 로그인해주세요.' : '승무원 정보를 불러오지 못했습니다.');
 return;
 }
 var list = Array.isArray(data) ? data : (data.days || []);
@@ -3159,12 +3162,12 @@ var last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate(), dates = [];
 for (var i = 1; i <= last; i++) dates.push(getDateKey(y, m, i).replace(/-/g, ''));
 if (window.CrewBridge && typeof window.CrewBridge.requestRoster === 'function') {
 window.CrewBridge.requestRoster(JSON.stringify(dates));
-if (!silent) showToast('crew.korail.com에서 승무원 정보를 불러오는 중...');
+if (!silent) showToast('CREW 승무원 정보를 불러오는 중...');
 return;
 }
 var u = getCurrentUser(), pw = getCrewPw();
 if (!u.token) return;
-if (!pw) { if (!silent) { showToast('마이페이지 › CREW 연동에서 비밀번호를 먼저 저장해주세요.'); openCrewSetting(); } return; }
+if (!pw) { if (!silent) { showToast('CREW 연동에서 비밀번호를 먼저 저장해주세요.'); openCrewSetting(); } return; }
 if (crewBusy) return;
 crewBusy = true;
 if (!silent) showToast('crew.korail.com에서 ' + (m + 1) + '월 승무원 정보를 불러오는 중... (최대 1분)');
@@ -5077,7 +5080,7 @@ return;
 renderBoardList('notice', list);
 }
 function openPayslipPreview() {
-showToast('예상 월급명세서는 개발 중입니다. 곧 근무표로 수당·실수령액을 미리 계산해 드릴게요.');
+showToast('예상 월급명세서는 지금 개발 중이에요.');
 }
 function openNoticePanel() {
 switchSection('notice-panel');
@@ -5433,7 +5436,7 @@ if (autoBackupBusy) { scheduleAutoBackup(3000); return; }
 backupNow(function (r) {
 if (!r || !r.success) {
 if (!autoBackupFailShown) {
-showToast('서버 백업에 실패했습니다. 연결되면 자동으로 다시 시도합니다.');
+showToast('백업 실패 · 연결되면 다시 시도할게요.');
 autoBackupFailShown = true;
 }
 } else {
@@ -6522,22 +6525,22 @@ out.push({ date: it.date, train: it.train, known: !!(st && st.state === 'cancel'
 return out;
 }
 function pushTestNow() {
-if (!getNotiPrefs().popup) { showToast('휴대폰 팝업 알림이 꺼져 있어요. 환경설정 › 알림 설정에서 켜주세요.'); return; }
+if (!getNotiPrefs().popup) { showToast('팝업 알림이 꺼져 있어요. 알림 설정에서 켜주세요.'); return; }
 if (!pushSupported()) {
 showToast(/iPhone|iPad|iPod/.test(navigator.userAgent)
-? '아이폰은 홈 화면에 추가한 철도비서에서만 알림을 받을 수 있어요. (iOS 16.4 이상)'
+? '아이폰은 홈 화면에 추가해야 알림을 받아요.'
 : '이 브라우저는 푸시 알림을 지원하지 않습니다.');
 return;
 }
 if (Notification.permission === 'denied') {
-showToast('알림이 차단되어 있어요. 휴대폰 설정 › 알림에서 철도비서(브라우저) 알림을 허용해주세요.');
+showToast('알림이 차단돼 있어요. 휴대폰 설정에서 허용해주세요.');
 return;
 }
 pushEnsureSub(true).then(function (sub) {
-if (!sub) { showToast('알림 등록에 실패했습니다. sw.js 파일이 함께 올라가 있는지 확인해주세요.'); return; }
+if (!sub) { showToast('알림 등록 실패 · sw.js 파일을 확인해주세요.'); return; }
 var u = getCurrentUser();
 api({ action: 'pushTest', employeeId: u.employeeId, token: u.token, endpoint: sub.endpoint }, function (r) {
-if (r && r.success) showToast('1분 안에 테스트 알림이 옵니다. 지금 앱을 완전히 닫아보세요.');
+if (r && r.success) showToast('1분 안에 알림이 와요. 앱을 닫아보세요.');
 else { try { LS.removeItem('pushSubMark'); } catch (e) {} showToast('테스트 요청에 실패했습니다. 잠시 후 다시 시도해주세요.'); }
 });
 });
@@ -6979,26 +6982,26 @@ function nxTestPopup() {
 nxShowRing([nxTestItem()], true);
 }
 function nxPushTestNow() {
-if (!getNotiPrefs().popup) { showToast('휴대폰 팝업 알림이 꺼져 있어요. 환경설정 › 알림 설정에서 켜주세요.'); return; }
+if (!getNotiPrefs().popup) { showToast('팝업 알림이 꺼져 있어요. 알림 설정에서 켜주세요.'); return; }
 if (!pushSupported()) {
 showToast(/iPhone|iPad|iPod/.test(navigator.userAgent)
-? '아이폰은 홈 화면에 추가한 철도비서에서만 알림을 받을 수 있어요. (iOS 16.4 이상)'
+? '아이폰은 홈 화면에 추가해야 알림을 받아요.'
 : '이 브라우저는 푸시 알림을 지원하지 않습니다.');
 return;
 }
 if (Notification.permission === 'denied') {
-showToast('알림이 차단되어 있어요. 휴대폰 설정 › 알림에서 철도비서(브라우저) 알림을 허용해주세요.');
+showToast('알림이 차단돼 있어요. 휴대폰 설정에서 허용해주세요.');
 return;
 }
 var it = nxTestItem();
 var p = it.date.split('-').map(Number);
 var w = ['일', '월', '화', '수', '목', '금', '토'][new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay()];
 pushEnsureSub(true).then(function (sub) {
-if (!sub) { showToast('알림 등록에 실패했습니다. sw.js 파일이 함께 올라가 있는지 확인해주세요.'); return; }
+if (!sub) { showToast('알림 등록 실패 · sw.js 파일을 확인해주세요.'); return; }
 var u = getCurrentUser();
 api({ action: 'pushTest', employeeId: u.employeeId, token: u.token, endpoint: sub.endpoint,
 title: '열차 운휴 알림 (테스트)', body: p[1] + '/' + p[2] + '(' + w + ') ' + it.train + '열차가 운휴되었습니다.', tag: 'nx-test' }, function (r) {
-if (r && r.success) showToast('1분 안에 운휴 테스트 알림이 옵니다. 지금 앱을 완전히 닫아보세요.');
+if (r && r.success) showToast('1분 안에 운휴 알림이 와요. 앱을 닫아보세요.');
 else { try { LS.removeItem('pushSubMark'); } catch (e) {} showToast('테스트 요청에 실패했습니다. 잠시 후 다시 시도해주세요.'); }
 });
 });
@@ -7277,7 +7280,7 @@ saveNotiPrefs(np);
 notiPrefsRender();
 if (np.popup !== before.popup) {
 try { pushSyncAlarms(true); } catch (e) {}
-showToast(np.popup ? '휴대폰 팝업 알림을 켰습니다.' : '휴대폰 팝업 알림을 껐습니다. (앱 꺼짐 알림도 오지 않습니다)');
+showToast(np.popup ? '휴대폰 팝업 알림을 켰습니다.' : '팝업 알림을 껐어요. (앱 꺼짐 알림 포함)');
 }
 if (np.vib && !before.vib) appVibrate([200, 100, 200]);
 }
@@ -7411,9 +7414,9 @@ try {
 appNotify('철도비서 알림 확인', { body: '이렇게 알림이 옵니다.', tag: 'perm-test' }, true);
 } catch (e) {}
 try { pushSyncAlarms(true); } catch (e) {}
-showToast('알림 권한이 허용되었습니다. 소리·진동이 왔는지 확인해주세요.');
+showToast('알림이 허용됐어요. 소리·진동을 확인해보세요.');
 } else if ('Notification' in window && Notification.permission === 'denied') {
-showToast('알림이 차단되었습니다. 아래 안내대로 설정에서 허용해주세요.');
+showToast('알림이 차단됐어요. 아래 안내를 확인해주세요.');
 }
 });
 }
@@ -8238,7 +8241,7 @@ min-height:76px;padding:10px 6px!important;border-radius:16px!important;text-ali
 .ns-result:not(:empty){background:#f6f8fc!important;border:0!important;border-radius:16px!important}
 .ns-help{border-top:0!important;margin-top:12px!important;padding:10px 12px!important;border-radius:16px;background:#fafbfd}
 .ns-chip{border:0!important;background:#fff!important}</style>
-<style id="menu-dev-badge">#main-section .menu-btn.menu-dev span{display:flex;flex-direction:column;align-items:center;line-height:1.2}
+<style id="menu-dev-badge">#main-section .menu-btn.menu-dev span{display:flex;flex-direction:column;align-items:center;line-height:1.2;word-break:keep-all;text-align:center}
 #main-section .menu-btn .dev-badge{display:inline-block;margin-top:3px;padding:1px 7px;border-radius:999px;background:#fff1dc;color:#b5620a;font-size:10px;font-weight:800;letter-spacing:-.2px}
 #main-section .menu-btn.menu-dev .menu-art{opacity:.9}</style>
 <style id="hide-scrollbars-final">html, body, *, *::before, *::after {
