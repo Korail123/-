@@ -23,7 +23,7 @@
 <style id="app-splash-style">
 /* ===== 시작 로딩 화면: 선로 위 열차가 신호를 기다렸다가 출발 ===== */
 #app-splash{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(180deg,#ffffff 0%,#f2f7ff 100%);transition:opacity .45s ease,visibility .45s ease;
+  background:linear-gradient(180deg,#ffffff 0%,#f2f7ff 100%);transition:opacity .3s ease,visibility .3s ease;
   padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif}
 #app-splash.sp-hide{opacity:0;visibility:hidden;pointer-events:none}
 #app-splash .sp-wrap{width:min(88vw,360px);text-align:center}
@@ -47,7 +47,7 @@
 #app-splash .sp-rail::after{bottom:2px}
 @keyframes spSleeper{from{background-position-x:0}to{background-position-x:-20px}}
 /* 열차 */
-#app-splash .sp-train{position:absolute;left:50%;bottom:19px;width:190px;margin-left:-112px;animation:spBob .5s ease-in-out infinite alternate;transition:transform .7s cubic-bezier(.55,0,.9,.4)}
+#app-splash .sp-train{position:absolute;left:50%;bottom:19px;width:190px;margin-left:-112px;animation:spBob .5s ease-in-out infinite alternate;transition:transform .45s cubic-bezier(.55,0,.9,.4)}
 #app-splash .sp-train svg{display:block;width:100%;height:auto}
 @keyframes spBob{from{transform:translateY(0)}to{transform:translateY(-1.5px)}}
 /* 바람 줄 */
@@ -68,7 +68,7 @@
 #app-splash .sp-dots b:nth-child(3){animation-delay:.4s}
 @keyframes spDot{0%,60%,100%{opacity:.2}30%{opacity:1}}
 /* 출발! */
-#app-splash.sp-go .sp-train{transform:translateX(120vw)}
+#app-splash.sp-go .sp-train{animation:none;transform:translateX(120vw)}   /* 오른쪽으로 출발 (흔들림 멈추고 이동) */
 #app-splash.sp-go .sp-rail{animation-duration:.18s}
 @media (prefers-reduced-motion:reduce){
   #app-splash .sp-rail,#app-splash .sp-train,#app-splash .sp-wind i,#app-splash .sp-dots b,#app-splash .sp-led{animation:none!important}
@@ -832,7 +832,7 @@ html::-webkit-scrollbar,body::-webkit-scrollbar,*::-webkit-scrollbar{display:non
 (function () {
   var el = document.getElementById('app-splash');
   if (!el) return;
-  var t0 = Date.now(), MIN_MS = 1500, MAX_MS = 9000, done = false;
+  var t0 = Date.now(), MIN_MS = 100, MAX_MS = 9000, done = false;   /* 준비되면 최소 0.1초 뒤 바로 출발 */
   var steps = [['r', '선로 점검 중'], ['y', '신호 확인 중'], ['y', '승무 준비 중'], ['g', '출발 준비 완료']];
   var i = 0;
   var tick = setInterval(function () {
@@ -847,16 +847,18 @@ html::-webkit-scrollbar,body::-webkit-scrollbar,*::-webkit-scrollbar{display:non
     clearInterval(tick);
     el.setAttribute('data-sig', 'g');
     document.getElementById('sp-text').textContent = '출발 진행!';
-    setTimeout(function () { el.classList.add('sp-go'); }, 250);
-    setTimeout(function () { el.classList.add('sp-hide'); }, 850);
-    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 1400);
+    setTimeout(function () { el.classList.add('sp-go'); }, 60);      /* 초록불 → 바로 출발 */
+    setTimeout(function () { el.classList.add('sp-hide'); }, 330);   /* 열차가 빠져나가는 동안 사라지기 시작 */
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 700);
   }
   window.hideAppSplash = function () {
     var wait = Math.max(0, MIN_MS - (Date.now() - t0));
     setTimeout(go, wait);
   };
-  if (document.readyState === 'complete') window.hideAppSplash();
-  else window.addEventListener('load', function () { window.hideAppSplash(); });
+  /* 화면 구성이 끝나면(DOMContentLoaded) 바로 출발 — 그림 파일 로딩까지 기다리지 않음 */
+  function ready() { requestAnimationFrame(function () { window.hideAppSplash(); }); }
+  if (document.readyState !== 'loading') ready();
+  else document.addEventListener('DOMContentLoaded', ready);
   setTimeout(go, MAX_MS);                          /* 혹시 늦어져도 최대 9초 뒤에는 닫음 */
 })();
 </script>
