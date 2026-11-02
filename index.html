@@ -1201,20 +1201,11 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <span class="setting-arrow">›</span>
   </button>
 
-  <button type="button" class="setting-card" onclick="openAlarmSettings()">
-    <span class="setting-icon"><img class="ui-icon" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알람설정" alt="" aria-hidden="true" decoding="async"></span>
-    <span class="setting-text">
-      <span class="setting-title">알람설정</span>
-      <span id="alarm-sub" class="setting-sub">※ 출근 시간 전에 알려드려요</span>
-    </span>
-    <span class="setting-arrow">›</span>
-  </button>
-
   <button type="button" class="setting-card" onclick="openPermPanel()">
-    <span class="setting-icon"><img class="ui-icon" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="팝업알림" alt="알림 설정"></span>
+    <span class="setting-icon"><img class="ui-icon" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알람설정" alt="알림 설정"></span>
     <span class="setting-text">
       <span class="setting-title">알림 설정</span>
-      <span id="perm-sub" class="setting-sub">※ 팝업·소리·진동 알림 켜기/끄기, 볼륨</span>
+      <span id="perm-sub" class="setting-sub">※ 출근 알람 · 팝업·소리·진동 · 볼륨</span>
     </span>
     <span class="setting-arrow">›</span>
   </button>
@@ -1446,61 +1437,69 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   </div>
 </div>
 
-<!-- 출근 알람 설정 팝업 -->
-<div id="alarm-panel" class="dia-modal" onclick="if(event.target===this)closeAlarmSettings()">
-  <div class="dia-dialog">
-    <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알람설정" alt="" aria-hidden="true">출근 알람</div>
-    <div class="dia-dialog-note" style="white-space:normal">
-      ※ 오늘 주간·야간 근무가 있을 때만 알려드립니다.<br>
-      ※ 비번·휴무·휴가는 알람에서 제외됩니다.<br>
-      ※ 앱이 꺼져 있어도 출근 알람이 알림으로 옵니다. (알림 허용 필요)<br>
-      ※ 아이폰은 홈 화면에 추가한 철도비서에서만 받을 수 있습니다.
-    </div>
-    <label class="alarm-toggle"><span>알람 사용</span><input type="checkbox" id="alarm-on" onchange="alarmUiUpdate()"></label>
-    <div id="alarm-value" class="alarm-value"></div>
-    <input type="range" id="alarm-range" class="alarm-range" min="0" max="17" step="1" value="12" oninput="alarmUiUpdate()">
-    <div class="alarm-scale"><span>3시간 전</span><span>10분 전</span></div>
-    <div id="alarm-preview" class="alarm-preview"></div>
-    <button type="button" class="btn" style="margin-top:12px;background:#f57c00;font-size:13px" onclick="testAlarmRing()"><span class="btn-ico"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="지금알람테스트" alt="" aria-hidden="true"></span>지금 알람 테스트</button>
-    <button type="button" class="btn" style="margin-top:8px;background:#1a73e8;font-size:13px" onclick="pushTestNow()">꺼진 상태 알림 테스트 (1분 안에 도착)</button>
-    <div style="margin:6px 4px 0;font-size:11px;color:#7a8696;line-height:1.5">
-      ※ 지금 알람 테스트: 팝업·소리·진동·알림이 오는지 바로 확인합니다.<br>
-      ※ 꺼진 상태 테스트: 누른 뒤 앱을 닫고 1분만 기다려보세요.<br>
-      ※ 알람을 켜면 근무표 상세 정보에 '설정 출근시간'이 함께 표시됩니다.
-    </div>
-    <div class="dia-dialog-actions">
-      <button type="button" class="dia-text-btn" onclick="saveAlarmSettings()">확인</button>
-      <button type="button" class="dia-text-btn" onclick="closeAlarmSettings()">닫기</button>
-    </div>
-  </div>
-</div>
 
-<!-- 알림 권한 설정 팝업 (소리·진동·팝업 알림) -->
+
+<!-- 알림 설정 팝업 (출근 알람 + 권한 + 팝업·소리·진동·볼륨) -->
 <div id="perm-panel" class="dia-modal" onclick="if(event.target===this)closePermPanel()">
-  <div class="dia-dialog">
-    <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="팝업알림" alt="" aria-hidden="true">알림 설정</div>
-    <div class="dia-dialog-note" style="white-space:normal">
-      ※ 출근 알람·열차 운휴 알림을 소리·진동·팝업으로 받으려면 권한이 필요합니다.<br>
-      ※ 아래 버튼을 누르고, 뜨는 창에서 <b>허용</b>을 눌러주세요.
-    </div>
-    <div class="perm-list">
-      <div class="perm-row"><span class="perm-k"><img class="perm-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="팝업알림" alt="" aria-hidden="true">팝업 알림</span><b id="perm-noti">확인 중</b></div>
-      <div class="perm-row"><span class="perm-k"><img class="perm-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알림소리" alt="" aria-hidden="true">알림 소리</span><b id="perm-sound">확인 중</b></div>
-      <div class="perm-row"><span class="perm-k"><img class="perm-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="진동" alt="" aria-hidden="true">진동</span><b id="perm-vib">확인 중</b></div>
-      <div class="perm-row"><span class="perm-k"><img class="perm-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="앱꺼짐알림" alt="" aria-hidden="true">앱 꺼짐 알림</span><b id="perm-push">확인 중</b></div>
-    </div>
-    <div class="np-box">
-      <div class="np-title">알림 방식</div>
-      <label class="alarm-toggle np-row"><span class="np-k"><img class="np-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="팝업알림" alt="" aria-hidden="true"><span>휴대폰 팝업 알림<small>상단 팝업·잠금화면 (앱이 꺼져 있을 때 알림 포함)</small></span></span><input type="checkbox" id="np-popup" onchange="notiPrefsChanged()"></label>
-      <label class="alarm-toggle np-row"><span class="np-k"><img class="np-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알림소리" alt="" aria-hidden="true"><span>소리 알림</span></span><input type="checkbox" id="np-sound" onchange="notiPrefsChanged()"></label>
-      <div class="np-vol"><span class="np-vol-ico"><img class="np-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="볼륨조절" alt="" aria-hidden="true"></span><input type="range" id="np-vol" class="alarm-range" min="0" max="100" step="5" value="80" oninput="notiPrefsVolume()"><span id="np-vol-val" class="np-vol-val">80%</span></div>
-      <label class="alarm-toggle np-row"><span class="np-k"><img class="np-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="진동" alt="" aria-hidden="true"><span>진동 알림<small id="np-vib-note" style="display:none">아이폰은 휴대폰 설정(햅틱)을 따릅니다</small></span></span><input type="checkbox" id="np-vib" onchange="notiPrefsChanged()"></label>
-      <button type="button" class="btn" style="margin-top:10px;background:#f57c00;font-size:13px" onclick="notiPreview()">소리·진동 미리 확인</button>
-      <div class="np-note">※ 볼륨은 철도비서가 열려 있을 때 울리는 알람 소리 크기입니다.<br>※ 앱이 꺼져 있을 때 오는 알림의 소리 크기는 휴대폰 알림 볼륨을 따릅니다.</div>
+  <div class="dia-dialog ns-dialog">
+    <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알람설정" alt="" aria-hidden="true">알림 설정</div>
+
+    <!-- ① 알림 허용 상태 -->
+    <div id="perm-banner" class="ns-banner">
+      <div id="perm-banner-text" class="ns-banner-text">알림 상태를 확인하는 중입니다.</div>
+      <button type="button" id="perm-btn" class="ns-banner-btn" onclick="permRequestAll()">알림 허용하기</button>
     </div>
     <div id="perm-warn" class="perm-warn" style="display:none"></div>
-    <button type="button" id="perm-btn" class="btn" style="margin-top:12px;background:#1a73e8;font-size:14px" onclick="permRequestAll()">소리·진동·알림 권한 허용하기</button>
-    <div id="perm-guide" class="perm-guide"></div>
+    <div class="ns-chips">
+      <div class="ns-chip"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="팝업알림" alt="" aria-hidden="true"><span class="ns-chip-k">팝업</span><b id="perm-noti">-</b></div>
+      <div class="ns-chip"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알림소리" alt="" aria-hidden="true"><span class="ns-chip-k">소리</span><b id="perm-sound">-</b></div>
+      <div class="ns-chip"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="진동" alt="" aria-hidden="true"><span class="ns-chip-k">진동</span><b id="perm-vib">-</b></div>
+      <div class="ns-chip"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="앱꺼짐알림" alt="" aria-hidden="true"><span class="ns-chip-k">앱 꺼짐</span><b id="perm-push">-</b></div>
+    </div>
+
+    <!-- ② 출근 알람 -->
+    <div class="ns-card">
+      <div class="ns-row">
+        <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알람설정" alt="" aria-hidden="true"><span><b class="ns-t">출근 알람</b><small>주간·야간 출근일만 · 비번·휴무·휴가 제외</small></span></span>
+        <input type="checkbox" id="alarm-on" class="ns-switch" onchange="alarmToggleChanged()">
+      </div>
+      <div id="alarm-value" class="ns-alarm-value"></div>
+      <input type="range" id="alarm-range" class="alarm-range ns-range" min="0" max="17" step="1" value="12" oninput="alarmUiUpdate()" onchange="alarmAutoSave(false)">
+      <div class="alarm-scale"><span>3시간 전</span><span>10분 전</span></div>
+      <div id="alarm-preview" class="alarm-preview ns-preview"></div>
+    </div>
+
+    <!-- ③ 알림 방식 -->
+    <div class="ns-card">
+      <div class="ns-card-title">알림 방식</div>
+      <div class="ns-row">
+        <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="팝업알림" alt="" aria-hidden="true"><span><b class="ns-t">휴대폰 팝업 알림</b><small>상단 팝업·잠금화면 · 앱 꺼짐 알림 포함</small></span></span>
+        <input type="checkbox" id="np-popup" class="ns-switch" onchange="notiPrefsChanged()">
+      </div>
+      <div class="ns-row">
+        <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알림소리" alt="" aria-hidden="true"><span><b class="ns-t">소리</b></span></span>
+        <input type="checkbox" id="np-sound" class="ns-switch" onchange="notiPrefsChanged()">
+      </div>
+      <div class="ns-vol"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="볼륨조절" alt="" aria-hidden="true"><input type="range" id="np-vol" class="alarm-range ns-range" min="0" max="100" step="5" value="80" oninput="notiPrefsVolume()"><span id="np-vol-val" class="np-vol-val">80%</span></div>
+      <div class="ns-row">
+        <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="진동" alt="" aria-hidden="true"><span><b class="ns-t">진동</b><small id="np-vib-note" style="display:none">아이폰은 휴대폰 설정(햅틱)을 따릅니다</small></span></span>
+        <input type="checkbox" id="np-vib" class="ns-switch" onchange="notiPrefsChanged()">
+      </div>
+    </div>
+
+    <!-- ④ 테스트 -->
+    <div class="ns-tests">
+      <button type="button" class="ns-test-btn ns-orange" onclick="testAlarmRing()"><img class="ns-btn-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="지금알람테스트" alt="" aria-hidden="true"><span>지금 테스트<small>소리·진동·팝업 바로 확인</small></span></button>
+      <button type="button" class="ns-test-btn ns-blue" onclick="pushTestNow()"><img class="ns-btn-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="앱꺼짐알림" alt="" aria-hidden="true"><span>꺼진 상태 테스트<small>앱 닫고 1분 안에 도착</small></span></button>
+    </div>
+    <div class="ns-note">※ 볼륨은 앱이 열려 있을 때 울리는 알람 소리 크기이며, 앱이 꺼져 있을 때 오는 알림은 휴대폰 알림 볼륨을 따릅니다.</div>
+
+    <!-- ⑤ 안 될 때 -->
+    <details class="ns-help">
+      <summary>소리·진동이 안 올 때 (휴대폰 설정 안내)</summary>
+      <div id="perm-guide" class="perm-guide"></div>
+    </details>
+
     <div class="dia-dialog-actions">
       <button type="button" class="dia-text-btn" onclick="closePermPanel()">닫기</button>
     </div>
@@ -2383,9 +2382,42 @@ function snapEmptyDay() {
 /* 근무설정·근무패턴·순환에는 1번부터 24번까지만 사용 (25~30번은 근무표 대용 다이아) */
 var ROTATION_MAX_SEQ = 24;
 
-/* 특정 사용자만 순서 16번(12551)이 12937 다이아로 바뀜 (12551은 이 사용자들에게 없음) */
-var SPECIAL_SEQ_USERS = ['민현주', '박유진', '이보아', '이주원', '임다빈'];
+/* 여자 사용자는 순서 16번이 12551(남자) 대신 12937(대기근무, 07:00~18:00)
+   - 아래 목록은 기본값이며, Supabase seq_rules 표에 저장된 규칙이 있으면 그것도 함께 적용 */
+var SPECIAL_SEQ_USERS = ['민현주', '박유진', '워니', '이주원', '이보아', '임다빈'];
 var SPECIAL_SEQ_DIA = { '16': '12937' };
+
+/* 서버에 다이아 정보가 아직 없을 때 쓰는 기본값 */
+var DIA_FALLBACK = {
+  '12937': { dia: '12937', type: '주', start: '07:00', end: '18:00', train1: '', train2: '', train3: '', name: '12937', seq: '', standby: true }
+};
+
+/* Supabase seq_rules 표의 규칙 [{ name, seq, dia }] (이 폰에 저장해 두고 로그인할 때 새로 받음) */
+var seqRulesServer = (function () { try { return JSON.parse(localStorage.getItem('seqRules') || '[]') || []; } catch (e) { return []; } })();
+
+function seqRuleDia(name, seq) {
+  var nm = String(name || '').trim(), sq = String(seq);
+  for (var i = 0; i < seqRulesServer.length; i++) {
+    var r = seqRulesServer[i];
+    if (String(r.name || '').trim() === nm && String(r.seq) === sq && r.dia) return String(r.dia).trim();
+  }
+  if (SPECIAL_SEQ_USERS.indexOf(nm) >= 0 && SPECIAL_SEQ_DIA[sq]) return SPECIAL_SEQ_DIA[sq];
+  return '';
+}
+
+function loadSeqRules() {
+  var u = getCurrentUser();
+  if (!u.token) return;
+  api({ action: 'getSeqRules', employeeId: u.employeeId, token: u.token }, function (r) {
+    if (!r || !r.success || !Array.isArray(r.rules)) return;
+    var next = JSON.stringify(r.rules);
+    if (next === JSON.stringify(seqRulesServer)) return;
+    seqRulesServer = r.rules;
+    try { localStorage.setItem('seqRules', next); } catch (e) {}
+    try { refreshUiAfterSwap(); } catch (e) {}
+    try { if (typeof renderPattern === 'function' && $('pattern-list')) renderPattern(); } catch (e) {}
+  });
+}
 
 /* 근무표에서 순서(seq)별로 특정 요일에만 대신 적용되는 다이아 (요일: 0=일 ... 6=토)
    그 외 요일은 순서표의 기본 다이아가 그대로 적용됨 */
@@ -2446,15 +2478,13 @@ function rotationFor(list, name) {
   var rot = rotationOf(list);
   var nm = String(name || '').trim();
 
-  if (SPECIAL_SEQ_USERS.indexOf(nm) < 0) return rot;
-
   for (var i = 0; i < rot.length; i++) {
 
-    var target = SPECIAL_SEQ_DIA[String(rot[i].seq)];
+    var target = seqRuleDia(nm, rot[i].seq);
 
     if (!target) continue;
 
-    var repl = findDiaIn(list, target);
+    var repl = findDiaIn(list, target) || DIA_FALLBACK[String(target).toUpperCase()];
 
     if (!repl) continue;
 
@@ -3526,7 +3556,7 @@ function diaByNumber(dia) {
     if (String(diaList[i].dia == null ? '' : diaList[i].dia).trim().toUpperCase() === wanted) return diaList[i];
   }
 
-  return null;
+  return DIA_FALLBACK[wanted] || null;
 
 }
 
@@ -8001,17 +8031,8 @@ function alarmMinText(min) {
 
 }
 
-function renderAlarmSub() {
-
-  var el = $('alarm-sub');
-
-  if (!el) return;
-
-  var cfg = getAlarmCfg();
-
-  el.textContent = cfg.on ? '※ 출근 ' + alarmMinText(cfg.min) + ' 알람 켜짐' : '※ 꺼짐 · 출근 시간 전에 알려드려요';
-
-}
+/* 환경설정 › 알림 설정 메뉴 아래 요약 문구 (출근 알람 + 알림 방식) */
+function renderAlarmSub() { if (typeof renderNotiSub === 'function') renderNotiSub(); }
 
 function findMyMember() {
 
@@ -8067,21 +8088,15 @@ function alarmClockText(totalMin) {
 
 }
 
-function openAlarmSettings() {
+/* 출근 알람은 '알림 설정' 화면으로 합쳐짐 */
+function openAlarmSettings() { openPermPanel(); }
+function closeAlarmSettings() { closePermPanel(); }
 
+function alarmLoadUi() {
   var cfg = getAlarmCfg();
-
   $('alarm-on').checked = cfg.on;
   $('alarm-range').value = String((180 - cfg.min) / 10);
-
   alarmUiUpdate();
-
-  $('alarm-panel').classList.add('active');
-
-}
-
-function closeAlarmSettings() {
-  $('alarm-panel').classList.remove('active');
 }
 
 function alarmUiMin() {
@@ -8120,7 +8135,8 @@ function alarmUiUpdate() {
 }
 
 
-function saveAlarmSettings() {
+/* 바꾸는 즉시 저장 (확인 버튼 없음) */
+function alarmAutoSave(withToast) {
 
   var cfg = { on: $('alarm-on').checked, min: alarmUiMin() };
 
@@ -8129,18 +8145,23 @@ function saveAlarmSettings() {
   } catch (e) {}
 
   if (cfg.on) {
-    /* 버튼을 누른 순간 알림 권한 요청 → 푸시 등록 → 3주치 알람 서버 저장 */
-    pushEnsureSub(true).then(function () { pushSyncAlarms(true); });
+    /* 스위치를 누른 순간 알림 권한 요청 → 푸시 등록 → 3주치 알람 서버 저장 */
+    pushEnsureSub(true).then(function () { pushSyncAlarms(true); try { permRender(); } catch (e) {} });
   } else {
     pushSyncAlarms(true);          /* 끄면 서버에 올려 둔 알람도 지움 */
   }
 
-  closeAlarmSettings();
   renderAlarmSub();
-
-  showToast(cfg.on ? '출근 ' + alarmMinText(cfg.min) + ' 알람을 켰습니다.' : '출근 알람을 껐습니다.');
+  if (withToast) showToast(cfg.on ? '출근 ' + alarmMinText(cfg.min) + ' 알람을 켰습니다.' : '출근 알람을 껐습니다.');
 
 }
+
+function alarmToggleChanged() {
+  alarmUiUpdate();
+  alarmAutoSave(true);
+}
+
+function saveAlarmSettings() { alarmAutoSave(true); }
 
 function alarmBeep() {
 
@@ -9284,7 +9305,8 @@ function runLoginPopups() {
   var gen = loginPopupGen;
   closeNoticePopup();
   promptWorkSettingIfNeeded(gen);   /* 근무설정이 없는 사용자(처음 가입자): 근무설정 팝업 */
-  setTimeout(function () { if (gen === loginPopupGen) autoCrewRoster(); }, 2500);   /* CREW 연동: 승무원 자동 불러오기 (관리자만) */
+  setTimeout(function () { if (gen === loginPopupGen) autoCrewRoster(); }, 2500);
+  loadSeqRules();            /* 순서별 다이아 규칙(여자 16번 = 12937) 서버에서 받기 */   /* CREW 연동: 승무원 자동 불러오기 (관리자만) */
   nxLoginCheck(gen);         /* 열차 운휴: 로그인할 때마다 즉시 결과 팝업 */
   noticeCheckNew(gen);       /* 새 공지사항: 사용자별 최초 1회 (운휴 팝업 위에 표시) */
   setTimeout(function () { permAutoPrompt(gen); }, 4000);   /* 알림 권한(소리·진동·팝업): 처음 한 번 안내 */
@@ -9355,10 +9377,7 @@ function notiPrefsRender() {
   if ($('np-vol-val')) $('np-vol-val').textContent = np.sound ? np.vol + '%' : '꺼짐';
   var ios = permIsIOS();
   if ($('np-vib-note')) $('np-vib-note').style.display = ios ? '' : 'none';
-  var sub = $('perm-sub');
-  if (sub && 'Notification' in window && Notification.permission === 'granted') {
-    sub.textContent = '※ 팝업 ' + (np.popup ? '켬' : '끔') + ' · 소리 ' + (np.sound ? np.vol + '%' : '끔') + ' · 진동 ' + (np.vib ? '켬' : '끔');
-  }
+  renderNotiSub();
 }
 function notiPrefsChanged() {
   var before = getNotiPrefs();
@@ -9426,19 +9445,19 @@ function permRender() {
   var perm = hasN ? Notification.permission : 'unsupported';
   var warn = '', guide = '';
 
-  if (!hasN) permSet('perm-noti', ios && !sa ? '홈 화면 앱에서 가능' : '지원 안 함', 'mid');
+  if (!hasN) permSet('perm-noti', ios && !sa ? '홈 화면 앱' : '지원 안 함', 'mid');
   else if (perm === 'granted') permSet('perm-noti', '허용됨', 'ok');
   else if (perm === 'denied') permSet('perm-noti', '차단됨', 'no');
   else permSet('perm-noti', '허용 필요', 'mid');
 
-  permSet('perm-sound', perm === 'granted' ? '허용됨' : '알림 허용 시 함께 허용', perm === 'granted' ? 'ok' : 'mid');
+  permSet('perm-sound', perm === 'granted' ? '허용됨' : '허용 필요', perm === 'granted' ? 'ok' : 'mid');
 
-  if (ios) permSet('perm-vib', '아이폰 설정 따름', 'mid');
+  if (ios) permSet('perm-vib', '폰 설정', 'mid');
   else if (navigator.vibrate) permSet('perm-vib', '사용 가능', 'ok');
   else permSet('perm-vib', '지원 안 함', 'no');
 
   var pushOk = perm === 'granted' && typeof pushSupported === 'function' && pushSupported();
-  permSet('perm-push', pushOk ? (LS.getItem('pushSubMark') ? '등록됨' : '허용됨') : (ios && !sa ? '홈 화면 앱에서 가능' : '허용 필요'), pushOk ? 'ok' : 'mid');
+  permSet('perm-push', pushOk ? (LS.getItem('pushSubMark') ? '등록됨' : '허용됨') : (ios && !sa ? '홈 화면 앱' : '허용 필요'), pushOk ? 'ok' : 'mid');
 
   if (ios && !sa) {
     warn = '아이폰은 <b>홈 화면에 추가한 철도비서</b>에서만 알림 권한을 받을 수 있어요.<br>' +
@@ -9465,20 +9484,47 @@ function permRender() {
   var w = $('perm-warn');
   if (w) { w.innerHTML = warn; w.style.display = warn ? '' : 'none'; }
   var g = $('perm-guide'); if (g) g.innerHTML = guide;
-  var btn = $('perm-btn');
-  if (btn) {
-    btn.disabled = (ios && !sa) || !hasN;
-    btn.style.opacity = btn.disabled ? '.5' : '1';
-    btn.textContent = perm === 'granted' ? '소리·진동 다시 테스트하기' : '소리·진동·알림 권한 허용하기';
+
+  /* 맨 위 상태 안내 */
+  var bn = $('perm-banner'), bt = $('perm-banner-text'), btn = $('perm-btn');
+  if (bn && bt && btn) {
+    if (perm === 'granted') {
+      bn.className = 'ns-banner ok';
+      bt.innerHTML = '✓ 알림이 허용되어 있어요<small>앱이 꺼져 있어도 출근 알람·운휴 알림을 받을 수 있습니다.</small>';
+      btn.style.display = 'none';
+    } else if (perm === 'denied') {
+      bn.className = 'ns-banner no';
+      bt.innerHTML = '알림이 차단되어 있어요<small>아래 안내대로 휴대폰 설정에서 허용해주세요.</small>';
+      btn.style.display = 'none';
+    } else if (ios && !sa) {
+      bn.className = 'ns-banner';
+      bt.innerHTML = '홈 화면 앱에서 알림을 받을 수 있어요<small>아래 안내대로 홈 화면에 추가해주세요.</small>';
+      btn.style.display = 'none';
+    } else {
+      bn.className = 'ns-banner';
+      bt.innerHTML = '알림 허용이 필요해요<small>소리·진동·팝업으로 알림을 받으려면 눌러주세요.</small>';
+      btn.style.display = hasN ? '' : 'none';
+    }
   }
+  renderNotiSub();
+}
+
+function renderNotiSub() {
   var sub = $('perm-sub');
-  if (sub) sub.textContent = perm === 'granted' ? '※ 소리·진동·팝업 알림 허용됨' : (perm === 'denied' ? '※ 알림 차단됨 · 눌러서 해결 방법 보기' : '※ 소리·진동·팝업 알림 권한 설정');
+  if (!sub) return;
+  var cfg = getAlarmCfg(), np = getNotiPrefs();
+  var perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+  var head = cfg.on ? '출근 ' + alarmMinText(cfg.min) + ' 알람' : '출근 알람 꺼짐';
+  if (perm === 'denied') sub.textContent = '※ ' + head + ' · 알림 차단됨';
+  else if (perm !== 'granted') sub.textContent = '※ ' + head + ' · 알림 허용 필요';
+  else sub.textContent = '※ ' + head + ' · 소리 ' + (np.sound ? np.vol + '%' : '끔') + ' · 진동 ' + (np.vib ? '켬' : '끔') + (np.popup ? '' : ' · 팝업 끔');
 }
 
 function openPermPanel() {
   try { LS.setItem('permAsked_' + (getCurrentUser().employeeId || ''), '1'); } catch (e) {}
   permRender();
   notiPrefsRender();
+  try { alarmLoadUi(); } catch (e) {}
   $('perm-panel').classList.add('active');
 }
 function closePermPanel() { $('perm-panel').classList.remove('active'); permRender(); notiPrefsRender(); }
@@ -9541,7 +9587,6 @@ function closeTopOverlayForBack() {
     ['notice-panel', closeNoticePanel],
     ['suggestion-panel', closeSuggestionPanel],
     ['dia-panel', closeDiaSelector],
-    ['alarm-panel', closeAlarmSettings],
     ['backup-panel', closeBackupPanel]
   ];
   for (var i = 0; i < overlays.length; i++) {
@@ -9721,6 +9766,52 @@ body{padding:0!important}
 .perm-warn{margin:10px 2px 0;padding:10px 12px;border-radius:12px;background:#fff4e5;color:#8a5300;font-size:12.5px;line-height:1.6;white-space:normal}
 .perm-guide{margin:10px 4px 0;font-size:11.5px;color:#6b7686;line-height:1.65;white-space:normal}
 .perm-guide b{color:#344054}
+
+/* ===== 알림 설정 (합친 화면) ===== */
+.ns-dialog{max-width:420px}
+.ns-banner{display:flex;align-items:center;gap:10px;margin:10px 0 0;padding:12px 12px;border-radius:14px;background:#fff4e5;border:1px solid #ffd8a8}
+.ns-banner.ok{background:#e9f8ef;border-color:#b8e6c8}
+.ns-banner.no{background:#fdecec;border-color:#f6c1c1}
+.ns-banner-text{flex:1;font-size:13.5px;font-weight:700;color:#7a4b00;line-height:1.45;white-space:normal}
+.ns-banner.ok .ns-banner-text{color:#16793a}
+.ns-banner.no .ns-banner-text{color:#b42318}
+.ns-banner-text small{display:block;font-weight:500;font-size:11.5px;opacity:.85;margin-top:2px}
+.ns-banner-btn{flex:none;border:0;border-radius:999px;background:#1a73e8;color:#fff;font-size:13px;font-weight:800;padding:9px 14px;cursor:pointer}
+.ns-chips{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 0}
+.ns-chip{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;border:1px solid #e6ecf3;border-radius:12px;background:#fff;text-align:center}
+.ns-chip .ns-ico{width:30px;height:30px}
+.ns-chip-k{font-size:11.5px;color:#5b6676;font-weight:700}
+.ns-chip b{font-size:11px;line-height:1.25}
+.ns-chip b.ok{color:#1b9e4b}.ns-chip b.no{color:#d93025}.ns-chip b.mid{color:#e08a00}
+.ns-card{margin:12px 0 0;padding:12px 12px 10px;border:1px solid #e6ecf3;border-radius:16px;background:#fafcff}
+.ns-card-title{font-size:13px;font-weight:800;color:#344054;margin:0 0 2px}
+.ns-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0}
+.ns-k{display:flex;align-items:center;gap:10px;min-width:0}
+.ns-k small{display:block;font-size:11px;color:#8a96a8;font-weight:500;margin-top:1px;line-height:1.35}
+.ns-t{font-size:15px;color:#1f2937}
+.ns-ico{width:32px;height:32px;object-fit:contain;flex:0 0 auto}
+.ns-alarm-value{margin:2px 0 0;text-align:center;font-size:20px;font-weight:900;color:#1a73e8}
+.ns-range{margin:10px 0 4px!important}
+.ns-preview{margin-top:10px!important}
+.ns-vol{display:flex;align-items:center;gap:10px;padding:2px 0 6px 0}
+.ns-vol .ns-range{flex:1;margin:0!important}
+.ns-vol .ns-ico{width:28px;height:28px}
+/* 켜기/끄기 스위치 */
+.ns-switch{-webkit-appearance:none;appearance:none;flex:none;position:relative;width:50px;height:30px;border-radius:999px;background:#cfd8e3;cursor:pointer;transition:background .2s;margin:0}
+.ns-switch::before{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.ns-switch:checked{background:#1a73e8}
+.ns-switch:checked::before{transform:translateX(20px)}
+.ns-tests{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 0}
+.ns-test-btn{display:flex;align-items:center;gap:8px;border:0;border-radius:14px;padding:11px 10px;color:#fff;text-align:left;cursor:pointer;font-size:13.5px;font-weight:800}
+.ns-test-btn small{display:block;font-size:10.5px;font-weight:500;opacity:.9;margin-top:1px}
+.ns-orange{background:#f57c00}.ns-blue{background:#1a73e8}
+.ns-btn-ico{width:30px;height:30px;object-fit:contain;flex:none;background:#fff;border-radius:50%;padding:3px;box-sizing:border-box}
+.ns-note{margin:8px 4px 0;font-size:11px;color:#7a8696;line-height:1.55;white-space:normal}
+.ns-help{margin:10px 2px 0;border-top:1px dashed #e1e7ef;padding-top:8px}
+.ns-help summary{cursor:pointer;font-size:12.5px;font-weight:700;color:#475467;list-style:none}
+.ns-help summary::-webkit-details-marker{display:none}
+.ns-help summary::before{content:"▸ ";color:#98a2b3}
+.ns-help[open] summary::before{content:"▾ "}
 
 .np-box{margin:14px 2px 0;padding:12px 12px 10px;border:1px solid #e6ecf3;border-radius:14px;background:#fafcff}
 .np-title{font-size:13px;font-weight:800;color:#344054;margin-bottom:4px}
