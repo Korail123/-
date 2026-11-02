@@ -4176,7 +4176,7 @@ var CREW_FN_SLUG = 'clever-action';
 var CREW_AUTO_MS = 2 * 3600000;     /* 자동 조회는 2시간에 한 번까지 */
 
 /* CREW 연동은 허용된 사원번호만 사용 가능 */
-var CREW_ALLOWED_IDS = ['199878', '198990', '196035', '198989', '198983'];   /* 199878 송주영(관리자), 198990 워니, 196035 전호연, 198989 이보아, 198983 안도현 */
+var CREW_ALLOWED_IDS = ['199878', '198990', '196035', '198989', '198983', '198988'];   /* 199878 송주영(관리자), 198990 워니, 196035 전호연, 198989 이보아, 198983 안도현, 198988 조성모 */
 function crewAllowed() { return CREW_ALLOWED_IDS.indexOf(String(getCurrentUser().employeeId || '')) >= 0; }
 /* 실제로 CREW 연동을 마친 사람(허용 명단 + 이 폰에 CREW 비밀번호 저장)만 승무원 정보를 봄 */
 function crewLinked() { return crewAllowed() && !!getCrewPw(); }
