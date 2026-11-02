@@ -1252,6 +1252,10 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="board-page-inner">
       <div class="board-page-header"><div class="board-title-block"><img class="board-title-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="공지사항" alt="" decoding="async"><h1>공지사항</h1></div></div>
       <div class="dia-dialog-note" style="white-space:normal">공지사항은 관리자만 작성할 수 있습니다.</div>
+      <div id="notice-tabs" class="nt-tabs" role="tablist">
+        <button type="button" class="nt-tab active" data-cat="공지사항" onclick="setNoticeTab('공지사항')">공지사항<span class="nt-count"></span></button>
+        <button type="button" class="nt-tab" data-cat="업데이트" onclick="setNoticeTab('업데이트')">업데이트<span class="nt-count"></span></button>
+      </div>
       <div id="notice-list" style="margin:12px 4px;line-height:1.7;color:#445;white-space:normal"><div class="dia-empty">공지사항을 불러오는 중...</div></div>
       <div id="notice-admin-actions" style="display:none;margin:14px 4px;text-align:right"><button type="button" class="board-write-btn" onclick="openBoardEditor('notice')">글쓰기</button></div>
       
@@ -1284,20 +1288,31 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
   </div>
 
-  <div id="board-detail-panel" class="dia-modal" onclick="if(event.target===this)closeBoardDetail()">
-    <div class="dia-dialog" style="max-height:88vh;overflow:auto">
-      <div id="board-detail-title" class="dia-dialog-title">게시물</div>
-      <div id="board-detail-meta" style="font-size:12px;color:#8792a1;margin:4px 0 12px"></div>
-      <div id="board-detail-content" style="white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;margin:12px 0"></div>
-      <div id="board-detail-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"></div>
-      <div id="board-comment-section" style="border-top:1px solid #e5eaf0;padding-top:12px">
-        <div style="font-weight:bold;margin-bottom:8px">댓글</div>
-        <div id="board-comments" class="board-comment-list" style="white-space:normal"></div>
-        <div class="board-comment-composer" id="board-comment-composer"><div class="bc-avatar" aria-hidden="true">✎</div><textarea id="board-comment-input" rows="1" maxlength="2000" placeholder="댓글 작성" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,90)+'px'"></textarea><button type="button" aria-label="댓글 등록" title="댓글 등록" onclick="submitBoardComment()">☑</button></div>
+  <div id="board-post-page" class="page-view board-page">
+    <div class="board-page-inner bp-inner">
+      <div class="bp-top">
+        <button type="button" class="bp-back" onclick="closeBoardDetail()" aria-label="목록으로">‹ <span id="bp-back-label">목록</span></button>
+        <div id="board-detail-actions" class="bp-post-actions"></div>
+      </div>
+      <div class="bp-author">
+        <div id="bp-author-avatar" class="bp-avatar"></div>
+        <div id="bp-author-name" class="bp-author-name"></div>
+        <div id="board-detail-meta" class="bp-meta"></div>
+      </div>
+      <div id="board-detail-title" class="bp-title">게시물</div>
+      <div id="board-detail-content" class="bp-content"></div>
+      <div id="board-comment-section" class="bp-comments">
+        <div class="bp-pill"><span id="bp-comment-count">댓글</span></div>
+        <div id="board-comments" class="bp-comment-list"></div>
+        <div class="bp-composer" id="board-comment-composer">
+          <div id="bp-my-avatar" class="bp-c-avatar"></div>
+          <textarea id="board-comment-input" rows="1" maxlength="2000" placeholder="댓글을 입력하세요" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,110)+'px'"></textarea>
+          <button type="button" class="bp-send" onclick="submitBoardComment()">등록</button>
+        </div>
         <div id="board-comment-message" class="status-message" style="white-space:normal"></div>
       </div>
-      <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeBoardDetail()">닫기</button></div>
     </div>
+  </div>
   </div>
 
 
@@ -3467,7 +3482,7 @@ function switchSection(id) {
   [
     'login-section', 'signup-section', 'main-section', 'schedule-section',
     'group-section', 'pattern-section', 'vacation-section', 'settings-section',
-    'notice-panel', 'suggestion-panel'
+    'notice-panel', 'suggestion-panel', 'board-post-page'
   ].forEach(function (s) {
 
     var e = $(s);
@@ -3483,7 +3498,7 @@ function switchSection(id) {
   /* 게시판 화면에서도 다른 화면과 같은 상단 시계/새로고침/로고를 유지 */
   var mainContainer = $('main-container');
   if (mainContainer) {
-    if (id === 'notice-panel' || id === 'suggestion-panel') mainContainer.classList.add('board-shell-active');
+    if (id === 'notice-panel' || id === 'suggestion-panel' || id === 'board-post-page') mainContainer.classList.add('board-shell-active');
     else mainContainer.classList.remove('board-shell-active');
   }
 
@@ -3493,7 +3508,7 @@ function switchSection(id) {
   if (nav) {
 
     var loggedScreen = id !== 'login-section' && id !== 'signup-section';
-    if (id === 'notice-panel' || id === 'suggestion-panel') loggedScreen = true;
+    if (id === 'notice-panel' || id === 'suggestion-panel' || id === 'board-post-page') loggedScreen = true;
 
     if (loggedScreen) nav.classList.add('show');
     else nav.classList.remove('show');
@@ -6614,7 +6629,7 @@ function closePatternInfo() {
   function detachBoardPages() {
     var host = document.getElementById('main-container');
     if (!host) return;
-    ['notice-panel', 'suggestion-panel', 'board-editor-panel', 'board-detail-panel'].forEach(function (id) {
+    ['notice-panel', 'suggestion-panel', 'board-editor-panel', 'board-post-page'].forEach(function (id) {
       var el = document.getElementById(id);
       /* 게시판을 body 바깥에 두면 화면 오른쪽으로 분리되므로,
          다른 .page-view 화면처럼 main-container 안에서 같은 흐름을 사용한다. */
@@ -6649,6 +6664,46 @@ function boardApi(action, extra, cb) {
     if (typeof cb === 'function') cb(r || { success: false, message: '서버 응답이 없습니다.' });
   });
 }
+
+/* ===== 공지사항 분류: 공지사항 / 업데이트 / 기타 ===== */
+var NOTICE_CATS = ['공지사항', '업데이트'];
+var NOTICE_PREFIX_RE = /^\s*\[(공지사항|공지|업데이트|기타)\]\s*/;
+var noticeTab = '공지사항';
+var noticeAll = [];
+function noticeCatOf(post) {
+  var c = String(post && post.category || '').trim();
+  if (NOTICE_CATS.indexOf(c) >= 0) return c;
+  var m = String(post && post.title || '').match(NOTICE_PREFIX_RE);
+  if (m && NOTICE_CATS.indexOf(m[1]) >= 0) return m[1];
+  return '공지사항';                                   /* 분류 없이 쓴 예전 공지·[기타] 글은 공지사항 */
+}
+function noticeTitleOf(post) {
+  return String(post && post.title || '').replace(NOTICE_PREFIX_RE, '') || '공지사항';
+}
+function setNoticeTab(cat) {
+  noticeTab = NOTICE_CATS.indexOf(cat) >= 0 ? cat : '공지사항';
+  renderNoticeTab();
+}
+function renderNoticeTab() {
+  var counts = {};
+  NOTICE_CATS.forEach(function (c) { counts[c] = 0; });
+  noticeAll.forEach(function (p) { counts[noticeCatOf(p)]++; });
+  var tabs = document.querySelectorAll('#notice-tabs .nt-tab');
+  for (var i = 0; i < tabs.length; i++) {
+    var c = tabs[i].getAttribute('data-cat');
+    tabs[i].classList.toggle('active', c === noticeTab);
+    tabs[i].setAttribute('aria-selected', c === noticeTab ? 'true' : 'false');
+    var cnt = tabs[i].querySelector('.nt-count');
+    if (cnt) cnt.textContent = counts[c] ? ' ' + counts[c] : '';
+  }
+  var list = noticeAll.filter(function (p) { return noticeCatOf(p) === noticeTab; });
+  if (!list.length) {
+    var box = $('notice-list');
+    if (box) box.innerHTML = '<div class="dia-empty">' + noticeTab + ' 글이 없습니다.</div>';
+    return;
+  }
+  renderBoardList('notice', list);
+}
 function openNoticePanel() {
   switchSection('notice-panel');
   var list = $('notice-list');
@@ -6661,7 +6716,8 @@ function openNoticePanel() {
   boardApi('getAnnouncements', {}, function (r) {
     if (!list) return;
     if (!r.success) { list.innerHTML = '<div class="dia-empty">공지사항 서버 연결이 필요합니다. 잠시 후 다시 시도해주세요.</div>'; return; }
-    renderBoardList('notice', r.announcements || r.posts || []);
+    noticeAll = r.announcements || r.posts || [];
+    renderNoticeTab();
     /* 관리자는 본인이 쓴 공지가 다음 로그인 때 팝업으로 다시 뜨지 않도록 본 것으로 처리 */
     if (isBoardAdmin()) noticeMarkSeen((r.announcements || r.posts || []).map(noticeId));
   });
@@ -6685,11 +6741,11 @@ function renderBoardList(type, posts) {
   if (!Array.isArray(posts)) posts = [];
   var rows = posts.map(function (post, index) {
     var id = String(post.id || post.postId || '');
-    var title = esc(post.title || (type === 'notice' ? '공지사항' : '건의사항'));
+    var title = esc(type === 'notice' ? noticeTitleOf(post) : (post.title || '건의사항'));
     var author = esc(post.authorName || post.name || post.employeeId || '사용자');
     var rawDate = post.createdAt || post.date || '';
     var dateText = rawDate;
-    try { var d = new Date(rawDate); if (rawDate && !isNaN(d.getTime())) dateText = d.toLocaleDateString('ko-KR'); } catch(e) {}
+    try { var d = new Date(rawDate); if (rawDate && !isNaN(d.getTime())) dateText = String(d.getFullYear()).slice(2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' + ('0' + d.getDate()).slice(-2); } catch(e) {}   /* 26.11.02 처럼 짧게 */
     var date = esc(dateText);
     var comments = Number(post.commentCount || post.commentsCount || (Array.isArray(post.comments) ? post.comments.length : 0)) || 0;
     var likes = Number(post.likes || post.likeCount || 0) || 0;
@@ -6705,10 +6761,17 @@ function openBoardEditor(type, post) {
   var user = getCurrentUser();
   if (!user || user.employeeId === 'guest') { alert('로그인 후 이용해주세요.'); return; }
   $('board-editor-title').textContent = (boardEditorPostId ? '게시물 수정' : '게시물 작성');
-  $('board-editor-subject').value = post ? (post.title || '') : '';
+  $('board-editor-subject').value = post ? (type === 'notice' ? noticeTitleOf(post) : (post.title || '')) : '';
   $('board-editor-content').value = post ? (post.content || post.body || '') : '';
-  $('board-editor-category-wrap').style.display = type === 'suggestion' ? 'block' : 'none';
-  if (post && post.category) $('board-editor-category').value = post.category;
+  /* 분류: 공지사항은 공지사항·업데이트·기타, 건의사항은 기존 분류 */
+  var catSel = $('board-editor-category');
+  if (!catSel.__suggestHtml) catSel.__suggestHtml = catSel.innerHTML;
+  catSel.innerHTML = type === 'notice'
+    ? NOTICE_CATS.map(function (c) { return '<option>' + c + '</option>'; }).join('')
+    : catSel.__suggestHtml;
+  $('board-editor-category-wrap').style.display = 'block';
+  if (type === 'notice') catSel.value = post ? noticeCatOf(post) : (noticeTab || '공지사항');
+  else if (post && post.category) catSel.value = post.category;
   $('board-editor-message').textContent = '';
   $('board-editor-panel').classList.add('active');
 }
@@ -6722,68 +6785,123 @@ function saveBoardPost() {
   if (!title) { msg.textContent = '제목을 입력해주세요.'; return; }
   if (!content) { msg.textContent = '내용을 입력해주세요.'; return; }
   msg.textContent = '저장 중...';
-  var extra = { title: title, content: content, category: $('board-editor-category').value, postId: boardEditorPostId, id: boardEditorPostId };
+  var category = $('board-editor-category').value;
+  /* 공지사항 분류는 제목 앞에 [분류]로도 저장 (서버에 분류 칸이 없어도 유지되도록, 화면에서는 떼고 보여줌) */
+  if (boardEditorType === 'notice') title = '[' + category + '] ' + title.replace(NOTICE_PREFIX_RE, '');
+  var extra = { title: title, content: content, category: category, postId: boardEditorPostId, id: boardEditorPostId };
   var action;
   if (boardEditorType === 'notice') action = boardEditorPostId ? 'updateAnnouncement' : 'createAnnouncement';
   else action = boardEditorPostId ? 'updateSuggestion' : 'createSuggestion';
   boardApi(action, extra, function (r) {
     if (r && r.success) {
       closeBoardEditor();
-      if (boardEditorType === 'notice') openNoticePanel(); else openSuggestionPanel();
+      if (boardEditorType === 'notice') { noticeTab = category; openNoticePanel(); } else openSuggestionPanel();
     } else {
       msg.textContent = (r && r.message) || '저장에 실패했습니다. 잠시 후 다시 시도해주세요.';
     }
   });
 }
+/* 게시물 상세: 팝업이 아니라 화면으로 이동 */
+function boardTimeText(raw) {
+  if (!raw) return '';
+  var d = new Date(raw);
+  if (isNaN(d.getTime())) return String(raw);
+  var diff = (Date.now() - d.getTime()) / 1000;
+  if (diff < 60) return '방금 전';
+  if (diff < 3600) return Math.floor(diff / 60) + '분 전';
+  if (diff < 86400) return Math.floor(diff / 3600) + '시간 전';
+  if (diff < 172800) return '어제';
+  return String(d.getFullYear()).slice(2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' + ('0' + d.getDate()).slice(-2) +
+         ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+}
+function boardAvatar(name, emp, size) {
+  try { return avatarSvg(avatarFor({ name: name, employeeId: emp }), size); } catch (e) { return ''; }
+}
+var boardDetailFrom = 'suggestion-panel';
 function openBoardDetail(type, id) {
   activeBoardType = type;
-  var list = $(type === 'notice' ? 'notice-list' : 'suggestion-list');
-  // Fetch a fresh post and its comments; the server must verify edit/delete permissions.
   activeBoardPost = { id: id, type: type };
-  $('board-detail-title').innerHTML = '<span class="ico-title"><img class="title-ico" src="' + appIcon(type === 'notice' ? '공지사항' : '건의사항') + '" alt="">' + (type === 'notice' ? '공지사항' : '건의사항') + '</span>';
+  boardDetailFrom = type === 'notice' ? 'notice-panel' : 'suggestion-panel';
+  $('bp-back-label').textContent = type === 'notice' ? '공지사항' : '건의사항';
+  $('board-detail-title').textContent = '';
+  $('bp-author-avatar').innerHTML = '';
+  $('bp-author-name').textContent = '';
   $('board-detail-meta').textContent = '게시물을 불러오는 중...';
   $('board-detail-content').textContent = '';
   $('board-comments').innerHTML = '<div class="dia-empty">댓글을 불러오는 중...</div>';
+  $('bp-comment-count').textContent = '댓글';
   $('board-detail-actions').innerHTML = '';
   $('board-comment-input').value = '';
+  $('board-comment-input').style.height = '';
   $('board-comment-message').textContent = '';
+  var me = getCurrentUser();
+  $('bp-my-avatar').innerHTML = boardAvatar(me.name, me.employeeId, 36);
   var commentSection = $('board-comment-section');
   if (commentSection) commentSection.style.display = type === 'notice' ? 'none' : 'block';
   if (type === 'notice') noticeMarkSeen([String(id)]);   /* 직접 열어 본 공지는 팝업 대상에서 제외 */
-  $('board-detail-panel').classList.add('active');
+  switchSection('board-post-page');
+  try { $('main-container').scrollTop = 0; } catch (e) {}
+
   var action = type === 'notice' ? 'getAnnouncement' : 'getSuggestion';
   boardApi(action, { postId: id, id: id }, function (r) {
-    if (!r || !r.success) { $('board-detail-meta').textContent = '게시물 상세 조회 기능을 서버에 연결해야 합니다.'; $('board-detail-content').textContent = (r && r.message) || ''; return; }
+    if (!r || !r.success) { $('board-detail-meta').textContent = '게시물을 불러오지 못했습니다.'; $('board-detail-content').textContent = (r && r.message) || ''; return; }
     var post = r.post || r.announcement || r.suggestion || r;
     activeBoardPost = post; activeBoardPost.type = type;
-    $('board-detail-title').textContent = post.title || (type === 'notice' ? '공지사항' : '건의사항');
-    $('board-detail-meta').textContent = (post.authorName || post.name || post.employeeId || '사용자') + (post.createdAt || post.date ? ' · ' + (post.createdAt || post.date) : '');
+    var author = post.authorName || post.name || post.employeeId || '사용자';
+    var authorId = post.employeeId || post.authorId || '';
+    $('bp-author-avatar').innerHTML = boardAvatar(author, authorId, 72);
+    $('bp-author-name').textContent = author;
+    var cat = type === 'notice' ? noticeCatOf(post) : (post.category || '');
+    $('board-detail-meta').textContent = (cat ? cat + ' · ' : '') + boardTimeText(post.createdAt || post.date);
+    $('board-detail-title').textContent = type === 'notice' ? noticeTitleOf(post) : (post.title || '건의사항');
     $('board-detail-content').textContent = post.content || post.body || '';
-    var canEdit = type === 'notice' ? isBoardAdmin() : String(post.employeeId || post.authorId || '') === String(getCurrentUser().employeeId);
-    var actions = '';
-    if (canEdit) actions += '<button type="button" class="dia-text-btn" onclick="editActiveBoardPost()">수정</button><button type="button" class="dia-text-btn" onclick="deleteActiveBoardPost()">삭제</button>';
-    $('board-detail-actions').innerHTML = actions;
+    var canEdit = type === 'notice' ? isBoardAdmin() : String(authorId) === String(getCurrentUser().employeeId);
+    $('board-detail-actions').innerHTML = canEdit
+      ? '<button type="button" class="bp-act" onclick="editActiveBoardPost()">수정</button><button type="button" class="bp-act bp-del" onclick="deleteActiveBoardPost()">삭제</button>'
+      : '';
   });
   if (type === 'notice') return; // 공지사항에는 댓글 기능을 제공하지 않음
+  loadBoardComments(id);
+}
+function loadBoardComments(id) {
   boardApi('getSuggestionComments', { postId: id, id: id }, function (r) {
     var box = $('board-comments');
     if (!box) return;
-    if (!r || !r.success) { box.innerHTML = '<div class="dia-empty">댓글 기능을 서버에 연결해야 합니다.</div>'; return; }
+    if (!r || !r.success) { box.innerHTML = '<div class="dia-empty">댓글을 불러오지 못했습니다.</div>'; return; }
     var comments = r.comments || [];
+    $('bp-comment-count').textContent = '댓글 ' + comments.length;
+    var myId = String(getCurrentUser().employeeId);
     box.innerHTML = comments.length ? comments.map(function (c) {
       var cid = String(c.id || c.commentId || '');
-      var owner = String(c.employeeId || c.authorId || '') === String(getCurrentUser().employeeId);
-      return '<div class="board-comment-item"><div style="font-size:11px;color:#8792a1">' + esc(c.authorName || c.name || c.employeeId || '사용자') + (c.createdAt ? ' · ' + esc(c.createdAt) : '') + '</div><div style="white-space:pre-wrap;overflow-wrap:anywhere;margin:5px 0">' + esc(c.content || c.text || '') + '</div>' + (owner ? '<button type="button" class="dia-text-btn" onclick="editBoardComment(decodeURIComponent(\'' + encodeURIComponent(cid) + '\'),decodeURIComponent(\'' + encodeURIComponent(c.content || c.text || '') + '\'))">수정</button><button type="button" class="dia-text-btn" onclick="deleteBoardComment(decodeURIComponent(\'' + encodeURIComponent(cid) + '\'))">삭제</button>' : '') + '</div>';
-    }).join('') : '<div class="dia-empty">아직 댓글이 없습니다.</div>';
+      var nm = c.authorName || c.name || c.employeeId || '사용자';
+      var eid = String(c.employeeId || c.authorId || '');
+      var owner = eid === myId;
+      var text = c.content || c.text || '';
+      var acts = owner                                  /* 내가 쓴 댓글만 수정·삭제 */
+        ? '<div class="bp-c-acts">' +
+            '<button type="button" onclick="editBoardComment(decodeURIComponent(\'' + encodeURIComponent(cid) + '\'))">수정</button>' +
+            '<button type="button" class="bp-del" onclick="deleteBoardComment(decodeURIComponent(\'' + encodeURIComponent(cid) + '\'))">삭제</button></div>'
+        : '';
+      return '<div class="bp-c-item" data-cid="' + esc(cid) + '">' +
+        '<div class="bp-c-avatar">' + boardAvatar(nm, eid, 40) + '</div>' +
+        '<div class="bp-c-body">' +
+          '<div class="bp-c-line"><b>' + esc(nm) + '</b> <span class="bp-c-time">· ' + esc(boardTimeText(c.createdAt || c.date)) + (c.updatedAt && c.updatedAt !== c.createdAt ? ' (수정됨)' : '') + '</span></div>' +
+          '<div class="bp-c-text">' + esc(text) + '</div>' +
+          acts +
+        '</div></div>';
+    }).join('') : '<div class="dia-empty">아직 댓글이 없습니다. 첫 댓글을 남겨보세요.</div>';
+    box.__comments = comments;
   });
 }
-function closeBoardDetail() { var p = $('board-detail-panel'); if (p) p.classList.remove('active'); }
+function closeBoardDetail() {
+  if (boardDetailFrom === 'notice-panel') openNoticePanel(); else openSuggestionPanel();
+}
 function editActiveBoardPost() { if (!activeBoardPost) return; openBoardEditor(activeBoardType, activeBoardPost); }
 function deleteActiveBoardPost() {
   if (!activeBoardPost || !confirm('이 게시물을 삭제할까요?')) return;
   if (activeBoardType === 'notice' && !isBoardAdmin()) { alert('관리자만 삭제할 수 있습니다.'); return; }
   boardApi(activeBoardType === 'notice' ? 'deleteAnnouncement' : 'deleteSuggestion', { postId: activeBoardPost.id || activeBoardPost.postId, id: activeBoardPost.id || activeBoardPost.postId }, function (r) {
-    if (r && r.success) { closeBoardDetail(); if (activeBoardType === 'notice') openNoticePanel(); else openSuggestionPanel(); }
+    if (r && r.success) closeBoardDetail();   /* 목록 화면으로 돌아가며 새로 불러옴 */
     else alert((r && r.message) || '삭제에 실패했습니다. 서버 권한 확인이 필요합니다.');
   });
 }
@@ -6794,22 +6912,39 @@ function submitBoardComment() {
   if (!content) { msg.textContent = '댓글 내용을 입력해주세요.'; return; }
   if (!activeBoardPost) return;
   boardApi('addSuggestionComment', { postId: activeBoardPost.id || activeBoardPost.postId, id: activeBoardPost.id || activeBoardPost.postId, content: content }, function (r) {
-    if (r && r.success) openBoardDetail(activeBoardType, String(activeBoardPost.id || activeBoardPost.postId));
-    else msg.textContent = (r && r.message) || '댓글 등록 기능을 서버에 연결해야 합니다.';
+    if (r && r.success) { $('board-comment-input').value = ''; $('board-comment-input').style.height = ''; msg.textContent = ''; loadBoardComments(String(activeBoardPost.id || activeBoardPost.postId)); }
+    else msg.textContent = (r && r.message) || '댓글을 등록하지 못했습니다.';
   });
 }
-function editBoardComment(commentId, oldContent) {
-  var content = prompt('댓글을 수정해주세요.', oldContent || '');
-  if (content === null) return;
-  content = content.trim(); if (!content) { alert('댓글 내용을 입력해주세요.'); return; }
-  boardApi('updateSuggestionComment', { postId: activeBoardPost.id || activeBoardPost.postId, commentId: commentId, id: commentId, content: content }, function (r) {
-    if (r && r.success) openBoardDetail(activeBoardType, String(activeBoardPost.id || activeBoardPost.postId)); else alert((r && r.message) || '댓글 수정 기능을 서버에 연결해야 합니다.');
-  });
+/* 댓글 수정: 그 자리에서 바로 고치기 */
+function editBoardComment(commentId) {
+  var box = $('board-comments');
+  var item = box && box.querySelector('.bp-c-item[data-cid="' + String(commentId).replace(/"/g, '') + '"]');
+  if (!item) return;
+  var list = box.__comments || [];
+  var old = '';
+  for (var i = 0; i < list.length; i++) if (String(list[i].id || list[i].commentId) === String(commentId)) old = list[i].content || list[i].text || '';
+  var body = item.querySelector('.bp-c-text');
+  var acts = item.querySelector('.bp-c-acts');
+  body.innerHTML = '<textarea class="bp-c-edit" maxlength="2000"></textarea>';
+  var ta = body.querySelector('textarea'); ta.value = old; ta.focus();
+  acts.innerHTML = '<button type="button" class="bp-save">저장</button><button type="button">취소</button>';
+  var btns = acts.querySelectorAll('button');
+  btns[1].onclick = function () { loadBoardComments(String(activeBoardPost.id || activeBoardPost.postId)); };
+  btns[0].onclick = function () {
+    var content = ta.value.trim();
+    if (!content) { ta.focus(); return; }
+    btns[0].disabled = true;
+    boardApi('updateSuggestionComment', { postId: activeBoardPost.id || activeBoardPost.postId, commentId: commentId, id: commentId, content: content }, function (r) {
+      if (r && r.success) loadBoardComments(String(activeBoardPost.id || activeBoardPost.postId));
+      else { btns[0].disabled = false; alert((r && r.message) || '댓글을 수정하지 못했습니다.'); }
+    });
+  };
 }
 function deleteBoardComment(commentId) {
   if (!confirm('이 댓글을 삭제할까요?')) return;
   boardApi('deleteSuggestionComment', { postId: activeBoardPost.id || activeBoardPost.postId, commentId: commentId, id: commentId }, function (r) {
-    if (r && r.success) openBoardDetail(activeBoardType, String(activeBoardPost.id || activeBoardPost.postId)); else alert((r && r.message) || '댓글 삭제 기능을 서버에 연결해야 합니다.');
+    if (r && r.success) loadBoardComments(String(activeBoardPost.id || activeBoardPost.postId)); else alert((r && r.message) || '댓글을 삭제하지 못했습니다.');
   });
 }
 
@@ -9244,7 +9379,7 @@ function noticeShowPopup(post) {
   var summary = noticeSummary(post.content || post.body || '');
   $('notice-popup-body').innerHTML =
     '<div style="background:#f4f7fc;border-radius:12px;padding:12px 14px">' +
-      '<div style="font-size:14px;font-weight:700;color:#1a2b4c;overflow-wrap:anywhere">' + esc(post.title || '공지사항') + '</div>' +
+      '<div style="font-size:14px;font-weight:700;color:#1a2b4c;overflow-wrap:anywhere">' + esc(noticeTitleOf(post)) + '</div>' +
       (dateText ? '<div style="font-size:10px;color:#8792a1;margin:2px 0 0">' + esc(dateText) + '</div>' : '') +
       (summary ? '<div style="font-size:12px;color:#334;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:8px">' + esc(summary) + '</div>' : '') +
     '</div>';
@@ -9583,7 +9718,6 @@ function closeTopOverlayForBack() {
     ['pattern-info-panel', closePatternInfo],
     ['privacy-consent-panel', closePrivacyConsent],
     ['board-editor-panel', closeBoardEditor],
-    ['board-detail-panel', closeBoardDetail],
     ['notice-panel', closeNoticePanel],
     ['suggestion-panel', closeSuggestionPanel],
     ['dia-panel', closeDiaSelector],
@@ -9826,6 +9960,13 @@ body{padding:0!important}
 .np-vol-ico{display:flex;align-items:center}
 .np-vol-val{min-width:38px;text-align:right;font-size:13px;font-weight:700;color:#1a73e8}
 .np-note{margin-top:8px;font-size:11px;color:#7a8696;line-height:1.6;white-space:normal}
+
+/* ===== 공지사항 분류 탭 ===== */
+.nt-tabs{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:12px 4px 0;padding:4px;border-radius:14px;background:#eef3f9}
+.nt-tab{border:0;border-radius:11px;padding:10px 4px;background:transparent;color:#5b6676;font-size:14px;font-weight:800;cursor:pointer}
+.nt-tab.active{background:#fff;color:#1a73e8;box-shadow:0 1px 4px rgba(16,40,80,.12)}
+.nt-count{font-size:12px;font-weight:700;color:#98a2b3}
+.nt-tab.active .nt-count{color:#1a73e8}
 </style>
 
 <style id="universal-header-and-main-layout-repair">
@@ -10348,6 +10489,54 @@ html body #main-container > #main-section #welcome-card.login-success-card{min-h
 })();
 </script>
 
+<style id="board-title-wide">
+/* ===== 게시판 목록: 제목 칸을 넓게, 한 줄로 (길면 … 처리) ===== */
+.board-list-table .board-num{width:30px!important;padding-left:2px!important;padding-right:2px!important}
+.board-list-table .board-author{width:48px!important;padding-left:2px!important;padding-right:2px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.board-list-table .board-date{width:62px!important;padding-left:2px!important;padding-right:2px!important;white-space:nowrap!important}
+.board-list-table .board-subject{overflow:hidden!important}
+.board-list-table .board-open{display:block!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;overflow-wrap:normal!important;font-size:13.5px!important}
+</style>
+<style id="board-post-page-style">
+/* ===== 게시물 상세 화면 (건의사항·공지사항) ===== */
+#board-post-page .bp-inner{padding:6px 10px 20px!important}
+.bp-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0 6px}
+.bp-back{border:0;background:#eef3f9;color:#1d4f9a;font-size:14px;font-weight:800;border-radius:999px;padding:8px 14px;cursor:pointer}
+.bp-post-actions{display:flex;gap:6px}
+.bp-act{border:1px solid #d5dde7;background:#fff;color:#344054;font-size:12.5px;font-weight:700;border-radius:999px;padding:6px 12px;cursor:pointer}
+.bp-act.bp-del,.bp-c-acts .bp-del{color:#d92d20}
+.bp-author{display:flex;flex-direction:column;align-items:center;text-align:center;margin:6px 0 10px}
+.bp-avatar{width:76px;height:76px;border-radius:50%;overflow:hidden;box-shadow:0 0 0 3px #fff,0 2px 10px rgba(16,40,80,.15)}
+.bp-avatar svg{display:block;width:100%;height:100%}
+.bp-author-name{margin-top:8px;font-size:19px;font-weight:900;color:#1d2b4f}
+.bp-meta{margin-top:2px;font-size:12px;color:#8a96a8}
+.bp-title{margin:10px 2px 6px;font-size:17px;font-weight:800;color:#111;line-height:1.45;overflow-wrap:anywhere}
+.bp-content{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.75;font-size:14.5px;color:#344054;padding:12px 14px;background:#f7f9fc;border-radius:14px}
+.bp-comments{margin-top:16px}
+.bp-pill{display:flex;align-items:center;gap:10px;margin:0 0 4px;color:#98a2b3;font-size:12.5px}
+.bp-pill::before,.bp-pill::after{content:"";flex:1;height:1px;background:#e6ebf1}
+.bp-pill span{padding:4px 14px;border:1px solid #e3e8ef;border-radius:999px;background:#fff;color:#667085;font-weight:700}
+.bp-comment-list{white-space:normal}
+.bp-c-item{display:flex;gap:12px;padding:14px 2px;border-bottom:1px solid #eef1f5}
+.bp-c-item:last-child{border-bottom:0}
+.bp-c-avatar{flex:0 0 40px;width:40px;height:40px;border-radius:50%;overflow:hidden;background:#eef3f9}
+.bp-c-avatar svg{display:block;width:100%;height:100%}
+.bp-c-body{flex:1;min-width:0;text-align:left}
+.bp-content,.bp-c-text,.bp-c-line,.bp-composer textarea{text-align:left}
+.bp-title{text-align:center}
+.bp-c-line{font-size:14px;color:#1d2b4f;line-height:1.4}
+.bp-c-line b{font-weight:800}
+.bp-c-time{font-size:12px;color:#98a2b3;font-weight:500}
+.bp-c-text{margin-top:3px;font-size:13.5px;color:#667085;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.bp-c-acts{display:flex;gap:4px;margin-top:6px}
+.bp-c-acts button{border:0;background:#f2f4f7;color:#475467;font-size:11.5px;font-weight:700;border-radius:999px;padding:4px 10px;cursor:pointer}
+.bp-c-acts .bp-save{background:#1a73e8;color:#fff}
+.bp-c-edit{width:100%;box-sizing:border-box;min-height:64px;padding:8px 10px;border:1px solid #c9d7ea;border-radius:10px;font:inherit;font-size:13.5px;resize:vertical}
+.bp-composer{display:flex;align-items:flex-end;gap:10px;margin-top:10px;padding:10px 10px 10px 10px;border:1px solid #e3e8ef;border-radius:16px;background:#fff;box-shadow:0 1px 6px rgba(16,40,80,.06)}
+.bp-composer .bp-c-avatar{flex:0 0 36px;width:36px;height:36px}
+.bp-composer textarea{flex:1;min-width:0;border:0;outline:none;resize:none;font:inherit;font-size:14px;padding:8px 2px;min-height:36px;max-height:110px;background:transparent}
+.bp-send{flex:none;border:0;border-radius:999px;background:#1a73e8;color:#fff;font-size:13px;font-weight:800;padding:9px 14px;cursor:pointer}
+</style>
 <style id="hide-scrollbars-final">
 /* ===== 모든 화면 스크롤바 숨김 (스크롤은 그대로) — 맨 마지막에 두어 다른 규칙보다 우선 ===== */
 html, body, *, *::before, *::after {
