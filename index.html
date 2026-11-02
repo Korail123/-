@@ -817,6 +817,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <div id="main-section" class="page-view">
   <div class="login-success-card" id="welcome-card">
     <div class="welcome-track" aria-hidden="true">
+      <div class="welcome-bg" aria-hidden="true"></div>
       <div class="welcome-rail"></div>
       <div class="welcome-plat" aria-hidden="true"><div class="wp-slab"></div><div class="wp-people"></div></div>
       <div class="welcome-station" aria-hidden="true"><svg viewBox="40 17 80 126" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="wsBlue" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3a5cc9"/><stop offset="1" stop-color="#2e48a8"/></linearGradient><linearGradient id="wsPole" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2a2c30"/><stop offset=".45" stop-color="#4a4d53"/><stop offset="1" stop-color="#2a2c30"/></linearGradient></defs><rect x="41.5" y="134.4" width="77" height="7" rx=".6" fill="#d7d8d3"/><rect x="41.5" y="140" width="77" height="1.4" fill="#b9bab5"/><rect x="44.8" y="36.6" width="61.4" height="63.8" fill="url(#wsBlue)"/><rect x="44.8" y="36.6" width="61.4" height=".9" fill="#4d70dd"/><rect x="44.8" y="100.4" width="61.4" height="34.2" fill="#323438"/><g stroke="#25272b" stroke-width=".35"><line x1="44.8" y1="106.6" x2="106.2" y2="106.6"/><line x1="44.8" y1="112.4" x2="106.2" y2="112.4"/><line x1="44.8" y1="118.2" x2="106.2" y2="118.2"/><line x1="44.8" y1="124" x2="106.2" y2="124"/><line x1="44.8" y1="129.8" x2="106.2" y2="129.8"/></g><g class="ws-arrow"><polygon points="50.1,90 106.2,90 106.2,92.3 60.5,92.3 57.3,95.7 53.8,95.7" fill="#f2bf33"/></g><text x="75.5" y="59" text-anchor="middle" font-size="16" font-weight="800" fill="#fff" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">청량리</text><text x="75.5" y="66.6" text-anchor="middle" font-size="5.6" fill="#fff" font-family="'Segoe UI','Noto Sans',sans-serif">Cheongnyangni</text><text x="75.5" y="71.8" text-anchor="middle" font-size="3.4" fill="#fff" font-family="'Noto Sans JP','Malgun Gothic',sans-serif">清凉里　チョンニャンニヨク</text><rect x="106.2" y="24" width="9.2" height="110.6" fill="url(#wsPole)"/><rect x="105.6" y="22.4" width="10.4" height="2.2" rx=".4" fill="#8f9296"/><rect x="106.9" y="18.8" width="7.8" height="3.8" rx=".3" fill="#b8babd"/><rect x="106.2" y="132.2" width="9.8" height="2.4" fill="#3a3c40"/></svg></div>
@@ -837,7 +838,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <button type="button" class="menu-btn" onclick="openSitesPanel()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="사이트" alt="" aria-hidden="true" decoding="async"><span>사이트</span></button>
     <button type="button" class="menu-btn" onclick="openVacation()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="마이페이지" alt="" aria-hidden="true" decoding="async"><span>마이페이지</span></button>
     <button type="button" class="menu-btn" onclick="openSettings()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="환경설정" alt="" aria-hidden="true" decoding="async"><span>환경설정</span></button>
-    <button type="button" class="menu-btn menu-dev" onclick="openPayslipPreview()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="예상월급명세서" alt="" aria-hidden="true" decoding="async"><span>예상 월급명세서<small class="dev-badge" id="payslip-dev-badge">개발 중</small></span></button>
+    <button type="button" class="menu-btn menu-dev" onclick="openPayslipPreview()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="예상월급명세서" alt="" aria-hidden="true" decoding="async"><span><b class="menu-one-line">미리보는 월급</b><small class="dev-badge" id="payslip-dev-badge">개발 중</small></span></button>
   </div>
   <button type="button" class="logout-btn" onclick="logout()">로그아웃</button>
 </div>
@@ -963,7 +964,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   </div></div>
 </div>
 <div id="payslip-section" class="page-view">
-  <h1 class="screen-title"><span class="page-heading-icon" aria-hidden="true"><img class="heading-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="예상월급명세서" alt="" decoding="async"></span>예상 월급명세서</h1>
+  <h1 class="screen-title"><span class="page-heading-icon" aria-hidden="true"><img class="heading-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="예상월급명세서" alt="" decoding="async"></span>미리보는 월급</h1>
   <div class="sch-head ps-head">
     <button type="button" class="sch-nav plain" onclick="changePayMonth(-1)" aria-label="이전 달">◀&#xFE0E;</button>
     <div class="ps-title-wrap"><div id="ps-title" class="sch-title" style="cursor:pointer" onclick="changePayMonth(0)" title="이번 달로"></div><div id="ps-subtitle" class="ps-subtitle"></div></div>
@@ -5660,7 +5661,7 @@ var payState = { y: 0, m: 0, tables: null, loading: false, err: '', workEdit: {}
 /* 아직 개발 중: 관리자(199878 송주영)만 열 수 있고, 다른 사용자는 안내 팝업만 */
 function payslipAllowed() { return typeof isBoardAdmin === 'function' && isBoardAdmin(); }
 function openPayslipPreview() {
-  if (!payslipAllowed()) { showToast('예상 월급명세서는 개발 중입니다.'); return; }
+  if (!payslipAllowed()) { showToast('미리보는 월급은 개발 중입니다.'); return; }
   openPayslip();
 }
 function openPayslip() {
@@ -9128,6 +9129,16 @@ to{transform:translate3d(calc(-1 * var(--train-w)),0,0)}
 .welcome-station.at-right{right:6px}
 .welcome-station.at-left{left:6px}
 #welcome-card.is-playing .welcome-station{animation:welcomeRailFade var(--scene,var(--pass,3600ms)) ease both}
+.welcome-bg{position:absolute;inset:0;opacity:0;z-index:0;pointer-events:none;overflow:hidden}
+.welcome-bg svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+#welcome-card.is-playing .welcome-bg{animation:welcomeRailFade var(--scene,var(--pass,3600ms)) ease both}
+.wbg-p{position:absolute;top:-6px;will-change:transform;animation:wbgFall var(--fd,3s) linear var(--fdl,0s) infinite}
+.wbg-p.petal{width:5px;height:4px;border-radius:70% 0;background:#f39dbb}
+.wbg-p.leaf{width:5.5px;height:4px;border-radius:0 75%;background:var(--lc,#f0a04b)}
+.wbg-p.snow{width:3.5px;height:3.5px;border-radius:50%;background:#fff;box-shadow:0 0 0 .6px rgba(120,150,190,.55),0 0 2px rgba(80,110,150,.5)}
+.wbg-p.star{width:2.5px;height:2.5px;border-radius:50%;background:#fff3c4;animation-name:wbgTwinkle;animation-timing-function:ease-in-out}
+@keyframes wbgFall{0%{transform:translate(0,0) rotate(0)}100%{transform:translate(var(--dx,-14px),84px) rotate(var(--rt,300deg))}}
+@keyframes wbgTwinkle{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
 .welcome-plat{position:absolute;inset:0;opacity:0;z-index:1;pointer-events:none}
 #welcome-card.is-playing .welcome-plat{animation:welcomeRailFade var(--scene,var(--pass,3600ms)) ease both}
 .wp-slab{position:absolute;bottom:9px;height:9px;width:var(--plat-w,42%);border-radius:2px 2px 0 0;
@@ -9270,6 +9281,119 @@ box.appendChild(el);
 x += c.p.w;
 });
 }
+var WELCOME_BG = (function () {
+function svg(defs, body) {
+return '<svg viewBox="0 0 360 72" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg"><defs>' + defs + '</defs>' + body + '</svg>';
+}
+function sky(id, a, b) { return '<linearGradient id="wbg' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + a + '"/><stop offset="1" stop-color="' + b + '"/></linearGradient>'; }
+function cloud(x, y, s, o) { return '<g transform="translate(' + x + ' ' + y + ') scale(' + s + ')" fill="#fff" opacity="' + (o || .95) + '"><ellipse cx="0" cy="4" rx="14" ry="5"/><circle cx="-5" cy="1" r="5"/><circle cx="3" cy="-1" r="6.5"/><circle cx="10" cy="2" r="4"/></g>'; }
+function blossom(x, base, h, r) {
+return '<rect x="' + (x - 1.2) + '" y="' + (base - h) + '" width="2.4" height="' + h + '" rx="1" fill="#a7826b"/>' +
+'<g fill="#f7c4d6"><circle cx="' + x + '" cy="' + (base - h - r * .3) + '" r="' + r + '"/><circle cx="' + (x - r * .8) + '" cy="' + (base - h + r * .3) + '" r="' + r * .75 + '"/><circle cx="' + (x + r * .85) + '" cy="' + (base - h + r * .25) + '" r="' + r * .7 + '"/></g>' +
+'<g fill="#fbdde8"><circle cx="' + (x - r * .3) + '" cy="' + (base - h - r * .55) + '" r="' + r * .45 + '"/><circle cx="' + (x + r * .5) + '" cy="' + (base - h) + '" r="' + r * .35 + '"/></g>';
+}
+function roundTree(x, base, h, r, c1, c2) {
+return '<rect x="' + (x - 1.2) + '" y="' + (base - h) + '" width="2.4" height="' + h + '" rx="1" fill="#9a7b62"/>' +
+'<circle cx="' + x + '" cy="' + (base - h - r * .4) + '" r="' + r + '" fill="' + c1 + '"/><circle cx="' + (x - r * .35) + '" cy="' + (base - h - r * .75) + '" r="' + r * .45 + '" fill="' + c2 + '"/>';
+}
+function pine(x, base, h, c, snow) {
+var w = h * .42;
+var s = '<rect x="' + (x - 1) + '" y="' + (base - 3) + '" width="2" height="3" fill="#8a7564"/>' +
+'<path d="M' + x + ' ' + (base - h) + 'L' + (x + w) + ' ' + (base - 2) + 'H' + (x - w) + 'Z" fill="' + c + '"/>';
+if (snow) s += '<path d="M' + x + ' ' + (base - h) + 'L' + (x + w * .45) + ' ' + (base - h * .55) + 'L' + (x + w * .15) + ' ' + (base - h * .6) + 'L' + x + ' ' + (base - h * .5) + 'L' + (x - w * .15) + ' ' + (base - h * .6) + 'L' + (x - w * .45) + ' ' + (base - h * .55) + 'Z" fill="#fff"/>';
+return s;
+}
+function house(x, base, w, h, roof, wall) {
+return '<rect x="' + x + '" y="' + (base - h) + '" width="' + w + '" height="' + h + '" fill="' + (wall || '#fbf6ec') + '"/>' +
+'<path d="M' + (x - 2) + ' ' + (base - h) + 'L' + (x + w / 2) + ' ' + (base - h - h * .7) + 'L' + (x + w + 2) + ' ' + (base - h) + 'Z" fill="' + roof + '"/>' +
+'<rect x="' + (x + w * .3) + '" y="' + (base - h * .6) + '" width="' + w * .22 + '" height="' + h * .3 + '" fill="#c9dcef"/>';
+}
+function bird(x, y, s) { return '<path d="M' + x + ' ' + y + 'q' + 2 * s + ' ' + (-2 * s) + ' ' + 4 * s + ' 0q' + 2 * s + ' ' + (-2 * s) + ' ' + 4 * s + ' 0" fill="none" stroke="#7b8ea8" stroke-width="1" stroke-linecap="round"/>'; }
+function buildings(seed, base, col, win, maxH, minH) {
+var s = '', x = -4, r = seed;
+while (x < 364) {
+r = (r * 9301 + 49297) % 233280;
+var w = 14 + (r % 16), h = minH + (r % (maxH - minH));
+s += '<rect x="' + x + '" y="' + (base - h) + '" width="' + w + '" height="' + h + '" fill="' + col + '"/>';
+if (win) for (var yy = base - h + 4; yy < base - 4; yy += 6) for (var xx = x + 3; xx < x + w - 3; xx += 5) {
+r = (r * 9301 + 49297) % 233280;
+if (r % 3) s += '<rect x="' + xx + '" y="' + yy + '" width="2" height="2.4" fill="' + win + '"/>';
+}
+x += w + 2 + (r % 4);
+}
+return s;
+}
+var G = 63;   /* 땅선 (레일 위) */
+return {
+spring: { fx: 'petal', svg: svg(sky('sk', '#e3f2ff', '#fff3f8'),
+'<rect width="360" height="72" fill="url(#wbgsk)"/>' + cloud(60, 12, .8) + cloud(250, 9, .65) +
+'<path d="M0 50Q60 36 130 46T260 42T360 46V72H0Z" fill="#d6efcf"/><path d="M0 57Q80 48 170 55T360 52V72H0Z" fill="#c2e6b8"/>' +
+blossom(42, G, 13, 9) + blossom(118, G, 11, 8) + blossom(205, G, 14, 10) + blossom(292, G, 12, 9) + blossom(345, G, 10, 7)) },
+summer: { fx: '', svg: svg(sky('sk', '#bfe3ff', '#eef8ff') + '<radialGradient id="wbgsun"><stop offset="0" stop-color="#fff7c2"/><stop offset=".55" stop-color="#ffe27a"/><stop offset="1" stop-color="#ffe27a" stop-opacity="0"/></radialGradient>',
+'<rect width="360" height="72" fill="url(#wbgsk)"/><circle cx="300" cy="16" r="16" fill="url(#wbgsun)"/><circle cx="300" cy="16" r="6.5" fill="#ffd54a"/>' +
+cloud(70, 14, .9) + cloud(180, 8, .7) + bird(120, 18, 1) + bird(132, 22, .8) +
+'<path d="M190 48Q215 38 240 48Z" fill="#9fcfb0"/><rect y="47" width="360" height="25" fill="#8fd0ef"/>' +
+'<g stroke="#d9f1fb" stroke-width="1.2" stroke-linecap="round" opacity=".9"><path d="M20 52h14M80 55h18M150 51h12M230 54h16M300 51h14M330 56h10"/></g>' +
+'<path d="M0 59Q90 56 180 59T360 58V72H0Z" fill="#f4e3bd"/>') },
+autumn: { fx: 'leaf', svg: svg(sky('sk', '#ffeeda', '#fff8ef'),
+'<rect width="360" height="72" fill="url(#wbgsk)"/>' + cloud(90, 11, .7, .85) + cloud(270, 14, .8, .85) +
+'<path d="M0 48Q70 36 150 46T300 40T360 45V72H0Z" fill="#f1d9b4"/><path d="M0 56Q90 49 180 55T360 53V72H0Z" fill="#ead0a0"/>' +
+roundTree(35, G, 12, 9, '#f0a04b', '#f6c06e') + roundTree(98, G, 10, 8, '#e36b4f', '#ee9178') + roundTree(170, G, 13, 10, '#f3c14f', '#f8d97d') +
+roundTree(240, G, 11, 8.5, '#e98a3d', '#f2ae6d') + roundTree(318, G, 12, 9.5, '#d9573f', '#e98572')) },
+winter: { fx: 'snow', svg: svg(sky('sk', '#dfe9f6', '#f5f8fc'),
+'<rect width="360" height="72" fill="url(#wbgsk)"/>' + cloud(80, 12, .8, .9) + cloud(230, 9, .7, .9) +
+'<path d="M0 46Q80 32 160 44T300 38T360 42V72H0Z" fill="#eef3f9"/><path d="M0 55Q90 47 180 54T360 51V72H0Z" fill="#fff"/>' +
+pine(30, G, 22, '#7fa894', 1) + pine(52, G, 16, '#91b8a4', 1) + pine(140, G, 20, '#7fa894', 1) + pine(214, G, 24, '#7fa894', 1) + pine(236, G, 15, '#91b8a4', 1) + pine(320, G, 20, '#7fa894', 1) +
+house(260, G, 16, 10, '#c97a6a', '#f7f2ea') + '<path d="M256 ' + (G - 10) + 'L268 ' + (G - 17) + 'L280 ' + (G - 10) + 'Z" fill="#fff" opacity=".9"/>') },
+country: { fx: '', svg: svg(sky('sk', '#e2f1ff', '#f7fbff'),
+'<rect width="360" height="72" fill="url(#wbgsk)"/>' + cloud(150, 10, .8) + bird(250, 14, 1) + bird(262, 18, .8) +
+'<path d="M0 44L40 28L80 40L130 24L190 42L240 30L300 41L360 30V72H0Z" fill="#cfe2c6"/>' +
+'<path d="M0 50H360V72H0Z" fill="#d8ecb4"/><g fill="#c5e29b"><path d="M0 54H360V57H0Z"/><path d="M0 60H360V63H0Z"/></g>' +
+house(60, 52, 14, 9, '#e07b5f') + house(84, 52, 12, 8, '#5f8fd1') + house(250, 52, 15, 9, '#e3a04e') + roundTree(300, 52, 6, 7, '#9cc985', '#b8dba3') + roundTree(40, 52, 5, 6, '#9cc985', '#b8dba3')) },
+city: { fx: '', svg: svg(sky('sk', '#e3eefb', '#f6f9fd'),
+'<rect width="360" height="72" fill="url(#wbgsk)"/>' + cloud(60, 10, .7) + cloud(260, 8, .6) +
+'<g opacity=".9">' + buildings(7, G, '#d3deec', '', 40, 18) + '</g>' +
+'<rect x="176" y="10" width="3" height="20" fill="#b9c8dc"/><circle cx="177.5" cy="11" r="3" fill="#b9c8dc"/>' +
+buildings(31, G, '#bfcee3', '#e8f0fa', 30, 10)) },
+nature: { fx: '', svg: svg(sky('sk', '#dff0fb', '#f5fbff'),
+'<rect width="360" height="72" fill="url(#wbgsk)"/>' + cloud(110, 10, .75) + bird(220, 12, 1) + bird(232, 16, .8) + bird(60, 18, .7) +
+'<path d="M0 46L50 18L90 38L150 12L210 40L260 20L320 36L360 22V72H0Z" fill="#c3dbcf"/>' +
+'<path d="M150 12L160 18L156 20L150 17L144 20L140 18Z M50 18L58 24L50 22L43 25Z" fill="#fff"/>' +
+'<path d="M0 52Q60 44 120 50T240 47T360 50V72H0Z" fill="#a9d2b9"/>' +
+pine(20, G, 18, '#7fb397') + pine(36, G, 13, '#93c3a8') + pine(170, G, 17, '#7fb397') + pine(186, G, 12, '#93c3a8') + pine(300, G, 19, '#7fb397') + pine(318, G, 14, '#93c3a8') +
+'<path d="M90 63C110 58 130 60 140 54" fill="none" stroke="#bfe3f4" stroke-width="3" stroke-linecap="round"/>') },
+night: { fx: 'star', svg: svg(sky('sk', '#26365c', '#4b5f8c'),
+'<rect width="360" height="72" fill="url(#wbgsk)"/><circle cx="292" cy="15" r="7" fill="#fdf1c4"/><circle cx="296" cy="12.5" r="6.2" fill="#344673"/>' +
+'<g opacity=".95">' + buildings(13, G, '#33446b', '', 34, 14) + '</g>' +
+buildings(57, G, '#2a3a5e', '#ffd978', 26, 8)) }
+};
+})();
+var WBG_KEYS = Object.keys(WELCOME_BG), wbgLast = '';
+function setWelcomeBg(card) {
+var el = card.querySelector('.welcome-bg');
+if (!el) return;
+var k;
+do { k = WBG_KEYS[Math.floor(Math.random() * WBG_KEYS.length)]; } while (k === wbgLast && WBG_KEYS.length > 1);
+wbgLast = k;
+var t = WELCOME_BG[k], fx = '';
+if (t.fx) {
+var n = t.fx === 'star' ? 16 : 14;
+var leafColors = ['#f0a04b', '#e36b4f', '#f3c14f', '#e98a3d'];
+for (var i = 0; i < n; i++) {
+var x = (Math.random() * 100).toFixed(1);
+if (t.fx === 'star') {
+fx += '<i class="wbg-p star" style="left:' + x + '%;top:' + (3 + Math.random() * 30).toFixed(1) + 'px;--fd:' + (1.2 + Math.random() * 1.6).toFixed(2) + 's;--fdl:' + (-Math.random() * 2).toFixed(2) + 's"></i>';
+} else {
+fx += '<i class="wbg-p ' + t.fx + '" style="left:' + x + '%;--fd:' + (2.6 + Math.random() * 2.2).toFixed(2) + 's;--fdl:' + (-Math.random() * 4).toFixed(2) + 's;--dx:' +
+((t.fx === 'snow' ? -6 : -20) + Math.random() * 12).toFixed(1) + 'px;--rt:' + (t.fx === 'snow' ? 0 : 180 + Math.random() * 360).toFixed(0) + 'deg' +
+(t.fx === 'leaf' ? ';--lc:' + leafColors[i % leafColors.length] : '') + '"></i>';
+}
+}
+}
+el.innerHTML = t.svg + fx;
+el.setAttribute('data-theme', k);
+card.setAttribute('data-bg', k);
+}
 window.playWelcomeTrain = function(){
 var card = document.getElementById('welcome-card');
 if (!card) return;
@@ -9309,6 +9433,7 @@ var arrow = station.querySelector('.ws-arrow');
 if (arrow) arrow.setAttribute('transform', rtl ? '' : 'translate(151 0) scale(-1 1)');
 }
 placePlatformPeople(card, w, rtl);
+setWelcomeBg(card);
 var sigs = card.querySelectorAll('.welcome-signal');
 var spots = rtl ? [86, 54] : [14, 46];
 for (var si = 0; si < sigs.length; si++) {
@@ -9587,6 +9712,7 @@ min-height:76px;padding:10px 6px!important;border-radius:16px!important;text-ali
 .brief-off{color:#e53935}
 .brief-rest{padding:6px 0 8px;font-size:12.5px;color:#56657a}
 #nx-panel .ns-points li,#nx-panel .ns-note{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:clamp(10.5px,3.3vw,12.5px)}
+#main-section .menu-btn .menu-one-line{font:inherit;white-space:nowrap;letter-spacing:-.4px}
 #main-section .menu-btn.menu-dev span{display:flex;flex-direction:column;align-items:center;line-height:1.2;word-break:keep-all;text-align:center}
 #main-section .menu-btn .dev-badge{display:inline-block;margin-top:3px;padding:1px 7px;border-radius:999px;background:#fff1dc;color:#b5620a;font-size:10px;font-weight:800;letter-spacing:-.2px}
 #main-section .menu-btn.menu-dev .menu-art{opacity:.9}</style>
