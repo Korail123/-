@@ -836,7 +836,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <button type="button" class="menu-btn" onclick="openSitesPanel()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="사이트" alt="" aria-hidden="true" decoding="async"><span>사이트</span></button>
     <button type="button" class="menu-btn" onclick="openVacation()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="마이페이지" alt="" aria-hidden="true" decoding="async"><span>마이페이지</span></button>
     <button type="button" class="menu-btn" onclick="openSettings()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="환경설정" alt="" aria-hidden="true" decoding="async"><span>환경설정</span></button>
-    <button type="button" class="menu-btn menu-dev" onclick="openPayslipPreview()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="예상월급명세서" alt="" aria-hidden="true" decoding="async"><span>예상 월급명세서<small class="dev-badge">개발 중</small></span></button>
+    <button type="button" class="menu-btn menu-dev" onclick="openPayslipPreview()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="예상월급명세서" alt="" aria-hidden="true" decoding="async"><span>예상 월급명세서</span></button>
   </div>
   <button type="button" class="logout-btn" onclick="logout()">로그아웃</button>
 </div>
@@ -909,6 +909,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <select id="mp-step" onchange="saveMyProfileField()"></select>
       </span>
     </div>
+    <div class="mp-note" style="margin-top:4px">※ 호봉은 매년 1월 1일에 자동으로 1호봉씩 올라갑니다.</div>
   </div>
   </div></div>
   <div class="mp-sec" data-sec="vac"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('vac')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="휴가관리" alt="" aria-hidden="true">휴가관리<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
@@ -958,6 +959,27 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="mp-note" style="margin-top:8px">※ 비밀번호는 이 폰(브라우저)에만 저장되고, 서버에는 저장되지 않습니다. 공용 기기에서는 사용하지 마세요.</div>
   </div>
   </div></div>
+</div>
+<div id="payslip-section" class="page-view">
+  <h1 class="screen-title"><span class="page-heading-icon" aria-hidden="true"><img class="heading-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="예상월급명세서" alt="" decoding="async"></span>예상 월급명세서</h1>
+  <div class="sch-head ps-head">
+    <button type="button" class="sch-nav plain" onclick="changePayMonth(-1)" aria-label="이전 달">◀&#xFE0E;</button>
+    <div class="ps-title-wrap"><div id="ps-title" class="sch-title" style="cursor:pointer" onclick="changePayMonth(0)" title="이번 달로"></div><div id="ps-subtitle" class="ps-subtitle"></div></div>
+    <button type="button" class="sch-nav plain" onclick="changePayMonth(1)" aria-label="다음 달">▶&#xFE0E;</button>
+  </div>
+  <div id="ps-status" class="ps-status"></div>
+  <div id="ps-summary" class="ps-summary"></div>
+  <details id="ps-me-box" class="ps-card ps-fold">
+    <summary class="ps-card-h"><span>내 정보 · 선택 항목</span><small>이 폰에만 저장</small></summary>
+    <div id="ps-me"></div>
+  </details>
+  <details id="ps-work-box" class="ps-card ps-fold">
+    <summary class="ps-card-h"><span>근무 집계</span><small id="ps-work-month"></small></summary>
+    <div id="ps-work"></div>
+  </details>
+  <div class="ps-card"><div class="ps-card-h ps-h-pay"><span>지급 내역</span><b id="ps-pay-total"></b></div><div id="ps-pay"></div></div>
+  <div class="ps-card"><div class="ps-card-h ps-h-ded"><span>공제 내역</span><b id="ps-ded-total"></b></div><div id="ps-ded"></div></div>
+  <div id="ps-foot" class="ps-foot"></div>
 </div>
 <div id="settings-section" class="page-view">
   <h1><span class="page-heading-icon" aria-hidden="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="환경설정" alt="" decoding="async"></span> 환경설정</h1>
@@ -1877,6 +1899,7 @@ return !!(e && e.classList.contains('active'));
 if (active('schedule-section')) loadMyMonth();
 if (active('group-section')) loadGroupSchedule(false);
 if (active('vacation-section')) renderVacation();
+if (active('payslip-section') && typeof renderPayslip === 'function') renderPayslip();
 }
 function snapDateKeys(startKey, endKey) {
 var out = [];
@@ -2635,7 +2658,7 @@ LS.setItem('railwaySecretaryLastSection', id);
 if (id !== 'group-section') stopGroupAutoRefresh();
 [
 'login-section', 'signup-section', 'main-section', 'schedule-section',
-'group-section', 'pattern-section', 'vacation-section', 'settings-section',
+'group-section', 'pattern-section', 'vacation-section', 'settings-section', 'payslip-section',
 'notice-panel', 'suggestion-panel', 'board-post-page', 'board-edit-page'
 ].forEach(function (s) {
 var e = $(s);
@@ -4212,7 +4235,7 @@ var tone = toneOf(type);
 var color = tone === 'day' ? '#e5a800' : tone === 'off' ? '#e53935' : '#1a73e8';
 html += '<div class="pi-row"><span class="pi-k">' + piKeyHtml('다이아 이름') + '</span><b style="color:' + color + '">' +
 esc(diaNo || kind) + (info.manual ? ' *' : '') + '</b></div>';
-html += piRow('근무 구분', infoFromNight ? '비번 (전날 야간 다이아 정보)' : kind);
+html += piRow('근무 구분', infoFromNight ? '비번' : kind);
 if (info.swapPartnerName || info.swapPartnerId) {
 html += piRow('근무 교환', String(info.swapPartnerName || info.swapPartnerId) + '님과 교환');
 }
@@ -4356,11 +4379,19 @@ if (fi >= 0) return AVATARS_F[fi % AVATARS_F.length];
 var key = String((user && (user.employeeId || user.name)) || 'guest');
 return AVATARS_M[avatarHash(key) % AVATARS_M.length];
 }
-function getMyProfile() {
+function getMyProfile(year) {
 var u = getCurrentUser();
 var loc = ensureLocal(u.employeeId);
 var pf = loc.profile || {};
-return { joinDate: String(pf.joinDate || ''), grade: String(pf.grade || ''), step: String(pf.step || '') };
+if (pf.step && !pf.updatedAt && u.employeeId) { pf.updatedAt = stampNow(); loc.profile = pf; writeLocal(u.employeeId, loc); }
+return { joinDate: String(pf.joinDate || ''), grade: String(pf.grade || ''), step: profileStepForYear(pf, year || todayKST().y) };
+}
+function profileStepForYear(pf, year) {
+var s = parseInt(String((pf && pf.step) || '').replace(/[^0-9]/g, ''), 10);
+if (!s) return '';
+var m = String((pf && pf.updatedAt) || '').match(/^(\d{4})/);
+var base = m ? +m[1] : todayKST().y;
+return String(Math.max(1, Math.min(40, s + Math.max(0, year - base))));
 }
 function saveMyProfileField() {
 var u = getCurrentUser();
@@ -4970,7 +5001,7 @@ return '<div class="pi-row"><span class="pi-k">' + piKeyHtml(k) + '</span><b>' +
 var html = '';
 html += '<div class="pi-row"><span class="pi-k">' + piKeyHtml('다이아 번호') + '</span><b style="color:' + color + '">' +
 esc(diaNo || kind) + '</b></div>';
-html += row('근무 구분', infoFromNight ? '비번 (전날 야간 다이아 정보)' : kind);
+html += row('근무 구분', infoFromNight ? '비번' : kind);
 html += row('출근 시간', start);
 html += row('퇴근 시간', end);
 html += row('근무 시간', dur);
@@ -5079,8 +5110,414 @@ return;
 }
 renderBoardList('notice', list);
 }
-function openPayslipPreview() {
-showToast('예상 월급명세서는 지금 개발 중이에요.');
+var PAY_TABLES_LS = 'payTables_v1';
+var payState = { y: 0, m: 0, tables: null, loading: false, err: '', workEdit: {} };
+function openPayslipPreview() { openPayslip(); }
+function openPayslip() {
+var t = todayKST();
+if (!payState.y) { payState.y = t.y; payState.m = t.m; }
+if (!payState.tables) {
+try { payState.tables = JSON.parse(LS.getItem(PAY_TABLES_LS) || 'null'); } catch (e) { payState.tables = null; }
+}
+switchSection('payslip-section');
+var me = $('ps-me-box');
+if (me) me.open = !payMyGradeStep().grade || !payMyGradeStep().step;
+renderPayslip(true);
+loadPayTables();
+if (typeof loadMeta === 'function') loadMeta(function () { renderPayslip(true); });
+}
+function loadPayTables() {
+var u = getCurrentUser();
+if (!u.token || payState.loading) return;
+payState.loading = true;
+api({ action: 'getPayTables', employeeId: u.employeeId, token: u.token }, function (r) {
+payState.loading = false;
+if (r && r.success) {
+r.loadedAt = Date.now();
+payState.tables = r;
+payState.err = '';
+try { LS.setItem(PAY_TABLES_LS, JSON.stringify(r)); } catch (e) {}
+} else {
+payState.err = (r && r.message) || '보수표를 불러오지 못했습니다.';
+}
+renderPayslip(true);
+});
+}
+function changePayMonth(d) {
+if (!d) { var t = todayKST(); payState.y = t.y; payState.m = t.m; }
+else {
+var x = new Date(Date.UTC(payState.y, payState.m + d, 1));
+payState.y = x.getUTCFullYear(); payState.m = x.getUTCMonth();
+}
+renderPayslip(true);
+}
+function payPrefKey() { return 'payProfile_' + (getCurrentUser().employeeId || ''); }
+function payPrefs() {
+var p = null;
+try { p = JSON.parse(LS.getItem(payPrefKey()) || 'null'); } catch (e) { p = null; }
+p = p && typeof p === 'object' ? p : {};
+if (!p.checks || typeof p.checks !== 'object') p.checks = {};
+if (!p.counts || typeof p.counts !== 'object') p.counts = {};
+p.fam = Math.min(11, Math.max(1, parseInt(p.fam, 10) || 1));
+p.kids = Math.min(10, Math.max(0, parseInt(p.kids, 10) || 0));
+p.pct = [80, 100, 120].indexOf(+p.pct) >= 0 ? +p.pct : 100;
+p.taxManual = p.taxManual == null ? '' : String(p.taxManual);
+return p;
+}
+function savePayPrefs(p) { try { LS.setItem(payPrefKey(), JSON.stringify(p)); } catch (e) {} }
+function payMyGradeStep() {
+var pf = getMyProfile(payState.y || todayKST().y);
+return { grade: String(pf.grade || '').replace(/[^0-9]/g, ''), step: String(pf.step || '').replace(/[^0-9]/g, '') };
+}
+function payProfileChange() {
+var u = getCurrentUser();
+if (!u.token) return;
+var loc = ensureLocal(u.employeeId);
+var pf = loc.profile || {};
+loc.profile = {
+joinDate: pf.joinDate || '',
+grade: ($('ps-grade') || {}).value || '',
+step: ($('ps-step') || {}).value ? String(Math.max(1, (+$('ps-step').value) - Math.max(0, (payState.y || todayKST().y) - todayKST().y))) : '',
+updatedAt: stampNow()
+};
+saveLocalChange(u.employeeId, loc);
+pushMyProfile(loc.profile);
+renderPayslip(false);
+}
+function payToggleCheck(id, on) { var p = payPrefs(); if (on) p.checks[id] = true; else delete p.checks[id]; savePayPrefs(p); renderPayslip(false); }
+function payStepCount(id, d, max) {
+var p = payPrefs();
+var n = Math.min(max, Math.max(0, (parseInt(p.counts[id], 10) || 0) + d));
+if (n) p.counts[id] = n; else delete p.counts[id];
+savePayPrefs(p);
+var el = $('ps-cnt-' + id); if (el) el.textContent = n;
+renderPayslip(false);
+}
+function payStepTax(key, d) {
+var p = payPrefs();
+if (key === 'fam') p.fam = Math.min(11, Math.max(1, p.fam + d));
+else p.kids = Math.min(10, Math.max(0, p.kids + d));
+savePayPrefs(p);
+var el = $('ps-tax-' + key); if (el) el.textContent = p[key];
+renderPayslip(false);
+}
+function paySetPct(v) {
+var p = payPrefs(); p.pct = v; savePayPrefs(p);
+var bs = document.querySelectorAll('#ps-me .ps-seg button');
+for (var i = 0; i < bs.length; i++) bs[i].classList.toggle('on', +bs[i].getAttribute('data-v') === v);
+renderPayslip(false);
+}
+function paySetTaxManual(v) {
+var p = payPrefs(); p.taxManual = String(v || '').replace(/[^0-9]/g, ''); savePayPrefs(p); renderPayslip(false);
+}
+function paySetNum(S, k, def) {
+var v = parseFloat(String(S && S[k] != null ? S[k] : '').replace(/[,\s원%]/g, ''));
+return isNaN(v) ? def : v;
+}
+function payWorkMonth(S) {
+var cur = /당월/.test(String((S || {})['수당_근무월'] || ''));
+var x = new Date(Date.UTC(payState.y, payState.m + (cur ? 0 : -1), 1));
+return { y: x.getUTCFullYear(), m: x.getUTCMonth(), cur: cur };
+}
+function payWorkStats(y, m, S) {
+var mb = typeof findMyMember === 'function' ? findMyMember() : null;
+if (!mb || !snapshotUsable()) return null;
+var ns = parseHM((S && S['야간_시작']) || '22:00'), ne = parseHM((S && S['야간_끝']) || '06:00');
+if (isNaN(ns)) ns = 1320;
+if (isNaN(ne)) ne = 360;
+var sunHol = /^(y|yes|예|o|1|true)/i.test(String((S && S['휴일_일요일포함']) || ''));
+var last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+var st = { days: 0, dayN: 0, nightN: 0, crew: 0, min: 0, nightMin: 0, holMin: 0, overMin: 0, noTime: 0 };
+function isHol(dayOffsetFrom, d) {
+var x = new Date(Date.UTC(y, m, d + dayOffsetFrom));
+if (holidayName(x.getUTCFullYear(), x.getUTCMonth(), x.getUTCDate())) return true;
+return sunHol && x.getUTCDay() === 0;
+}
+function overlap(a, b, c, e) { return Math.max(0, Math.min(b, e) - Math.max(a, c)); }
+for (var d = 1; d <= last; d++) {
+var key = getDateKey(y, m, d);
+var info = snapDayWithAuto(key, mb, snapshot.raw.dia || [], snapshot.ovMap);
+if (!info || info.overrideType === 'status') continue;
+var type = String(info.type || info.label || '').trim();
+if (type !== '주' && type !== '야') continue;
+st.days++;
+if (type === '주') st.dayN++; else st.nightN++;
+var diaNo = String(info.dia || '').trim().toUpperCase();
+if (!(typeof CREW_STANDBY_DIAS !== 'undefined' && CREW_STANDBY_DIAS.indexOf(diaNo) >= 0)) st.crew++;
+var meta = diaNo ? diaByNumber(diaNo) : null;
+var a = parseHM(info.start || (meta && meta.start)), b = parseHM(info.end || (meta && meta.end));
+if (isNaN(a) || isNaN(b)) { st.noTime++; continue; }
+if (b <= a) b += 1440;
+st.min += b - a;
+for (var k = -1; k <= 1; k++) {
+var ws = ns + 1440 * k, we = (ne <= ns ? ne + 1440 : ne) + 1440 * k;
+st.nightMin += overlap(a, b, ws, we);
+}
+for (var j = 0; j <= 1; j++) {
+var part = overlap(a, b, 1440 * j, 1440 * (j + 1));
+if (part && isHol(j, d)) st.holMin += part;
+}
+}
+var stdH = paySetNum(S, '월_기준근무시간', 0);
+var stdMin = stdH > 0 ? stdH * 60 : Math.round(last * 40 / 7 * 60);
+st.stdMin = stdMin;
+st.overMin = Math.max(0, st.min - stdMin);
+return st;
+}
+var PAY_WORK_FIELDS = [
+['days', '근무일', '일'], ['dayN', '주간', '회'], ['nightN', '야간', '회'], ['crew', '승무일(대기 제외)', '일'],
+['h', '총 근무시간', '시간'], ['nh', '야간 시간', '시간'], ['hh', '휴일 근무시간', '시간'], ['oh', '초과 근무시간', '시간']
+];
+function payWorkAuto(st) {
+if (!st) return null;
+function h(x) { return Math.round(x / 6) / 10; }
+return { days: st.days, dayN: st.dayN, nightN: st.nightN, crew: st.crew, h: h(st.min), nh: h(st.nightMin), hh: h(st.holMin), oh: h(st.overMin) };
+}
+function payWorkKey(wm) { return wm.y + '-' + wm.m; }
+function payWorkValues(auto, wm) {
+var ed = payState.workEdit[payWorkKey(wm)] || {};
+var v = {};
+PAY_WORK_FIELDS.forEach(function (f) {
+var k = f[0];
+v[k] = ed[k] != null && ed[k] !== '' ? +ed[k] : (auto ? auto[k] : 0);
+if (!isFinite(v[k]) || v[k] < 0) v[k] = 0;
+});
+return v;
+}
+function payEditWork(k, val) {
+var wm = payWorkMonth((payState.tables || {}).settings);
+var key = payWorkKey(wm);
+var ed = payState.workEdit[key] || (payState.workEdit[key] = {});
+var n = String(val).replace(/[^0-9.]/g, '');
+if (n === '') delete ed[k]; else ed[k] = parseFloat(n) || 0;
+renderPayslip(false);
+}
+function payResetWork() {
+var wm = payWorkMonth((payState.tables || {}).settings);
+delete payState.workEdit[payWorkKey(wm)];
+renderPayslip(true);
+}
+function payIncomeTax(monthly, pensionMonthly, fam) {
+if (!(monthly > 0)) return 0;
+var A = monthly * 12, f = Math.max(1, Math.floor(fam) || 1);
+var ded = A <= 5e6 ? A * 0.7 : A <= 15e6 ? 3.5e6 + (A - 5e6) * 0.4 : A <= 45e6 ? 7.5e6 + (A - 15e6) * 0.15 : A <= 1e8 ? 12e6 + (A - 45e6) * 0.05 : 14.75e6 + (A - 1e8) * 0.02;
+ded = Math.min(ded, 2e7);
+var c = f === 1 ? [3.1e6, 0.04, 0.015, 0.005] : f === 2 ? [3.6e6, 0.04, 0.02, 0.01] : [5e6, 0.07, 0.05, 0.03];
+var sp;
+if (A <= 3e7) sp = c[0] + A * c[1];
+else if (A <= 4.5e7) sp = c[0] + A * c[1] - (A - 3e7) * 0.05;
+else if (A <= 7e7) sp = c[0] + A * c[2];
+else sp = c[0] + A * c[3];
+var tb = Math.max(0, A - ded - 1.5e6 * f - pensionMonthly * 12 - sp);
+var B = [[14e6, 0.06, 0], [50e6, 0.15, 84e4], [88e6, 0.24, 624e4], [150e6, 0.35, 1536e4], [300e6, 0.38, 3706e4], [500e6, 0.40, 9406e4], [1e9, 0.42, 17406e4], [Infinity, 0.45, 38406e4]];
+var prev = 0, tax = 0;
+for (var i = 0; i < B.length; i++) { if (tb <= B[i][0]) { tax = B[i][2] + (tb - prev) * B[i][1]; break; } prev = B[i][0]; }
+var cr = tax <= 1.3e6 ? tax * 0.55 : 715000 + (tax - 1.3e6) * 0.3;
+var lim = A <= 3.3e7 ? 740000 : A <= 7e7 ? Math.max(660000, 740000 - (A - 3.3e7) * 0.008) : A <= 1.2e8 ? Math.max(500000, 660000 - (A - 7e7) * 0.5) : Math.max(200000, 500000 - (A - 1.2e8) * 0.5);
+return Math.max(0, tax - Math.min(cr, lim)) / 12;
+}
+function payListHas(list, v) {
+var s = String(list || '').replace(/\s/g, '');
+if (!s) return true;
+return s.split(/[,·/]/).some(function (x) { return x.replace(/[^0-9]/g, '') === String(v); });
+}
+function payCalc(T, prefs, work, grade, step, payM) {
+var S = T.settings || {};
+var out = { pay: [], ded: [], gross: 0, dedSum: 0, net: 0, base: 0, baseFound: false, ordinary: 0, hourly: 0, taxable: 0, taxfree: 0 };
+var base = 0;
+(T.base || []).forEach(function (r) {
+if (String(r[0]) === String(grade) && String(r[1]) === String(step)) { base = +r[2] || 0; out.baseFound = true; }
+});
+out.base = base;
+if (base > 0) out.pay.push({ name: '기본급', amt: base, detail: grade + '급 ' + step + '호봉' });
+function won(n) { return Math.round(n).toLocaleString('ko-KR'); }
+var items = (T.items || []).filter(function (it) {
+if (!(+it.amount > 0 || +it.rate > 0)) return false;
+if (!payListHas(it.grades, grade)) return false;
+if (!payListHas(it.months, payM + 1)) return false;
+if (it.input === '체크' && !prefs.checks[it.id]) return false;
+if (it.input === '인원' && !(parseInt(prefs.counts[it.id], 10) > 0)) return false;
+return true;
+});
+function cnt(it) { return it.input === '인원' ? Math.min(+it.max || 10, parseInt(prefs.counts[it.id], 10) || 0) : 1; }
+function fixedVal(it) {
+var n = cnt(it);
+if (it.calc === '고정') return { v: +it.amount * n, d: n > 1 ? won(+it.amount) + '원 × ' + n + '명' : '' };
+if (it.calc === '기본급%') return { v: base * (+it.rate) / 100 * n, d: '기본급 × ' + (+it.rate) + '%' + (n > 1 ? ' × ' + n : '') };
+return null;
+}
+var ordinary = base;
+items.forEach(function (it) {
+if (it.kind !== '지급' || !it.ordinary || String(it.months || '').trim()) return;
+var f = fixedVal(it);
+if (f) ordinary += f.v;
+});
+var hourly = Math.round(ordinary / Math.max(1, paySetNum(S, '통상임금_기준시간', 209)));   /* 통상시급(원 단위) */
+out.ordinary = Math.round(ordinary);
+out.hourly = Math.round(hourly);
+var HOURS = { '야간시간': ['nh', '야간'], '휴일시간': ['hh', '휴일'], '초과시간': ['oh', '초과'], '근무시간': ['h', '근무'] };
+var DAYS = { '근무일': ['days', '근무'], '주간일': ['dayN', '주간'], '야간일': ['nightN', '야간'], '승무일': ['crew', '승무'] };
+var taxfree = 0;
+items.filter(function (it) { return it.kind === '지급'; }).forEach(function (it) {
+var v = 0, d = '';
+var f = fixedVal(it);
+if (f) { v = f.v; d = f.d; }
+else if (it.calc === '통상임금%') { v = ordinary * (+it.rate) / 100; d = '통상임금 × ' + (+it.rate) + '%'; }
+else if (HOURS[it.calc]) {
+var hrs = work[HOURS[it.calc][0]] || 0;
+if (+it.amount > 0) { v = hrs * (+it.amount); d = HOURS[it.calc][1] + ' ' + hrs + '시간 × ' + won(+it.amount) + '원'; }
+else { v = hrs * hourly * (+it.rate); d = HOURS[it.calc][1] + ' ' + hrs + '시간 × 시급 ' + won(hourly) + '원 × ' + (+it.rate); }
+} else if (DAYS[it.calc]) {
+var nd = work[DAYS[it.calc][0]] || 0;
+v = nd * (+it.amount); d = DAYS[it.calc][1] + ' ' + nd + '회 × ' + won(+it.amount) + '원';
+}
+v = Math.round(v);
+if (v <= 0) return;
+if (+it.taxfree > 0) taxfree += Math.min(v, +it.taxfree);
+out.pay.push({ name: it.name, amt: v, detail: d, note: it.note || '' });
+});
+out.gross = out.pay.reduce(function (a, x) { return a + x.amt; }, 0);
+out.taxfree = taxfree;
+var taxable = Math.max(0, out.gross - taxfree);
+out.taxable = taxable;
+function f10(n) { return Math.floor(n / 10) * 10; }
+if (out.gross > 0) {
+var pLo = paySetNum(S, '국민연금_하한', 410000), pHi = paySetNum(S, '국민연금_상한', 6590000);
+var pBase = Math.floor(Math.min(pHi, Math.max(pLo, taxable)) / 1000) * 1000;
+var pension = f10(pBase * paySetNum(S, '국민연금_요율', 4.75) / 100);
+var health = f10(taxable * paySetNum(S, '건강보험_요율', 3.595) / 100);
+var ltc = f10(health * paySetNum(S, '장기요양_요율', 13.14) / 100);
+var emp = f10(taxable * paySetNum(S, '고용보험_요율', 0.9) / 100);
+out.ded.push({ name: '국민연금', amt: pension, detail: '기준 ' + won(pBase) + '원 × ' + paySetNum(S, '국민연금_요율', 4.75) + '%' });
+out.ded.push({ name: '건강보험', amt: health, detail: '과세급여 × ' + paySetNum(S, '건강보험_요율', 3.595) + '%' });
+out.ded.push({ name: '장기요양보험', amt: ltc, detail: '건강보험료 × ' + paySetNum(S, '장기요양_요율', 13.14) + '%' });
+out.ded.push({ name: '고용보험', amt: emp, detail: '과세급여 × ' + paySetNum(S, '고용보험_요율', 0.9) + '%' });
+var tax;
+var manual = String(prefs.taxManual || '').replace(/[^0-9]/g, '');
+if (manual) tax = f10(+manual);
+else {
+tax = payIncomeTax(taxable, pension, prefs.fam);
+var k = prefs.kids, kid = 0;
+if (k === 1) kid = paySetNum(S, '자녀공제_1명', 20830);
+else if (k >= 2) kid = paySetNum(S, '자녀공제_2명', 45830) + Math.max(0, k - 2) * paySetNum(S, '자녀공제_추가1명', 33330);
+tax = f10(Math.max(0, tax - kid) * prefs.pct / 100);
+}
+var local = f10(tax * paySetNum(S, '지방소득세_요율', 10) / 100);
+out.ded.push({ name: '소득세', amt: tax, detail: manual ? '직접 입력한 금액' : '간이세액 · 가족 ' + prefs.fam + '명' + (prefs.kids ? ' · 자녀 ' + prefs.kids + '명' : '') + (prefs.pct !== 100 ? ' · ' + prefs.pct + '%' : '') });
+out.ded.push({ name: '지방소득세', amt: local, detail: '소득세 × ' + paySetNum(S, '지방소득세_요율', 10) + '%' });
+}
+items.filter(function (it) { return it.kind === '공제'; }).forEach(function (it) {
+var v = 0, d = '';
+var f = fixedVal(it);
+if (f) { v = f.v; d = f.d; }
+else if (it.calc === '통상임금%') { v = ordinary * (+it.rate) / 100; d = '통상임금 × ' + (+it.rate) + '%'; }
+else if (it.calc === '지급합계%') { v = out.gross * (+it.rate) / 100; d = '지급합계 × ' + (+it.rate) + '%'; }
+v = Math.round(v);
+if (v > 0) out.ded.push({ name: it.name, amt: v, detail: d, note: it.note || '' });
+});
+out.dedSum = out.ded.reduce(function (a, x) { return a + x.amt; }, 0);
+out.net = out.gross - out.dedSum;
+return out;
+}
+function renderPayslip(full) {
+var sec = $('payslip-section');
+if (!sec) return;
+var T = payState.tables;
+var S = (T && T.settings) || {};
+var prefs = payPrefs();
+var gs = payMyGradeStep();
+var wm = payWorkMonth(S);
+function won(n) { return Math.round(n).toLocaleString('ko-KR'); }
+$('ps-title').textContent = payState.y + '년 ' + (payState.m + 1) + '월 지급분';
+var payDay = parseInt(S['월급날'], 10);
+$('ps-subtitle').textContent = (wm.m + 1) + '월 근무 기준' + (payDay ? ' · ' + (payState.m + 1) + '월 ' + payDay + '일 지급' : '');
+$('ps-work-month').textContent = wm.y + '년 ' + (wm.m + 1) + '월';
+var status = '';
+if (!T) status = payState.loading ? '보수표를 불러오는 중...' : (payState.err || '보수표를 불러오지 못했습니다.');
+else if (payState.err) status = '연결이 안 돼 마지막으로 받은 보수표로 계산했어요.';
+$('ps-status').textContent = status;
+var wst = payWorkStats(wm.y, wm.m, S);
+var auto = payWorkAuto(wst);
+var work = payWorkValues(auto, wm);
+if (full) {
+var gOpt = '<option value="">직급</option>', sOpt = '<option value="">호봉</option>';
+for (var g = 1; g <= 9; g++) gOpt += '<option value="' + g + '"' + (gs.grade === String(g) ? ' selected' : '') + '>' + g + '급</option>';
+for (var s2 = 1; s2 <= 40; s2++) sOpt += '<option value="' + s2 + '"' + (gs.step === String(s2) ? ' selected' : '') + '>' + s2 + '호봉</option>';
+var h = '<div class="ps-row"><span>직급 · 호봉</span><span class="ps-sel"><select id="ps-grade" onchange="payProfileChange()">' + gOpt + '</select><select id="ps-step" onchange="payProfileChange()">' + sOpt + '</select></span></div>';
+var groups = {}, order = [];
+((T && T.items) || []).forEach(function (it) {
+if (it.input !== '체크' && it.input !== '인원') return;
+if (!(+it.amount > 0 || +it.rate > 0)) return;
+if (!payListHas(it.grades, gs.grade || '')) return;
+var gname = it.grp || (it.kind === '공제' ? '공제 선택' : '선택 수당');
+if (!groups[gname]) { groups[gname] = []; order.push(gname); }
+groups[gname].push(it);
+});
+order.forEach(function (gname) {
+h += '<div class="ps-grp">' + esc(gname) + '</div>';
+groups[gname].forEach(function (it) {
+var meta = it.calc === '고정' ? won(+it.amount) + '원' + (it.input === '인원' ? '/명' : '') : (it.calc === '기본급%' ? '기본급 ' + (+it.rate) + '%' : '');
+if (it.months) meta += (meta ? ' · ' : '') + String(it.months).replace(/\s/g, '') + '월';
+var sub = '<small>' + esc(meta) + (it.note ? (meta ? ' · ' : '') + esc(it.note) : '') + '</small>';
+if (it.input === '체크') {
+h += '<label class="ps-row ps-chk"><span>' + esc(it.name) + sub + '</span><input type="checkbox"' + (prefs.checks[it.id] ? ' checked' : '') + ' onchange="payToggleCheck(' + (+it.id) + ',this.checked)"></label>';
+} else {
+var mx = +it.max || 10, c = Math.min(mx, parseInt(prefs.counts[it.id], 10) || 0);
+h += '<div class="ps-row"><span>' + esc(it.name) + sub + '</span><span class="ps-stepper"><button type="button" onclick="payStepCount(' + (+it.id) + ',-1,' + mx + ')" aria-label="줄이기">−</button><b id="ps-cnt-' + (+it.id) + '">' + c + '</b><button type="button" onclick="payStepCount(' + (+it.id) + ',1,' + mx + ')" aria-label="늘리기">+</button></span></div>';
+}
+});
+});
+if (T && !order.length) h += '<div class="ps-empty">관리자가 등록한 자격증·가족수당 항목이 아직 없어요.</div>';
+h += '<div class="ps-grp">세금 계산</div>' +
+'<div class="ps-row"><span>공제대상 가족<small>본인·배우자 포함</small></span><span class="ps-stepper"><button type="button" onclick="payStepTax(\'fam\',-1)" aria-label="줄이기">−</button><b id="ps-tax-fam">' + prefs.fam + '</b><button type="button" onclick="payStepTax(\'fam\',1)" aria-label="늘리기">+</button></span></div>' +
+'<div class="ps-row"><span>8~20세 자녀</span><span class="ps-stepper"><button type="button" onclick="payStepTax(\'kids\',-1)" aria-label="줄이기">−</button><b id="ps-tax-kids">' + prefs.kids + '</b><button type="button" onclick="payStepTax(\'kids\',1)" aria-label="늘리기">+</button></span></div>' +
+'<div class="ps-row"><span>원천징수 비율</span><span class="ps-seg">' + [80, 100, 120].map(function (v) { return '<button type="button" data-v="' + v + '" class="' + (prefs.pct === v ? 'on' : '') + '" onclick="paySetPct(' + v + ')">' + v + '%</button>'; }).join('') + '</span></div>' +
+'<div class="ps-row"><span>소득세 직접 입력<small>실제 명세서 금액을 알면 입력</small></span><input id="ps-tax-manual" class="ps-num" inputmode="numeric" placeholder="자동" value="' + esc(prefs.taxManual) + '" onchange="paySetTaxManual(this.value)"></div>';
+$('ps-me').innerHTML = h;
+var ed = payState.workEdit[payWorkKey(wm)] || {};
+var w = auto ? '' : '<div class="ps-empty">근무표를 불러오지 못해 0으로 계산해요. 직접 입력할 수 있어요.</div>';
+PAY_WORK_FIELDS.forEach(function (f) {
+var k = f[0], edited = ed[k] != null;
+var lab = k === 'nh' ? '야간 시간(' + String(S['야간_시작'] || '22:00').slice(0, 2) + '~' + String(S['야간_끝'] || '06:00').slice(0, 2) + '시)' : f[1];
+w += '<div class="ps-row' + (edited ? ' ps-edited' : '') + '"><span>' + lab + (edited && auto ? '<small>근무표: ' + auto[k] + f[2] + '</small>' : '') + '</span><span class="ps-unit"><input class="ps-num" inputmode="decimal" value="' + work[k] + '" onchange="payEditWork(\'' + k + '\',this.value)">' + f[2] + '</span></div>';
+});
+w += '<div class="ps-work-foot"><span>기준근무 ' + (wst ? Math.round(wst.stdMin / 6) / 10 : '-') + '시간 초과분 = 초과근무</span>' +
+(Object.keys(ed).length ? '<button type="button" class="ps-reset" onclick="payResetWork()">근무표 값으로</button>' : '') + '</div>';
+$('ps-work').innerHTML = w;
+}
+var sum = $('ps-summary'), payBox = $('ps-pay'), dedBox = $('ps-ded');
+if (!T) {
+sum.innerHTML = '<div class="ps-net-label">예상 실수령액</div><div class="ps-net">-</div>';
+payBox.innerHTML = dedBox.innerHTML = '<div class="ps-empty">보수표를 불러오면 계산해요.</div>';
+$('ps-pay-total').textContent = $('ps-ded-total').textContent = '';
+$('ps-foot').innerHTML = '';
+return;
+}
+var r = payCalc(T, prefs, work, gs.grade, gs.step, payState.m);
+var warn = '';
+if (!gs.grade || !gs.step) warn = '직급·호봉을 선택하면 기본급이 들어가요.';
+else if (!r.baseFound) warn = gs.grade + '급 ' + gs.step + '호봉 기본급이 아직 등록되지 않았어요.';
+sum.innerHTML =
+'<div class="ps-net-label">예상 실수령액</div>' +
+'<div class="ps-net">' + won(r.net) + '<small>원</small></div>' +
+'<div class="ps-sum-row"><span>지급 합계<b class="ps-plus">' + won(r.gross) + '원</b></span><span>공제 합계<b class="ps-minus">' + won(r.dedSum) + '원</b></span></div>' +
+(warn ? '<button type="button" class="ps-warn" onclick="var d=$(\'ps-me-box\');d.open=true;d.scrollIntoView({behavior:\'smooth\',block:\'start\'})">' + esc(warn) + '</button>' : '');
+function lines(list) {
+if (!list.length) return '<div class="ps-empty">해당 항목이 없어요.</div>';
+return list.map(function (x) {
+return '<div class="ps-line"><div class="ps-line-l"><span>' + esc(x.name) + '</span>' + (x.detail ? '<small>' + esc(x.detail) + '</small>' : '') + '</div><b>' + won(x.amt) + '</b></div>';
+}).join('');
+}
+payBox.innerHTML = lines(r.pay);
+dedBox.innerHTML = lines(r.ded);
+$('ps-pay-total').textContent = won(r.gross) + '원';
+$('ps-ded-total').textContent = won(r.dedSum) + '원';
+var note = String(S['안내문구'] || '').trim();
+$('ps-foot').innerHTML =
+(r.hourly ? '<div>통상임금 ' + won(r.ordinary) + '원 · 통상시급 ' + won(r.hourly) + '원' + (r.taxfree ? ' · 비과세 ' + won(r.taxfree) + '원' : '') + '</div>' : '') +
+'<div>※ 실제 지급액과 다를 수 있는 예상 금액입니다. 4대보험은 이번 달 과세급여로, 소득세는 간이세액표 방식으로 어림한 값이에요.</div>' +
+(note ? '<div class="ps-admin-note">' + esc(note) + '</div>' : '') +
+(T.loadedAt ? '<div class="ps-upd">보수표 ' + new Date(T.loadedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' 받음</div>' : '');
 }
 function openNoticePanel() {
 switchSection('notice-panel');
@@ -5677,7 +6114,7 @@ var lastSec = '';
 try { lastSec = LS.getItem('railwaySecretaryLastSection') || ''; } catch (e) {}
 var allowed = {
 'main-section': 1, 'schedule-section': 1, 'group-section': 1,
-'pattern-section': 1, 'vacation-section': 1, 'settings-section': 1
+'pattern-section': 1, 'vacation-section': 1, 'settings-section': 1, 'payslip-section': 1
 };
 if (!allowed[lastSec]) lastSec = 'main-section';
 suppressSectionHistory = true;
@@ -5690,6 +6127,7 @@ else if (lastSec === 'group-section' && typeof openGroupSection === 'function') 
 else if (lastSec === 'pattern-section' && typeof openPattern === 'function') openPattern();
 else if (lastSec === 'vacation-section' && typeof openVacation === 'function') openVacation();
 else if (lastSec === 'settings-section' && typeof openSettings === 'function') openSettings();
+else if (lastSec === 'payslip-section' && typeof openPayslip === 'function') openPayslip();
 } catch (e) {}
 } else {
 switchSection('main-section');
@@ -6044,7 +6482,7 @@ var lastSec = '';
 try { lastSec = LS.getItem('railwaySecretaryLastSection') || ''; } catch (e) {}
 var allowed = {
 'main-section': 1, 'schedule-section': 1, 'group-section': 1,
-'pattern-section': 1, 'vacation-section': 1, 'settings-section': 1
+'pattern-section': 1, 'vacation-section': 1, 'settings-section': 1, 'payslip-section': 1
 };
 if (!allowed[lastSec]) lastSec = 'main-section';
 suppressSectionHistory = true;
@@ -6056,6 +6494,7 @@ else if (lastSec === 'group-section' && typeof openGroupSection === 'function') 
 else if (lastSec === 'pattern-section' && typeof openPattern === 'function') openPattern();
 else if (lastSec === 'vacation-section' && typeof openVacation === 'function') openVacation();
 else if (lastSec === 'settings-section' && typeof openSettings === 'function') openSettings();
+else if (lastSec === 'payslip-section' && typeof openPayslip === 'function') openPayslip();
 } catch (e) {}
 }
 function softRevalidate(u) {
@@ -8241,7 +8680,64 @@ min-height:76px;padding:10px 6px!important;border-radius:16px!important;text-ali
 .ns-result:not(:empty){background:#f6f8fc!important;border:0!important;border-radius:16px!important}
 .ns-help{border-top:0!important;margin-top:12px!important;padding:10px 12px!important;border-radius:16px;background:#fafbfd}
 .ns-chip{border:0!important;background:#fff!important}</style>
-<style id="menu-dev-badge">#main-section .menu-btn.menu-dev span{display:flex;flex-direction:column;align-items:center;line-height:1.2;word-break:keep-all;text-align:center}
+<style id="menu-dev-badge">#payslip-section{text-align:left}
+#payslip-section .ps-head{margin-bottom:6px}
+.ps-title-wrap{flex:1;min-width:0;text-align:center}
+.ps-subtitle{font-size:11.5px;color:#7a8696;margin-top:2px}
+.ps-status{font-size:12px;color:#b5620a;text-align:center;min-height:0;margin:0 4px 6px}
+.ps-status:empty{display:none}
+.ps-summary{margin:0 4px 14px;padding:16px 16px 14px;border-radius:18px;background:linear-gradient(135deg,#eaf3ff 0%,#f3ecff 100%);border:1px solid #dbe6f6;text-align:center;box-shadow:0 3px 12px rgba(40,70,140,.07)}
+.ps-net-label{font-size:12.5px;color:#5b6b82;font-weight:700}
+.ps-net{font-size:clamp(26px,8.6vw,34px);font-weight:800;color:#1d3c78;letter-spacing:-.5px;margin:2px 0 8px;font-variant-numeric:tabular-nums}
+.ps-net small{font-size:15px;font-weight:700;margin-left:2px;color:#4a5f86}
+.ps-sum-row{display:flex;gap:8px}
+.ps-sum-row span{flex:1;display:flex;flex-direction:column;gap:1px;padding:7px 4px;border-radius:12px;background:rgba(255,255,255,.75);font-size:11.5px;color:#6a7890}
+.ps-sum-row b{font-size:14px;font-variant-numeric:tabular-nums}
+.ps-plus{color:#2a63b8}.ps-minus{color:#c2553f}
+.ps-warn{display:block;width:100%;margin-top:10px;padding:8px 10px;border:0;border-radius:12px;background:#fff1dc;color:#9a5208;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer}
+.ps-card{margin:0 4px 12px;padding:4px 14px 8px;border-radius:14px;background:#fff;border:1px solid #e1e9f4;box-shadow:0 2px 8px rgba(20,60,110,.05)}
+.ps-card-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 0 7px;font-size:14px;font-weight:800;color:#1b2b45;list-style:none;cursor:default}
+.ps-card-h::-webkit-details-marker{display:none}
+.ps-card-h small{font-size:11px;font-weight:600;color:#8a96a8}
+.ps-card-h b{font-size:14px;font-variant-numeric:tabular-nums}
+.ps-h-pay b{color:#2a63b8}.ps-h-ded b{color:#c2553f}
+.ps-fold>.ps-card-h{cursor:pointer}
+.ps-fold>.ps-card-h span::after{content:'';display:inline-block;width:7px;height:7px;margin:0 0 3px 8px;border-right:2px solid #8a96a8;border-bottom:2px solid #8a96a8;transform:rotate(45deg);transition:transform .2s}
+.ps-fold[open]>.ps-card-h span::after{transform:rotate(-135deg);margin-bottom:-1px}
+.ps-fold[open]>.ps-card-h{border-bottom:1px dashed #dbe4f0;margin-bottom:4px}
+.ps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;font-size:13px;color:#3e4d63;border-bottom:1px solid #f1f4f9}
+.ps-row:last-child{border-bottom:0}
+.ps-row>span:first-child{display:flex;flex-direction:column;min-width:0}
+.ps-row small{font-size:10.5px;color:#8a96a8;font-weight:500;margin-top:1px}
+.ps-chk{cursor:pointer}
+.ps-chk input{width:20px;height:20px;accent-color:#6b8fd6;flex:none}
+.ps-grp{margin:10px 0 2px;font-size:11.5px;font-weight:800;color:#6b8fd6;letter-spacing:.2px}
+.ps-sel{display:flex;gap:6px}
+.ps-sel select{padding:6px 8px;border:1px solid #d5dfee;border-radius:10px;background:#f7faff;font-size:13px;color:#1b2b45;font-family:inherit}
+.ps-stepper{display:inline-flex;align-items:center;gap:0;border:1px solid #d5dfee;border-radius:999px;overflow:hidden;background:#f7faff;flex:none}
+.ps-stepper button{width:32px;height:28px;border:0;background:transparent;font-size:17px;color:#4a6fb5;font-family:inherit;cursor:pointer;touch-action:manipulation}
+.ps-stepper button:active{background:#e3ecfb}
+.ps-stepper b{min-width:22px;text-align:center;font-size:14px;color:#1b2b45}
+.ps-seg{display:inline-flex;border:1px solid #d5dfee;border-radius:999px;overflow:hidden;flex:none}
+.ps-seg button{padding:5px 10px;border:0;background:#f7faff;font-size:12px;color:#5b6b82;font-family:inherit;cursor:pointer}
+.ps-seg button.on{background:#dfe9fb;color:#1d3c78;font-weight:800}
+.ps-num{width:84px;padding:6px 8px;border:1px solid #d5dfee;border-radius:10px;background:#f7faff;font-size:13px;text-align:right;color:#1b2b45;font-family:inherit}
+.ps-unit{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#7a8696;flex:none}
+.ps-unit .ps-num{width:68px}
+.ps-edited .ps-num{background:#fff6e5;border-color:#f3cf8f}
+.ps-work-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0 2px;font-size:11px;color:#8a96a8}
+.ps-reset{padding:5px 10px;border:0;border-radius:999px;background:#e8f0fd;color:#2f5aa8;font-size:11.5px;font-weight:700;font-family:inherit;cursor:pointer;flex:none}
+.ps-line{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #f1f4f9}
+.ps-line:last-child{border-bottom:0}
+.ps-line-l{display:flex;flex-direction:column;min-width:0;font-size:13.5px;color:#26354d}
+.ps-line-l small{font-size:10.5px;color:#8a96a8;margin-top:1px;overflow-wrap:anywhere}
+.ps-line b{font-size:14px;color:#1b2b45;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ps-empty{padding:8px 0;font-size:12.5px;color:#8a96a8}
+.ps-foot{margin:2px 8px 18px;font-size:11px;line-height:1.6;color:#8a96a8}
+.ps-foot>div+div{margin-top:3px}
+.ps-admin-note{padding:8px 10px;border-radius:10px;background:#f3f6fb;color:#56657a}
+.ps-upd{text-align:right}
+#main-section .menu-btn.menu-dev span{display:flex;flex-direction:column;align-items:center;line-height:1.2;word-break:keep-all;text-align:center}
 #main-section .menu-btn .dev-badge{display:inline-block;margin-top:3px;padding:1px 7px;border-radius:999px;background:#fff1dc;color:#b5620a;font-size:10px;font-weight:800;letter-spacing:-.2px}
 #main-section .menu-btn.menu-dev .menu-art{opacity:.9}</style>
 <style id="hide-scrollbars-final">html, body, *, *::before, *::after {
