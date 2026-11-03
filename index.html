@@ -7778,6 +7778,22 @@ function pushKeyBytes(b64u) {
   for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
+/* 앱을 열 때 하얀 로고 화면이 오래 안 보이도록: 서비스워커가 화면을 폰에 저장해 두고 바로 띄움
+   (새 버전은 뒤에서 받아 두었다가, 막 연 참이면 바로 새로고침 / 쓰는 중이면 다음에 열 때 적용) */
+(function () {
+  if (!('serviceWorker' in navigator) || !window.isSecureContext) return;
+  var t0 = Date.now();
+  navigator.serviceWorker.addEventListener('message', function (e) {
+    if (!e.data || e.data.type !== 'rs-updated') return;
+    if (Date.now() - t0 < 6000 && !sessionStorage.getItem('rsReloaded')) {
+      try { sessionStorage.setItem('rsReloaded', '1'); } catch (er) {}
+      location.reload();
+    } else if (typeof showToast === 'function') showToast('새 버전이 준비됐어요. 앱을 다시 열면 적용돼요.');
+  });
+  window.addEventListener('load', function () {
+    setTimeout(function () { navigator.serviceWorker.register('sw.js').then(function (r) { if (!pushSwReg) pushSwReg = r; }).catch(function () {}); }, 1500);
+  });
+})();
 function pushRegisterSW() {
   if (pushSwReg) return Promise.resolve(pushSwReg);
   if (!pushSupported()) return Promise.resolve(null);
@@ -9790,8 +9806,8 @@ if (season === 'summer' && time === 'day') ['#ef6f6c', '#f6c34f', '#5fa8e8'].for
 return s;
 }
 function build() {
-var season = pick(['spring', 'summer', 'autumn', 'winter']);
-var place = pick(['country', 'city', 'mountain', 'sea', 'nature', 'river', 'river']);   /* 강(철교)은 조금 더 자주 */
+var season = 'summer';   /* 계절 구분 없음: 기본 초록 풍경 */
+var place = pick(['country', 'city', 'mountain', 'sea', 'nature']);   /* 장소 × 시간대만 랜덤 (철교 없음) */
 var r = Math.random(), time = r < .12 ? 'dawn' : r < .26 ? 'sunrise' : r < .58 ? 'day' : r < .76 ? 'dusk' : 'night';
 var sk = skyColors(time, season);
 var seaC = season === 'winter' ? ['#7fa9cc', '#b4cfe5'] : ['#5fb6e6', '#a6dcf3'];
@@ -9825,7 +9841,7 @@ if (time === 'night') {
 s += '<rect y="20" width="360" height="52" fill="#101a38" opacity=".42"/>' + LIT;
 }
 var svg = '<svg viewBox="0 0 360 72" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg"><defs>' + defs + '</defs>' + s + '</svg>';
-var fx = season === 'spring' ? 'petal' : season === 'autumn' ? 'leaf' : season === 'winter' ? 'snow' : (time === 'night' ? 'firefly' : '');
+var fx = '';   /* 꽃잎·낙엽·눈·반딧불 없음 (밤·새벽 별만) */
 return { season: season, place: place, time: time, svg: svg, fx: fx, bank: SEASON[season].hill2 };
 }
 return { build: build };
@@ -9920,6 +9936,7 @@ parts[j].innerHTML = trussSvg(W, front, dark);
 return { start: start, W: W };
 }
 var STOP_CHANCE = 0.5;
+var STOP_MS = 1500;   /* 정차 장면 시간 = KTX-청룡 통과 시간 */
 var STATIONS = {
 seoul:   { ko: '서울', en: 'Seoul', jp: '首爾　ソウル', trains: ['KTX-이음', 'KTX-산천', 'KTX-청룡', 'KTX-적룡', 'ITX-새마을', 'ITX-마음', '새마을호', '증기기관차'] },
 suseo:   { ko: '수서', en: 'Suseo', jp: '水西　スソ', trains: ['SRT'] },
@@ -10046,11 +10063,14 @@ card.classList.add('is-stop');
 var stopX = rtl ? pad + bw + gap : w - pad - bw - gap - tw;
 var x0 = rtl ? w : -tw;
 function tf(x) { return 'translate3d(' + x.toFixed(1) + 'px,0,0)'; }
+var hold = 250, fade = 300, total = STOP_MS + hold + fade;
 train.__stopAnim = train.animate([
-{ transform: tf(x0), easing: 'cubic-bezier(.22,.62,.32,1)' },
-{ transform: tf(stopX) }
-], { duration: dur, fill: 'both' });
-return dur;
+{ transform: tf(x0), opacity: 1, offset: 0, easing: 'cubic-bezier(.22,.62,.32,1)' },
+{ transform: tf(stopX), opacity: 1, offset: STOP_MS / total },
+{ transform: tf(stopX), opacity: 1, offset: (STOP_MS + hold) / total },
+{ transform: tf(stopX), opacity: 0, offset: 1 }
+], { duration: total, fill: 'both' });
+return total;
 }
 window.playWelcomeTrain = function(){
 var card = document.getElementById('welcome-card');
@@ -10085,8 +10105,8 @@ var tw = (parseFloat(getComputedStyle(card).getPropertyValue('--train-w')) || 86
 if (train) train.style.setProperty('--train-w', tw + 'px');
 card.style.setProperty('--card-w', w + 'px');
 card.style.setProperty('--pass', dur + 'ms');
-card.style.setProperty('--scene', (dur + 1000) + 'ms');
-card.style.setProperty('--msg-delay', (dur + 900) + 'ms');
+card.style.setProperty('--scene', (dur + 300) + 'ms');
+card.style.setProperty('--msg-delay', (dur + 300) + 'ms');
 var station = card.querySelector('.welcome-station');
 if (station) {
 station.classList.toggle('at-right', !rtl);
@@ -10103,8 +10123,8 @@ setStationSign(card, stKey ? STATIONS[stKey] : null);
 var total = stKey ? runStationStop(card, train, stKey, w, rtl, tw, platW, dur) : 0;
 if (total) {
 card.setAttribute('data-stop', stKey);
-card.style.setProperty('--scene', (total + 1000) + 'ms');
-card.style.setProperty('--msg-delay', (total + 900) + 'ms');
+card.style.setProperty('--scene', total + 'ms');
+card.style.setProperty('--msg-delay', total + 'ms');
 } else {
 card.removeAttribute('data-stop');
 clearStop(card, train);
