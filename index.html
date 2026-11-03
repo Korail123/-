@@ -820,6 +820,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <div class="welcome-bg" aria-hidden="true"></div>
       <div class="welcome-bridge wb-back" aria-hidden="true"></div><div class="welcome-bridge wb-front" aria-hidden="true"></div>
       <div class="welcome-rail"></div>
+      <div class="welcome-stn" aria-hidden="true"></div>
       <div class="welcome-plat" aria-hidden="true"><div class="wp-bank"></div><div class="wp-slab"></div><div class="wp-people"></div></div>
       <div class="welcome-station" aria-hidden="true"><svg viewBox="40 17 80 126" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="wsBlue" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3a5cc9"/><stop offset="1" stop-color="#2e48a8"/></linearGradient><linearGradient id="wsPole" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2a2c30"/><stop offset=".45" stop-color="#4a4d53"/><stop offset="1" stop-color="#2a2c30"/></linearGradient></defs><rect x="41.5" y="134.4" width="77" height="7" rx=".6" fill="#d7d8d3"/><rect x="41.5" y="140" width="77" height="1.4" fill="#b9bab5"/><rect x="44.8" y="36.6" width="61.4" height="63.8" fill="url(#wsBlue)"/><rect x="44.8" y="36.6" width="61.4" height=".9" fill="#4d70dd"/><rect x="44.8" y="100.4" width="61.4" height="34.2" fill="#323438"/><g stroke="#25272b" stroke-width=".35"><line x1="44.8" y1="106.6" x2="106.2" y2="106.6"/><line x1="44.8" y1="112.4" x2="106.2" y2="112.4"/><line x1="44.8" y1="118.2" x2="106.2" y2="118.2"/><line x1="44.8" y1="124" x2="106.2" y2="124"/><line x1="44.8" y1="129.8" x2="106.2" y2="129.8"/></g><g class="ws-arrow"><polygon points="50.1,90 106.2,90 106.2,92.3 60.5,92.3 57.3,95.7 53.8,95.7" fill="#f2bf33"/></g><text x="75.5" y="59" text-anchor="middle" font-size="16" font-weight="800" fill="#fff" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">청량리</text><text x="75.5" y="66.6" text-anchor="middle" font-size="5.6" fill="#fff" font-family="'Segoe UI','Noto Sans',sans-serif">Cheongnyangni</text><text x="75.5" y="71.8" text-anchor="middle" font-size="3.4" fill="#fff" font-family="'Noto Sans JP','Malgun Gothic',sans-serif">清凉里　チョンニャンニヨク</text><rect x="106.2" y="24" width="9.2" height="110.6" fill="url(#wsPole)"/><rect x="105.6" y="22.4" width="10.4" height="2.2" rx=".4" fill="#8f9296"/><rect x="106.9" y="18.8" width="7.8" height="3.8" rx=".3" fill="#b8babd"/><rect x="106.2" y="132.2" width="9.8" height="2.4" fill="#3a3c40"/></svg></div>
       <div class="welcome-signal" data-aspect="진행" aria-hidden="true"><div class="sig-head"><i class="sl sl1"></i><i class="sl sl2"></i><i class="sl sl3"></i></div><div class="sig-mast"></div><div class="sig-base"></div></div><div class="welcome-signal" data-aspect="진행" aria-hidden="true"><div class="sig-head"><i class="sl sl1"></i><i class="sl sl2"></i><i class="sl sl3"></i></div><div class="sig-mast"></div><div class="sig-base"></div></div>
@@ -978,7 +979,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div id="ps-me"></div>
   </details>
   <details id="ps-work-box" class="ps-card ps-fold">
-    <summary class="ps-card-h"><span>근무 집계</span><small id="ps-work-month"></small></summary>
+    <summary class="ps-card-h"><span>근무 집계 · 공제 입력</span><small id="ps-work-month"></small></summary>
     <div id="ps-work"></div>
   </details>
   <div class="ps-card"><div class="ps-card-h ps-h-pay"><span>지급 내역</span><b id="ps-pay-total"></b></div><div id="ps-pay"></div></div>
@@ -5807,6 +5808,11 @@ function payPrefs() {
   p.kids = Math.min(10, Math.max(0, parseInt(p.kids, 10) || 0));
   p.pct = [80, 100, 120].indexOf(+p.pct) >= 0 ? +p.pct : 100;
   p.taxManual = p.taxManual == null ? '' : String(p.taxManual);
+  /* 공제 입력 (이 폰에만): 공제조합 구좌 수, 철도신협 승무회비(기본 켬), 동호회 회비 목록 */
+  p.mutual = Math.min(40, Math.max(0, parseInt(p.mutual, 10) || 0));
+  p.cuCrew = p.cuCrew !== false;
+  if (!Array.isArray(p.clubs)) p.clubs = [];
+  p.clubs = p.clubs.slice(0, 6).map(function (c) { return { n: String((c && c.n) || '').slice(0, 20), a: Math.max(0, parseInt(String((c && c.a) || '').replace(/[^0-9]/g, ''), 10) || 0) }; });
   return p;
 }
 function savePayPrefs(p) { try { LS.setItem(payPrefKey(), JSON.stringify(p)); } catch (e) {} }
@@ -5831,7 +5837,7 @@ function payProfileChange() {
   pushMyProfile(loc.profile);
   renderPayslip(false);
 }
-function payToggleCheck(id, on) { var p = payPrefs(); if (on) p.checks[id] = true; else delete p.checks[id]; savePayPrefs(p); renderPayslip(false); }
+function payToggleCheck(id, on) { var p = payPrefs(); if (on) p.checks[id] = true; else delete p.checks[id]; savePayPrefs(p); renderPayslip(true); }
 function payStepCount(id, d, max) {
   var p = payPrefs();
   var n = Math.min(max, Math.max(0, (parseInt(p.counts[id], 10) || 0) + d));
@@ -5941,7 +5947,7 @@ function payEditWork(k, val) {
   var ed = payState.workEdit[key] || (payState.workEdit[key] = {});
   var n = String(val).replace(/[^0-9.]/g, '');
   if (n === '') delete ed[k]; else ed[k] = parseFloat(n) || 0;
-  renderPayslip(false);
+  renderPayslip(true);
 }
 function payResetWork() {
   var wm = payWorkMonth((payState.tables || {}).settings);
@@ -5974,6 +5980,8 @@ var PAY_HELP = [
   [/고용보험/, '실업급여 등을 위한 보험료예요. 근로자는 보수의 0.9%를 내요.'],
   [/지방소득세/, '소득세의 10%를 지방세로 함께 떼요.'],
   [/소득세/, '매달 간이세액표로 미리 떼는 세금이에요. 실제 세금은 연말정산 때 다시 계산해서 돌려받거나 더 내요.'],
+  [/공제조합/, '공제조합에 매달 적립하는 금액이에요. 1구좌당 5,000원이고, 근무 집계 › 공제 입력에서 구좌 수를 정해요.'],
+  [/신협|동호회/, '철도신용협동조합(철도신협)으로 내는 회비예요. 승무회비는 월 3만원 고정이고, 가입한 동호회 회비는 직접 적을 수 있어요.'],
   [/조합/, '노동조합 조합원이 내는 조합비예요.']
 ];
 var PAY_HELP_UI = {
@@ -6174,9 +6182,29 @@ function payCalc(T, prefs, work, grade, step, payM, payY, joinDate) {
     v = Math.round(v);
     if (v > 0) out.ded.push({ name: it.name, amt: v, detail: d, note: it.note || '', help: it.help || '' });
   });
+  /* 사용자가 입력한 공제: 공제조합(구좌) · 철도신협(승무회비 · 동호회) */
+  var perUnit = paySetNum(S, '공제조합_1구좌', 5000);
+  if (prefs.mutual > 0) out.ded.push({ name: '공제조합', amt: prefs.mutual * perUnit, detail: prefs.mutual + '구좌 × ' + won(perUnit) + '원' });
+  if (prefs.cuCrew) out.ded.push({ name: '철도신협 승무회비', amt: paySetNum(S, '신협_승무회비', 30000), detail: '월 고정' });
+  (prefs.clubs || []).forEach(function (c) {
+    if (c.a > 0) out.ded.push({ name: '철도신협 ' + (c.n || '동호회'), amt: c.a, detail: '동호회 회비', help: '철도신협으로 내는 동호회 회비예요. 근무 집계 › 공제 입력에서 금액을 바꿀 수 있어요.' });
+  });
   out.dedSum = out.ded.reduce(function (a, x) { return a + x.amt; }, 0);
   out.net = out.gross - out.dedSum;
   return out;
+}
+/* ---- 공제 입력 (공제조합 · 철도신협) ---- */
+function payStepMutual(d) { var p = payPrefs(); p.mutual = Math.min(40, Math.max(0, p.mutual + d)); savePayPrefs(p); renderPayslip(true); }
+function payToggleCuCrew(on) { var p = payPrefs(); p.cuCrew = !!on; savePayPrefs(p); renderPayslip(true); }
+function payClubAdd() { var p = payPrefs(); if (p.clubs.length >= 6) { showToast('동호회는 6개까지 넣을 수 있어요.'); return; } p.clubs.push({ n: '', a: 0 }); savePayPrefs(p); renderPayslip(true); }
+function payClubDel(i) { var p = payPrefs(); p.clubs.splice(i, 1); savePayPrefs(p); renderPayslip(true); }
+function payClubEdit(i, field, v) {
+  var p = payPrefs();
+  if (!p.clubs[i]) return;
+  if (field === 'n') p.clubs[i].n = String(v || '').slice(0, 20);
+  else p.clubs[i].a = Math.max(0, parseInt(String(v || '').replace(/[^0-9]/g, ''), 10) || 0);
+  savePayPrefs(p);
+  renderPayslip(true);
 }
 /* ---- 화면 그리기 ---- */
 function renderPayslip(full) {
@@ -6239,14 +6267,73 @@ function renderPayslip(full) {
     $('ps-me').innerHTML = h;
     /* 근무 집계 */
     var ed = payState.workEdit[payWorkKey(wm)] || {};
-    var w = auto ? '' : '<div class="ps-empty">근무표를 불러오지 못해 0으로 계산해요. 직접 입력할 수 있어요.</div>';
-    PAY_WORK_FIELDS.forEach(function (f) {
-      var k = f[0], edited = ed[k] != null;
-      var lab = k === 'nh' ? '야간 시간(' + String(S['야간_시작'] || '22:00').slice(0, 2) + '~' + String(S['야간_끝'] || '06:00').slice(0, 2) + '시)' : f[1];
-      w += '<div class="ps-row' + (edited ? ' ps-edited' : '') + '"><span><em class="ps-nm">' + lab + payHelpBtn(PAY_HELP_UI['w_' + k]) + '</em>' + (edited && auto ? '<small>근무표: ' + auto[k] + f[2] + '</small>' : '') + '</span><span class="ps-unit"><input class="ps-num" inputmode="decimal" value="' + work[k] + '" onchange="payEditWork(\'' + k + '\',this.value)">' + f[2] + '</span></div>';
-    });
-    w += '<div class="ps-work-foot"><span>기준근무 ' + (wst ? Math.round(wst.stdMin / 6) / 10 : '-') + '시간 초과분 = 초과근무</span>' +
+    var w = auto ? '' : '<div class="ps-empty">근무표를 불러오지 못해 0으로 계산해요. 숫자를 눌러 직접 입력할 수 있어요.</div>';
+    /* 근무 집계: 한눈에 보는 요약(이번 달 구성 막대 + 기준근무 대비 시간 막대) + 아이콘 타일(숫자를 눌러 바로 수정) */
+    var dim = new Date(wm.y, wm.m + 1, 0).getDate();
+    var nDay = +work.dayN || 0, nNight = +work.nightN || 0, nWork = +work.days || 0;
+    var nRest = Math.max(0, dim - nWork);
+    var segSum = Math.max(1, nDay + nNight + nRest);
+    var stdH = wst ? Math.round(wst.stdMin / 6) / 10 : 0, totH = +work.h || 0, overH = +work.oh || 0;
+    var scale = Math.max(totH, stdH, 1) * 1.04;
+    var normH = Math.max(0, totH - overH);
+    function pc(v) { return Math.max(0, Math.min(100, v / scale * 100)).toFixed(1) + '%'; }
+    function sg(v) { return (v / segSum * 100).toFixed(2) + '%'; }
+    w += '<div class="pw-hero">' +
+      '<div class="pw-hero-top"><span class="pw-hero-m">' + (wm.m + 1) + '월 근무</span>' +
+        '<span class="pw-hero-big"><b>' + nWork + '</b><small>일</small><i></i><b>' + totH + '</b><small>시간</small></span></div>' +
+      '<div class="pw-bar">' +
+        (nDay ? '<span class="pw-seg s-day" style="width:' + sg(nDay) + '">' + (nDay / segSum > .09 ? nDay : '') + '</span>' : '') +
+        (nNight ? '<span class="pw-seg s-night" style="width:' + sg(nNight) + '">' + (nNight / segSum > .09 ? nNight : '') + '</span>' : '') +
+        (nRest ? '<span class="pw-seg s-rest" style="width:' + sg(nRest) + '">' + (nRest / segSum > .09 ? nRest : '') + '</span>' : '') + '</div>' +
+      '<div class="pw-legend"><span><i class="s-day"></i>주간 ' + nDay + '회</span><span><i class="s-night"></i>야간 ' + nNight + '회</span><span><i class="s-rest"></i>비번·휴무 ' + nRest + '일</span></div>' +
+      '<div class="pw-hrow"><span class="pw-hlab">근무 시간</span>' +
+        '<div class="pw-hbar"><span class="pw-hfill" style="width:' + pc(normH) + '"></span>' +
+        (overH > 0 ? '<span class="pw-hover" style="left:' + pc(normH) + ';width:' + pc(overH) + '"></span>' : '') +
+        (stdH ? '<span class="pw-mark" style="left:' + pc(stdH) + '"></span>' : '') + '</div></div>' +
+      '<div class="pw-hnote"><span><i class="pw-k-std"></i>기준 ' + (stdH || '-') + '시간</span>' + (overH > 0 ? '<b class="pw-over"><i class="pw-k-over"></i>초과 +' + overH + '시간</b>' : '<b class="pw-ok">초과 없음</b>') + '</div>' +
+      '</div>';
+    var ICO = {
+      days: '<rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 7h12M5 1.5v3M11 1.5v3"/>',
+      dayN: '<circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6 13 13M3 13l1.4-1.4M11.6 4.4 13 3"/>',
+      nightN: '<path d="M13 9.5A5.5 5.5 0 1 1 6.5 3a4.5 4.5 0 0 0 6.5 6.5z"/>',
+      crew: '<rect x="3.5" y="1.5" width="9" height="10" rx="2.5"/><path d="M3.5 6.5h9M5.5 14.5l1-3M10.5 14.5l-1-3"/><circle cx="6" cy="9" r=".5"/><circle cx="10" cy="9" r=".5"/>',
+      h: '<circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/>',
+      nh: '<path d="M11.5 10.5A5 5 0 1 1 5.5 4.5a4 4 0 0 0 6 6z"/><path d="M12.5 1.5v3M11 3h3"/>',
+      hh: '<path d="M3.5 14.5V2M3.5 2.5h8.5l-2 2.8 2 2.7H3.5"/>',
+      oh: '<circle cx="7" cy="9" r="5"/><path d="M7 6.5V9h2.2M12.5 1v4M10.5 3h4"/>'
+    };
+    var TILE = { days: ['근무일', 'c-blue'], dayN: ['주간', 'c-yellow'], nightN: ['야간', 'c-indigo'], crew: ['승무일', 'c-green'],
+                 h: ['총 근무', 'c-gray'], nh: ['야간', 'c-purple'], hh: ['휴일', 'c-red'], oh: ['초과', 'c-orange'] };
+    var tiles = function (keys, title) {
+      return '<div class="ps-sub-h">' + title + '</div><div class="ps-tiles">' + keys.map(function (k) {
+        var f = PAY_WORK_FIELDS.filter(function (x) { return x[0] === k; })[0], edited = ed[k] != null;
+        return '<label class="ps-tile ' + TILE[k][1] + (edited ? ' edited' : '') + '">' +
+          '<span class="ps-tile-help">' + payHelpBtn(PAY_HELP_UI['w_' + k]) + '</span>' +
+          '<i class="ps-ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' + ICO[k] + '</svg></i>' +
+          '<span class="ps-tile-lab">' + TILE[k][0] + '</span>' +
+          '<span class="ps-tile-val"><input inputmode="decimal" aria-label="' + f[1] + '" style="width:' + (String(work[k]).length * 0.62 + 0.3).toFixed(2) + 'em" oninput="this.style.width=(this.value.length*0.62+0.3)+\'em\'" value="' + work[k] + '" onchange="payEditWork(\'' + k + '\',this.value)" onfocus="this.select()"><small>' + f[2] + '</small></span>' +
+          (edited && auto ? '<span class="ps-tile-auto">근무표 ' + auto[k] + '</span>' : '<span class="ps-tile-pen">수정</span>') + '</label>';
+      }).join('') + '</div>';
+    };
+    w += tiles(['days', 'dayN', 'nightN', 'crew'], '근무 횟수');
+    w += tiles(['h', 'nh', 'hh', 'oh'], '근무 시간 <small>(시간)</small>');
+    w += '<div class="ps-work-foot"><span>✎ 숫자를 누르면 직접 고칠 수 있어요</span>' +
       (Object.keys(ed).length ? '<button type="button" class="ps-reset" onclick="payResetWork()">근무표 값으로</button>' : '') + '</div>';
+    /* 공제 입력: 공제조합(구좌) · 철도신협(승무회비 · 동호회) */
+    var unit = paySetNum(S, '공제조합_1구좌', 5000), cuFee = paySetNum(S, '신협_승무회비', 30000);
+    w += '<div class="ps-sub-h">공제 입력 <small>이 폰에만 저장</small></div><div class="ps-dedbox">' +
+      '<div class="ps-ded-row"><span class="ps-ded-l"><b class="ps-nm">공제조합' + payHelpBtn(payHelpFor('공제조합')) + '</b><small>1구좌 ' + won(unit) + '원</small></span>' +
+        '<span class="ps-stepper"><button type="button" onclick="payStepMutual(-1)" aria-label="줄이기">−</button><b>' + prefs.mutual + '</b><button type="button" onclick="payStepMutual(1)" aria-label="늘리기">+</button></span>' +
+        '<span class="ps-ded-amt">' + won(prefs.mutual * unit) + '원</span></div>' +
+      '<div class="ps-ded-row"><span class="ps-ded-l"><b class="ps-nm">철도신협 승무회비' + payHelpBtn(payHelpFor('철도신협')) + '</b><small>월 ' + won(cuFee) + '원 고정</small></span>' +
+        '<label class="ps-switch"><input type="checkbox"' + (prefs.cuCrew ? ' checked' : '') + ' onchange="payToggleCuCrew(this.checked)"><i></i></label>' +
+        '<span class="ps-ded-amt">' + (prefs.cuCrew ? won(cuFee) + '원' : '-') + '</span></div>' +
+      prefs.clubs.map(function (c, i) {
+        return '<div class="ps-ded-row ps-club"><input class="ps-club-n" maxlength="20" placeholder="동호회 이름" value="' + esc(c.n).replace(/"/g, '&quot;') + '" onchange="payClubEdit(' + i + ',\'n\',this.value)">' +
+          '<span class="ps-club-a"><input inputmode="numeric" placeholder="0" value="' + (c.a ? won(c.a) : '') + '" onchange="payClubEdit(' + i + ',\'a\',this.value)" onfocus="this.select()">원</span>' +
+          '<button type="button" class="ps-club-x" onclick="payClubDel(' + i + ')" aria-label="동호회 삭제">✕</button></div>';
+      }).join('') +
+      '<button type="button" class="ps-club-add" onclick="payClubAdd()">＋ 철도신협 동호회 회비 추가</button></div>';
     $('ps-work').innerHTML = w;
   }
   /* 계산 결과 */
@@ -9356,6 +9443,17 @@ to{transform:translate3d(calc(-1 * var(--train-w)),0,0)}
 .welcome-station.at-right{right:6px}
 .welcome-station.at-left{left:6px}
 #welcome-card.is-playing .welcome-station{animation:welcomeRailFade var(--scene,var(--pass,3600ms)) ease both}
+.welcome-stn{position:absolute;bottom:9px;height:50px;opacity:0;z-index:1;pointer-events:none;display:none;filter:drop-shadow(0 1px 1.5px rgba(15,61,117,.2))}
+.welcome-stn svg{display:block;height:100%;width:auto}
+#welcome-card.is-stop .welcome-stn{display:block}
+#welcome-card.is-stop .wp-slab,#welcome-card.is-stop .wp-people,#welcome-card.is-stop .welcome-station{display:none}
+#welcome-card.is-playing .welcome-stn{animation:welcomeRailFade var(--scene,var(--pass,3600ms)) ease both}
+#welcome-card.is-playing.is-stop .welcome-train,#welcome-card.is-playing.is-stop .welcome-train.rtl{animation:none!important}
+#welcome-card[data-time="night"] .welcome-stn svg{filter:brightness(.62) saturate(.85)}
+#welcome-card[data-time="dawn"] .welcome-stn svg{filter:brightness(.74) saturate(.88)}
+#welcome-card[data-time="dusk"] .welcome-stn svg{filter:brightness(.95) sepia(.12)}
+#welcome-card[data-time="night"] .welcome-stn .win,#welcome-card[data-time="dawn"] .welcome-stn .win{fill:#ffe39a}
+.wp-man.boarded{opacity:0;transition:opacity .4s ease var(--bd,0s)}
 .welcome-bg{position:absolute;inset:0;opacity:0;z-index:0;pointer-events:none;overflow:hidden}
 .welcome-bg svg{position:absolute;inset:0;width:100%;height:100%;display:block}
 #welcome-card.is-playing .welcome-bg{animation:welcomeRailFade var(--scene,var(--pass,3600ms)) ease both}
@@ -9820,15 +9918,126 @@ parts[j].innerHTML = trussSvg(W, front, dark);
 }
 return { start: start, W: W };
 }
+var STOP_CHANCE = 0.5;
+var STATIONS = {
+seoul:   { ko: '서울', en: 'Seoul', jp: '首爾　ソウル', trains: ['KTX-이음', 'KTX-산천', 'KTX-청룡', 'KTX-적룡', 'ITX-새마을', 'ITX-마음', '새마을호', '증기기관차'] },
+suseo:   { ko: '수서', en: 'Suseo', jp: '水西　スソ', trains: ['SRT'] },
+gangneung: { ko: '강릉', en: 'Gangneung', jp: '江陵　カンヌン', trains: ['KTX-이음', 'KTX-산천'] },
+mokpo:   { ko: '목포', en: 'Mokpo', jp: '木浦　モクポ', trains: ['SRT', 'KTX-산천', 'KTX-청룡', 'KTX-적룡', 'ITX-새마을', '새마을호'] }
+};
+var SIGN_NAMES = [
+{ ko: '청량리', en: 'Cheongnyangni', jp: '清凉里　チョンニャンニヨク' },
+{ ko: '용산', en: 'Yongsan', jp: '龍山　ヨンサン' },
+{ ko: '영등포', en: 'Yeongdeungpo', jp: '永登浦　ヨンドゥンポ' },
+{ ko: '제천', en: 'Jecheon', jp: '堤川　チェチョン' },
+{ ko: '의정부', en: 'Uijeongbu', jp: '議政府　ウィジョンブ' },
+{ ko: '목포', en: 'Mokpo', jp: '木浦　モクポ' },
+{ ko: '동대구', en: 'Dongdaegu', jp: '東大邱　トンデグ' },
+{ ko: '부산', en: 'Busan', jp: '釜山　プサン' }
+];
+var stopTimers = [];
+var playSeq = 0;   /* 연달아 호출되면 마지막 호출만 그림 */
+function stnSvg(key) {
+var o = '<svg viewBox="0 0 140 52" xmlns="http://www.w3.org/2000/svg">', i, x;
+var KF = "font-family=\"'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif\" font-weight=\"800\"";
+if (key === 'seoul') {          /* 구 서울역: 붉은 벽돌 + 흰 돌띠, 가운데 초록 돔과 큰 아치창·시계 */
+o += '<rect x="3" y="25" width="134" height="27" fill="#c97f5e"/>' +
+'<rect x="3" y="24" width="134" height="2" fill="#efe8dc"/><rect x="3" y="46" width="134" height="6" fill="#e9e2d4"/>' +
+'<path d="M3 25 L3 20 L13 16 L23 20 L23 25Z M117 25 L117 20 L127 16 L137 20 L137 25Z" fill="#c97f5e" stroke="#efe8dc" stroke-width="1"/>';
+for (i = 0; i < 16; i++) { x = 6 + i * 8.2; if (x > 44 && x < 92) continue; o += '<rect class="win" x="' + x.toFixed(1) + '" y="29" width="3.2" height="5" rx="1.4" fill="#56708a"/><rect class="win" x="' + x.toFixed(1) + '" y="37.5" width="3.2" height="5" rx=".4" fill="#56708a"/>'; }
+o += '<rect x="46" y="17" width="48" height="35" fill="#c97f5e"/><rect x="46" y="16" width="48" height="2.2" fill="#efe8dc"/>' +
+'<rect x="44" y="12" width="7" height="40" fill="#e9e2d4"/><rect x="89" y="12" width="7" height="40" fill="#e9e2d4"/>' +
+'<path d="M43.5 12 Q47.5 5 51.5 12Z M88.5 12 Q92.5 5 96.5 12Z" fill="#5fa594"/><rect x="47" y="3.5" width="1" height="3" fill="#5fa594"/><rect x="92" y="3.5" width="1" height="3" fill="#5fa594"/>' +
+'<path d="M55 17 Q55 2 70 2 Q85 2 85 17Z" fill="#6cb3a0"/><path d="M60 16 Q61 6 70 4.5" stroke="#9fd2c3" stroke-width="1.2" fill="none"/>' +
+'<rect x="68.4" y="-1" width="3.2" height="3.4" fill="#5fa594"/>' +
+'<path d="M57 44 L57 30 Q57 20 70 20 Q83 20 83 30 L83 44Z" fill="#efe8dc"/>' +
+'<path class="win" d="M59.5 40 L59.5 30.5 Q59.5 22.5 70 22.5 Q80.5 22.5 80.5 30.5 L80.5 40Z" fill="#4d6680"/>' +
+'<path d="M70 22.5 V40 M59.5 31 H80.5" stroke="#efe8dc" stroke-width=".8"/>' +
+'<circle cx="70" cy="34" r="3.2" fill="#fbf7ef" stroke="#c9b48a" stroke-width=".6"/><path d="M70 32 V34 H71.6" stroke="#333" stroke-width=".5" fill="none"/>' +
+'<path d="M60 52 V47 Q60 44.5 63 44.5 Q66 44.5 66 47 V52Z M67 52 V47 Q67 44.5 70 44.5 Q73 44.5 73 47 V52Z M74 52 V47 Q74 44.5 77 44.5 Q80 44.5 80 47 V52Z" fill="#5a4a3e"/>';
+} else if (key === 'suseo') {   /* 수서역(SRT): 하얀 쐐기 모양 지붕 + 금빛 곡선 띠 + 유리벽 */
+o += '<polygon points="3,52 3,22 13,4 70,15 138,35 138,52" fill="#f4f6f9" stroke="#d6dce4" stroke-width=".6"/>' +
+'<polygon points="3,52 3,22 13,4 16,9 8,52" fill="#d9dee6"/>';
+for (i = 0; i < 26; i++) o += '<circle cx="' + (48 + (i % 9) * 2.4).toFixed(1) + '" cy="' + (20 + Math.floor(i / 9) * 2.3).toFixed(1) + '" r=".55" fill="#aab3c0"/>';
+o += '<path class="win" d="M20 52 L20 40 Q24 32 36 32 L138 39 L138 52Z" fill="#4c6a86"/>';
+for (x = 26; x < 138; x += 7) o += '<path d="M' + x + ' ' + (32.4 + (x - 36) * 0.068).toFixed(1) + ' V52" stroke="#9db3c8" stroke-width=".45"/>';
+o += '<path d="M14 52 Q15 34 32 30.5 L138 37.5" stroke="#c9a14a" stroke-width="2.4" fill="none" stroke-linecap="round"/>' +
+'<text x="25" y="20" font-size="6.2" font-style="italic" font-weight="900" fill="#5b4a8a" font-family="Arial,sans-serif" transform="skewX(-8)">SRT</text>' +
+'<text x="72" y="29" font-size="5.2" fill="#2a3e78" ' + KF + '>수서역</text>';
+} else if (key === 'gangneung') { /* 강릉역: 은빛 원통형 건물 + 아래쪽 유리 띠 */
+o += '<defs><linearGradient id="wsGn" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#aeb7c2"/><stop offset=".45" stop-color="#f3f5f8"/><stop offset="1" stop-color="#a6afbb"/></linearGradient></defs>' +
+'<path d="M8 15 L8 45 A62 6.5 0 0 0 132 45 L132 15Z" fill="url(#wsGn)"/>' +
+'<ellipse cx="70" cy="15" rx="62" ry="6.5" fill="#dfe4ea" stroke="#c3cad3" stroke-width=".6"/>' +
+'<ellipse cx="70" cy="15" rx="56" ry="4.6" fill="#cfd5dd"/>';
+for (i = 0; i < 9; i++) { x = 14 + i * 14; o += '<path d="M' + x + ' ' + (19 + Math.abs(70 - x) * 0.02).toFixed(1) + ' l9 13" stroke="#c2c9d2" stroke-width=".5"/>'; }
+o += '<path class="win" d="M8 34 L8 45 A62 6.5 0 0 0 132 45 L132 34 A62 6.5 0 0 1 8 34Z" fill="#3f8790"/>';
+for (i = 0; i < 16; i++) { x = 11 + i * 7.9; var cv = 6.5 * Math.sqrt(Math.max(0, 1 - Math.pow((x - 70) / 62, 2))); o += '<path d="M' + x.toFixed(1) + ' ' + (34 + cv).toFixed(1) + ' V' + (45 + cv).toFixed(1) + '" stroke="#8cc3c8" stroke-width=".45"/>'; }
+o += '<rect x="60" y="42" width="20" height="2" fill="#7c8794"/><rect x="62" y="44" width="16" height="7.5" fill="#2e4e58"/>' +
+'<text x="70" y="28.5" text-anchor="middle" font-size="5.6" fill="#24407a" ' + KF + '>강릉역</text>';
+} else {                         /* 목포역: 흰 곡선 캐노피 + 위쪽 원기둥 줄 + 지붕 위 파란 역명판 */
+o += '<rect x="58" y="10" width="1" height="8" fill="#9aa3ad"/><rect x="81" y="10" width="1" height="8" fill="#9aa3ad"/>' +
+'<rect x="53" y="1" width="34" height="10" rx=".8" fill="#2f6fd6" stroke="#e8eef9" stroke-width=".7"/>' +
+'<text x="70" y="8.6" text-anchor="middle" font-size="6.6" fill="#fff" ' + KF + '>목포역</text>' +
+'<rect x="6" y="17" width="128" height="3" fill="#e6e8e5"/><rect x="8" y="20" width="124" height="16" fill="#d9ddd9"/>';
+for (i = 0; i < 10; i++) { x = 12 + i * 12.9; o += '<rect x="' + x.toFixed(1) + '" y="20" width="4" height="13" fill="#fafbfa"/><ellipse cx="' + (x + 2).toFixed(1) + '" cy="20.6" rx="2.8" ry="1.2" fill="#fff"/>'; }
+o += '<path class="win" d="M14 52 L14 40 Q70 26 126 40 L126 52Z" fill="#5c87a8"/>';
+for (x = 20; x < 126; x += 8) o += '<path d="M' + x + ' 52 V' + (40 - 14 * (1 - Math.pow((x - 70) / 56, 2))).toFixed(1) + '" stroke="#a7c2d6" stroke-width=".45"/>';
+o += '<path d="M1 41.5 Q70 21 139 41.5 L139 43.5 Q70 25.5 1 43.5Z" fill="#fff" stroke="#cfd5d9" stroke-width=".5"/>' +
+'<rect x="56" y="46" width="28" height="6" fill="#33536e"/>';
+}
+return o + '</svg>';
+}
+function setStationSign(card, st) {
+var t = card.querySelectorAll('.welcome-station text');
+var v = st || SIGN_NAMES[Math.floor(Math.random() * SIGN_NAMES.length)];
+if (t.length >= 3) { t[0].textContent = v.ko; t[1].textContent = v.en; t[2].textContent = v.jp; }
+}
+function pickStation(trainName) {
+if (window.__wtStop !== undefined) return window.__wtStop;   /* 화면 확인용 */
+if (Math.random() >= STOP_CHANCE) return null;
+var keys = Object.keys(STATIONS).filter(function (k) { return STATIONS[k].trains.indexOf(trainName) >= 0; });
+if (!keys.length) return null;
+return keys[Math.floor(Math.random() * keys.length)];
+}
+function clearStop(card, train) {
+stopTimers.forEach(clearTimeout); stopTimers = [];
+if (train && train.__stopAnim) { try { train.__stopAnim.cancel(); } catch (e) {} train.__stopAnim = null; }
+if (card) card.classList.remove('is-stop');
+}
+function runStationStop(card, train, key, w, rtl, tw, platW, dur) {
+var box = card.querySelector('.welcome-stn');
+if (!box || !train || !train.animate) return 0;
+if (train.__stopAnim) { try { train.__stopAnim.cancel(); } catch (e) {} }
+box.innerHTML = stnSvg(key);
+var pad = 10;
+box.style.left = rtl ? pad + 'px' : '';
+box.style.right = rtl ? '' : pad + 'px';
+card.classList.add('is-stop');
+var stopX = rtl ? 18 : w - 18 - tw;
+var x0 = rtl ? w : -tw, x2 = rtl ? -tw : w;
+var arrive = Math.max(1500, Math.round(dur * 0.9)), dwell = 1500, depart = Math.max(1700, Math.round(dur * 0.95));
+var total = arrive + dwell + depart;
+function tf(x) { return 'translate3d(' + x.toFixed(1) + 'px,0,0)'; }
+train.__stopAnim = train.animate([
+{ transform: tf(x0), offset: 0, easing: 'cubic-bezier(.25,.6,.35,1)' },
+{ transform: tf(stopX), offset: arrive / total, easing: 'linear' },
+{ transform: tf(stopX), offset: (arrive + dwell) / total, easing: 'cubic-bezier(.55,0,.85,.6)' },
+{ transform: tf(x2), offset: 1 }
+], { duration: total, fill: 'both' });
+return total;
+}
 window.playWelcomeTrain = function(){
 var card = document.getElementById('welcome-card');
 if (!card) return;
 if (timer) { clearTimeout(timer); timer = null; }
 card.classList.remove('is-playing');
+clearStop(card, card.querySelector('.welcome-train'));
+var mySeq = ++playSeq;
 if (reduced()) return;
 var train = card.querySelector('.welcome-train');
 var imgs = train ? train.querySelectorAll('.wt-img') : [];
 var pick = imgs.length ? Math.floor(Math.random() * imgs.length) : 0;
+if (window.__wtTrain != null) pick = window.__wtTrain;   /* 화면 확인용 */
 for (var i = 0; i < imgs.length; i++) imgs[i].style.display = i === pick ? 'block' : 'none';
 var cur = imgs.length ? imgs[pick] : null;
 var ratio = cur ? (parseFloat(cur.getAttribute('data-ratio')) || 1) : 1;
@@ -9844,6 +10053,7 @@ var speed = cur ? (parseFloat(cur.getAttribute('data-speed')) || 260) : 260;
 var dur = cur && parseInt(cur.getAttribute('data-dur'), 10) ? parseInt(cur.getAttribute('data-dur'), 10)
 : Math.min(3000, Math.round(2000 * 320 / speed));
 requestAnimationFrame(function(){
+if (mySeq !== playSeq) return;
 var w = card.clientWidth || 360;
 var tw = (parseFloat(getComputedStyle(card).getPropertyValue('--train-w')) || 860) * ratio;
 if (train) train.style.setProperty('--train-w', tw + 'px');
@@ -9862,6 +10072,17 @@ var platW = placePlatformPeople(card, w, rtl);
 setWelcomeBg(card);
 setTrainLights(card, train, cur, rtl, tw);
 var bridge = setWelcomeBridge(card, w, rtl, platW);
+var stKey = pickStation(cur ? cur.getAttribute('data-name') : '');
+setStationSign(card, stKey ? STATIONS[stKey] : null);
+var total = stKey ? runStationStop(card, train, stKey, w, rtl, tw, platW, dur) : 0;
+if (total) {
+card.setAttribute('data-stop', stKey);
+card.style.setProperty('--scene', (total + 1000) + 'ms');
+card.style.setProperty('--msg-delay', (total + 900) + 'ms');
+} else {
+card.removeAttribute('data-stop');
+clearStop(card, train);
+}
 var sigs = card.querySelectorAll('.welcome-signal');
 var spots = rtl ? [86, 54] : [14, 46];
 if (bridge) {
@@ -9877,7 +10098,7 @@ setSignalAspect(sigs[si], '진행');
 void card.offsetWidth;
 card.classList.add('is-playing');
 if (sigs.length && train) trackSignal(card, train, sigs, rtl);
-timer = setTimeout(function(){ card.classList.remove('is-playing'); timer = null; }, dur + 1800);
+timer = setTimeout(function(){ card.classList.remove('is-playing'); clearStop(card, train); timer = null; }, (total || dur) + 1800);
 });
 };
 function hookSwitch(){
@@ -10101,6 +10322,70 @@ min-height:76px;padding:10px 6px!important;border-radius:16px!important;text-ali
 .ps-tip.show{opacity:1;pointer-events:auto;transform:none}
 .ps-tip::before{content:'';position:absolute;top:-5px;left:var(--ax,50%);margin-left:-5px;border:5px solid transparent;border-top:0;border-bottom-color:#1f2d47}
 .ps-tip.up::before{top:auto;bottom:-5px;border-bottom:0;border-top:5px solid #1f2d47}
+.ps-sub-h{margin:10px 0 6px;font-size:12px;font-weight:800;color:#4a5f86;display:flex;align-items:center;gap:6px}
+.ps-sub-h small{font-size:10.5px;font-weight:600;color:#9aa6b8}
+.ps-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.ps-tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;padding:9px 2px 6px;border-radius:14px;background:var(--tb,#f3f6fb);border:1.5px solid transparent;cursor:text;min-width:0}
+.ps-ico{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#fff;color:var(--tc,#56657a);box-shadow:0 1px 2px rgba(15,40,80,.08);margin-bottom:2px}
+.ps-ico svg{width:14px;height:14px}
+.ps-tile-help{position:absolute;top:4px;right:4px;line-height:0}
+.ps-tile-help .ps-help{width:13px;height:13px;font-size:8.5px;margin:0}
+.ps-tile-lab{font-size:10.5px;font-weight:800;color:var(--tc,#56657a);white-space:nowrap}
+.ps-tile-val{display:flex;align-items:baseline;justify-content:center;gap:1px;width:100%}
+.ps-tile-val input{min-width:1.4em;max-width:64px;padding:0;border:0;background:transparent;text-align:center;font-family:inherit;font-size:20px;font-weight:800;line-height:1.15;color:#1b2b45;font-variant-numeric:tabular-nums;outline:none}
+.ps-tile-val small{font-size:10px;color:#8a96a8;font-weight:700;flex:none;margin-left:1px}
+.ps-tile-auto,.ps-tile-pen{font-size:9px;line-height:12px;height:12px}
+.ps-tile-auto{color:#b5620a;font-weight:700}
+.ps-tile-pen{color:transparent}
+.ps-tile.edited{border-style:dashed;border-color:#f0b35a;background:#fffaf1}
+.ps-tile:focus-within{border-color:#8fb4e8;background:#fff}
+.ps-tile.c-blue{--tb:#e9f2ff;--tc:#2f63b5}.ps-tile.c-yellow{--tb:#fff6dc;--tc:#a8780a}.ps-tile.c-indigo{--tb:#ecebff;--tc:#4b4bb0}.ps-tile.c-green{--tb:#e6f6ec;--tc:#257a45}
+.ps-tile.c-gray{--tb:#f1f4f8;--tc:#56657a}.ps-tile.c-purple{--tb:#f3eafd;--tc:#7a44b3}.ps-tile.c-red{--tb:#fdecec;--tc:#c2453b}.ps-tile.c-orange{--tb:#fff0e3;--tc:#c06416}
+.pw-hero{margin-top:8px;padding:12px 12px 10px;border-radius:16px;background:linear-gradient(135deg,#eef5ff,#f7f2ff);border:1px solid #e1e9f6}
+.pw-hero-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:9px}
+.pw-hero-m{font-size:12px;font-weight:800;color:#4a5f86}
+.pw-hero-big{display:flex;align-items:baseline;gap:2px;color:#1b2b45}
+.pw-hero-big b{font-size:24px;font-weight:900;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.pw-hero-big small{font-size:12px;font-weight:700;color:#6b7a90}
+.pw-hero-big i{display:inline-block;width:4px;height:4px;border-radius:50%;background:#b5c2d6;margin:0 7px;align-self:center}
+.pw-bar{display:flex;height:20px;border-radius:999px;overflow:hidden;background:#e7ecf3;gap:2px}
+.pw-seg{display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;color:#fff;min-width:0}
+.s-day{background:#f2b632}.s-night{background:#5b5bd6}.s-rest{background:#c5cfdc}
+.pw-seg.s-rest{color:#5d6b80}
+.pw-legend{display:flex;gap:10px;flex-wrap:wrap;margin:6px 2px 10px;font-size:11px;font-weight:700;color:#56657a}
+.pw-legend span{display:inline-flex;align-items:center;gap:4px}
+.pw-legend i{width:8px;height:8px;border-radius:3px}
+.pw-hrow{display:flex;align-items:center;gap:8px}
+.pw-hlab{font-size:11px;font-weight:800;color:#4a5f86;white-space:nowrap}
+.pw-hbar{position:relative;flex:1;height:10px;border-radius:999px;background:#e7ecf3}
+.pw-hfill{position:absolute;left:0;top:0;bottom:0;border-radius:999px 0 0 999px;background:linear-gradient(90deg,#7aa7ec,#4f84dc)}
+.pw-hover{position:absolute;top:0;bottom:0;border-radius:0 999px 999px 0;background:repeating-linear-gradient(135deg,#f39a3d 0 4px,#f6b066 4px 8px)}
+.pw-mark{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;border-radius:1px;background:#1b2b45}
+.pw-hnote{display:flex;justify-content:space-between;margin-top:5px;font-size:10.5px;color:#7b889b;padding-left:58px}
+.pw-over{color:#c06416;font-weight:800}
+.pw-hnote span,.pw-hnote b{display:inline-flex;align-items:center;gap:4px}
+.pw-k-std{width:2px;height:10px;border-radius:1px;background:#1b2b45}
+.pw-k-over{width:12px;height:7px;border-radius:3px;background:repeating-linear-gradient(135deg,#f39a3d 0 3px,#f6b066 3px 6px)}
+.pw-ok{color:#257a45;font-weight:800}
+.ps-dedbox{border-radius:14px;background:#f7f9fd;padding:4px 10px}
+.ps-ded-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #e9eef6}
+.ps-ded-row:last-of-type{border-bottom:0}
+.ps-ded-l{flex:1;min-width:0;display:flex;flex-direction:column}
+.ps-ded-l b{font-size:13px;color:#26354d}
+.ps-ded-l small{font-size:10.5px;color:#8a96a8}
+.ps-ded-amt{min-width:64px;text-align:right;font-size:13px;font-weight:800;color:#c2553f;font-variant-numeric:tabular-nums}
+.ps-switch{position:relative;display:inline-block;width:40px;height:23px;flex:none}
+.ps-switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;z-index:1}
+.ps-switch i{position:absolute;inset:0;border-radius:999px;background:#d5dce6;transition:background .2s}
+.ps-switch i::after{content:'';position:absolute;top:3px;left:3px;width:17px;height:17px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .2s}
+.ps-switch input:checked+i{background:#7fa8e6}
+.ps-switch input:checked+i::after{transform:translateX(17px)}
+.ps-club input{border:1px solid #d5dfee;border-radius:9px;background:#fff;font-family:inherit;font-size:13px;font-weight:600;color:#1b2b45;padding:6px 8px;outline:none}
+.ps-club-n{flex:1;min-width:0}
+.ps-club-a{display:inline-flex;align-items:center;gap:3px;font-size:12px;color:#8a96a8}
+.ps-club-a input{width:78px;text-align:right}
+.ps-club-x{width:26px;height:26px;flex:none;border:0;border-radius:50%;background:#eef1f5;color:#8a96a8;font-size:12px;cursor:pointer}
+.ps-club-add{display:block;width:100%;margin:6px 0 4px;padding:8px;border:1.5px dashed #c9d7ea;border-radius:10px;background:#fff;color:#2f5aa8;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer}
 .ps-foot{margin:2px 8px 18px;font-size:11px;line-height:1.6;color:#8a96a8}
 .ps-foot>div+div{margin-top:3px}
 .ps-admin-note{padding:8px 10px;border-radius:10px;background:#f3f6fb;color:#56657a}
