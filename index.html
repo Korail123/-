@@ -1314,9 +1314,8 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차통과알림" alt="" aria-hidden="true">열차통과/도착알림 <small class="pass-beta">시험 중</small></div>
     <div id="pass-card" class="ns-card">
       <ul class="ns-points" style="margin-top:0"><li><b>오늘 근무표</b>에 감시 열차가 있으면 자동 확인</li><li>정한 역에 <b>곧 도착</b> · <b>통과</b>하면 알림 (앱이 꺼져도)</li><li class="ns-dim">NXLogis 기준 · 실제보다 1~몇 분 늦을 수 있어요</li></ul>
-      <div class="pass-lab">감시할 열차번호 <small>오늘 근무표에 있으면 알림</small></div>
+      <div class="pass-lab">감시 열차번호 <small>오늘 근무표에서 자동 추출 · 여객/화물 전체</small></div>
       <div id="pass-trains" class="pass-tags"></div>
-      <div class="pass-input"><input id="pass-train-in" maxlength="8" placeholder="열차번호 추가" autocomplete="off" onkeydown="if(event.key==='Enter')passAdd('trains')"><button type="button" onclick="passAdd('trains')">추가</button></div>
       <div class="pass-lab">알림 받을 역</div>
       <div id="pass-stations" class="pass-tags"></div>
       <div class="pass-input"><input id="pass-station-in" maxlength="20" placeholder="역 이름 추가 (예: 팔당)" autocomplete="off" onkeydown="if(event.key==='Enter')passAdd('stations')"><button type="button" onclick="passAdd('stations')">추가</button></div>
@@ -8080,7 +8079,8 @@ function passEval(route, w, now) {
   var expect = s.plan !== null && s.plan !== undefined ? s.plan + delay * 60000 : null;
   var movingSegment = /간\s*(?:운행|이동)|운행\s*중/.test(String(route.zone || ''));
   var nextLiveStop = movingSegment && route.passedIdx !== null && route.passedIdx !== undefined && route.passedIdx === i - 1;
-  var withinScheduleLead = expect !== null && expect >= now - 2 * 60000 && expect - now <= (w.lead || 10) * 60000;
+  var leadMinutes = (w.lead === null || w.lead === undefined || isNaN(Number(w.lead))) ? 10 : Number(w.lead);
+  var withinScheduleLead = expect !== null && expect >= now - 2 * 60000 && expect - now <= leadMinutes * 60000;
   return {
     idx: i, passed: passed, soon: !passed && (nextLiveStop || (!movingSegment && withinScheduleLead)),
     delay: delay, expect: expect, plan: s.plan, act: s.act,
@@ -8094,16 +8094,15 @@ var PASS_DEFAULT_TRAINS = ['3224', '3226', '1208'];
 var passCfg = null, passSaveTimer = null;
 function passCfgKey() { return 'passCfg_' + (getCurrentUser().employeeId || ''); }
 function passCfgLocal() { try { return JSON.parse(LS.getItem(passCfgKey()) || 'null'); } catch (e) { return null; } }
-function passCfgDefault() { return { trains: PASS_DEFAULT_TRAINS.slice(), stations: [], lead: 10, soon: true, pass: true }; }
+function passCfgDefault() { return { trains: [], stations: [], lead: 0, soon: true, pass: true }; }
 function passTrainKey(t) { return String(t || '').toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, ''); }
 /* 근무표(오늘)에 있는 감시 열차 */
 function passMyDays(cfg) {
-  cfg = cfg || passCfg || passCfgLocal();
-  if (!cfg || !cfg.trains || !cfg.trains.length) return [];
-  var want = cfg.trains.map(passTrainKey), out = [];
+  /* 오늘 근무 DIA에서 추출한 모든 여객/화물 열차를 자동 감시 */
+  var out = [];
   try {
     nxCollectTrains(1).forEach(function (x) {
-      if (!x.link && want.indexOf(passTrainKey(x.train)) >= 0) out.push({ date: x.date, train: x.train });
+      if (!x.link) out.push({ date: x.date, train: x.train });
     });
   } catch (e) {}
   return out;
@@ -8117,10 +8116,11 @@ function closePassSettings() { $('pass-panel').classList.remove('active'); }
 function passCardRender() {
   if (!$('pass-card') || !passAllowed()) return;
   passCfg = passCfgLocal() || passCfgDefault();
+  passCfg.lead = 0;
   passRender();
   var u = getCurrentUser();
   api({ action: 'passcfg_get', employeeId: u.employeeId, token: u.token }, function (r) {
-    if (r && r.success && r.cfg) { passCfg = { trains: r.cfg.trains || [], stations: r.cfg.stations || [], lead: r.cfg.lead || 10, soon: r.cfg.soon !== false, pass: r.cfg.pass !== false }; }
+    if (r && r.success && r.cfg) { passCfg = { trains: [], stations: r.cfg.stations || [], lead: 0, soon: r.cfg.soon !== false, pass: r.cfg.pass !== false }; }
     else if (r && r.success && !r.cfg && !passCfgLocal()) { passCfg = passCfgDefault(); passSaveSoon(); }
     try { LS.setItem(passCfgKey(), JSON.stringify(passCfg)); } catch (e) {}
     passRender();
@@ -8129,20 +8129,19 @@ function passCardRender() {
 function passRender() {
   var c = passCfg;
   if (!c || !$('pass-trains')) return;
+  c.lead = 0;
   var days = passMyDays(c), t = todayKST(), today = getDateKey(t.y, t.m, t.d);
   var onToday = days.filter(function (d) { return d.date === today; }).map(function (d) { return passTrainKey(d.train); });
-  $('pass-trains').innerHTML = c.trains.length ? c.trains.map(function (x, i) {
-    return '<span class="' + (onToday.indexOf(passTrainKey(x)) >= 0 ? 'on' : '') + '">' + esc(x) + '<button type="button" onclick="passRemove(\'trains\',' + i + ')" aria-label="삭제">✕</button></span>';
-  }).join('') : '<small>열차번호를 추가하세요.</small>';
+  $('pass-trains').innerHTML = days.length ? days.map(function (x) {
+    return '<span class="on">' + esc(x.train) + (x.date === today ? '' : ' · ' + esc(x.date.slice(5).replace('-', '/'))) + '</span>';
+  }).join('') : '<small>오늘 근무표에서 감시할 열차를 찾지 못했어요.</small>';
   $('pass-stations').innerHTML = c.stations.length ? c.stations.map(function (x, i) {
     return '<span>' + esc(x) + '<button type="button" onclick="passRemove(\'stations\',' + i + ')" aria-label="삭제">✕</button></span>';
   }).join('') : '<small>알림 받을 역을 추가하세요.</small>';
   $('pass-soon').checked = !!c.soon;
   $('pass-pass').checked = !!c.pass;
   $('pass-lead').style.visibility = c.soon ? '' : 'hidden';
-  $('pass-lead').innerHTML = [5, 10, 15].map(function (m) {
-    return '<button type="button" class="' + (m === c.lead ? 'on' : '') + '" onclick="passSetLead(' + m + ')">' + m + '분 전</button>';
-  }).join('');
+  $('pass-lead').innerHTML = '<button type="button" class="on" disabled>0분 전 · 예정 시각 즉시</button>';
   $('pass-today').innerHTML = days.length
     ? '근무표의 감시 열차: ' + days.map(function (d) { var p = d.date.split('-'); return '<b>' + esc(d.train) + '</b> (' + (+p[1]) + '/' + (+p[2]) + ')'; }).join(', ') +
       (c.stations.length ? '' : '<br><span style="color:#c06416">역을 추가해야 알림이 와요.</span>')
@@ -8217,7 +8216,7 @@ function passTargetFor(route, stations) {
   });
   cand.sort(function (a, b) { return a - b; });
   for (var k = 0; k < cand.length; k++) {
-    var ev = passEval(route, { idx: cand[k], station: st[cand[k]].name, lead: 10 }, now);
+    var ev = passEval(route, { idx: cand[k], station: st[cand[k]].name, lead: 0 }, now);
     if (ev && !ev.passed) return { idx: cand[k], mine: true };
   }
   if (cand.length) return { idx: cand[cand.length - 1], mine: true };
@@ -8228,13 +8227,8 @@ function passCheckNow() {
   var c = passCfg || passCfgLocal() || passCfgDefault();
   var t = todayKST(), today = getDateKey(t.y, t.m, t.d);
   var list = passMyDays(c).filter(function (d) { return d.date === today; });
-  var fallback = false;
-  if (!list.length) {
-    list = c.trains.slice(0, 6).map(function (x) { return { date: today, train: x }; });
-    fallback = true;
-  }
-  if (!list.length) { showToast('감시할 열차번호를 먼저 추가해주세요.'); return; }
-  showToast((fallback ? '오늘 근무표에 감시 열차가 없어 목록의 열차를 ' : '') + list.map(function (x) { return x.train; }).join(', ') + '열차를 조회하는 중...');
+  if (!list.length) { showToast('오늘 근무표에서 조회할 열차번호를 찾지 못했어요.'); return; }
+  showToast(list.map(function (x) { return x.train; }).join(', ') + '열차를 조회하는 중...');
   var pages = [], left = list.length;
   list.forEach(function (it, n) {
     passRoute(it.train, it.date, false, function (j) {
@@ -8246,7 +8240,7 @@ function passCheckNow() {
           var ev = passEval(j, { idx: tg.idx, station: name, lead: c.lead }, Date.now());
           if (ev) page = Object.assign({ kind: 'now', train: it.train, station: name, date: it.date, note: tg.mine ? '' : '정한 역이 이 열차 경로에 없어 다음 역을 보여줘요.' }, ev);
         }
-      } else if (!fallback || list.length === 1) {
+      } else {
         page = { kind: 'err', train: it.train, date: it.date, msg: (j && j.message) || '조회하지 못했습니다.' };
       }
       if (page) pages[n] = page;
@@ -8263,7 +8257,7 @@ function passShowRaw() {
   var c = passCfg || passCfgLocal() || passCfgDefault();
   var t = todayKST(), today = getDateKey(t.y, t.m, t.d);
   var d = passMyDays(c).filter(function (x) { return x.date === today; })[0];
-  var train = d ? d.train : (c.trains[0] || '');
+  var train = d ? d.train : '';
   if (!train) { showToast('열차번호를 먼저 추가해주세요.'); return; }
   var box = $('pass-raw'), ta = box.querySelector('textarea');
   box.style.display = ''; ta.value = train + '열차 원본을 불러오는 중...';
