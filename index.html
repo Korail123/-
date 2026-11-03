@@ -9665,7 +9665,8 @@ var LIT = '', SUNX = 180;   /* 밤에 불 켜진 창문: 어둡게 덮은 뒤 �
 function rnd(a, b) { return a + Math.random() * (b - a); }
 function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
 function grad(id, a, b) { return '<linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + a + '"/><stop offset="1" stop-color="' + b + '"/></linearGradient>'; }
-function cloud(x, y, s, o) { return '<g transform="translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ') scale(' + s.toFixed(2) + ')" fill="#fff" opacity="' + (o || .95) + '"><ellipse cx="0" cy="4" rx="14" ry="5"/><circle cx="-5" cy="1" r="5"/><circle cx="3" cy="-1" r="6.5"/><circle cx="10" cy="2" r="4"/></g>'; }
+function cloud(x, y, s, o) { return ''; }   /* 날씨(구름) 표현 없음 */
+function cloudOld(x, y, s, o) { return '<g transform="translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ') scale(' + s.toFixed(2) + ')" fill="#fff" opacity="' + (o || .95) + '"><ellipse cx="0" cy="4" rx="14" ry="5"/><circle cx="-5" cy="1" r="5"/><circle cx="3" cy="-1" r="6.5"/><circle cx="10" cy="2" r="4"/></g>'; }
 function bird(x, y, s) { return '<path d="M' + x.toFixed(1) + ' ' + y.toFixed(1) + 'q' + 2 * s + ' ' + (-2 * s) + ' ' + 4 * s + ' 0q' + 2 * s + ' ' + (-2 * s) + ' ' + 4 * s + ' 0" fill="none" stroke="#7b8ea8" stroke-width="1" stroke-linecap="round"/>'; }
 var SEASON = {
 spring: { hill1: '#d6efcf', hill2: '#c2e6b8', field: ['#d4ecb6', '#c3e2a2'], mount: '#cfe2c6' },
@@ -9860,7 +9861,7 @@ fx += '<i class="wbg-p ' + t.fx + '" style="left:' + (Math.random() * 100).toFix
 } else if (t.fx === 'firefly') {
 for (i = 0; i < 9; i++) fx += '<i class="wbg-p firefly" style="left:' + (Math.random() * 100).toFixed(1) + '%;bottom:' + (12 + Math.random() * 26).toFixed(1) + 'px;--fd:' + (1.8 + Math.random() * 1.6).toFixed(2) + 's;--fdl:' + (-Math.random() * 3).toFixed(2) + 's"></i>';
 }
-if (t.time === 'night' || t.time === 'dawn') {
+if (false) {   /* 반짝이는 별(눈처럼 보임) 없음 */
 for (i = 0; i < (t.time === 'night' ? 16 : 6); i++) fx += '<i class="wbg-p star" style="left:' + (Math.random() * 100).toFixed(1) + '%;top:' + (3 + Math.random() * 26).toFixed(1) + 'px;--fd:' + (1.2 + Math.random() * 1.6).toFixed(2) + 's;--fdl:' + (-Math.random() * 2).toFixed(2) + 's"></i>';
 }
 el.innerHTML = t.svg + fx;
@@ -9943,6 +9944,8 @@ suseo:   { ko: '수서', en: 'Suseo', jp: '水西　スソ', trains: ['SRT'] },
 gangneung: { ko: '강릉', en: 'Gangneung', jp: '江陵　カンヌン', trains: ['KTX-이음', 'KTX-산천'] },
 mokpo:   { ko: '목포', en: 'Mokpo', jp: '木浦　モクポ', trains: ['SRT', 'KTX-산천', 'KTX-청룡', 'KTX-적룡', 'ITX-새마을', '새마을호'] },
 daejeon: { ko: '대전', en: 'Daejeon', jp: '大田　テジョン', trains: ['KTX-이음', 'KTX-산천', 'KTX-청룡', 'KTX-적룡', 'SRT', 'ITX-새마을', 'ITX-마음', '새마을호'] },
+gimyujeong: { ko: '김유정', en: 'Gimyujeong', jp: '金裕貞　キムユジョン', trains: ['ITX-마음', 'ITX-새마을', '새마을호', '증기기관차'] },
+simcheon: { ko: '심천', en: 'Simcheon', jp: '深川　シムチョン', trains: ['ITX-마음', 'ITX-새마을', '새마을호', '증기기관차'] },
 jinju:   { ko: '진주', en: 'Jinju', jp: '晋州　チンジュ', trains: ['KTX-산천', 'SRT', 'ITX-새마을', 'ITX-마음', '새마을호'] }
 };
 var SIGN_NAMES = [
@@ -9953,7 +9956,15 @@ var SIGN_NAMES = [
 { ko: '의정부', en: 'Uijeongbu', jp: '議政府　ウィジョンブ' },
 { ko: '목포', en: 'Mokpo', jp: '木浦　モクポ' },
 { ko: '동대구', en: 'Dongdaegu', jp: '東大邱　トンデグ' },
-{ ko: '부산', en: 'Busan', jp: '釜山　プサン' }
+{ ko: '부산', en: 'Busan', jp: '釜山　プサン' },
+{ ko: '속초', en: 'Sokcho', jp: '束草　ソクチョ' },
+{ ko: '천안', en: 'Cheonan', jp: '天安　チョナン' },
+{ ko: '오송', en: 'Osong', jp: '五松　オソン' },
+{ ko: '정읍', en: 'Jeongeup', jp: '井邑　チョンウプ' },
+{ ko: '상봉', en: 'Sangbong', jp: '上鳳　サンボン' },
+{ ko: '원주', en: 'Wonju', jp: '原州　ウォンジュ' },
+{ ko: '김천구미', en: 'Gimcheon(Gumi)', jp: '金泉亀尾　キムチョングミ' },
+{ ko: '영주', en: 'Yeongju', jp: '榮州　ヨンジュ' }
 ];
 var stopTimers = [];
 var playSeq = 0;   /* 연달아 호출되면 마지막 호출만 그림 */
@@ -9972,7 +9983,9 @@ o += '<rect x="46" y="17" width="48" height="35" fill="#c97f5e"/><rect x="46" y=
 '<rect x="68.4" y="-1" width="3.2" height="3.4" fill="#5fa594"/>' +
 '<path d="M57 44 L57 30 Q57 20 70 20 Q83 20 83 30 L83 44Z" fill="#efe8dc"/>' +
 '<path class="win" d="M59.5 40 L59.5 30.5 Q59.5 22.5 70 22.5 Q80.5 22.5 80.5 30.5 L80.5 40Z" fill="#4d6680"/>' +
-'<path d="M70 22.5 V40 M59.5 31 H80.5" stroke="#efe8dc" stroke-width=".8"/>' +
+'<path d="M70 31 V40 M59.5 31 H80.5" stroke="#efe8dc" stroke-width=".8"/>' +
+'<path d="M61.5 30 V28 Q62.5 23.6 70 23.4 Q77.5 23.6 78.5 28 V30Z" fill="#33475f"/>' +
+'<text x="70" y="29.1" text-anchor="middle" font-size="5" letter-spacing=".6" fill="#fff" ' + KF + '>서울역</text>' +
 '<circle cx="70" cy="34" r="3.2" fill="#fbf7ef" stroke="#c9b48a" stroke-width=".6"/><path d="M70 32 V34 H71.6" stroke="#333" stroke-width=".5" fill="none"/>' +
 '<path d="M60 52 V47 Q60 44.5 63 44.5 Q66 44.5 66 47 V52Z M67 52 V47 Q67 44.5 70 44.5 Q73 44.5 73 47 V52Z M74 52 V47 Q74 44.5 77 44.5 Q80 44.5 80 47 V52Z" fill="#5a4a3e"/>';
 } else if (key === 'suseo') {   /* 수서역(SRT): 하얀 쐐기 모양 지붕 + 금빛 곡선 띠 + 유리벽 */
@@ -10008,6 +10021,47 @@ o += '<rect class="win" x="5" y="27" width="128" height="6" fill="#3f6aa3" opaci
 '<text x="22" y="32" font-size="5.6" fill="#fff" ' + KF + '>대전역</text>' +
 '<text x="21.5" y="41.4" font-size="2.8" fill="#fff" font-family="Arial,sans-serif" font-weight="700">Daejeon Station 大田驛</text>' +
 '<polygon points="44,44 66,44 64,46 46,46" fill="#e6ebf1"/><rect x="47" y="46" width="16" height="6" fill="#20375e"/>';
+} else if (key === 'gimyujeong') { /* 김유정역(옛 역사): 크림색 벽, 초록 박공지붕, 파란 역명판, 하늘색 문 */
+o += '<polygon points="70,26 80,11 128,11 136,26" fill="#3f7a5a"/>';
+for (x = 84; x < 130; x += 3.4) o += '<path d="M' + x.toFixed(1) + ' 12V26" stroke="#346a4d" stroke-width=".45"/>';
+o += '<rect x="104" y="6" width="5" height="7" fill="#3a7254"/>' +
+'<rect x="18" y="26" width="116" height="26" fill="#f1e2c3"/>' +
+'<polygon points="28,27 52,3 76,27" fill="#f1e2c3"/>' +
+'<path d="M25 29 L52 2 L79 29" stroke="#2f6b4c" stroke-width="3.2" fill="none" stroke-linejoin="round"/>' +
+'<path d="M25 29 L52 2 L79 29" stroke="#4f9270" stroke-width="1" fill="none" stroke-linejoin="round"/>' +
+'<rect x="41" y="13.5" width="22" height="8" rx=".6" fill="#2766c9" stroke="#e6eefb" stroke-width=".5"/>' +
+'<text x="52" y="19.6" text-anchor="middle" font-size="4.6" fill="#fff" ' + KF + '>김유정</text>' +
+'<polygon points="22,30 84,30 86,33 20,33" fill="#2f6b4c"/><rect x="20" y="33" width="66" height=".9" fill="#e08a4a"/>' +
+'<path d="M86 30 Q88 36 87 52" stroke="#e08a4a" stroke-width=".8" fill="none"/>' +
+'<rect class="win" x="45" y="37" width="10" height="15" fill="#bcd8e6"/><path d="M50 37V52 M45 43H55" stroke="#8fb2c6" stroke-width=".6"/>' +
+'<rect x="44.5" y="36.5" width="11" height="15.5" fill="none" stroke="#7fa6c6" stroke-width=".8"/>' +
+'<rect class="win" x="28" y="38" width="10" height="8" fill="#bcd8e6" stroke="#7fa6c6" stroke-width=".8"/><rect class="win" x="62" y="38" width="10" height="8" fill="#bcd8e6" stroke="#7fa6c6" stroke-width=".8"/>' +
+'<rect x="23" y="34" width="1.6" height="18" fill="#9fc0dc"/><rect x="80" y="34" width="1.6" height="18" fill="#9fc0dc"/>' +
+'<path d="M24.6 36 l5 -2.2 M80 36 l-5 -2.2" stroke="#9fc0dc" stroke-width="1"/>' +
+'<rect class="win" x="96" y="34" width="9" height="11" fill="#bcd8e6" stroke="#7fa6c6" stroke-width=".8"/><rect class="win" x="114" y="34" width="9" height="11" fill="#bcd8e6" stroke="#7fa6c6" stroke-width=".8"/>' +
+'<rect x="18" y="50" width="116" height="2" fill="#e2cfaa"/>';
+} else if (key === 'simcheon') {  /* 심천역(옛 역사): 크림색 회벽, 초록 기와지붕, 박공 2개, 현관 지붕 */
+o += '<polygon points="28,25 35,15 118,15 126,25" fill="#5b7563"/>';
+for (x = 37; x < 118; x += 3.2) o += '<path d="M' + x.toFixed(1) + ' 15.5V25" stroke="#4d6655" stroke-width=".4"/>';
+o += '<rect x="80" y="8" width="5" height="8" fill="#e9e2d6"/>' +
+'<polygon points="31,25 53,5 75,25" fill="#efe6d8"/><path d="M29 26.5 L53 4.5 L77 26.5" stroke="#e7dfd2" stroke-width="1.6" fill="none"/>' +
+'<path d="M29 26.5 L53 4.5 L77 26.5" stroke="#9a8f80" stroke-width=".4" fill="none"/><circle cx="53" cy="4.2" r="1.3" fill="#5b7563"/>' +
+'<rect x="43" y="12.5" width="18" height="8.5" fill="#f6f4ee" stroke="#9aa59e" stroke-width=".4"/><rect x="61" y="12.5" width="2.2" height="8.5" fill="#3c9a87"/>' +
+'<text x="52" y="19.3" text-anchor="middle" font-size="5" fill="#333" ' + KF + '>심천</text>' +
+'<rect x="94" y="23" width="40" height="29" fill="#efe6d8"/>' +
+'<polygon points="94,25 114,10 134,25" fill="#efe6d8"/><path d="M92 26.2 L114 9.4 L136 26.2" stroke="#e7dfd2" stroke-width="1.6" fill="none"/>' +
+'<path d="M92 26.2 L114 9.4 L136 26.2" stroke="#9a8f80" stroke-width=".4" fill="none"/><rect x="111" y="15" width="6" height="5" fill="#d8cfc0"/>' +
+'<rect x="12" y="33" width="84" height="19" fill="#efe6d8"/>' +
+'<polygon points="6,35 14,26 92,26 98,35" fill="#5b7563"/>';
+for (x = 12; x < 95; x += 3.2) o += '<path d="M' + x.toFixed(1) + ' 26.5V35" stroke="#4d6655" stroke-width=".4"/>';
+o += '<rect x="6" y="35" width="92" height="1.4" fill="#e7dfd2"/>' +
+'<rect x="15" y="36" width="1.6" height="16" fill="#f4efe6"/><rect x="45" y="36" width="1.6" height="16" fill="#f4efe6"/><rect x="72" y="36" width="1.6" height="16" fill="#f4efe6"/>' +
+'<path d="M16.6 38 l4 -2 M45 38 l-4 -2 M46.6 38 l4 -2 M72 38 l-4 -2" stroke="#f4efe6" stroke-width=".8"/>' +
+'<rect class="win" x="21" y="39" width="12" height="8" fill="#7c8a96" stroke="#c9c2b6" stroke-width=".6"/>' +
+'<rect class="win" x="50" y="39" width="10" height="13" fill="#9fb8c6" stroke="#c9c2b6" stroke-width=".6"/><path d="M55 39V52" stroke="#c9c2b6" stroke-width=".5"/>' +
+'<rect x="63" y="40" width="5" height="12" fill="#8a6a45"/>' +
+'<rect class="win" x="101" y="34" width="26" height="11" fill="#3d4a57" stroke="#c9c2b6" stroke-width=".7"/><path d="M114 34V45 M101 40H127" stroke="#c9c2b6" stroke-width=".5"/>' +
+'<rect x="12" y="49.5" width="122" height="2.5" fill="#e6c5b4"/>';
 } else if (key === 'jinju') {    /* 진주역: 한옥 기와지붕 + 붉은 기둥 + 단청 */
 o += '<path d="M1 27 Q9 25.5 17 24.6 L29 9 L111 9 L123 24.6 Q131 25.5 139 27 L136 28.6 Q70 26.4 4 28.6Z" fill="#596068"/>' +
 '<path d="M27 9.5 Q70 7 113 9.5 L113 8 Q70 5.5 27 8Z" fill="#3e444b"/>' +
@@ -10037,7 +10091,11 @@ return o + '</svg>';
 function setStationSign(card, st) {
 var t = card.querySelectorAll('.welcome-station text');
 var v = st || SIGN_NAMES[Math.floor(Math.random() * SIGN_NAMES.length)];
-if (t.length >= 3) { t[0].textContent = v.ko; t[1].textContent = v.en; t[2].textContent = v.jp; }
+if (t.length >= 3) {
+t[0].textContent = v.ko; t[1].textContent = v.en; t[2].textContent = v.jp;
+t[0].setAttribute('font-size', v.ko.length >= 4 ? '13' : '16');
+t[1].setAttribute('font-size', v.en.length > 13 ? '5' : '5.6');
+}
 }
 function pickStation(trainName) {
 if (window.__wtStop !== undefined) return window.__wtStop;   /* 화면 확인용 */
