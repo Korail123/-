@@ -64,7 +64,11 @@ self.addEventListener('push', function (e) {
   var d = {};
   try { d = e.data ? e.data.json() : {}; } catch (err) { d = { body: e.data ? e.data.text() : '' }; }
   var title = d.title || '출근 알람';
-  e.waitUntil(readPrefs().then(function (p) {
+  /* 역 통과·곧 도착 알림: 앱이 열려 있으면 앱 화면에 열차 애니메이션 팝업도 띄움 */
+  var toApp = d.pass ? self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+    list.forEach(function (c) { c.postMessage({ type: 'rs-pass', pass: d.pass }); });
+  }).catch(function () {}) : Promise.resolve();
+  e.waitUntil(Promise.all([toApp, readPrefs().then(function (p) {
     var sound = p.sound !== false, vib = p.vib !== false;
     return self.registration.showNotification(title, {
       body: d.body || '출근 시간이 다가오고 있어요.',
@@ -75,17 +79,23 @@ self.addEventListener('push', function (e) {
       icon: 'icon-192.png',
       badge: 'icon-192.png',
       vibrate: vib ? [500, 250, 500, 250, 500, 250, 500] : [],  /* 안드로이드 8 이상은 폰의 알림 진동 설정이 우선 */
-      data: { url: self.registration.scope }
+      data: { url: self.registration.scope, pass: d.pass || null }
     });
-  }));
+  })]));
 });
 
 self.addEventListener('notificationclick', function (e) {
   e.notification.close();
-  var url = (e.notification.data && e.notification.data.url) || self.registration.scope;
+  var data = e.notification.data || {};
+  var url = data.url || self.registration.scope;
+  /* 역 통과·곧 도착 알림을 누르면 앱에서 열차 애니메이션 팝업을 다시 보여줌 */
+  if (data.pass) url = self.registration.scope + '?passpop=' + encodeURIComponent(JSON.stringify(data.pass));
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
     for (var i = 0; i < list.length; i++) {
-      if (list[i].url.indexOf(self.registration.scope) === 0 && 'focus' in list[i]) return list[i].focus();
+      if (list[i].url.indexOf(self.registration.scope) === 0 && 'focus' in list[i]) {
+        if (data.pass) list[i].postMessage({ type: 'rs-pass', pass: data.pass, tap: true });
+        return list[i].focus();
+      }
     }
     return self.clients.openWindow(url);
   }));

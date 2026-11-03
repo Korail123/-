@@ -1293,6 +1293,26 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <li class="ns-dim">아이폰은 홈 화면에 추가해야 알림 가능</li>
       </ul>
     </div>
+    <div id="pass-card" class="ns-card" style="display:none">
+      <div class="ns-card-title">역 통과 · 곧 도착 알림 <small class="pass-beta">시험 중</small></div>
+      <div class="pass-lab">감시할 열차번호 <small>오늘 근무표에 있으면 알림</small></div>
+      <div id="pass-trains" class="pass-tags"></div>
+      <div class="pass-input"><input id="pass-train-in" maxlength="8" placeholder="열차번호 추가" autocomplete="off" onkeydown="if(event.key==='Enter')passAdd('trains')"><button type="button" onclick="passAdd('trains')">추가</button></div>
+      <div class="pass-lab">알림 받을 역</div>
+      <div id="pass-stations" class="pass-tags"></div>
+      <div class="pass-input"><input id="pass-station-in" maxlength="20" placeholder="역 이름 추가 (예: 팔당)" autocomplete="off" onkeydown="if(event.key==='Enter')passAdd('stations')"><button type="button" onclick="passAdd('stations')">추가</button></div>
+      <div class="pass-opts">
+        <div class="pass-opt"><label class="pass-chk"><input type="checkbox" id="pass-soon" onchange="passOptChanged()"><span>곧 도착</span></label><div id="pass-lead" class="pass-seg pass-seg-s"></div></div>
+        <div class="pass-opt"><label class="pass-chk"><input type="checkbox" id="pass-pass" onchange="passOptChanged()"><span>통과</span></label><small>실제 통과 시각이 찍히면</small></div>
+      </div>
+      <div id="pass-today" class="pass-today"></div>
+      <div class="pass-actions">
+        <button type="button" class="pass-add" onclick="passCheckNow()">지금 조회</button>
+        <button type="button" class="pass-try" onclick="passTestPopup()">팝업 미리보기</button>
+      </div>
+      <div class="pass-raw-row"><span id="pass-saved"></span><button type="button" class="pass-raw-link" onclick="passShowRaw()">NXLogis 원본 보기</button></div>
+      <div id="pass-raw" class="pass-raw" style="display:none"><textarea readonly></textarea><button type="button" onclick="passCopyRaw()">복사</button></div>
+    </div>
     <div class="ns-card ns-test-card">
     <div class="ns-card-title">조회 · 테스트</div>
     <div class="ns-tests ns-tests-3">
@@ -1305,6 +1325,25 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div id="nx-result" class="ns-result"></div>
     <div class="dia-dialog-actions">
       <button type="button" class="dia-text-btn" onclick="closeNxSettings()">닫기</button>
+    </div>
+  </div>
+</div>
+<div id="pass-pop-panel" class="dia-modal" style="z-index:412" onclick="if(event.target===this)closePassPop()">
+  <div class="dia-dialog pp-dialog">
+    <div id="pp-pager" class="pp-pager" style="display:none"><button type="button" onclick="passPage(-1)" aria-label="이전 열차">‹</button><span id="pp-page"></span><button type="button" onclick="passPage(1)" aria-label="다음 열차">›</button></div>
+    <div id="pp-badge" class="pp-badge"></div>
+    <div id="pp-title" class="pp-title"></div>
+    <div id="pp-track" class="pp-track" onclick="passReplay()" title="다시 보기">
+      <div class="pp-hills"></div>
+      <div class="pp-rail"></div>
+      <div id="pp-stops"></div>
+      <div id="pp-train" class="pp-train"><i class="pp-wind"></i><img src="data:image/webp;base64,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" alt="" aria-hidden="true"></div>
+    </div>
+    <div id="pp-info" class="pp-info"></div>
+    <div id="pp-zone" class="pp-zone"></div>
+    <div class="dia-dialog-actions" style="gap:10px">
+      <button type="button" class="dia-text-btn" onclick="passOpenNx()" style="margin-right:auto">NXLogis ↗</button>
+      <button type="button" class="dia-text-btn pass-save" onclick="closePassPop()">확인</button>
     </div>
   </div>
 </div>
@@ -7962,6 +8001,367 @@ function pushClearOnLogout() {
     if (!document.hidden) setTimeout(function () { pushSyncAlarms(false); }, 1500);
   });
 })();
+/* ============ 역 통과 · 곧 도착 알림 (NXLogis) ============
+   내가 고른 열차가 내가 고른 역에 곧 도착하거나 통과하면 알림
+   - 서버(push-alarm)가 1분마다 NXLogis로 확인 → 푸시 알림(앱이 꺼져도)
+   - 앱이 열려 있으면 열차가 달려가는 애니메이션 팝업
+   - 시험 중: 관리자만 */
+var PASS_ALLOWED_IDS = ['199878'];
+var PASS_FN = 'smart-handler';        /* nx-check 함수 주소 */
+function passAllowed() { return PASS_ALLOWED_IDS.indexOf(String(getCurrentUser().employeeId || '')) >= 0; }
+var passState = { date: '', train: '', route: null, idx: -1, lead: 10, list: [], raw: null };
+function passHm(ms, sec) {
+  if (ms === null || ms === undefined) return '-';
+  var d = new Date(ms + 9 * 3600000);
+  return pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()) + (sec ? ':' + pad2(d.getUTCSeconds()) : '');
+}
+function passDelayChip(n) {
+  if (n === null || n === undefined) return '';
+  if (n > 0) return '<span class="pp-chip late">' + n + '분 지연</span>';
+  if (n < 0) return '<span class="pp-chip early">' + (-n) + '분 빠름</span>';
+  return '<span class="pp-chip ontime">정시</span>';
+}
+function passSame(a, b) { return String(a || '').replace(/역$/, '') === String(b || '').replace(/역$/, ''); }
+/* NXLogis 역별 운행 정보 (nx-check 함수의 route 모드) */
+function passRoute(train, dateKey, raw, cb) {
+  var headers = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY };
+  if (/^eyJ/.test(SUPABASE_KEY)) headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
+  var ctl = null, timer = null;
+  try { ctl = new AbortController(); timer = setTimeout(function () { ctl.abort(); }, 30000); } catch (e) {}
+  fetch(SUPABASE_URL + '/functions/v1/' + PASS_FN, {
+    method: 'POST', headers: headers, signal: ctl ? ctl.signal : undefined,
+    body: JSON.stringify({ mode: 'route', train: train, date: String(dateKey).replace(/-/g, ''), raw: !!raw })
+  }).then(function (r) { return r.json(); }).then(function (j) {
+    if (timer) clearTimeout(timer);
+    if (j && !j.stations && !j.message && j.error) j.message = String(j.error);
+    cb(j || { success: false, message: '응답이 없습니다.' });
+  }).catch(function () {
+    if (timer) clearTimeout(timer);
+    cb({ success: false, message: '서버에 연결하지 못했습니다. (nx-check 함수 배포 확인)' });
+  });
+}
+/* 곧 도착 / 통과 판단 (서버 push-alarm의 passEval과 같은 규칙) */
+function passEval(route, w, now) {
+  var st = (route && route.stations) || [];
+  var i = w.idx;
+  if (!st[i] || !passSame(st[i].name, w.station)) {
+    i = -1;
+    for (var k0 = 0; k0 < st.length; k0++) if (passSame(st[k0].name, w.station)) { i = k0; break; }
+  }
+  if (i < 0) return null;
+  var s = st[i], passed = s.act !== null && s.act !== undefined;
+  for (var a = i + 1; a < st.length && !passed; a++) if (st[a].act !== null && st[a].act !== undefined) passed = true;
+  if (!passed && route.passedIdx !== null && route.passedIdx !== undefined && route.passedIdx >= i) passed = true;
+  var delay = route.delay, last = null;
+  for (var k = Math.min(i, st.length - 1); k >= 0; k--) {
+    if (st[k].act !== null && st[k].act !== undefined) {
+      if (st[k].delay !== null && st[k].delay !== undefined && !last) delay = st[k].delay;
+      if (!last) last = { name: st[k].name, act: st[k].act };
+    }
+  }
+  if (delay === null || delay === undefined) delay = 0;
+  var expect = s.plan !== null && s.plan !== undefined ? s.plan + delay * 60000 : null;
+  return {
+    idx: i, passed: passed, soon: !passed && expect !== null && expect - now <= (w.lead || 10) * 60000,
+    delay: delay, expect: expect, plan: s.plan, act: s.act,
+    prev: st.slice(Math.max(0, i - 2), i).map(function (x) { return x.name; }),
+    next: st.slice(i + 1, i + 2).map(function (x) { return x.name; }),
+    last: last, zone: route.zone || ''
+  };
+}
+/* ----- 설정 (감시 열차번호 + 역 + 곧 도착/통과) ----- */
+var PASS_DEFAULT_TRAINS = ['3224', '3226', '1208', '3334'];
+var passCfg = null, passSaveTimer = null;
+function passCfgKey() { return 'passCfg_' + (getCurrentUser().employeeId || ''); }
+function passCfgLocal() { try { return JSON.parse(LS.getItem(passCfgKey()) || 'null'); } catch (e) { return null; } }
+function passCfgDefault() { return { trains: PASS_DEFAULT_TRAINS.slice(), stations: [], lead: 10, soon: true, pass: true }; }
+function passTrainKey(t) { return String(t || '').replace(/[^0-9]/g, ''); }
+/* 근무표(오늘~모레)에 있는 감시 열차 */
+function passMyDays(cfg) {
+  cfg = cfg || passCfg || passCfgLocal();
+  if (!cfg || !cfg.trains || !cfg.trains.length) return [];
+  var want = cfg.trains.map(passTrainKey), out = [];
+  try {
+    nxCollectTrains(2).forEach(function (x) {
+      if (!x.link && want.indexOf(passTrainKey(x.train)) >= 0) out.push({ date: x.date, train: x.train });
+    });
+  } catch (e) {}
+  return out;
+}
+function passCardRender() {
+  var card = $('pass-card');
+  if (!card) return;
+  card.style.display = passAllowed() ? '' : 'none';
+  if (!passAllowed()) return;
+  passCfg = passCfgLocal() || passCfgDefault();
+  passRender();
+  var u = getCurrentUser();
+  api({ action: 'passcfg_get', employeeId: u.employeeId, token: u.token }, function (r) {
+    if (r && r.success && r.cfg) { passCfg = { trains: r.cfg.trains || [], stations: r.cfg.stations || [], lead: r.cfg.lead || 10, soon: r.cfg.soon !== false, pass: r.cfg.pass !== false }; }
+    else if (r && r.success && !r.cfg && !passCfgLocal()) { passCfg = passCfgDefault(); passSaveSoon(); }
+    try { LS.setItem(passCfgKey(), JSON.stringify(passCfg)); } catch (e) {}
+    passRender();
+  });
+}
+function passRender() {
+  var c = passCfg;
+  if (!c || !$('pass-trains')) return;
+  var days = passMyDays(c), t = todayKST(), today = getDateKey(t.y, t.m, t.d);
+  var onToday = days.filter(function (d) { return d.date === today; }).map(function (d) { return passTrainKey(d.train); });
+  $('pass-trains').innerHTML = c.trains.length ? c.trains.map(function (x, i) {
+    return '<span class="' + (onToday.indexOf(passTrainKey(x)) >= 0 ? 'on' : '') + '">' + esc(x) + '<button type="button" onclick="passRemove(\'trains\',' + i + ')" aria-label="삭제">✕</button></span>';
+  }).join('') : '<small>열차번호를 추가하세요.</small>';
+  $('pass-stations').innerHTML = c.stations.length ? c.stations.map(function (x, i) {
+    return '<span>' + esc(x) + '<button type="button" onclick="passRemove(\'stations\',' + i + ')" aria-label="삭제">✕</button></span>';
+  }).join('') : '<small>알림 받을 역을 추가하세요.</small>';
+  $('pass-soon').checked = !!c.soon;
+  $('pass-pass').checked = !!c.pass;
+  $('pass-lead').style.visibility = c.soon ? '' : 'hidden';
+  $('pass-lead').innerHTML = [5, 10, 15].map(function (m) {
+    return '<button type="button" class="' + (m === c.lead ? 'on' : '') + '" onclick="passSetLead(' + m + ')">' + m + '분 전</button>';
+  }).join('');
+  $('pass-today').innerHTML = days.length
+    ? '근무표의 감시 열차: ' + days.map(function (d) { var p = d.date.split('-'); return '<b>' + esc(d.train) + '</b> (' + (+p[1]) + '/' + (+p[2]) + ')'; }).join(', ') +
+      (c.stations.length ? '' : '<br><span style="color:#c06416">역을 추가해야 알림이 와요.</span>')
+    : '오늘~모레 근무표에 감시 열차가 없어요.';
+}
+function passAdd(kind) {
+  var inp = $(kind === 'trains' ? 'pass-train-in' : 'pass-station-in');
+  var v = String(inp.value || '').trim();
+  if (kind === 'trains') {
+    v = v.toUpperCase().replace(/\s+/g, '');
+    if (!/^[A-Z]{0,3}\d{1,6}$/.test(v)) { showToast('열차번호를 확인해주세요.'); return; }
+    if (passCfg.trains.length >= 20) { showToast('열차는 20개까지 넣을 수 있어요.'); return; }
+  } else {
+    v = v.replace(/역$/, '');
+    if (!v || v.length > 20) { showToast('역 이름을 확인해주세요.'); return; }
+    if (passCfg.stations.length >= 10) { showToast('역은 10개까지 넣을 수 있어요.'); return; }
+  }
+  if (passCfg[kind].indexOf(v) < 0) passCfg[kind].push(v);
+  inp.value = '';
+  passRender(); passSaveSoon();
+}
+function passRemove(kind, i) { passCfg[kind].splice(i, 1); passRender(); passSaveSoon(); }
+function passSetLead(m) { passCfg.lead = m; passRender(); passSaveSoon(); }
+function passOptChanged() {
+  passCfg.soon = $('pass-soon').checked; passCfg.pass = $('pass-pass').checked;
+  if (!passCfg.soon && !passCfg.pass) showToast('곧 도착 · 통과가 모두 꺼져 있으면 알림이 오지 않아요.');
+  passRender(); passSaveSoon();
+}
+function passSaveSoon() {
+  if (passSaveTimer) clearTimeout(passSaveTimer);
+  if ($('pass-saved')) $('pass-saved').textContent = '저장 중...';
+  passSaveTimer = setTimeout(function () { passSaveNow(true); }, 700);
+}
+/* 설정 + 근무표의 감시 열차(오늘~모레)를 서버에 올림 */
+function passSaveNow(fromUi) {
+  var c = passCfg || passCfgLocal();
+  var u = getCurrentUser();
+  if (!c || !u.token) return;
+  var days = passMyDays(c);
+  api({ action: 'passcfg_save', employeeId: u.employeeId, token: u.token, trains: c.trains, stations: c.stations,
+        lead: c.lead, soon: c.soon, pass: c.pass, days: days }, function (r) {
+    if (r && r.success) {
+      try { LS.setItem(passCfgKey(), JSON.stringify(c)); LS.setItem('passSync_' + u.employeeId, JSON.stringify({ at: Date.now(), days: days })); } catch (e) {}
+      if ($('pass-saved')) $('pass-saved').textContent = '저장됨';
+      if (fromUi) {
+        if (!('Notification' in window) || Notification.permission !== 'granted') showToast('알림 설정에서 알림을 허용해야 앱이 꺼져 있어도 울려요.');
+        try { pushEnsureSub(true).then(function () { pushSyncAlarms(true); }); } catch (e) {}
+      }
+    } else if ($('pass-saved')) $('pass-saved').textContent = (r && r.message) || '저장하지 못했습니다.';
+  });
+}
+/* 앱을 열 때·돌아올 때: 근무표가 바뀌었거나 6시간 지났으면 감시 열차 목록을 다시 올림 (알림 없이) */
+function passAutoSync() {
+  if (!passAllowed() || !getCurrentUser().token) return;
+  var c = passCfgLocal();
+  if (!c) return;
+  var days = passMyDays(c), old = null;
+  try { old = JSON.parse(LS.getItem('passSync_' + getCurrentUser().employeeId) || 'null'); } catch (e) {}
+  if (old && JSON.stringify(old.days) === JSON.stringify(days) && Date.now() - old.at < 6 * 3600000) return;
+  passCfg = c;
+  passSaveNow(false);
+}
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'visible') setTimeout(function () { try { passAutoSync(); } catch (e) {} }, 3000);
+});
+setTimeout(function () { try { passAutoSync(); } catch (e) {} }, 8000);
+/* 지금 조회: 오늘 근무표의 감시 열차를 NXLogis에서 읽어 지금 위치를 그림으로 */
+function passTargetFor(route, stations) {
+  var st = route.stations || [], now = Date.now(), cand = [];
+  (stations || []).forEach(function (name) {
+    for (var i = 0; i < st.length; i++) if (passSame(st[i].name, name)) { cand.push(i); break; }
+  });
+  cand.sort(function (a, b) { return a - b; });
+  for (var k = 0; k < cand.length; k++) {
+    var ev = passEval(route, { idx: cand[k], station: st[cand[k]].name, lead: 10 }, now);
+    if (ev && !ev.passed) return { idx: cand[k], mine: true };
+  }
+  if (cand.length) return { idx: cand[cand.length - 1], mine: true };
+  var nx = Math.min(st.length - 1, (route.passedIdx >= 0 ? route.passedIdx : -1) + 1);
+  return nx >= 0 ? { idx: nx, mine: false } : null;
+}
+function passCheckNow() {
+  var c = passCfg || passCfgLocal() || passCfgDefault();
+  var t = todayKST(), today = getDateKey(t.y, t.m, t.d);
+  var list = passMyDays(c).filter(function (d) { return d.date === today; });
+  var fallback = false;
+  if (!list.length) {
+    list = c.trains.slice(0, 6).map(function (x) { return { date: today, train: x }; });
+    fallback = true;
+  }
+  if (!list.length) { showToast('감시할 열차번호를 먼저 추가해주세요.'); return; }
+  showToast((fallback ? '오늘 근무표에 감시 열차가 없어 목록의 열차를 ' : '') + list.map(function (x) { return x.train; }).join(', ') + '열차를 조회하는 중...');
+  var pages = [], left = list.length;
+  list.forEach(function (it, n) {
+    passRoute(it.train, it.date, false, function (j) {
+      var page = null;
+      if (j && j.success) {
+        var tg = passTargetFor(j, c.stations);
+        if (tg) {
+          var name = j.stations[tg.idx].name;
+          var ev = passEval(j, { idx: tg.idx, station: name, lead: c.lead }, Date.now());
+          if (ev) page = Object.assign({ kind: 'now', train: it.train, station: name, date: it.date, note: tg.mine ? '' : '정한 역이 이 열차 경로에 없어 다음 역을 보여줘요.' }, ev);
+        }
+      } else if (!fallback || list.length === 1) {
+        page = { kind: 'err', train: it.train, date: it.date, msg: (j && j.message) || '조회하지 못했습니다.' };
+      }
+      if (page) pages[n] = page;
+      if (--left === 0) {
+        pages = pages.filter(Boolean);
+        if (!pages.length) { showToast('조회된 열차가 없어요. (오늘 운행하지 않는 열차일 수 있어요)'); return; }
+        showPassPages(pages);
+      }
+    });
+  });
+}
+/* 관리자: NXLogis 원본 응답 보기 (항목 이름 확인용) */
+function passShowRaw() {
+  var c = passCfg || passCfgLocal() || passCfgDefault();
+  var t = todayKST(), today = getDateKey(t.y, t.m, t.d);
+  var d = passMyDays(c).filter(function (x) { return x.date === today; })[0];
+  var train = d ? d.train : (c.trains[0] || '');
+  if (!train) { showToast('열차번호를 먼저 추가해주세요.'); return; }
+  var box = $('pass-raw'), ta = box.querySelector('textarea');
+  box.style.display = ''; ta.value = train + '열차 원본을 불러오는 중...';
+  passRoute(train, today, true, function (j) { ta.value = JSON.stringify(j, null, 1).slice(0, 30000); });
+}
+function passCopyRaw() {
+  var ta = $('pass-raw').querySelector('textarea');
+  ta.select();
+  try { navigator.clipboard.writeText(ta.value).then(function () { showToast('복사했어요.'); }); } catch (e) { try { document.execCommand('copy'); showToast('복사했어요.'); } catch (e2) {} }
+}
+/* ----- 팝업: 선로 위로 열차가 달려감 ----- */
+var passPopData = null, passPopAnim = null, passPopTimers = [], passPages = [], passPageIdx = 0;
+function showPassPages(pages) {
+  passPages = pages; passPageIdx = 0;
+  passShowPage(true);
+}
+function passPage(dir) {
+  if (passPages.length < 2) return;
+  passPageIdx = (passPageIdx + dir + passPages.length) % passPages.length;
+  passShowPage(true);
+}
+function passShowPage(quiet) {
+  var pg = $('pp-pager');
+  pg.style.display = passPages.length > 1 ? '' : 'none';
+  $('pp-page').textContent = (passPageIdx + 1) + ' / ' + passPages.length;
+  passDraw(passPages[passPageIdx], quiet);
+}
+function showPassPopup(d, quiet) {
+  if (!d) return;
+  passPages = [d]; passPageIdx = 0;
+  passShowPage(quiet);
+}
+function passDraw(d, quiet) {
+  if (!d) return;
+  passPopData = d;
+  if (d.kind === 'err') {
+    $('pp-badge').className = 'pp-badge k-now'; $('pp-badge').textContent = '조회 실패';
+    $('pp-title').innerHTML = '<b>' + esc(d.train) + '</b>열차';
+    $('pp-stops').innerHTML = ''; $('pp-info').innerHTML = '<div class="pp-row"><span>' + esc(d.msg || '') + '</span></div>'; $('pp-zone').textContent = '';
+    if (passPopAnim) { try { passPopAnim.cancel(); } catch (e) {} }
+    $('pass-pop-panel').classList.add('active');
+    return;
+  }
+  var kind = d.kind === 'pass' ? 'pass' : d.kind === 'soon' ? 'soon' : 'now';
+  var badge = $('pp-badge');
+  badge.className = 'pp-badge k-' + kind;
+  badge.textContent = kind === 'pass' ? '통과' : kind === 'soon' ? '곧 도착' : (d.passed ? '지금 위치 · 통과함' : '지금 위치');
+  $('pp-title').innerHTML = '<b>' + esc(d.train) + '</b>열차 · <b>' + esc(d.station) + '</b>';
+  var rows = [];
+  if (kind === 'pass' || (kind === 'now' && d.passed)) {
+    rows.push('<div class="pp-row"><span>통과</span><b>' + (d.act ? passHm(d.act, true) : '확인됨') + '</b></div>');
+    rows.push('<div class="pp-row"><span>예정 ' + passHm(d.plan) + '</span>' + passDelayChip(d.delay) + '</div>');
+  } else {
+    rows.push('<div class="pp-row"><span>도착 예상</span><b>' + passHm(d.expect) + '</b></div>');
+    rows.push('<div class="pp-row"><span>예정 ' + passHm(d.plan) + '</span>' + passDelayChip(d.delay) + '</div>');
+    if (d.last) rows.push('<div class="pp-row"><span>직전 통과</span><span>' + esc(d.last.name) + ' ' + passHm(d.last.act) + '</span></div>');
+  }
+  $('pp-info').innerHTML = rows.join('');
+  $('pp-zone').textContent = (d.note ? d.note + ' ' : '') + (d.zone ? 'NXLogis: ' + d.zone : '');
+  $('pass-pop-panel').classList.add('active');
+  passReplay();
+  if (!quiet) { try { alarmBeep(); } catch (e) {} try { appVibrate([400, 150, 400, 150, 400]); } catch (e) {} }
+}
+function passReplay() {
+  var d = passPopData;
+  if (!d) return;
+  passPopTimers.forEach(clearTimeout); passPopTimers = [];
+  if (passPopAnim) { try { passPopAnim.cancel(); } catch (e) {} passPopAnim = null; }
+  var track = $('pp-track'), train = $('pp-train');
+  var W = track.clientWidth || 300, TW = 104;
+  var names = (d.prev || []).concat([d.station]).concat(d.next || []);
+  var ti = (d.prev || []).length, n = names.length;
+  var xs = names.map(function (_, i) { return n === 1 ? W * 0.62 : W * (0.12 + 0.76 * i / (n - 1)); });
+  var passed = d.kind === 'pass' || (d.kind === 'now' && d.passed);
+  $('pp-stops').innerHTML = names.map(function (nm, i) {
+    return '<div class="pp-stop' + (i < ti ? ' gone' : '') + (i === ti ? ' tgt' : '') + '" style="left:' + xs[i].toFixed(1) + 'px"><i></i><span>' + esc(nm) + '</span></div>';
+  }).join('');
+  var tgt = $('pp-stops').querySelector('.tgt');
+  var x0 = -TW - 20, x1, dur, ease;
+  if (passed) { x1 = W + 20; dur = 2600; ease = 'linear'; }
+  else if (d.kind === 'soon') { x1 = xs[ti] - 14 - TW; dur = 2300; ease = 'cubic-bezier(.2,.7,.3,1)'; }
+  else { x1 = (ti > 0 ? (xs[ti - 1] + xs[ti]) / 2 : xs[ti] - 50) - TW; dur = 2100; ease = 'cubic-bezier(.2,.7,.3,1)'; }
+  train.classList.add('run');
+  if (!train.animate) { train.style.transform = 'translateX(' + x1 + 'px)'; if (passed && tgt) tgt.classList.add('done'); return; }
+  passPopAnim = train.animate([{ transform: 'translateX(' + x0 + 'px)' }, { transform: 'translateX(' + x1 + 'px)' }], { duration: dur, easing: ease, fill: 'forwards' });
+  if (passed && tgt) {
+    var at = Math.max(0, (xs[ti] - TW - x0) / (x1 - x0) * dur);
+    passPopTimers.push(setTimeout(function () { tgt.classList.add('done'); }, at));
+  }
+  passPopTimers.push(setTimeout(function () { train.classList.remove('run'); }, dur));
+}
+function closePassPop() {
+  $('pass-pop-panel').classList.remove('active');
+  passPopTimers.forEach(clearTimeout); passPopTimers = [];
+}
+function passOpenNx() { if (passPopData) openNxLogis(passPopData.train, passPopData.date); }
+/* 미리보기 (가짜 데이터) */
+var passTestStep = 0;
+function passTestPopup() {
+  var now = Date.now(), kinds = ['soon', 'pass'];
+  var k = kinds[passTestStep++ % 2];
+  showPassPopup({ kind: k, train: '6129', station: '팔당', date: getDateKey(todayKST().y, todayKST().m, todayKST().d),
+    prev: ['도심', '덕소'], next: ['운길산'], plan: now + 5 * 60000, expect: now + 8 * 60000, act: k === 'pass' ? now : null,
+    delay: 3, passed: k === 'pass', last: { name: '덕소', act: now - 4 * 60000 }, zone: '덕소 - 팔당 간 운행 중 (미리보기)' });
+}
+/* 푸시 알림이 왔을 때 / 알림을 눌렀을 때 → 앱 화면에 팝업 */
+if ('serviceWorker' in navigator) {
+  try {
+    navigator.serviceWorker.addEventListener('message', function (e) {
+      if (e.data && e.data.type === 'rs-pass' && e.data.pass) showPassPopup(e.data.pass, !!e.data.tap);
+    });
+  } catch (e) {}
+}
+(function () {
+  var m = location.search.match(/[?&]passpop=([^&]+)/);
+  if (!m) return;
+  var d = null;
+  try { d = JSON.parse(decodeURIComponent(m[1])); } catch (e) {}
+  try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
+  if (d) setTimeout(function () { showPassPopup(d, true); }, 2600);
+})();
 /* ============ 열차 운휴 알림 (NXLogis) ============
    오늘·내일·모레 내 근무표의 열차번호를 Supabase 함수(nx-check)가 NXLogis에서 조회하고,
    '열차 운휴'가 나온 열차는 어느 날 어떤 열차인지 팝업으로 알립니다. */
@@ -7997,6 +8397,7 @@ function renderNxSub() {
 function openNxSettings() {
   $('nx-on').checked = getNxCfg().on;
   $('nx-result').textContent = '';
+  try { passCardRender(); } catch (e) {}
   $('nx-panel').classList.add('active');
 }
 function closeNxSettings() { $('nx-panel').classList.remove('active'); }
@@ -8925,6 +9326,7 @@ function closeTopOverlayForBack() {
     ['regulations-panel', closeRegulationsPanel],
     ['route-viewer', closeRouteViewer],
     ['notice-popup-panel', closeNoticePopup],
+    ['pass-pop-panel', closePassPop],
     ['nx-ring-panel', closeNxRing],
     ['nx-panel', closeNxSettings],
     ['perm-panel', closePermPanel],
@@ -9459,6 +9861,101 @@ to{transform:translate3d(calc(-1 * var(--train-w)),0,0)}
 .welcome-station.at-right{right:6px}
 .welcome-station.at-left{left:6px}
 #welcome-card.is-playing .welcome-station{animation:welcomeRailFade var(--scene,var(--pass,3600ms)) ease both}
+.pass-beta{font-size:10px;font-weight:800;color:#c06416;background:#fff0e3;border-radius:999px;padding:1px 7px;margin-left:4px;vertical-align:1px}
+.pass-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
+.pass-tags span{display:inline-flex;align-items:center;gap:4px;background:#eef5ff;color:#2f5aa8;border-radius:999px;padding:4px 6px 4px 11px;font-size:13px;font-weight:800}
+.pass-tags span.on{background:#2f6fd6;color:#fff}
+.pass-tags span button{border:0;background:rgba(255,255,255,.55);color:inherit;width:18px;height:18px;border-radius:50%;font-size:10px;line-height:18px;padding:0;cursor:pointer}
+.pass-tags small{font-size:11.5px;color:#9aa6b8;padding:3px 2px}
+.pass-lab small{font-weight:600;color:#9aa6b8;margin-left:4px}
+.pass-card-lab{}
+.pass-today{font-size:12px;color:#475467;background:#fff;border:1px solid #e6ecf3;border-radius:10px;padding:8px 10px;margin:8px 0}
+.pass-today b{color:#2f5aa8}
+.pass-raw-row{display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:11px;color:#8a96a8}
+.pass-raw-link{border:0;background:none;color:#8a96a8;font-size:11px;text-decoration:underline;padding:4px 0;cursor:pointer;font-family:inherit}
+.pp-pager{display:flex;align-items:center;justify-content:center;gap:12px;margin:-2px 0 6px;font-size:12px;font-weight:800;color:#667085}
+.pp-pager button{border:0;background:#eef2f7;color:#344054;width:28px;height:28px;border-radius:50%;font-size:17px;line-height:28px;padding:0;cursor:pointer}
+.pass-list{display:flex;flex-direction:column;gap:6px;margin:4px 0 8px}
+.pass-empty{font-size:12px;color:#8a96a8;padding:6px 2px}
+.pass-item{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e6ecf3;border-radius:12px;padding:8px 10px}
+.pass-item-main{flex:1;min-width:0}
+.pass-item-main b{display:block;font-size:13px;color:#1b2b45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pass-item-main small{display:block;font-size:11px;color:#7b889b;margin-top:1px}
+.pass-tag{display:inline-block;font-size:10px;font-weight:800;border-radius:999px;padding:1px 6px;margin-right:3px}
+.pass-tag.t-soon{background:#fff3e0;color:#c06416}.pass-tag.t-pass{background:#e6f6ec;color:#257a45}.pass-tag.t-done{background:#eef1f5;color:#8a96a8;text-decoration:line-through}
+.pass-item button{border:0;border-radius:9px;font-size:11.5px;font-weight:800;padding:6px 8px;cursor:pointer;flex:none}
+.pass-now{background:#e9f2ff;color:#2f5aa8}.pass-del{background:#f3f4f6;color:#8a96a8}
+.pass-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pass-add,.pass-try{border:0;border-radius:12px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit}
+.pass-add{background:#2f6fd6;color:#fff}.pass-try{background:#fff0e3;color:#c06416}
+.pass-lab{font-size:12px;font-weight:800;color:#667085;margin:10px 2px 5px}
+.pass-seg{display:flex;gap:5px;flex-wrap:wrap}
+.pass-seg button{flex:1;border:1px solid #d9e2ee;background:#fff;border-radius:10px;padding:7px 4px;font-size:12.5px;font-weight:700;color:#475467;cursor:pointer;font-family:inherit}
+.pass-seg button.on{background:#2f6fd6;border-color:#2f6fd6;color:#fff}
+.pass-seg-s button{flex:none;padding:5px 9px;font-size:11.5px}
+.pass-chips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
+.pass-chips button{border:1px solid #cfe0f7;background:#eef5ff;color:#2f5aa8;border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit}
+.pass-chips button.on{background:#2f5aa8;color:#fff;border-color:#2f5aa8}
+.pass-chips small{font-size:11.5px;color:#9aa6b8}
+.pass-input{display:flex;gap:6px;margin-bottom:2px}
+.pass-input input{flex:1;min-width:0;border:1px solid #d5dfee;border-radius:10px;padding:8px 10px;font-size:14px;font-family:inherit}
+.pass-input button{border:0;border-radius:10px;background:#1b2b45;color:#fff;font-size:12.5px;font-weight:800;padding:0 12px;cursor:pointer;font-family:inherit}
+.pass-status{font-size:11.5px;color:#667085;margin:8px 2px 4px;min-height:14px}
+.pass-status.err{color:#c62828}
+.pass-stations{max-height:34vh;overflow:auto;border-radius:12px;background:#f6f8fc}
+.pass-st{display:flex;align-items:center;gap:8px;width:100%;border:0;border-bottom:1px solid #e9eef6;background:transparent;padding:8px 10px;font-family:inherit;cursor:pointer;text-align:left}
+.pass-st:last-child{border-bottom:0}
+.pass-st i{width:9px;height:9px;border-radius:50%;border:2px solid #9fb3cf;background:#fff;flex:none}
+.pass-st b{flex:1;font-size:13.5px;color:#1b2b45}
+.pass-st span{font-size:12px;color:#667085;font-variant-numeric:tabular-nums}
+.pass-st em{font-style:normal;font-size:10.5px;color:#257a45;font-weight:700}
+.pass-st.gone b,.pass-st.gone span{color:#a3adbb}
+.pass-st.gone i{background:#9fb3cf}
+.pass-st.sel{background:#2f6fd6}
+.pass-st.sel b,.pass-st.sel span,.pass-st.sel em{color:#fff}
+.pass-st.sel i{border-color:#fff;background:#ffd84a}
+.pass-opts{margin-top:10px;background:#f6f8fc;border-radius:12px;padding:6px 10px}
+.pass-opt{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0}
+.pass-opt small{font-size:11px;color:#8a96a8}
+.pass-chk{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;font-weight:800;color:#1b2b45}
+.pass-chk input{width:18px;height:18px;accent-color:#2f6fd6}
+.pass-raw{margin-top:8px}
+.pass-raw textarea{width:100%;height:140px;font:10.5px/1.35 monospace;border:1px solid #d5dfee;border-radius:10px;padding:6px;box-sizing:border-box}
+.pass-raw button{margin-top:4px;border:0;border-radius:9px;background:#e9f2ff;color:#2f5aa8;font-weight:800;padding:6px 12px;font-family:inherit}
+.pass-save{color:#2f6fd6!important;font-weight:900!important}
+.pp-dialog{text-align:center}
+.pp-badge{display:inline-block;margin-top:2px;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:900;letter-spacing:.3px}
+.pp-badge.k-soon{background:#fff0e3;color:#c06416}
+.pp-badge.k-pass{background:#e6f6ec;color:#257a45}
+.pp-badge.k-now{background:#e9f2ff;color:#2f5aa8}
+.pp-title{margin:8px 0 10px;font-size:18px;font-weight:800;color:#1b2b45;letter-spacing:-.3px}
+.pp-title b{font-weight:900}
+.pp-track{position:relative;height:118px;border-radius:16px;overflow:hidden;background:linear-gradient(180deg,#e3f0ff 0%,#f5f9ff 70%);cursor:pointer}
+.pp-hills{position:absolute;left:0;right:0;bottom:38px;height:26px;background:radial-gradient(60px 26px at 20% 100%,#d4e8d0 98%,transparent 100%),radial-gradient(80px 22px at 62% 100%,#dcedd8 98%,transparent 100%),radial-gradient(70px 24px at 95% 100%,#d4e8d0 98%,transparent 100%)}
+.pp-rail{position:absolute;left:0;right:0;bottom:32px;height:6px;background:repeating-linear-gradient(90deg,#9aa6b6 0 3px,transparent 3px 9px);border-top:2px solid #7d8a9c}
+.pp-stop{position:absolute;bottom:28px;width:0}
+.pp-stop i{position:absolute;left:-6px;bottom:0;width:12px;height:12px;border-radius:50%;background:#fff;border:2.5px solid #9fb3cf;box-sizing:border-box;z-index:3}
+.pp-stop span{position:absolute;top:10px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;font-weight:700;color:#7b889b}
+.pp-stop.gone i{background:#9fb3cf}
+.pp-stop.tgt i{left:-9px;width:18px;height:18px;bottom:-3px;border:3px solid #2f6fd6;background:#fff}
+.pp-stop.tgt span{font-size:12.5px;font-weight:900;color:#1b2b45}
+.pp-stop.tgt i::after{content:'';position:absolute;inset:-7px;border-radius:50%;border:2px solid #2f6fd6;opacity:0;animation:ppPulse 1.4s ease-out infinite}
+.pp-stop.tgt.done i{border-color:#22a35a;background:#22a35a}
+.pp-stop.tgt.done i::before{content:'';position:absolute;left:4px;top:1.5px;width:4px;height:7px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.pp-stop.tgt.done i::after{border-color:#22a35a;animation:ppPulse 1s ease-out 2}
+@keyframes ppPulse{0%{opacity:.8;transform:scale(.6)}100%{opacity:0;transform:scale(1.5)}}
+.pp-train{position:absolute;left:0;bottom:34px;width:104px;height:42px;z-index:2;transform:translateX(-130px);will-change:transform}
+.pp-train img{display:block;width:100%;height:100%;filter:drop-shadow(0 2px 2px rgba(15,61,117,.25))}
+.pp-train.run img{animation:ppBob .32s ease-in-out infinite}
+@keyframes ppBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-.6px)}}
+.pp-wind{position:absolute;left:-26px;top:16px;width:26px;height:12px;opacity:0;background:linear-gradient(#fff0,#fff0) ,repeating-linear-gradient(180deg,transparent 0 3px,rgba(120,150,190,.55) 3px 4.5px);mask:linear-gradient(90deg,transparent,#000)}
+.pp-train.run .pp-wind{opacity:1}
+.pp-info{display:flex;flex-direction:column;gap:5px;margin:12px 2px 4px;text-align:left}
+.pp-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13px;color:#56657a}
+.pp-row b{font-size:16px;font-weight:900;color:#1b2b45;font-variant-numeric:tabular-nums}
+.pp-chip{display:inline-block;font-size:11.5px;font-weight:800;border-radius:999px;padding:2px 8px}
+.pp-chip.late{background:#fdecec;color:#c2453b}.pp-chip.ontime{background:#e6f6ec;color:#257a45}.pp-chip.early{background:#e9f2ff;color:#2f5aa8}
+.pp-zone{font-size:11.5px;color:#8a96a8;margin:2px 2px 0;text-align:left}
 .welcome-stn{position:absolute;bottom:9px;height:50px;width:134.6px;opacity:0;z-index:1;pointer-events:none;display:none;filter:drop-shadow(0 1px 1.5px rgba(15,61,117,.2))}
 .welcome-stn svg{display:block;height:100%;width:auto}
 #welcome-card.is-stop .welcome-stn{display:block}
@@ -9727,7 +10224,9 @@ return s;
 function scenery(place, season, time) {
 var C = SEASON[season], night = time === 'night' || time === 'dawn', s = '';
 var xs = function (n) { var a = [], step = 360 / n; for (var i = 0; i < n; i++) a.push(i * step + rnd(8, step - 8)); return a; };
-if (place === 'country') {
+if (place === 'plain') {
+s += '<rect y="55" width="360" height="17" fill="#d6e6cf"/><rect y="55" width="360" height="1" fill="#e9f2e4"/>';
+} else if (place === 'country') {
 s += '<path d="M0 44L' + rnd(30, 50).toFixed(0) + ' 28L80 40L' + rnd(120, 140).toFixed(0) + ' 24L190 42L240 30L300 41L360 30V72H0Z" fill="' + C.mount + '"/>';
 if (season === 'winter') s += '<path d="M120 26L130 24L140 28Z M30 31L40 28L50 32Z" fill="#fff"/>';
 s += '<path d="M0 50H360V72H0Z" fill="' + C.field[0] + '"/><g fill="' + C.field[1] + '"><path d="M0 54H360V57H0Z"/><path d="M0 60H360V63H0Z"/></g>';
@@ -9808,7 +10307,7 @@ return s;
 }
 function build() {
 var season = 'summer';   /* 계절 구분 없음: 기본 초록 풍경 */
-var place = pick(['country', 'city', 'mountain', 'sea', 'nature']);   /* 장소 × 시간대만 랜덤 (철교 없음) */
+var place = 'plain';   /* 풍경(시골·도시·산·바다·자연) 없음: 하늘 + 시간대만 랜덤 */
 var r = Math.random(), time = r < .12 ? 'dawn' : r < .26 ? 'sunrise' : r < .58 ? 'day' : r < .76 ? 'dusk' : 'night';
 var sk = skyColors(time, season);
 var seaC = season === 'winter' ? ['#7fa9cc', '#b4cfe5'] : ['#5fb6e6', '#a6dcf3'];
