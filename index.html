@@ -1342,7 +1342,8 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div id="pp-pager" class="pp-pager" style="display:none"><button type="button" onclick="passPage(-1)" aria-label="이전 열차">‹</button><span id="pp-page"></span><button type="button" onclick="passPage(1)" aria-label="다음 열차">›</button></div>
     <div id="pp-badge" class="pp-badge"></div>
     <div id="pp-title" class="pp-title"></div>
-    <div id="pp-track" class="pp-track" onclick="passReplay()" title="다시 보기">
+    <div id="pp-date" class="pp-date"></div>
+    <div id="pp-track" class="pp-track" onclick="passReplay()" title="운행 위치 다시 보기">
       <div class="pp-hills"></div>
       <div class="pp-rail"></div>
       <div id="pp-stops"></div>
@@ -1456,6 +1457,11 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="schedule-edit-dialog">
     <div class="schedule-edit-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무변경" alt="" aria-hidden="true">근무 변경</div>
     <div id="schedule-edit-date" class="schedule-edit-date"></div>
+    <div class="schedule-edit-input-group schedule-edit-partner-group">
+      <label class="schedule-edit-label" for="schedule-edit-partner">누구와 근무를 변경했나요?</label>
+      <input id="schedule-edit-partner" class="schedule-edit-input" type="text" maxlength="40" autocomplete="off" placeholder="예: 홍길동 / 다른 부서 직원">
+      <div class="schedule-edit-field-help">동기·근무그룹 외 직원과 변경한 경우에도 이름을 기록할 수 있어요.</div>
+    </div>
     <div class="schedule-edit-input-group">
       <label class="schedule-edit-label" for="schedule-edit-dia">DIA 번호 직접 입력</label>
       <div class="schedule-edit-dia-row">
@@ -3733,14 +3739,16 @@ function openScheduleEdit(y, m, d) {
   var panel = $('schedule-edit-panel');
   var dateEl = $('schedule-edit-date');
   var input = $('schedule-edit-dia');
+  var partnerInput = $('schedule-edit-partner');
   var options = $('schedule-edit-options');
   if (!panel || !dateEl || !input || !options) return;
   dateEl.textContent = y + '년 ' + (m + 1) + '월 ' + d + '일';
+  var info = getInfo(y, m, d);
   $('schedule-edit-message').textContent = '';
   input.value = '';
+  if (partnerInput) partnerInput.value = info && info.manual ? String(info.swapPartnerName || '') : '';
   options.innerHTML = '';
   clearScheduleCreditSelection();
-  var info = getInfo(y, m, d);
   if (info && info.manual && (info.status === '대기충당' || info.status === '휴무충당' || info.creditStatus === '대기충당' || info.creditStatus === '휴무충당')) selectScheduleCredit(info.creditStatus || info.status);
   if (info && info.manual && (info.overrideType === 'dia' || info.overrideType === 'dia-credit' || info.overrideType === 'combined')) input.value = info.dia || '';
   SCHEDULE_OVERRIDE_OPTIONS.forEach(function (name) {
@@ -3793,6 +3801,7 @@ function saveScheduleEdit() {
   var input = $('schedule-edit-dia');
   var options = $('schedule-edit-options');
   var dia = input ? input.value.trim().toUpperCase() : '';   // 영문은 대문자로 저장 (예: 12b07 → 12B07)
+  var partnerName = $('schedule-edit-partner') ? $('schedule-edit-partner').value.trim() : '';
   var selectedDutyStatus = '';
   var selected = options ? options.querySelector('.schedule-edit-option.selected') : null;
   if (selected) selectedDutyStatus = selected.textContent;
@@ -3844,7 +3853,7 @@ function saveScheduleEdit() {
     params.status = selectedDutyStatus;
   }
   /* 서버로 보내지 않고 이 폰에만 저장 (백업은 환경설정에서) */
-  snapUpsertOverride(user.employeeId, params.date, params.type, params.dia, params.status, '', '', selectedDutyStatus);
+  snapUpsertOverride(user.employeeId, params.date, params.type, params.dia, params.status, '', partnerName, selectedDutyStatus);
   /* 야간 근무를 넣으면 다음 날은 무조건 비번으로 설정합니다.
      (다음 날에 직접 변경 기록이 있더라도 비번으로 덮어씁니다.) */
   if (isNightDia) {
@@ -8014,10 +8023,9 @@ function pushClearOnLogout() {
    내가 고른 열차가 내가 고른 역에 곧 도착하거나 통과하면 알림
    - 서버(push-alarm)가 1분마다 NXLogis로 확인 → 푸시 알림(앱이 꺼져도)
    - 앱이 열려 있으면 열차가 달려가는 애니메이션 팝업
-   - 시험 중: 관리자만 */
-var PASS_ALLOWED_IDS = ['199878'];
+   - 모든 로그인 사용자가 개인별 설정으로 이용 */
 var PASS_FN = 'smart-handler';        /* nx-check 함수 주소 */
-function passAllowed() { return PASS_ALLOWED_IDS.indexOf(String(getCurrentUser().employeeId || '')) >= 0; }
+function passAllowed() { return true; }
 var passState = { date: '', train: '', route: null, idx: -1, lead: 10, list: [], raw: null };
 function passHm(ms, sec) {
   if (ms === null || ms === undefined) return '-';
@@ -8079,19 +8087,19 @@ function passEval(route, w, now) {
   };
 }
 /* ----- 설정 (감시 열차번호 + 역 + 곧 도착/통과) ----- */
-var PASS_DEFAULT_TRAINS = ['3224', '3226', '1208', '3334'];
+var PASS_DEFAULT_TRAINS = ['3224', '3226', '1208'];
 var passCfg = null, passSaveTimer = null;
 function passCfgKey() { return 'passCfg_' + (getCurrentUser().employeeId || ''); }
 function passCfgLocal() { try { return JSON.parse(LS.getItem(passCfgKey()) || 'null'); } catch (e) { return null; } }
 function passCfgDefault() { return { trains: PASS_DEFAULT_TRAINS.slice(), stations: [], lead: 10, soon: true, pass: true }; }
-function passTrainKey(t) { return String(t || '').replace(/[^0-9]/g, ''); }
-/* 근무표(오늘~모레)에 있는 감시 열차 */
+function passTrainKey(t) { return String(t || '').toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, ''); }
+/* 근무표(오늘)에 있는 감시 열차 */
 function passMyDays(cfg) {
   cfg = cfg || passCfg || passCfgLocal();
   if (!cfg || !cfg.trains || !cfg.trains.length) return [];
   var want = cfg.trains.map(passTrainKey), out = [];
   try {
-    nxCollectTrains(2).forEach(function (x) {
+    nxCollectTrains(1).forEach(function (x) {
       if (!x.link && want.indexOf(passTrainKey(x.train)) >= 0) out.push({ date: x.date, train: x.train });
     });
   } catch (e) {}
@@ -8135,7 +8143,7 @@ function passRender() {
   $('pass-today').innerHTML = days.length
     ? '근무표의 감시 열차: ' + days.map(function (d) { var p = d.date.split('-'); return '<b>' + esc(d.train) + '</b> (' + (+p[1]) + '/' + (+p[2]) + ')'; }).join(', ') +
       (c.stations.length ? '' : '<br><span style="color:#c06416">역을 추가해야 알림이 와요.</span>')
-    : '오늘~모레 근무표에 감시 열차가 없어요.';
+    : '오늘 근무표에 감시 열차가 없어요.';
 }
 function passAdd(kind) {
   var inp = $(kind === 'trains' ? 'pass-train-in' : 'pass-station-in');
@@ -8165,7 +8173,7 @@ function passSaveSoon() {
   if ($('pass-saved')) $('pass-saved').textContent = '저장 중...';
   passSaveTimer = setTimeout(function () { passSaveNow(true); }, 700);
 }
-/* 설정 + 근무표의 감시 열차(오늘~모레)를 서버에 올림 */
+/* 설정 + 오늘 근무표의 감시 열차를 서버에 올림 */
 function passSaveNow(fromUi) {
   var c = passCfg || passCfgLocal();
   var u = getCurrentUser();
@@ -8183,7 +8191,7 @@ function passSaveNow(fromUi) {
     } else if ($('pass-saved')) $('pass-saved').textContent = (r && r.message) || '저장하지 못했습니다.';
   });
 }
-/* 앱을 열 때·돌아올 때: 근무표가 바뀌었거나 6시간 지났으면 감시 열차 목록을 다시 올림 (알림 없이) */
+/* 앱을 열 때·돌아올 때: 오늘 근무표가 바뀌었거나 6시간 지났으면 감시 열차 목록을 다시 올림 (알림 없이) */
 function passAutoSync() {
   if (!passAllowed() || !getCurrentUser().token) return;
   var c = passCfgLocal();
@@ -8291,6 +8299,7 @@ function passDraw(d, quiet) {
   if (d.kind === 'err') {
     $('pp-badge').className = 'pp-badge k-now'; $('pp-badge').textContent = '조회 실패';
     $('pp-title').innerHTML = '<b>' + esc(d.train) + '</b>열차';
+    $('pp-date').textContent = d.date ? String(d.date).replace(/-/g, '.') : '';
     $('pp-stops').innerHTML = ''; $('pp-info').innerHTML = '<div class="pp-row"><span>' + esc(d.msg || '') + '</span></div>'; $('pp-zone').textContent = '';
     if (passPopAnim) { try { passPopAnim.cancel(); } catch (e) {} }
     $('pass-pop-panel').classList.add('active');
@@ -8300,7 +8309,8 @@ function passDraw(d, quiet) {
   var badge = $('pp-badge');
   badge.className = 'pp-badge k-' + kind;
   badge.textContent = kind === 'pass' ? '통과' : kind === 'soon' ? '곧 도착' : (d.passed ? '지금 위치 · 통과함' : '지금 위치');
-  $('pp-title').innerHTML = '<b>' + esc(d.train) + '</b>열차 · <b>' + esc(d.station) + '</b>';
+  $('pp-title').innerHTML = '<b>' + esc(d.train) + '</b>열차 <span>·</span> <b>' + esc(d.station) + '</b>';
+  $('pp-date').textContent = d.date ? String(d.date).replace(/-/g, '.') : '';
   var rows = [];
   if (kind === 'pass' || (kind === 'now' && d.passed)) {
     rows.push('<div class="pp-row"><span>통과</span><b>' + (d.act ? passHm(d.act, true) : '확인됨') + '</b></div>');
@@ -11102,6 +11112,29 @@ box-sizing: border-box !important;
 content: ""; display: block; flex: 0 0 auto; width: 100%;
 height: calc(90px + env(safe-area-inset-bottom));
 }
-#main-container > .page-view, #main-container > .board-page { max-width: 100% !important; overflow-x: hidden !important; }</style>
+#main-container > .page-view, #main-container > .board-page { max-width: 100% !important; overflow-x: hidden !important; }
+/* 근무변경 상대 입력란 */
+.schedule-edit-partner-group{padding:11px 12px 10px;background:#f6f8fc;border:1px solid #e8edf4;border-radius:12px}
+.schedule-edit-partner-group .schedule-edit-input{box-sizing:border-box;background:#fff}
+.schedule-edit-field-help{margin-top:6px;font-size:10.5px;line-height:1.45;color:#8792a3}
+/* 열차 통과·도착 알림: 간결한 카드형 */
+#pass-pop-panel{padding:16px}
+#pass-pop-panel .pp-dialog{position:relative;width:min(100%,390px);box-sizing:border-box;padding:20px 18px 14px;border:1px solid #e8edf4;border-radius:22px;background:linear-gradient(180deg,#fff 0%,#fbfcff 100%);box-shadow:0 18px 55px rgba(20,42,76,.22)}
+#pass-pop-panel .pp-pager{margin:-5px 0 10px}
+#pass-pop-panel .pp-badge{padding:6px 13px;font-size:11px;letter-spacing:.1px}
+#pass-pop-panel .pp-title{margin:9px 0 2px;font-size:19px;line-height:1.35;letter-spacing:-.55px}
+#pass-pop-panel .pp-title span{color:#a0aabc;font-weight:500}
+#pass-pop-panel .pp-date{min-height:16px;margin:0 0 13px;color:#929bad;font-size:11px;font-weight:600;letter-spacing:.2px}
+#pass-pop-panel .pp-track{height:112px;border:1px solid #e5edf7;border-radius:15px;background:linear-gradient(180deg,#edf5ff 0%,#f8fbff 78%);box-shadow:inset 0 1px 2px rgba(35,76,130,.04)}
+#pass-pop-panel .pp-info{gap:0;margin:13px 0 7px;padding:4px 12px;border:1px solid #edf0f5;border-radius:13px;background:#fff}
+#pass-pop-panel .pp-row{min-height:36px;padding:5px 0;border-bottom:1px solid #f0f2f6;font-size:12px}
+#pass-pop-panel .pp-row:last-child{border-bottom:0}
+#pass-pop-panel .pp-row b{font-size:15px}
+#pass-pop-panel .pp-zone{margin:7px 2px 3px;font-size:10.5px;line-height:1.5;color:#8b95a5}
+#pass-pop-panel .dia-dialog-actions{margin-top:12px;padding-top:10px;border-top:1px solid #edf0f5}
+#pass-pop-panel .dia-text-btn{min-height:38px;padding:8px 13px;border-radius:10px;background:#f1f5fb;color:#46566d;font-size:12px;font-weight:800}
+#pass-pop-panel .dia-text-btn.pass-save{background:#1769d2;color:#fff!important;min-width:76px}
+@media(max-width:380px){#pass-pop-panel{padding:10px}#pass-pop-panel .pp-dialog{padding:17px 14px 12px;border-radius:18px}#pass-pop-panel .pp-title{font-size:17px}#pass-pop-panel .pp-track{height:104px}}
+</style>
 </body>
 </html>
