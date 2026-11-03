@@ -9443,10 +9443,11 @@ to{transform:translate3d(calc(-1 * var(--train-w)),0,0)}
 .welcome-station.at-right{right:6px}
 .welcome-station.at-left{left:6px}
 #welcome-card.is-playing .welcome-station{animation:welcomeRailFade var(--scene,var(--pass,3600ms)) ease both}
-.welcome-stn{position:absolute;bottom:9px;height:50px;opacity:0;z-index:1;pointer-events:none;display:none;filter:drop-shadow(0 1px 1.5px rgba(15,61,117,.2))}
+.welcome-stn{position:absolute;bottom:9px;height:50px;width:134.6px;opacity:0;z-index:1;pointer-events:none;display:none;filter:drop-shadow(0 1px 1.5px rgba(15,61,117,.2))}
 .welcome-stn svg{display:block;height:100%;width:auto}
 #welcome-card.is-stop .welcome-stn{display:block}
 #welcome-card.is-stop .wp-slab,#welcome-card.is-stop .wp-people,#welcome-card.is-stop .welcome-station{display:none}
+#welcome-card.is-stop .welcome-plat{z-index:0}
 #welcome-card.is-playing .welcome-stn{animation:welcomeRailFade var(--scene,var(--pass,3600ms)) ease both}
 #welcome-card.is-playing.is-stop .welcome-train,#welcome-card.is-playing.is-stop .welcome-train.rtl{animation:none!important}
 #welcome-card[data-time="night"] .welcome-stn svg{filter:brightness(.62) saturate(.85)}
@@ -9923,7 +9924,9 @@ var STATIONS = {
 seoul:   { ko: '서울', en: 'Seoul', jp: '首爾　ソウル', trains: ['KTX-이음', 'KTX-산천', 'KTX-청룡', 'KTX-적룡', 'ITX-새마을', 'ITX-마음', '새마을호', '증기기관차'] },
 suseo:   { ko: '수서', en: 'Suseo', jp: '水西　スソ', trains: ['SRT'] },
 gangneung: { ko: '강릉', en: 'Gangneung', jp: '江陵　カンヌン', trains: ['KTX-이음', 'KTX-산천'] },
-mokpo:   { ko: '목포', en: 'Mokpo', jp: '木浦　モクポ', trains: ['SRT', 'KTX-산천', 'KTX-청룡', 'KTX-적룡', 'ITX-새마을', '새마을호'] }
+mokpo:   { ko: '목포', en: 'Mokpo', jp: '木浦　モクポ', trains: ['SRT', 'KTX-산천', 'KTX-청룡', 'KTX-적룡', 'ITX-새마을', '새마을호'] },
+daejeon: { ko: '대전', en: 'Daejeon', jp: '大田　テジョン', trains: ['KTX-이음', 'KTX-산천', 'KTX-청룡', 'KTX-적룡', 'SRT', 'ITX-새마을', 'ITX-마음', '새마을호'] },
+jinju:   { ko: '진주', en: 'Jinju', jp: '晋州　チンジュ', trains: ['KTX-산천', 'SRT', 'ITX-새마을', 'ITX-마음', '새마을호'] }
 };
 var SIGN_NAMES = [
 { ko: '청량리', en: 'Cheongnyangni', jp: '清凉里　チョンニャンニヨク' },
@@ -9974,6 +9977,33 @@ o += '<path class="win" d="M8 34 L8 45 A62 6.5 0 0 0 132 45 L132 34 A62 6.5 0 0 
 for (i = 0; i < 16; i++) { x = 11 + i * 7.9; var cv = 6.5 * Math.sqrt(Math.max(0, 1 - Math.pow((x - 70) / 62, 2))); o += '<path d="M' + x.toFixed(1) + ' ' + (34 + cv).toFixed(1) + ' V' + (45 + cv).toFixed(1) + '" stroke="#8cc3c8" stroke-width=".45"/>'; }
 o += '<rect x="60" y="42" width="20" height="2" fill="#7c8794"/><rect x="62" y="44" width="16" height="7.5" fill="#2e4e58"/>' +
 '<text x="70" y="28.5" text-anchor="middle" font-size="5.6" fill="#24407a" ' + KF + '>강릉역</text>';
+} else if (key === 'daejeon') {  /* 대전역: 뒤로 쌍둥이 철도타워, 흰 날개 지붕, 파란 유리벽, 빨간 띠 */
+o += '<rect x="38" y="0" width="15" height="24" fill="#5079ad"/><rect x="36" y="2" width="2.2" height="22" fill="#3d6396"/>' +
+'<ellipse cx="45.5" cy="1" rx="7.5" ry="1.6" fill="#c9d6e6"/><rect x="85" y="5" width="13" height="19" fill="#5a82b4"/><rect x="83" y="7" width="2" height="17" fill="#41679a"/>' +
+'<ellipse cx="91.5" cy="5.5" rx="6.5" ry="1.4" fill="#c9d6e6"/>';
+for (i = 0; i < 7; i++) o += '<path d="M38 ' + (4 + i * 3) + 'H53 M85 ' + (8 + i * 2.4).toFixed(1) + 'H98" stroke="#7d9fc8" stroke-width=".4"/>';
+o += '<rect x="5" y="25" width="128" height="27" fill="#2c4f86"/>';
+for (x = 9; x < 133; x += 5.2) o += '<path d="M' + x.toFixed(1) + ' 27V52" stroke="#4d73a8" stroke-width=".45"/>';
+o += '<rect class="win" x="5" y="27" width="128" height="6" fill="#3f6aa3" opacity=".9"/><rect class="win" x="5" y="36.5" width="128" height="6" fill="#3f6aa3" opacity=".9"/>' +
+'<rect x="5" y="33" width="128" height="1.4" fill="#eef2f7"/><rect x="5" y="42.5" width="128" height="1.4" fill="#eef2f7"/>' +
+'<rect x="66" y="34.4" width="60" height="2.4" fill="#d83a3c"/><polygon points="120,36.8 127,36.8 124,52 119,52" fill="#d83a3c"/>' +
+'<polygon points="3,22 137,22 133,25.5 9,25.5" fill="#f4f6f9" stroke="#cfd6df" stroke-width=".5"/>' +
+'<text x="22" y="32" font-size="5.6" fill="#fff" ' + KF + '>대전역</text>' +
+'<text x="21.5" y="41.4" font-size="2.8" fill="#fff" font-family="Arial,sans-serif" font-weight="700">Daejeon Station 大田驛</text>' +
+'<polygon points="44,44 66,44 64,46 46,46" fill="#e6ebf1"/><rect x="47" y="46" width="16" height="6" fill="#20375e"/>';
+} else if (key === 'jinju') {    /* 진주역: 한옥 기와지붕 + 붉은 기둥 + 단청 */
+o += '<path d="M1 27 Q9 25.5 17 24.6 L29 9 L111 9 L123 24.6 Q131 25.5 139 27 L136 28.6 Q70 26.4 4 28.6Z" fill="#596068"/>' +
+'<path d="M27 9.5 Q70 7 113 9.5 L113 8 Q70 5.5 27 8Z" fill="#3e444b"/>' +
+'<path d="M25 8.6 Q26 6.5 28 6.2 M115 8.6 Q114 6.5 112 6.2" stroke="#3e444b" stroke-width="1.6" fill="none" stroke-linecap="round"/>';
+for (x = 22; x < 120; x += 3.6) o += '<path d="M' + x.toFixed(1) + ' ' + (x < 30 ? 24 - (x - 22) * 1.6 : x > 110 ? 9 + (x - 110) * 1.6 : 10).toFixed(1) + 'V26.4" stroke="#6b737c" stroke-width=".35"/>';
+o += '<rect x="8" y="28" width="124" height="4" fill="#3f8f7c"/>';
+for (x = 11; x < 130; x += 4.5) o += '<rect x="' + x.toFixed(1) + '" y="29.2" width="2" height="1.6" rx=".4" fill="#ecc45a"/>';
+o += '<rect x="9" y="32" width="122" height="20" fill="#f2efe8"/>';
+for (i = 0; i < 8; i++) { x = 9 + i * 17.4; o += '<rect class="win" x="' + (x + 3).toFixed(1) + '" y="35" width="11.4" height="15" fill="#6fb9ad"/>'; }
+for (i = 0; i < 9; i++) { x = 8 + i * 15.3; o += '<rect x="' + x.toFixed(1) + '" y="31.5" width="3" height="20.5" fill="#b0312f"/>'; }
+o += '<rect x="55" y="33.4" width="30" height="7" fill="#fbfaf6" stroke="#a7865a" stroke-width=".6"/>' +
+'<text x="70" y="38.8" text-anchor="middle" font-size="4.8" fill="#333" ' + KF + '>진주역</text>' +
+'<rect x="60" y="42" width="20" height="10" fill="#3d4b52"/><rect x="60" y="41.2" width="20" height="1.2" fill="#e2b543"/>';
 } else {                         /* 목포역: 흰 곡선 캐노피 + 위쪽 원기둥 줄 + 지붕 위 파란 역명판 */
 o += '<rect x="58" y="10" width="1" height="8" fill="#9aa3ad"/><rect x="81" y="10" width="1" height="8" fill="#9aa3ad"/>' +
 '<rect x="53" y="1" width="34" height="10" rx=".8" fill="#2f6fd6" stroke="#e8eef9" stroke-width=".7"/>' +
@@ -10009,22 +10039,18 @@ var box = card.querySelector('.welcome-stn');
 if (!box || !train || !train.animate) return 0;
 if (train.__stopAnim) { try { train.__stopAnim.cancel(); } catch (e) {} }
 box.innerHTML = stnSvg(key);
-var pad = 10;
+var pad = 8, bw = 50 * 140 / 52, gap = 5;
 box.style.left = rtl ? pad + 'px' : '';
 box.style.right = rtl ? '' : pad + 'px';
 card.classList.add('is-stop');
-var stopX = rtl ? 18 : w - 18 - tw;
-var x0 = rtl ? w : -tw, x2 = rtl ? -tw : w;
-var arrive = Math.max(1500, Math.round(dur * 0.9)), dwell = 1500, depart = Math.max(1700, Math.round(dur * 0.95));
-var total = arrive + dwell + depart;
+var stopX = rtl ? pad + bw + gap : w - pad - bw - gap - tw;
+var x0 = rtl ? w : -tw;
 function tf(x) { return 'translate3d(' + x.toFixed(1) + 'px,0,0)'; }
 train.__stopAnim = train.animate([
-{ transform: tf(x0), offset: 0, easing: 'cubic-bezier(.25,.6,.35,1)' },
-{ transform: tf(stopX), offset: arrive / total, easing: 'linear' },
-{ transform: tf(stopX), offset: (arrive + dwell) / total, easing: 'cubic-bezier(.55,0,.85,.6)' },
-{ transform: tf(x2), offset: 1 }
-], { duration: total, fill: 'both' });
-return total;
+{ transform: tf(x0), easing: 'cubic-bezier(.22,.62,.32,1)' },
+{ transform: tf(stopX) }
+], { duration: dur, fill: 'both' });
+return dur;
 }
 window.playWelcomeTrain = function(){
 var card = document.getElementById('welcome-card');
