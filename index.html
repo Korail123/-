@@ -1329,6 +1329,11 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <button type="button" class="pass-try" onclick="passTestPopup()">팝업 미리보기</button>
         <button type="button" class="pass-live-test" onclick="passTestLiveNow()">실시간 운행 테스트</button>
       </div>
+      <div id="pass-live-test-custom" class="pass-live-test-custom" style="display:none">
+        <div class="pass-lab">테스트용 열차번호 <small>199878 송주영 전용 · 오늘 근무표 열차 + 직접 입력 열차</small></div>
+        <textarea id="pass-live-test-trains" rows="2" maxlength="300" placeholder="예: 1234, 5678, KTX001&#10;쉼표·공백·줄바꿈으로 여러 개 입력" autocomplete="off"></textarea>
+        <small class="pass-live-test-help">여기에 입력한 열차는 실시간 테스트에만 사용되며, 실제 자동 감시 목록이나 다른 사용자의 설정에는 저장되지 않습니다.</small>
+      </div>
       <div id="pass-live-test-result" class="pass-live-test-result" aria-live="polite">실시간 운행 테스트는 실제 NXLogis 운행정보만 사용합니다.</div>
       <div class="pass-raw-row"><span id="pass-saved"></span><button type="button" class="pass-raw-link" onclick="passShowRaw()">NXLogis 원본 보기</button></div>
       <div id="pass-raw" class="pass-raw" style="display:none"><textarea readonly></textarea><button type="button" onclick="passCopyRaw()">복사</button></div>
@@ -8117,6 +8122,8 @@ function openPassSettings() {
 function closePassSettings() { $('pass-panel').classList.remove('active'); }
 function passCardRender() {
   if (!$('pass-card') || !passAllowed()) return;
+  var testBox = $('pass-live-test-custom');
+  if (testBox) testBox.style.display = String(getCurrentUser().employeeId || '') === '199878' ? '' : 'none';
   passCfg = passCfgLocal() || passCfgDefault();
   passCfg.lead = 0;
   passRender();
@@ -8261,6 +8268,15 @@ function passTestLiveNow() {
   var t = todayKST(), today = getDateKey(t.y, t.m, t.d);
   var stations = (c.stations || []).slice();
   var list = passMyDays(c).filter(function (d) { return d.date === today; });
+  var isTestOwner = String(getCurrentUser().employeeId || '') === '199878';
+  var manualBox = $('pass-live-test-trains');
+  var manualText = isTestOwner && manualBox ? String(manualBox.value || '') : '';
+  var manualTrains = manualText.split(/[\\s,;，；]+/).map(function (v) {
+    return String(v || '').trim().toUpperCase();
+  }).filter(Boolean);
+  var invalidTrains = manualTrains.filter(function (v) {
+    return !/^[A-Z]{0,3}\\d{1,6}$/.test(v);
+  });
   var result = $('pass-live-test-result');
   function report(msg, err) {
     if (result) {
@@ -8270,7 +8286,13 @@ function passTestLiveNow() {
   }
   if (passLiveTestBusy) { showToast('실시간 운행정보를 조회하고 있어요.'); return; }
   if (!stations.length) { report('먼저 알림 받을 역을 추가해주세요.', true); showToast('알림 받을 역을 먼저 설정해주세요.'); return; }
-  if (!list.length) { report('오늘 근무표에서 조회할 열차를 찾지 못했습니다.', true); showToast('오늘 근무표에 감시 열차가 없어요.'); return; }
+  if (invalidTrains.length) { report('열차번호 형식을 확인해주세요: ' + invalidTrains.join(', '), true); showToast('열차번호는 숫자 또는 영문+숫자 형식으로 입력해주세요.'); return; }
+  if (isTestOwner) {
+    manualTrains.forEach(function (train) {
+      list.push({ date: today, train: train, testOnly: true });
+    });
+  }
+  if (!list.length) { report('오늘 근무표 열차 또는 테스트용 열차번호를 입력해주세요.', true); showToast('테스트할 열차번호가 없어요.'); return; }
   if (!c.soon && !c.pass) { report('곧 도착과 통과 알림이 모두 꺼져 있습니다. 설정에서 하나 이상 켜주세요.', true); return; }
 
   /* 중복 열차 제거 */
@@ -8283,7 +8305,7 @@ function passTestLiveNow() {
   });
 
   passLiveTestBusy = true;
-  report('실제 운행 중인 열차 ' + list.length + '개를 조회하고 있습니다…');
+  report('오늘 근무표 열차와 테스트 입력 열차 ' + list.length + '개를 NXLogis에서 조회하고 있습니다…');
   var pages = [], left = list.length, liveCount = 0, failed = 0, matchCount = 0;
 
   list.forEach(function (it) {
@@ -9995,6 +10017,9 @@ to{transform:translate3d(calc(-1 * var(--train-w)),0,0)}
 .pass-live-test{grid-column:1/-1;border:0;border-radius:12px;padding:11px 10px;background:#e7f6ed;color:#197044;font-size:13px;font-weight:900;cursor:pointer;font-family:inherit}
 .pass-live-test-result{font-size:11.5px;line-height:1.5;color:#526477;background:#f4f7fa;border-radius:9px;padding:8px 10px;margin-top:7px;min-height:16px}
 .pass-live-test-result.err{color:#a33a32;background:#fff2f0}
+.pass-live-test-custom{margin:10px 0;padding:10px;border:1px dashed #9bb7a8;border-radius:11px;background:#f7fbf8}
+.pass-live-test-custom textarea{display:block;box-sizing:border-box;width:100%;min-height:54px;resize:vertical;border:1px solid #d5e0d9;border-radius:8px;padding:9px;font:inherit;font-size:12px;line-height:1.45;background:#fff;color:#26352d}
+.pass-live-test-help{display:block;margin-top:6px;color:#68796f;font-size:10.5px;line-height:1.45}
 .pass-lab{font-size:12px;font-weight:800;color:#667085;margin:10px 2px 5px}
 .pass-seg{display:flex;gap:5px;flex-wrap:wrap}
 .pass-seg button{flex:1;border:1px solid #d9e2ee;background:#fff;border-radius:10px;padding:7px 4px;font-size:12.5px;font-weight:700;color:#475467;cursor:pointer;font-family:inherit}
