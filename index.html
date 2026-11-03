@@ -1327,7 +1327,9 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <div class="pass-actions">
         <button type="button" class="pass-add" onclick="passCheckNow()">지금 조회</button>
         <button type="button" class="pass-try" onclick="passTestPopup()">팝업 미리보기</button>
+        <button type="button" class="pass-live-test" onclick="passTestLiveNow()">실시간 운행 테스트</button>
       </div>
+      <div id="pass-live-test-result" class="pass-live-test-result" aria-live="polite">실시간 운행 테스트는 실제 NXLogis 운행정보만 사용합니다.</div>
       <div class="pass-raw-row"><span id="pass-saved"></span><button type="button" class="pass-raw-link" onclick="passShowRaw()">NXLogis 원본 보기</button></div>
       <div id="pass-raw" class="pass-raw" style="display:none"><textarea readonly></textarea><button type="button" onclick="passCopyRaw()">복사</button></div>
     </div>
@@ -8252,6 +8254,89 @@ function passCheckNow() {
     });
   });
 }
+/* 실제 운행 중인 열차로 선택 역 알림 테스트 (가짜 데이터·예정시각 판정 제외) */
+var passLiveTestBusy = false;
+function passTestLiveNow() {
+  var c = passCfg || passCfgLocal() || passCfgDefault();
+  var t = todayKST(), today = getDateKey(t.y, t.m, t.d);
+  var stations = (c.stations || []).slice();
+  var list = passMyDays(c).filter(function (d) { return d.date === today; });
+  var result = $('pass-live-test-result');
+  function report(msg, err) {
+    if (result) {
+      result.textContent = msg;
+      result.className = 'pass-live-test-result' + (err ? ' err' : '');
+    }
+  }
+  if (passLiveTestBusy) { showToast('실시간 운행정보를 조회하고 있어요.'); return; }
+  if (!stations.length) { report('먼저 알림 받을 역을 추가해주세요.', true); showToast('알림 받을 역을 먼저 설정해주세요.'); return; }
+  if (!list.length) { report('오늘 근무표에서 조회할 열차를 찾지 못했습니다.', true); showToast('오늘 근무표에 감시 열차가 없어요.'); return; }
+  if (!c.soon && !c.pass) { report('곧 도착과 통과 알림이 모두 꺼져 있습니다. 설정에서 하나 이상 켜주세요.', true); return; }
+
+  /* 중복 열차 제거 */
+  var seen = {};
+  list = list.filter(function (d) {
+    var key = d.date + '|' + passTrainKey(d.train);
+    if (seen[key]) return false;
+    seen[key] = true;
+    return true;
+  });
+
+  passLiveTestBusy = true;
+  report('실제 운행 중인 열차 ' + list.length + '개를 조회하고 있습니다…');
+  var pages = [], left = list.length, liveCount = 0, failed = 0, matchCount = 0;
+
+  list.forEach(function (it) {
+    passRoute(it.train, it.date, false, function (route) {
+      if (!route || !route.success || !Array.isArray(route.stations)) {
+        failed++;
+      } else {
+        var moving = /간\s*(?:운행|이동)|운행\s*중/.test(String(route.zone || ''));
+        if (moving) {
+          liveCount++;
+          stations.forEach(function (station) {
+            var idx = route.stations.findIndex(function (s) { return passSame(s.name, station); });
+            if (idx < 0) return;
+            var ev = passEval(route, { idx: idx, station: station, lead: 0 }, Date.now());
+            if (!ev) return;
+
+            /* 시간표상 도착 예정만으로는 테스트 성공 처리하지 않음.
+               NXLogis가 현재 운행 구간으로 표시하고, 선택 역이 다음 역이거나 실제 통과된 경우만 인정 */
+            var kind = null;
+            if (ev.passed && c.pass) kind = 'pass';
+            else if (!ev.passed && ev.soon && c.soon &&
+                     route.passedIdx !== null && route.passedIdx !== undefined &&
+                     route.passedIdx === idx - 1) kind = 'soon';
+            if (!kind) return;
+
+            matchCount++;
+            pages.push(Object.assign({
+              kind: kind,
+              train: it.train,
+              station: route.stations[idx].name,
+              date: it.date,
+              note: '실시간 운행 테스트 · NXLogis 운행구간 확인'
+            }, ev));
+          });
+        }
+      }
+
+      if (--left === 0) {
+        passLiveTestBusy = false;
+        if (pages.length) {
+          report('실시간 운행 확인: ' + liveCount + '개 열차 중 ' + pages.length + '건이 설정 역과 일치했습니다. 실제 운행정보 팝업을 표시합니다.');
+          passPages = pages;
+          passPageIdx = 0;
+          passShowPage(false); /* 실제 팝업과 알림음·진동 확인 */
+        } else {
+          var detail = '실시간 운행 열차 ' + liveCount + '개 · 조회 실패 ' + failed + '개';
+          report('현재 선택한 역에 접근 중이거나 통과한 근무표 열차를 찾지 못했습니다. (' + detail + ')', true);
+          showToast('현재 조건에 맞는 실시간 열차가 없어요. 아래 조회 결과를 확인해주세요.');
+        }
+      }
+    });
+  });
+}
 /* 관리자: NXLogis 원본 응답 보기 (항목 이름 확인용) */
 function passShowRaw() {
   var c = passCfg || passCfgLocal() || passCfgDefault();
@@ -9907,6 +9992,9 @@ to{transform:translate3d(calc(-1 * var(--train-w)),0,0)}
 .pass-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .pass-add,.pass-try{border:0;border-radius:12px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit}
 .pass-add{background:#2f6fd6;color:#fff}.pass-try{background:#fff0e3;color:#c06416}
+.pass-live-test{grid-column:1/-1;border:0;border-radius:12px;padding:11px 10px;background:#e7f6ed;color:#197044;font-size:13px;font-weight:900;cursor:pointer;font-family:inherit}
+.pass-live-test-result{font-size:11.5px;line-height:1.5;color:#526477;background:#f4f7fa;border-radius:9px;padding:8px 10px;margin-top:7px;min-height:16px}
+.pass-live-test-result.err{color:#a33a32;background:#fff2f0}
 .pass-lab{font-size:12px;font-weight:800;color:#667085;margin:10px 2px 5px}
 .pass-seg{display:flex;gap:5px;flex-wrap:wrap}
 .pass-seg button{flex:1;border:1px solid #d9e2ee;background:#fff;border-radius:10px;padding:7px 4px;font-size:12.5px;font-weight:700;color:#475467;cursor:pointer;font-family:inherit}
