@@ -2,6 +2,7 @@
   "id": "/",
   "name": "철도비서",
   "short_name": "철도비서",
+  "description": "열차 운휴·통과·도착 및 근무 열차 알림을 제공하는 철도비서",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -9,6 +10,7 @@
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
   "lang": "ko",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icon-192.png?v=3",
@@ -28,7 +30,5 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ],
-  "prefer_related_applications": false,
-  "description": "열차 운휴·통과·도착 및 근무 열차 알림을 제공하는 철도비서"
+  ]
 }
