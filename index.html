@@ -8209,9 +8209,26 @@ function passEval(route, w, now) {
     ? -1 : Number(route.passedIdx);
   // NX-CHECK가 NXLogis ZONE의 '정차중'을 명시하면 마지막 도착 후 미출발 역을 정차역으로 판정한다.
   var zoneText = String(route.zone || '');
-  var zoneStopped = route.stopped === true || /정차\s*중/.test(zoneText);
+  var zoneStopped = route.stopped === true || /정차\\s*중/.test(zoneText);
   var stoppedIdx = (route.stoppedIdx !== null && route.stoppedIdx !== undefined && !isNaN(Number(route.stoppedIdx)))
     ? Number(route.stoppedIdx) : -1;
+
+  // ZONE 문자열이 'A 정차중' 형태이면 A를 역 목록에서 직접 찾아 정차 위치로 확정한다.
+  if (zoneStopped && stoppedIdx < 0) {
+    var zoneStationText = zoneText.replace(/정차\\s*중.*$/i, '').replace(/^.*ZONE\\s*[:：]?/i, '').trim();
+    zoneStationText = zoneStationText.replace(/역$/, '').trim();
+    if (zoneStationText) {
+      for (var zi = 0; zi < st.length; zi++) {
+        var stationName = String(st[zi].name || '').replace(/역$/, '').trim();
+        if (stationName && (stationName === zoneStationText ||
+            zoneStationText.indexOf(stationName) >= 0 || stationName.indexOf(zoneStationText) >= 0)) {
+          stoppedIdx = zi;
+          break;
+        }
+      }
+    }
+  }
+  // 역 이름이 ZONE에 없을 때만 실제 도착/출발 기록으로 보완한다.
   if (zoneStopped && stoppedIdx < 0) {
     for (var si = st.length - 1; si >= 0; si--) {
       if (st[si].arrAct !== null && st[si].arrAct !== undefined &&
@@ -8219,9 +8236,10 @@ function passEval(route, w, now) {
     }
     if (stoppedIdx < 0) stoppedIdx = passedIdx;
   }
-  var arrived = zoneStopped && stoppedIdx === i;
-  var passed = !arrived && (s.act !== null && s.act !== undefined);
-  if (!passed && !arrived && passedIdx >= i) passed = true;
+  var trainStopped = zoneStopped && stoppedIdx >= 0;
+  var arrived = trainStopped && stoppedIdx === i;
+  var passed = !arrived && !trainStopped && (s.act !== null && s.act !== undefined);
+  if (!passed && !arrived && !trainStopped && passedIdx >= i) passed = true;
 
   var delay = route.delay;
   var last = null;
@@ -8253,33 +8271,35 @@ function passEval(route, w, now) {
           : '운행 시작 전 또는 위치 확인 전');
   var futureStops = st.slice(Math.max(0, passedIdx + 1), i + 1).map(function (x) { return x.name; });
 
-  // 선로 애니메이션은 최대 5개 역만 표시한다.
-  // 운행 중이면 현재 구간 A-B와 지정역을 반드시 포함한다.
+  // 지정역은 항상 맨 오른쪽. 정차역이 다른 곳이면 정차역도 반드시 포함한다.
+  // 총 5개 역 이내에서 현재 정차역과 지정역 사이의 역을 우선 표시한다.
   var trackIndices = [];
   var currentSegmentOffset = 0;
-  if (!passed && !arrived && movingSegment && passedIdx >= 0 && passedIdx < i) {
-    trackIndices = [passedIdx, passedIdx + 1];
-    for (var ti0 = Math.max(passedIdx + 2, i - 2); ti0 < i; ti0++) trackIndices.push(ti0);
-    trackIndices.push(i);
-    trackIndices = trackIndices.filter(function (v, n, a) { return a.indexOf(v) === n; }).sort(function (a, b) { return a - b; });
-    if (trackIndices.length > 5) trackIndices = trackIndices.slice(0, 4).concat([i]);
-    currentSegmentOffset = trackIndices.indexOf(passedIdx);
+  if (trainStopped && stoppedIdx >= 0) {
+    var lo = Math.min(stoppedIdx, i), hi = Math.max(stoppedIdx, i);
+    trackIndices.push(stoppedIdx);
+    for (var tj = lo + 1; tj < hi && trackIndices.length < 4; tj++) trackIndices.push(tj);
+    if (trackIndices.indexOf(i) < 0) trackIndices.push(i);
+    // 두 지점이 멀면 양 끝 지점을 보존하고 중간 역은 균등하게 선택한다.
+    if (trackIndices.length > 5) trackIndices = [stoppedIdx, Math.round((stoppedIdx + (i - stoppedIdx) / 3)), Math.round((stoppedIdx + (i - stoppedIdx) * 2 / 3)), Math.round((stoppedIdx + (i - stoppedIdx) * 5 / 6)), i];
+    trackIndices = trackIndices.filter(function (v, n, a) { return Number.isInteger(v) && v >= 0 && v < st.length && a.indexOf(v) === n; }).sort(function (a, b) { return a - b; }).slice(-5);
   } else {
-    var viewStart = passed ? Math.max(0, i - 2) : Math.max(0, Math.min(i, passedIdx >= 0 ? passedIdx : 0));
-    if (i > viewStart + 4) viewStart = Math.max(0, i - 4);
+    var viewStart = Math.max(0, i - 4);
     trackIndices = [];
-    for (var ti1 = viewStart; ti1 <= Math.min(st.length - 1, viewStart + 4); ti1++) trackIndices.push(ti1);
-    if (trackIndices.indexOf(i) < 0) trackIndices[trackIndices.length - 1] = i;
-    trackIndices = trackIndices.filter(function (v, n, a) { return a.indexOf(v) === n; }).sort(function (a, b) { return a - b; }).slice(0, 5);
-    currentSegmentOffset = Math.max(0, trackIndices.indexOf(Math.max(0, Math.min(i, passedIdx))));
+    for (var ti1 = viewStart; ti1 <= i; ti1++) trackIndices.push(ti1);
   }
+  // 항상 5개 이하이며 지정역이 맨 오른쪽(마지막 인덱스).
+  trackIndices = trackIndices.filter(function (v, n, a) { return a.indexOf(v) === n; }).sort(function (a, b) { return a - b; });
+  if (trackIndices.indexOf(i) < 0) trackIndices.push(i);
+  if (trackIndices.length > 5) trackIndices = trackIndices.slice(-5);
   var trackNames = trackIndices.map(function (ix) { return st[ix].name; });
   if (!trackNames.length) { trackNames = [s.name]; trackIndices = [i]; }
   var trackTargetOffset = trackIndices.indexOf(i);
-  if (trackTargetOffset < 0) { trackNames[trackNames.length - 1] = s.name; trackTargetOffset = trackNames.length - 1; }
+  if (trackTargetOffset < 0) { trackNames.push(s.name); trackTargetOffset = trackNames.length - 1; }
+  currentSegmentOffset = trainStopped ? trackIndices.indexOf(stoppedIdx) : Math.max(0, trackIndices.indexOf(Math.max(0, Math.min(i, passedIdx))));
 
   return {
-    idx: i, passed: passed, arrived: arrived, stoppedIdx: stoppedIdx, soon: soon, approaching: approaching,
+    idx: i, passed: passed, arrived: arrived, trainStopped: trainStopped, stoppedIdx: stoppedIdx, stoppedStation: trainStopped && st[stoppedIdx] ? st[stoppedIdx].name : '', soon: soon, approaching: approaching,
     delay: Number(delay), expect: expect, plan: s.plan, act: s.act,
     prev: st.slice(Math.max(0, i - 2), i).map(function (x) { return x.name; }),
     next: st.slice(i + 1, i + 2).map(function (x) { return x.name; }),
@@ -8668,11 +8688,11 @@ function passDraw(d, quiet) {
   var kind = d.kind === 'pass' ? 'pass' : d.kind === 'soon' ? 'soon' : 'now';
   var badge = $('pp-badge');
   badge.className = 'pp-badge k-' + kind;
-  badge.textContent = d.arrived ? '도착 · 정차 중' : (kind === 'pass' ? '지정역 통과' : (d.approaching ? '지정역 접근 중' : kind === 'soon' ? '곧 도착' : (d.passed ? '지금 위치 · 통과함' : '현재 운행 위치')));
+  badge.textContent = d.arrived ? '도착 · 정차 중' : (d.trainStopped ? (String(d.stoppedStation || '현재 역') + ' 정차 중') : (kind === 'pass' ? '지정역 통과' : (d.approaching ? '지정역 접근 중' : kind === 'soon' ? '곧 도착' : (d.passed ? '지금 위치 · 통과함' : '현재 운행 위치'))));
   $('pp-title').innerHTML = '<b>' + esc(d.train) + '</b>열차 <span>·</span> <b>' + esc(d.station) + '</b>';
   $('pp-date').textContent = d.date ? String(d.date).replace(/-/g, '.') : '';
   var rows = [];
-  rows.push('<div class="pp-row"><span>현재 위치</span><b>' + esc(d.currentText || '-') + '</b></div>');
+  rows.push('<div class="pp-row"><span>현재 위치</span><b>' + esc(d.trainStopped && !d.arrived ? (d.stoppedStation + ' 정차 중') : (d.currentText || '-')) + '</b></div>');
   rows.push('<div class="pp-row"><span>지정역까지</span><b>' + (d.passed ? '통과 완료' : (d.remainingStops == null ? '-' : d.remainingStops + '정거장')) + '</b></div>');
   if (d.arrived) {
     rows.push('<div class="pp-row"><span>도착 상태</span><b>지정역 정차 중</b></div>');
@@ -8722,13 +8742,19 @@ function passReplay() {
   var tgt = $('pp-stops').querySelector('.tgt');
 
   var xStart, xEnd, dur, ease;
-  if (arrived) {
-    // ZONE 정차중: 지정역 직전에서 출발해 해당 역 마커에 도착한 뒤 정차한다.
-    var prevX = xs[Math.max(0, ti - 1)];
-    xStart = ti > 0 ? prevX - TW * 0.5 : xs[ti] - TW * 0.5;
-    xEnd = xs[ti] - TW * 0.5;
-    dur = ti > 0 ? 1450 : 450;
-    ease = 'ease-out';
+  if (d.trainStopped && !arrived) {
+    // ZONE 'A 정차중': 열차는 A역 마커 중앙에 고정한다. 지정역은 별도 마커로 맨 오른쪽.
+    var stopOffset = Math.max(0, Math.min(n - 1, Number(d.trackStoppedOffset)));
+    xStart = xs[stopOffset] - TW * 0.5;
+    xEnd = xStart;
+    dur = 300;
+    ease = 'linear';
+  } else if (arrived) {
+    // 지정역 자체에 정차한 경우 해당 지정역 마커 중앙에 고정한다.
+    xStart = xs[ti] - TW * 0.5;
+    xEnd = xStart;
+    dur = 300;
+    ease = 'linear';
   } else if (passed) {
     // 통과 판정이면 열차 전체가 지정역 마커를 지나 오른쪽으로 이동한다.
     xStart = xs[ti] - TW - 22;
