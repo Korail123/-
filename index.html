@@ -8238,10 +8238,30 @@ function passEval(route, w, now) {
         : '운행 시작 전 또는 위치 확인 전');
   var futureStops = st.slice(Math.max(0, passedIdx + 1), i + 1).map(function (x) { return x.name; });
 
-  // 선로 애니메이션은 마지막 확인 역부터 목적역까지 실제 역 순서를 표시한다.
-  var trackStart = Math.max(0, Math.min(i, passedIdx >= 0 ? passedIdx : 0));
-  var trackNames = st.slice(trackStart, i + 1).map(function (x) { return x.name; });
-  if (!trackNames.length) trackNames = [s.name];
+  // 선로 애니메이션은 최대 5개 역만 표시한다.
+  // 운행 중이면 현재 구간 A-B와 지정역을 반드시 포함한다.
+  var trackIndices = [];
+  var currentSegmentOffset = 0;
+  if (!passed && movingSegment && passedIdx >= 0 && passedIdx < i) {
+    trackIndices = [passedIdx, passedIdx + 1];
+    for (var ti0 = Math.max(passedIdx + 2, i - 2); ti0 < i; ti0++) trackIndices.push(ti0);
+    trackIndices.push(i);
+    trackIndices = trackIndices.filter(function (v, n, a) { return a.indexOf(v) === n; }).sort(function (a, b) { return a - b; });
+    if (trackIndices.length > 5) trackIndices = trackIndices.slice(0, 4).concat([i]);
+    currentSegmentOffset = trackIndices.indexOf(passedIdx);
+  } else {
+    var viewStart = passed ? Math.max(0, i - 2) : Math.max(0, Math.min(i, passedIdx >= 0 ? passedIdx : 0));
+    if (i > viewStart + 4) viewStart = Math.max(0, i - 4);
+    trackIndices = [];
+    for (var ti1 = viewStart; ti1 <= Math.min(st.length - 1, viewStart + 4); ti1++) trackIndices.push(ti1);
+    if (trackIndices.indexOf(i) < 0) trackIndices[trackIndices.length - 1] = i;
+    trackIndices = trackIndices.filter(function (v, n, a) { return a.indexOf(v) === n; }).sort(function (a, b) { return a - b; }).slice(0, 5);
+    currentSegmentOffset = Math.max(0, trackIndices.indexOf(Math.max(0, Math.min(i, passedIdx))));
+  }
+  var trackNames = trackIndices.map(function (ix) { return st[ix].name; });
+  if (!trackNames.length) { trackNames = [s.name]; trackIndices = [i]; }
+  var trackTargetOffset = trackIndices.indexOf(i);
+  if (trackTargetOffset < 0) { trackNames[trackNames.length - 1] = s.name; trackTargetOffset = trackNames.length - 1; }
 
   return {
     idx: i, passed: passed, soon: soon, approaching: approaching,
@@ -8251,7 +8271,9 @@ function passEval(route, w, now) {
     last: last, zone: route.zone || '', currentIdx: passedIdx,
     targetIdx: i, remainingStops: remainingStops, currentText: currentText,
     futureStops: futureStops, trackNames: trackNames,
-    trackTargetOffset: trackNames.length - 1
+    trackTargetOffset: trackTargetOffset,
+    trackCurrentOffset: currentSegmentOffset,
+    trackCurrentMoving: !passed && movingSegment && passedIdx >= 0 && passedIdx < i
   };
 }
 /* ----- 설정 (감시 열차번호 + 역 + 곧 도착/통과) ----- */
@@ -8661,14 +8683,14 @@ function passReplay() {
   var track = $('pp-track'), train = $('pp-train');
   var W = track.clientWidth || 300, TW = 104;
   var names = (d.trackNames && d.trackNames.length)
-    ? d.trackNames
-    : (d.prev || []).concat([d.station]).concat(d.next || []);
+    ? d.trackNames.slice(0, 5)
+    : (d.prev || []).slice(-2).concat([d.station]).concat((d.next || []).slice(0, 2));
+  if (names.length > 5) names = names.slice(0, 5);
+  var n = Math.max(1, names.length);
   var ti = (d.trackTargetOffset !== null && d.trackTargetOffset !== undefined)
     ? Number(d.trackTargetOffset) : (d.prev || []).length;
-  var n = names.length;
   ti = Math.max(0, Math.min(n - 1, ti));
 
-  // 역 표시는 현재 마지막 확인역부터 지정역까지의 실제 순서를 유지한다.
   var xs = names.map(function (_, i) {
     return n === 1 ? W * 0.5 : W * (0.12 + 0.76 * i / (n - 1));
   });
@@ -8681,44 +8703,42 @@ function passReplay() {
 
   var xStart, xEnd, dur, ease;
   if (passed) {
-    // 지정역 실제 통과가 확인된 경우에만 열차를 목적역 위치에 놓는다.
-    xStart = xs[ti] - TW * 0.5 - 18;
-    xEnd = xs[ti] - TW * 0.5;
-    dur = 900;
-    ease = 'ease-out';
-  } else {
-    // 현재 열차는 목적역이 아니라 마지막 확인역 다음의 현재 운행 구간에 표시한다.
-    // NXLogis는 구간 내 GPS 좌표를 주지 않으므로 구간의 앞쪽 25~55%를 시각적 위치로 사용한다.
-    var currentOffset = 0; // trackNames는 passEval에서 passedIdx부터 구성된다.
-    var segA = xs[Math.min(currentOffset, n - 1)];
-    var segB = n > currentOffset + 1 ? xs[currentOffset + 1] : Math.min(W - 12, segA + 34);
-    var span = Math.max(18, segB - segA);
-    xStart = segA + span * 0.24 - TW * 0.5;
-    xEnd = segA + span * 0.52 - TW * 0.5;
-    dur = 1800;
+    // 통과 판정이면 열차 전체가 지정역 마커를 지나 오른쪽으로 이동한다.
+    xStart = xs[ti] - TW - 22;
+    xEnd = xs[ti] + 22;
+    dur = 1250;
     ease = 'ease-in-out';
+  } else if (d.trackCurrentMoving && n > 1) {
+    // NXLogis가 A역-B역 사이 운행 중이라고 판정한 경우 B역 방향으로 주행한다.
+    var currentOffset = Math.max(0, Math.min(n - 2, Number(d.trackCurrentOffset || 0)));
+    var segA = xs[currentOffset], segB = xs[currentOffset + 1];
+    var span = Math.max(24, segB - segA);
+    xStart = segA - TW * 0.5 + span * 0.18;
+    xEnd = segB - TW * 0.5 - Math.min(10, span * 0.08);
+    dur = 1900;
+    ease = 'ease-in-out';
+  } else {
+    var pos = Math.max(0, Math.min(n - 1, Number(d.trackCurrentOffset || 0)));
+    xStart = xs[pos] - TW * 0.5;
+    xEnd = xStart;
+    dur = 500;
+    ease = 'linear';
   }
 
   train.classList.add('run');
   if (!train.animate) {
-    train.style.transform = 'translateX(' + (passed ? xEnd : xStart) + 'px)';
+    train.style.transform = 'translateX(' + xEnd + 'px)';
     if (passed && tgt) tgt.classList.add('done');
     return;
   }
-
-  if (passed) {
+  if (passed || d.trackCurrentMoving) {
     passPopAnim = train.animate([
       { transform: 'translateX(' + xStart + 'px)' },
       { transform: 'translateX(' + xEnd + 'px)' }
     ], { duration: dur, easing: ease, fill: 'forwards' });
-    if (tgt) passPopTimers.push(setTimeout(function () { tgt.classList.add('done'); }, dur));
+    if (passed && tgt) passPopTimers.push(setTimeout(function () { tgt.classList.add('done'); }, dur));
   } else {
-    // 현재 운행 구간 안에서만 짧게 움직인다. 목적역까지 달려가는 연출은 하지 않는다.
-    passPopAnim = train.animate([
-      { transform: 'translateX(' + xStart + 'px)' },
-      { transform: 'translateX(' + xEnd + 'px)' },
-      { transform: 'translateX(' + xStart + 'px)' }
-    ], { duration: dur, easing: ease, iterations: Infinity });
+    train.style.transform = 'translateX(' + xEnd + 'px)';
   }
 }
 function closePassPop() {
