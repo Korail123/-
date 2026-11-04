@@ -1311,7 +1311,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 </div>
 <div id="pass-panel" class="dia-modal" onclick="if(event.target===this)closePassSettings()">
   <div class="dia-dialog ns-dialog">
-    <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차통과알림" alt="" aria-hidden="true">[ 열차통과/도착알림 ] 개발중</div>
+    <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차통과알림" alt="" aria-hidden="true">[ 열차통과/도착알림 ] 테스트 운영</div>
     <div id="pass-card" class="ns-card">
       <ul class="ns-points" style="margin-top:0"><li><b>오늘 근무표</b>에 감시 열차가 있으면 자동 확인</li><li>정한 역에 <b>곧 도착</b> · <b>통과</b>하면 알림 (앱이 꺼져도)</li><li class="ns-dim">NXLogis 기준 · 실제보다 1~몇 분 늦을 수 있어요</li></ul>
       <div class="pass-lab">감시 열차번호 <small>오늘 근무표에서 자동 추출 · 여객/화물 전체</small></div>
@@ -2004,6 +2004,8 @@ function onSnapshotUpdated() {
   if (active('group-section')) loadGroupSchedule(false);
   if (active('vacation-section')) renderVacation();
   if (active('payslip-section') && typeof renderPayslip === 'function') renderPayslip();
+  /* 근무표 변경이 반영되면 테스트 계정의 오늘 담당 열차도 서버에 동기화 */
+  if (typeof passAutoSync === 'function') setTimeout(function () { try { passAutoSync(); } catch (e) {} }, 0);
 }
 /* ---- 폰에서 직접 계산 ---- */
 function snapDateKeys(startKey, endKey) {
@@ -8029,7 +8031,7 @@ function pushClearOnLogout() {
    내가 고른 열차가 내가 고른 역에 곧 도착하거나 통과하면 알림
    - 서버(push-alarm)가 1분마다 NXLogis로 확인 → 푸시 알림(앱이 꺼져도)
    - 앱이 열려 있으면 열차가 달려가는 애니메이션 팝업
-   - 모든 로그인 사용자가 개인별 설정으로 이용 */
+   - 테스트 기간에는 199878 계정에서만 개인별 설정 및 푸시 이용 */
 var PASS_FN = 'smart-handler';        /* nx-check 함수 주소 */
 function passAllowed() { return String((getCurrentUser() || {}).employeeId || '') === '199878'; }
 var passState = { date: '', train: '', route: null, idx: -1, lead: 10, list: [], raw: null };
@@ -8097,21 +8099,32 @@ function passEval(route, w, now) {
   };
 }
 /* ----- 설정 (감시 열차번호 + 역 + 곧 도착/통과) ----- */
-var PASS_DEFAULT_TRAINS = ['3224', '3226', '1208'];
-var passCfg = null, passSaveTimer = null;
+/* 열차 감시 설정은 오늘 근무표에서 자동 추출합니다. 특정 열차번호를 고정하지 않습니다. */
+var passCfg = null, passSaveTimer = null, passAutoSyncBusy = false;
 function passCfgKey() { return 'passCfg_' + (getCurrentUser().employeeId || ''); }
 function passCfgLocal() { try { return JSON.parse(LS.getItem(passCfgKey()) || 'null'); } catch (e) { return null; } }
 function passCfgDefault() { return { trains: [], stations: [], lead: 0, soon: true, pass: true }; }
 function passTrainKey(t) { return String(t || '').toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, ''); }
 /* 근무표(오늘)에 있는 감시 열차 */
 function passMyDays(cfg) {
-  /* 오늘 근무 DIA에서 추출한 모든 여객/화물 열차를 자동 감시 */
-  var out = [];
+  /* 로그인 사용자의 근무표에서 오늘 운행하는 담당 열차를 자동 추출.
+     연계 열차(link)는 본인 담당 열차가 아니므로 제외하고 날짜+열차번호로 중복 제거. */
+  var out = [], seen = {};
   try {
     nxCollectTrains(1).forEach(function (x) {
-      if (!x.link) out.push({ date: x.date, train: x.train });
+      if (!x || x.link) return;
+      var date = String(x.date || '').trim();
+      var train = passTrainKey(x.train);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^[A-Z]{0,3}\d{1,6}$/.test(train)) return;
+      var key = date + '|' + train;
+      if (seen[key]) return;
+      seen[key] = true;
+      out.push({ date: date, train: train });
     });
   } catch (e) {}
+  out.sort(function (a, b) {
+    return a.date === b.date ? a.train.localeCompare(b.train, 'en', { numeric: true }) : (a.date < b.date ? -1 : 1);
+  });
   return out;
 }
 function openPassSettings() {
@@ -8185,10 +8198,27 @@ function passSaveSoon() {
   passSaveTimer = setTimeout(function () { passSaveNow(true); }, 700);
 }
 /* 설정 + 오늘 근무표의 감시 열차를 서버에 올림 */
-function passSaveNow(fromUi) {
+function passSaveNow(fromUi, done) {
   var c = passCfg || passCfgLocal();
   var u = getCurrentUser();
-  if (!c || !u.token) return;
+  if (!c || !u.token) { if (done) done(false); return; }
+  /* 근무표가 아직 로드되지 않았다면 먼저 가져온 뒤 저장 */
+  if (!snapshotUsable()) {
+    if ($('pass-saved')) $('pass-saved').textContent = '근무표 확인 중...';
+    refreshSnapshot(false, function (ok) {
+      if (ok && snapshotUsable()) passSaveNow(fromUi, done);
+      else {
+        if ($('pass-saved')) $('pass-saved').textContent = '근무표를 불러오지 못했습니다.';
+        if (done) done(false);
+      }
+    });
+    return;
+  }
+  if (!findMyMember()) {
+    if ($('pass-saved')) $('pass-saved').textContent = '내 근무표 정보를 찾지 못했습니다.';
+    if (done) done(false);
+    return;
+  }
   var days = passMyDays(c);
   api({ action: 'passcfg_save', employeeId: u.employeeId, token: u.token, trains: c.trains, stations: c.stations,
         lead: c.lead, soon: c.soon, pass: c.pass, days: days }, function (r) {
@@ -8199,19 +8229,51 @@ function passSaveNow(fromUi) {
         if (!('Notification' in window) || Notification.permission !== 'granted') showToast('알림 설정에서 알림을 허용해야 앱이 꺼져 있어도 울려요.');
         try { pushEnsureSub(true).then(function () { pushSyncAlarms(true); }); } catch (e) {}
       }
-    } else if ($('pass-saved')) $('pass-saved').textContent = (r && r.message) || '저장하지 못했습니다.';
+      if (done) done(true);
+    } else {
+      if ($('pass-saved')) $('pass-saved').textContent = (r && r.message) || '저장하지 못했습니다.';
+      if (done) done(false);
+    }
   });
 }
-/* 앱을 열 때·돌아올 때: 오늘 근무표가 바뀌었거나 6시간 지났으면 감시 열차 목록을 다시 올림 (알림 없이) */
+/* 앱을 열거나 다시 볼 때 근무표를 먼저 최신화한 뒤 오늘 담당 열차를 서버에 동기화 */
 function passAutoSync() {
-  if (!passAllowed() || !getCurrentUser().token) return;
-  var c = passCfgLocal();
-  if (!c) return;
-  var days = passMyDays(c), old = null;
-  try { old = JSON.parse(LS.getItem('passSync_' + getCurrentUser().employeeId) || 'null'); } catch (e) {}
-  if (old && JSON.stringify(old.days) === JSON.stringify(days) && Date.now() - old.at < 6 * 3600000) return;
-  passCfg = c;
-  passSaveNow(false);
+  var u = getCurrentUser();
+  if (!passAllowed() || !u.token || passAutoSyncBusy) return;
+  passAutoSyncBusy = true;
+
+  function finish() { passAutoSyncBusy = false; }
+  function syncWithConfig(c) {
+    if (!snapshotUsable() || !findMyMember()) { finish(); return; }
+    c = c || passCfgDefault();
+    var days = passMyDays(c), old = null;
+    try { old = JSON.parse(LS.getItem('passSync_' + u.employeeId) || 'null'); } catch (e) {}
+    if (old && JSON.stringify(old.days) === JSON.stringify(days) && Date.now() - old.at < 6 * 3600000) {
+      finish();
+      return;
+    }
+    passCfg = c;
+    /* 서버 저장이 끝날 때까지 busy를 유지해 중복 동기화를 방지 */
+    passSaveNow(false, finish);
+  }
+
+  /* 캐시가 오래됐으면 갱신하고, 스냅샷이 없으면 여기서 새로 가져옴 */
+  refreshSnapshot(false, function (ok) {
+    if (!ok || !snapshotUsable()) { finish(); return; }
+    var c = passCfgLocal();
+    if (c) { syncWithConfig(c); return; }
+
+    /* 새 기기/브라우저에서도 서버에 저장된 감시 역 설정을 복원 */
+    api({ action: 'passcfg_get', employeeId: u.employeeId, token: u.token }, function (r) {
+      var cfg = r && r.success && r.cfg ? r.cfg : null;
+      c = cfg ? {
+        trains: cfg.trains || [], stations: cfg.stations || [], lead: 0,
+        soon: cfg.soon !== false, pass: cfg.pass !== false
+      } : passCfgDefault();
+      try { LS.setItem(passCfgKey(), JSON.stringify(c)); } catch (e) {}
+      syncWithConfig(c);
+    });
+  });
 }
 document.addEventListener('visibilitychange', function () {
   if (document.visibilityState === 'visible') setTimeout(function () { try { passAutoSync(); } catch (e) {} }, 3000);
