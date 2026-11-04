@@ -993,7 +993,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <button type="button" class="set-tile" onclick="openBackupPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="백업동기화" alt="" aria-hidden="true" decoding="async"><span class="set-label">백업·동기화</span></button>
     <button type="button" class="set-tile" onclick="openPermPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알람설정" alt="" aria-hidden="true" decoding="async"><span class="set-label">알림 설정</span><small id="perm-sub" class="set-sub" hidden></small></button>
     <button type="button" class="set-tile" onclick="openNxSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차운휴알림" alt="" aria-hidden="true" decoding="async"><span class="set-label">열차 운휴 알림</span><small id="nx-sub" class="set-sub" hidden></small></button>
-    <button type="button" class="set-tile" onclick="openPassSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차통과알림" alt="" aria-hidden="true" decoding="async"><span class="set-label">열차통과/<br>도착알림</span></button>
+    <button type="button" class="set-tile" onclick="openPassSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차통과알림" alt="" aria-hidden="true" decoding="async"><span class="set-label">[ 열차통과/도착알림 ]<br>개발중</span></button>
     <button type="button" class="set-tile" onclick="openBriefingSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="오늘의브리핑" alt="" aria-hidden="true" decoding="async"><span class="set-label">오늘의 브리핑</span><small id="brief-sub" class="set-badge" hidden>ON</small></button>
     <button type="button" class="set-tile" onclick="openRegulationsPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="규정" alt="" aria-hidden="true" decoding="async"><span class="set-label">규정</span></button>
     <button type="button" class="set-tile danger" onclick="openResetAllDataPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="전체데이터초기화" alt="" aria-hidden="true" decoding="async"><span class="set-label">데이터 초기화</span></button>
@@ -1311,7 +1311,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 </div>
 <div id="pass-panel" class="dia-modal" onclick="if(event.target===this)closePassSettings()">
   <div class="dia-dialog ns-dialog">
-    <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차통과알림" alt="" aria-hidden="true">열차통과/도착알림 <small class="pass-beta">시험 중</small></div>
+    <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차통과알림" alt="" aria-hidden="true">[ 열차통과/도착알림 ] 개발중</div>
     <div id="pass-card" class="ns-card">
       <ul class="ns-points" style="margin-top:0"><li><b>오늘 근무표</b>에 감시 열차가 있으면 자동 확인</li><li>정한 역에 <b>곧 도착</b> · <b>통과</b>하면 알림 (앱이 꺼져도)</li><li class="ns-dim">NXLogis 기준 · 실제보다 1~몇 분 늦을 수 있어요</li></ul>
       <div class="pass-lab">감시 열차번호 <small>오늘 근무표에서 자동 추출 · 여객/화물 전체</small></div>
@@ -8031,7 +8031,7 @@ function pushClearOnLogout() {
    - 앱이 열려 있으면 열차가 달려가는 애니메이션 팝업
    - 모든 로그인 사용자가 개인별 설정으로 이용 */
 var PASS_FN = 'smart-handler';        /* nx-check 함수 주소 */
-function passAllowed() { return true; }
+function passAllowed() { return String((getCurrentUser() || {}).employeeId || '') === '199878'; }
 var passState = { date: '', train: '', route: null, idx: -1, lead: 10, list: [], raw: null };
 function passHm(ms, sec) {
   if (ms === null || ms === undefined) return '-';
@@ -8115,7 +8115,7 @@ function passMyDays(cfg) {
   return out;
 }
 function openPassSettings() {
-  if (!passAllowed()) { showToast('열차통과/도착알림은 개발 중입니다.'); return; }
+  if (!passAllowed()) { alert('열차통과/도착알림은 현재 개발 중입니다.'); return; }
   passCardRender();
   $('pass-panel').classList.add('active');
 }
@@ -9124,27 +9124,40 @@ function noticeCheckNew(gen) {
     });
   });
 }
-/* 본문을 한눈에 볼 수 있게 앞부분 3줄·최대 90자까지만 요약 */
+/* 팝업에는 본문 전체 대신 ①② 등으로 시작하는 주요 제목만 한 줄씩 표시 */
 function noticeSummary(text) {
-  var lines = String(text || '').replace(/\r/g, '').split('\n')
-    .map(function (l) { return l.trim(); })
-    .filter(function (l) { return l; });
-  var out = lines.slice(0, 3).join('\n');
-  var cut = lines.length > 3;
-  if (out.length > 90) { out = out.slice(0, 90).replace(/\s+\S*$/, ''); cut = true; }
-  return out + (cut ? ' …' : '');
+  var lines = String(text || '').replace(/\r/g, '').split('\n');
+  var headings = [];
+  lines.forEach(function (line) {
+    var clean = String(line || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+    if (!clean) return;
+    /* ①②③… / ❶❷❸… 로 시작하는 제목만 추출 */
+    if (/^[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿]/.test(clean)) {
+      if (clean.length > 72) clean = clean.slice(0, 71).trim() + '…';
+      headings.push(clean);
+    }
+  });
+  return headings;
 }
 var noticePopupPostId = '';
 function noticeShowPopup(post) {
   noticePopupPostId = noticeId(post);
   var t = noticeTime(post);
   var dateText = t ? new Date(t).toLocaleDateString('ko-KR') : '';
-  var summary = noticeSummary(post.content || post.body || '');
+  var headings = noticeSummary(post.content || post.body || '');
+  var headingHtml = headings.length
+    ? '<div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">' + headings.map(function (h) {
+        return '<div style="font-size:12.5px;font-weight:700;color:#334;line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(h) + '</div>';
+      }).join('') + '</div>'
+    : '<div style="font-size:11.5px;color:#7b8798;margin-top:9px">표시할 번호형 주요 제목(①, ②)이 없습니다.</div>';
   $('notice-popup-body').innerHTML =
     '<div style="background:#f4f7fc;border-radius:12px;padding:12px 14px">' +
-      '<div style="font-size:14px;font-weight:700;color:#1a2b4c;overflow-wrap:anywhere">' + esc(noticeTitleOf(post)) + '</div>' +
-      (dateText ? '<div style="font-size:10px;color:#8792a1;margin:2px 0 0">' + esc(dateText) + '</div>' : '') +
-      (summary ? '<div style="font-size:12px;color:#334;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:8px">' + esc(summary) + '</div>' : '') +
+      '<div style="display:flex;align-items:center;gap:6px;min-width:0">' +
+        '<span style="flex:none;font-size:10px;font-weight:800;color:#3564ad;background:#e4edff;border-radius:6px;padding:3px 6px">' + esc(noticeCatOf(post)) + '</span>' +
+        '<div style="font-size:14px;font-weight:800;color:#1a2b4c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(noticeTitleOf(post)) + '</div>' +
+      '</div>' +
+      (dateText ? '<div style="font-size:10px;color:#8792a1;margin:5px 0 0">' + esc(dateText) + '</div>' : '') +
+      headingHtml +
     '</div>';
   $('notice-popup-panel').classList.add('active');
 }
