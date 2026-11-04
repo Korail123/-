@@ -1314,8 +1314,9 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차통과알림" alt="" aria-hidden="true">[ 열차통과/도착알림 ] 개발중</div>
     <div id="pass-card" class="ns-card">
       <ul class="ns-points" style="margin-top:0"><li><b>오늘 근무표</b>에 감시 열차가 있으면 자동 확인</li><li>정한 역에 <b>곧 도착</b> · <b>통과</b>하면 알림 (앱이 꺼져도)</li><li class="ns-dim">NXLogis 기준 · 실제보다 1~몇 분 늦을 수 있어요</li></ul>
-      <div class="pass-lab">감시 열차번호 <small>오늘 근무표에서 자동 추출 · 여객/화물 전체</small></div>
+      <div class="pass-lab">감시할 열차번호 <small>근무표 자동 추출 + 직접 지정 가능</small></div>
       <div id="pass-trains" class="pass-tags"></div>
+      <div class="pass-input"><input id="pass-train-in" maxlength="12" placeholder="열차번호 추가 (예: 3226, KTX001)" autocomplete="off" onkeydown="if(event.key==='Enter')passAdd('trains')"><button type="button" onclick="passAdd('trains')">추가</button></div>
       <div class="pass-lab">알림 받을 역</div>
       <div id="pass-stations" class="pass-tags"></div>
       <div class="pass-input"><input id="pass-station-in" maxlength="20" placeholder="역 이름 추가 (예: 팔당)" autocomplete="off" onkeydown="if(event.key==='Enter')passAdd('stations')"><button type="button" onclick="passAdd('stations')">추가</button></div>
@@ -1328,11 +1329,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <button type="button" class="pass-add" onclick="passCheckNow()">지금 조회</button>
         <button type="button" class="pass-try" onclick="passTestPopup()">팝업 미리보기</button>
         <button type="button" class="pass-live-test" onclick="passTestLiveNow()">실시간 운행 테스트</button>
-      </div>
-      <div id="pass-live-test-custom" class="pass-live-test-custom" style="display:none">
-        <div class="pass-lab">테스트용 열차번호 <small>199878 송주영 전용 · 오늘 근무표 열차 + 직접 입력 열차</small></div>
-        <textarea id="pass-live-test-trains" rows="2" maxlength="300" placeholder="예: 1234, 5678, KTX001&#10;쉼표·공백·줄바꿈으로 여러 개 입력" autocomplete="off"></textarea>
-        <small class="pass-live-test-help">여기에 입력한 열차는 실시간 테스트에만 사용되며, 실제 자동 감시 목록이나 다른 사용자의 설정에는 저장되지 않습니다.</small>
       </div>
       <div id="pass-live-test-result" class="pass-live-test-result" aria-live="polite">실시간 운행 테스트는 실제 NXLogis 운행정보만 사용합니다.</div>
       <div class="pass-raw-row"><span id="pass-saved"></span><button type="button" class="pass-raw-link" onclick="passShowRaw()">NXLogis 원본 보기</button></div>
@@ -8134,13 +8130,17 @@ function passCfgDefault() { return { trains: [], stations: [], lead: 0, soon: tr
 function passTrainKey(t) { return String(t || '').toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, ''); }
 /* 근무표(오늘)에 있는 감시 열차 */
 function passMyDays(cfg) {
-  /* 오늘 근무 DIA에서 추출한 모든 여객/화물 열차를 자동 감시 */
-  var out = [];
-  try {
-    nxCollectTrains(1).forEach(function (x) {
-      if (!x.link) out.push({ date: x.date, train: x.train });
-    });
-  } catch (e) {}
+  /* 오늘 근무표 열차와 사용자가 직접 지정한 열차를 함께 감시 */
+  var out = [], seen = {};
+  var t = todayKST(), today = getDateKey(t.y, t.m, t.d);
+  function add(train, date) {
+    var normalized = passTrainKey(train), key = String(date || today) + '|' + normalized;
+    if (!normalized || seen[key]) return;
+    seen[key] = true;
+    out.push({ date: String(date || today), train: normalized });
+  }
+  try { nxCollectTrains(1).forEach(function (x) { if (!x.link) add(x.train, x.date); }); } catch (e) {}
+  (cfg && Array.isArray(cfg.trains) ? cfg.trains : []).forEach(function (train) { add(train, today); });
   return out;
 }
 function openPassSettings() {
@@ -8151,14 +8151,12 @@ function openPassSettings() {
 function closePassSettings() { $('pass-panel').classList.remove('active'); }
 function passCardRender() {
   if (!$('pass-card') || !passAllowed()) return;
-  var testBox = $('pass-live-test-custom');
-  if (testBox) testBox.style.display = String(getCurrentUser().employeeId || '') === '199878' ? '' : 'none';
   passCfg = passCfgLocal() || passCfgDefault();
   passCfg.lead = 0;
   passRender();
   var u = getCurrentUser();
   api({ action: 'passcfg_get', employeeId: u.employeeId, token: u.token }, function (r) {
-    if (r && r.success && r.cfg) { passCfg = { trains: [], stations: r.cfg.stations || [], lead: 0, soon: r.cfg.soon !== false, pass: r.cfg.pass !== false }; }
+    if (r && r.success && r.cfg) { passCfg = { trains: Array.isArray(r.cfg.trains) ? r.cfg.trains : (passCfg.trains || []), stations: r.cfg.stations || [], lead: 0, soon: r.cfg.soon !== false, pass: r.cfg.pass !== false }; }
     else if (r && r.success && !r.cfg && !passCfgLocal()) { passCfg = passCfgDefault(); passSaveSoon(); }
     try { LS.setItem(passCfgKey(), JSON.stringify(passCfg)); } catch (e) {}
     passRender();
@@ -8169,10 +8167,12 @@ function passRender() {
   if (!c || !$('pass-trains')) return;
   c.lead = 0;
   var days = passMyDays(c), t = todayKST(), today = getDateKey(t.y, t.m, t.d);
-  var onToday = days.filter(function (d) { return d.date === today; }).map(function (d) { return passTrainKey(d.train); });
-  $('pass-trains').innerHTML = days.length ? days.map(function (x) {
-    return '<span class="on">' + esc(x.train) + (x.date === today ? '' : ' · ' + esc(x.date.slice(5).replace('-', '/'))) + '</span>';
-  }).join('') : '<small>오늘 근무표에서 감시할 열차를 찾지 못했어요.</small>';
+  var rosterTrains = [];
+  try { nxCollectTrains(1).forEach(function (x) { if (!x.link && x.date === today) rosterTrains.push(passTrainKey(x.train)); }); } catch (e) {}
+  var trainTags = [];
+  rosterTrains.forEach(function (train) { trainTags.push('<span class="on">' + esc(train) + '<small>근무표</small></span>'); });
+  (c.trains || []).forEach(function (train, i) { trainTags.push('<span>' + esc(train) + '<button type="button" onclick="passRemove(\'trains\',' + i + ')" aria-label="삭제">✕</button></span>'); });
+  $('pass-trains').innerHTML = trainTags.length ? trainTags.join('') : '<small>근무표 열차가 없어요. 열차번호를 직접 추가하세요.</small>';
   $('pass-stations').innerHTML = c.stations.length ? c.stations.map(function (x, i) {
     return '<span>' + esc(x) + '<button type="button" onclick="passRemove(\'stations\',' + i + ')" aria-label="삭제">✕</button></span>';
   }).join('') : '<small>알림 받을 역을 추가하세요.</small>';
@@ -8366,15 +8366,8 @@ function passTestLiveNow() {
   var t = todayKST(), today = getDateKey(t.y, t.m, t.d);
   var stations = (c.stations || []).slice();
   var list = passMyDays(c).filter(function (d) { return d.date === today; });
-  var isTestOwner = String(getCurrentUser().employeeId || '') === '199878';
-  var manualBox = $('pass-live-test-trains');
-  var manualText = isTestOwner && manualBox ? String(manualBox.value || '') : '';
-  var manualTrains = manualText.split(/[\\s,;，；]+/).map(function (v) {
-    return String(v || '').trim().toUpperCase();
-  }).filter(Boolean);
-  var invalidTrains = manualTrains.filter(function (v) {
-    return !/^[A-Z]{0,3}\\d{1,6}$/.test(v);
-  });
+  var manualTrains = (c.trains || []).map(passTrainKey);
+  var invalidTrains = manualTrains.filter(function (v) { return !/^[A-Z]{0,3}\d{1,6}$/.test(v); });
   var result = $('pass-live-test-result');
   function report(msg, err) {
     if (result) {
@@ -8385,12 +8378,7 @@ function passTestLiveNow() {
   if (passLiveTestBusy) { showToast('실시간 운행정보를 조회하고 있어요.'); return; }
   if (!stations.length) { report('먼저 알림 받을 역을 추가해주세요.', true); showToast('알림 받을 역을 먼저 설정해주세요.'); return; }
   if (invalidTrains.length) { report('열차번호 형식을 확인해주세요: ' + invalidTrains.join(', '), true); showToast('열차번호는 숫자 또는 영문+숫자 형식으로 입력해주세요.'); return; }
-  if (isTestOwner) {
-    manualTrains.forEach(function (train) {
-      list.push({ date: today, train: train, testOnly: true });
-    });
-  }
-  if (!list.length) { report('오늘 근무표 열차 또는 테스트용 열차번호를 입력해주세요.', true); showToast('테스트할 열차번호가 없어요.'); return; }
+  if (!list.length) { report('오늘 근무표 열차 또는 직접 지정한 열차번호가 없습니다.', true); showToast('감시할 열차번호를 추가해주세요.'); return; }
   if (!c.soon && !c.pass) { report('곧 도착과 통과 알림이 모두 꺼져 있습니다. 설정에서 하나 이상 켜주세요.', true); return; }
 
   /* 중복 열차 제거 */
@@ -8403,7 +8391,7 @@ function passTestLiveNow() {
   });
 
   passLiveTestBusy = true;
-  report('오늘 근무표 열차와 테스트 입력 열차 ' + list.length + '개를 NXLogis에서 조회하고 있습니다…');
+  report('선택한 감시 열차 ' + list.length + '개를 NXLogis에서 조회하고 있습니다…');
   var pages = [], left = list.length, liveCount = 0, failed = 0, matchCount = 0;
 
   list.forEach(function (it) {
