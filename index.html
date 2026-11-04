@@ -1311,10 +1311,10 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 </div>
 <div id="pass-panel" class="dia-modal" onclick="if(event.target===this)closePassSettings()">
   <div class="dia-dialog ns-dialog">
-    <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차통과알림" alt="" aria-hidden="true">[ 열차통과/도착알림 ] 관리자 테스트 운영</div>
+    <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차통과알림" alt="" aria-hidden="true">[ 열차통과/도착알림 ] 개발중</div>
     <div id="pass-card" class="ns-card">
       <ul class="ns-points" style="margin-top:0"><li><b>오늘 근무표</b>에 감시 열차가 있으면 자동 확인</li><li>정한 역에 <b>곧 도착</b> · <b>통과</b>하면 알림 (앱이 꺼져도)</li><li class="ns-dim">NXLogis 기준 · 실제보다 1~몇 분 늦을 수 있어요</li></ul>
-      <div class="pass-lab">감시 열차번호 <small>근무표 자동 추출 + 관리자 수동 지정 열차</small></div>
+      <div class="pass-lab">감시 열차번호 <small>오늘 근무표에서 자동 추출 · 여객/화물 전체</small></div>
       <div id="pass-trains" class="pass-tags"></div>
       <div class="pass-lab">알림 받을 역</div>
       <div id="pass-stations" class="pass-tags"></div>
@@ -1330,10 +1330,9 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <button type="button" class="pass-live-test" onclick="passTestLiveNow()">실시간 운행 테스트</button>
       </div>
       <div id="pass-live-test-custom" class="pass-live-test-custom" style="display:none">
-        <div class="pass-lab">관리자 수동 감시 열차 <small>199878 송주영 전용 · 오늘 날짜 기준으로 자동 감시</small></div>
+        <div class="pass-lab">테스트용 열차번호 <small>199878 송주영 전용 · 오늘 근무표 열차 + 직접 입력 열차</small></div>
         <textarea id="pass-live-test-trains" rows="2" maxlength="300" placeholder="예: 1234, 5678, KTX001&#10;쉼표·공백·줄바꿈으로 여러 개 입력" autocomplete="off"></textarea>
-        <div class="pass-input"><button type="button" onclick="passSetManualTrains()">수동 열차 저장</button></div>
-        <small class="pass-live-test-help">저장한 열차는 오늘의 감시 목록에 포함되어 1분 간격 NXLogis 확인 및 지정 역 알림에 사용됩니다. 최대 20개까지 지정할 수 있습니다.</small>
+        <small class="pass-live-test-help">여기에 입력한 열차는 실시간 테스트에만 사용되며, 실제 자동 감시 목록이나 다른 사용자의 설정에는 저장되지 않습니다.</small>
       </div>
       <div id="pass-live-test-result" class="pass-live-test-result" aria-live="polite">실시간 운행 테스트는 실제 NXLogis 운행정보만 사용합니다.</div>
       <div class="pass-raw-row"><span id="pass-saved"></span><button type="button" class="pass-raw-link" onclick="passShowRaw()">NXLogis 원본 보기</button></div>
@@ -2005,8 +2004,6 @@ function onSnapshotUpdated() {
   if (active('group-section')) loadGroupSchedule(false);
   if (active('vacation-section')) renderVacation();
   if (active('payslip-section') && typeof renderPayslip === 'function') renderPayslip();
-  /* 근무표 변경이 반영되면 테스트 계정의 오늘 담당 열차도 서버에 동기화 */
-  if (typeof passAutoSync === 'function') setTimeout(function () { try { passAutoSync(); } catch (e) {} }, 0);
 }
 /* ---- 폰에서 직접 계산 ---- */
 function snapDateKeys(startKey, endKey) {
@@ -6024,9 +6021,9 @@ function payResetWork() {
    관리자가 pay_items.help 에 적으면 그 문구, 없으면 아래 기본 설명 (한국철도공사 보수규정·시행세칙 2026.7.27. 기준) */
 var PAY_HELP = [
   [/^기본급/, '직무급(직급별) + 근속급(호봉별)을 더한 월 기본 급여예요. 호봉은 매년 1월 1일에 1호봉씩 올라가요. (보수규정 별표3·4)'],
-  [/시간외|초과근무/, '기준근로시간을 넘겨 일한 시간에 대해 통상임금 ÷ 209 × 1.5 × 시간을 지급해요. (보수규정 별표7)'],
-  [/야간/, '22시~06시에 일한 시간에 대해 통상임금 ÷ 209 × 0.5 × 시간을 지급해요. (보수규정 별표7)'],
-  [/휴일/, '공휴일에 일한 시간에 대해 통상임금 ÷ 209 × 1.5 × 시간을 지급해요. (보수규정 별표7)'],
+  [/시간외|초과근무/, '기준근로시간을 넘겨 일한 시간에 대해 통상임금 ÷ 242 × 1.5 × 시간을 지급해요. (보수규정 별표7)'],
+  [/야간/, '22시~06시에 일한 시간에 대해 통상임금 ÷ 242 × 0.5 × 시간을 지급해요. (보수규정 별표7)'],
+  [/휴일/, '공휴일에 일한 시간에 대해 통상임금 ÷ 242 × 1.5 × 시간을 지급해요. (보수규정 별표7)'],
   [/무사고/, '무사고 100만km(KTX기장 200만km) 운전 실적이 공인되면 승무수당에 월 3만원이 더해져요. (시행세칙 제17조)'],
   [/1인/, '1인 승무를 한 경우 월 50만원 범위에서 지급해요. (보수규정 별표7)'],
   [/승무/, '기관사 월 22만원, 부기관사 월 10만원. 한 달 실 근무일 17일 이상이면 전액, 미만이면 ÷17 × 근무일수예요. 휴가 기간은 빼고 계산해요. (시행세칙 별표6)'],
@@ -6038,7 +6035,7 @@ var PAY_HELP = [
   [/명절|설날|추석/, '상여금 중 정률수당 기준액의 120%를 설날·추석에 나눠 지급해요(각 60%로 계산). 실제 지급 시기는 명절 전후로 달라질 수 있어요. (시행세칙 제25조)'],
   [/노동절/, '상여금 중 평균 지급액의 20%를 노동절 기준으로 지급해요. (시행세칙 제25조)'],
   [/상여/, '3급 이하 직원에게 기본급(정률수당 기준액) 140% 범위에서 지급하는 상여금이에요. (시행세칙 제25조)'],
-  [/연차수당/, '쓰지 않은 연차 1일당 통상임금 ÷ 209 × 8시간을 다음 해 1월에 지급해요. (보수규정 별표7)'],
+  [/연차수당/, '쓰지 않은 연차 1일당 통상임금 ÷ 242 × 8시간을 다음 해 1월에 지급해요. (보수규정 별표7)'],
   [/급식/, '복지후생규정의 급식보조비예요. 식대는 월 20만원까지 세금이 붙지 않아요(비과세).'],
   [/국민연금/, '노후에 받는 연금을 위한 보험료예요. 기준소득월액(상한 659만원) × 4.75%를 근로자가 내고, 같은 금액을 회사가 내요.'],
   [/장기요양/, '노인장기요양보험료예요. 건강보험료 × 13.14%예요.'],
@@ -6182,7 +6179,7 @@ function payCalc(T, prefs, work, grade, step, payM, payY, joinDate) {
     var f = fixedVal(it);
     if (f) ordinary += f.v;
   });
-  var hourly = Math.round(ordinary / Math.max(1, paySetNum(S, '통상임금_기준시간', 209)));   /* 통상시급(원 단위) */
+  var hourly = Math.round(ordinary / 242); /* 교번제 기관사 통상임금 기준시간: 242시간 */   /* 통상시급(원 단위) */
   out.ordinary = Math.round(ordinary);
   out.hourly = Math.round(hourly);
   var HOURS = { '야간시간': ['nh', '야간'], '휴일시간': ['hh', '휴일'], '초과시간': ['oh', '초과'], '근무시간': ['h', '근무'] };
@@ -8032,7 +8029,7 @@ function pushClearOnLogout() {
    내가 고른 열차가 내가 고른 역에 곧 도착하거나 통과하면 알림
    - 서버(push-alarm)가 1분마다 NXLogis로 확인 → 푸시 알림(앱이 꺼져도)
    - 앱이 열려 있으면 열차가 달려가는 애니메이션 팝업
-   - 테스트 기간에는 199878 계정에서만 개인별 설정 및 푸시 이용 */
+   - 모든 로그인 사용자가 개인별 설정으로 이용 */
 var PASS_FN = 'smart-handler';        /* nx-check 함수 주소 */
 function passAllowed() { return String((getCurrentUser() || {}).employeeId || '') === '199878'; }
 var passState = { date: '', train: '', route: null, idx: -1, lead: 10, list: [], raw: null };
@@ -8099,61 +8096,23 @@ function passEval(route, w, now) {
     last: last, zone: route.zone || ''
   };
 }
-/* ----- 설정 (근무표 자동 열차 + 관리자 수동 열차 + 감시 역) ----- */
-var passCfg = null, passSaveTimer = null, passAutoSyncBusy = false;
+/* ----- 설정 (감시 열차번호 + 역 + 곧 도착/통과) ----- */
+var PASS_DEFAULT_TRAINS = ['3224', '3226', '1208'];
+var passCfg = null, passSaveTimer = null;
 function passCfgKey() { return 'passCfg_' + (getCurrentUser().employeeId || ''); }
 function passCfgLocal() { try { return JSON.parse(LS.getItem(passCfgKey()) || 'null'); } catch (e) { return null; } }
 function passCfgDefault() { return { trains: [], stations: [], lead: 0, soon: true, pass: true }; }
 function passTrainKey(t) { return String(t || '').toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, ''); }
-function passTodayKey() { var t = todayKST(); return getDateKey(t.y, t.m, t.d); }
-/* 근무표에서 자동 추출한 열차와 관리자가 직접 지정한 테스트 열차를 합칩니다. */
+/* 근무표(오늘)에 있는 감시 열차 */
 function passMyDays(cfg) {
-  var out = [], seen = {}, today = passTodayKey();
-  function add(date, raw) {
-    var train = passTrainKey(raw);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || '')) || !/^[A-Z]{0,3}\d{1,6}$/.test(train)) return;
-    var key = date + '|' + train;
-    if (seen[key]) return;
-    seen[key] = true;
-    out.push({ date: date, train: train });
-  }
-  /* 근무표 자동 열차: 연계 열차(link)는 제외 */
+  /* 오늘 근무 DIA에서 추출한 모든 여객/화물 열차를 자동 감시 */
+  var out = [];
   try {
     nxCollectTrains(1).forEach(function (x) {
-      if (x && !x.link) add(x.date, x.train);
+      if (!x.link) out.push({ date: x.date, train: x.train });
     });
   } catch (e) {}
-  /* 관리자(199878)가 저장한 수동 열차는 오늘 날짜 기준으로 감시 */
-  if (passAllowed() && cfg && Array.isArray(cfg.trains)) {
-    cfg.trains.forEach(function (train) { add(today, train); });
-  }
-  out.sort(function (a, b) {
-    return a.date === b.date ? a.train.localeCompare(b.train, 'en', { numeric: true }) : (a.date < b.date ? -1 : 1);
-  });
   return out;
-}
-function passSetManualTrains() {
-  if (!passAllowed()) return;
-  var box = $('pass-live-test-trains');
-  var raw = box ? String(box.value || '') : '';
-  var values = raw.split(/[\s,;，；]+/).map(function (v) { return passTrainKey(v); }).filter(Boolean);
-  var invalid = values.filter(function (v) { return !/^[A-Z]{0,3}\d{1,6}$/.test(v); });
-  if (invalid.length) { showToast('열차번호 형식을 확인해주세요: ' + invalid.join(', ')); return; }
-  values = values.filter(function (v, i) { return values.indexOf(v) === i; });
-  if (values.length > 20) { showToast('수동 감시 열차는 최대 20개까지 지정할 수 있어요.'); return; }
-  passCfg = passCfg || passCfgLocal() || passCfgDefault();
-  passCfg.trains = values;
-  passRender();
-  if (box) box.value = values.join(', ');
-  if ($('pass-saved')) $('pass-saved').textContent = '수동 열차 저장 중...';
-  passSaveNow(true, function (ok) {
-    if (ok) {
-      if ($('pass-live-test-result')) $('pass-live-test-result').textContent = values.length
-        ? '수동 감시 열차 ' + values.join(', ') + ' 저장 완료 · 오늘의 자동 감시 목록에 포함됐습니다.'
-        : '수동 감시 열차를 모두 삭제했습니다. 근무표 자동 열차만 감시합니다.';
-      showToast('관리자 수동 열차 설정을 저장했습니다.');
-    }
-  });
 }
 function openPassSettings() {
   if (!passAllowed()) { alert('열차통과/도착알림은 현재 개발 중입니다.'); return; }
@@ -8170,21 +8129,9 @@ function passCardRender() {
   passRender();
   var u = getCurrentUser();
   api({ action: 'passcfg_get', employeeId: u.employeeId, token: u.token }, function (r) {
-    if (r && r.success && r.cfg) {
-      passCfg = {
-        trains: Array.isArray(r.cfg.trains) ? r.cfg.trains : [],
-        stations: Array.isArray(r.cfg.stations) ? r.cfg.stations : [],
-        lead: 0,
-        soon: r.cfg.soon !== false,
-        pass: r.cfg.pass !== false
-      };
-    } else if (r && r.success && !r.cfg && !passCfgLocal()) {
-      passCfg = passCfgDefault();
-      passSaveSoon();
-    }
+    if (r && r.success && r.cfg) { passCfg = { trains: [], stations: r.cfg.stations || [], lead: 0, soon: r.cfg.soon !== false, pass: r.cfg.pass !== false }; }
+    else if (r && r.success && !r.cfg && !passCfgLocal()) { passCfg = passCfgDefault(); passSaveSoon(); }
     try { LS.setItem(passCfgKey(), JSON.stringify(passCfg)); } catch (e) {}
-    var manualBox = $('pass-live-test-trains');
-    if (manualBox && passAllowed()) manualBox.value = (passCfg.trains || []).join(', ');
     passRender();
   });
 }
@@ -8193,15 +8140,10 @@ function passRender() {
   if (!c || !$('pass-trains')) return;
   c.lead = 0;
   var days = passMyDays(c), t = todayKST(), today = getDateKey(t.y, t.m, t.d);
-  var manualSet = {};
-  (Array.isArray(c.trains) ? c.trains : []).forEach(function (x) { manualSet[passTrainKey(x)] = true; });
+  var onToday = days.filter(function (d) { return d.date === today; }).map(function (d) { return passTrainKey(d.train); });
   $('pass-trains').innerHTML = days.length ? days.map(function (x) {
-    var manual = !!manualSet[passTrainKey(x.train)];
-    var remove = manual ? '<button type="button" onclick="passRemove(\'trains\',' + (c.trains.map(passTrainKey).indexOf(passTrainKey(x.train))) + ')" aria-label="수동 열차 삭제">✕</button>' : '';
-    return '<span class="' + (manual ? 'on manual' : 'on') + '">' + esc(x.train) +
-      (x.date === today ? '' : ' · ' + esc(x.date.slice(5).replace('-', '/'))) +
-      (manual ? ' <small>수동</small>' : '') + remove + '</span>';
-  }).join('') : '<small>근무표 열차가 없어요. 관리자 수동 열차를 추가할 수 있습니다.</small>';
+    return '<span class="on">' + esc(x.train) + (x.date === today ? '' : ' · ' + esc(x.date.slice(5).replace('-', '/'))) + '</span>';
+  }).join('') : '<small>오늘 근무표에서 감시할 열차를 찾지 못했어요.</small>';
   $('pass-stations').innerHTML = c.stations.length ? c.stations.map(function (x, i) {
     return '<span>' + esc(x) + '<button type="button" onclick="passRemove(\'stations\',' + i + ')" aria-label="삭제">✕</button></span>';
   }).join('') : '<small>알림 받을 역을 추가하세요.</small>';
@@ -8210,11 +8152,9 @@ function passRender() {
   $('pass-lead').style.visibility = c.soon ? '' : 'hidden';
   $('pass-lead').innerHTML = '<button type="button" class="on" disabled>0분 전 · 예정 시각 즉시</button>';
   $('pass-today').innerHTML = days.length
-    ? '오늘 감시 열차: ' + days.map(function (d) {
-        return '<b>' + esc(d.train) + '</b>' + (manualSet[passTrainKey(d.train)] ? ' (수동)' : '');
-      }).join(', ') +
+    ? '근무표의 감시 열차: ' + days.map(function (d) { var p = d.date.split('-'); return '<b>' + esc(d.train) + '</b> (' + (+p[1]) + '/' + (+p[2]) + ')'; }).join(', ') +
       (c.stations.length ? '' : '<br><span style="color:#c06416">역을 추가해야 알림이 와요.</span>')
-    : '오늘 감시할 열차가 없어요. 근무표 자동 열차를 불러오거나 관리자 수동 열차를 지정하세요.';
+    : '오늘 근무표에 감시 열차가 없어요.';
 }
 function passAdd(kind) {
   var inp = $(kind === 'trains' ? 'pass-train-in' : 'pass-station-in');
@@ -8232,13 +8172,7 @@ function passAdd(kind) {
   inp.value = '';
   passRender(); passSaveSoon();
 }
-function passRemove(kind, i) {
-  if (!passCfg || !Array.isArray(passCfg[kind])) return;
-  passCfg[kind].splice(i, 1);
-  if (kind === 'trains' && $('pass-live-test-trains')) $('pass-live-test-trains').value = passCfg.trains.join(', ');
-  passRender();
-  passSaveSoon();
-}
+function passRemove(kind, i) { passCfg[kind].splice(i, 1); passRender(); passSaveSoon(); }
 function passSetLead(m) { passCfg.lead = m; passRender(); passSaveSoon(); }
 function passOptChanged() {
   passCfg.soon = $('pass-soon').checked; passCfg.pass = $('pass-pass').checked;
@@ -8251,28 +8185,10 @@ function passSaveSoon() {
   passSaveTimer = setTimeout(function () { passSaveNow(true); }, 700);
 }
 /* 설정 + 오늘 근무표의 감시 열차를 서버에 올림 */
-function passSaveNow(fromUi, done) {
+function passSaveNow(fromUi) {
   var c = passCfg || passCfgLocal();
   var u = getCurrentUser();
-  if (!c || !u.token) { if (done) done(false); return; }
-  /* 자동 근무표가 아직 준비되지 않아도 관리자 수동 열차는 저장할 수 있습니다. */
-  var hasManualTrains = passAllowed() && Array.isArray(c.trains) && c.trains.length > 0;
-  if (!snapshotUsable() && !hasManualTrains) {
-    if ($('pass-saved')) $('pass-saved').textContent = '근무표 확인 중...';
-    refreshSnapshot(false, function (ok) {
-      if (ok && snapshotUsable()) passSaveNow(fromUi, done);
-      else {
-        if ($('pass-saved')) $('pass-saved').textContent = '근무표를 불러오지 못했습니다. 관리자 수동 열차를 지정하면 근무표 없이도 테스트할 수 있습니다.';
-        if (done) done(false);
-      }
-    });
-    return;
-  }
-  if (snapshotUsable() && !findMyMember() && !hasManualTrains) {
-    if ($('pass-saved')) $('pass-saved').textContent = '내 근무표 정보를 찾지 못했습니다.';
-    if (done) done(false);
-    return;
-  }
+  if (!c || !u.token) return;
   var days = passMyDays(c);
   api({ action: 'passcfg_save', employeeId: u.employeeId, token: u.token, trains: c.trains, stations: c.stations,
         lead: c.lead, soon: c.soon, pass: c.pass, days: days }, function (r) {
@@ -8283,51 +8199,19 @@ function passSaveNow(fromUi, done) {
         if (!('Notification' in window) || Notification.permission !== 'granted') showToast('알림 설정에서 알림을 허용해야 앱이 꺼져 있어도 울려요.');
         try { pushEnsureSub(true).then(function () { pushSyncAlarms(true); }); } catch (e) {}
       }
-      if (done) done(true);
-    } else {
-      if ($('pass-saved')) $('pass-saved').textContent = (r && r.message) || '저장하지 못했습니다.';
-      if (done) done(false);
-    }
+    } else if ($('pass-saved')) $('pass-saved').textContent = (r && r.message) || '저장하지 못했습니다.';
   });
 }
-/* 앱을 열거나 다시 볼 때 근무표를 먼저 최신화한 뒤 오늘 담당 열차를 서버에 동기화 */
+/* 앱을 열 때·돌아올 때: 오늘 근무표가 바뀌었거나 6시간 지났으면 감시 열차 목록을 다시 올림 (알림 없이) */
 function passAutoSync() {
-  var u = getCurrentUser();
-  if (!passAllowed() || !u.token || passAutoSyncBusy) return;
-  passAutoSyncBusy = true;
-
-  function finish() { passAutoSyncBusy = false; }
-  function syncWithConfig(c) {
-    if (!snapshotUsable() || !findMyMember()) { finish(); return; }
-    c = c || passCfgDefault();
-    var days = passMyDays(c), old = null;
-    try { old = JSON.parse(LS.getItem('passSync_' + u.employeeId) || 'null'); } catch (e) {}
-    if (old && JSON.stringify(old.days) === JSON.stringify(days) && Date.now() - old.at < 6 * 3600000) {
-      finish();
-      return;
-    }
-    passCfg = c;
-    /* 서버 저장이 끝날 때까지 busy를 유지해 중복 동기화를 방지 */
-    passSaveNow(false, finish);
-  }
-
-  /* 캐시가 오래됐으면 갱신하고, 스냅샷이 없으면 여기서 새로 가져옴 */
-  refreshSnapshot(false, function (ok) {
-    if (!ok || !snapshotUsable()) { finish(); return; }
-    var c = passCfgLocal();
-    if (c) { syncWithConfig(c); return; }
-
-    /* 새 기기/브라우저에서도 서버에 저장된 감시 역 설정을 복원 */
-    api({ action: 'passcfg_get', employeeId: u.employeeId, token: u.token }, function (r) {
-      var cfg = r && r.success && r.cfg ? r.cfg : null;
-      c = cfg ? {
-        trains: cfg.trains || [], stations: cfg.stations || [], lead: 0,
-        soon: cfg.soon !== false, pass: cfg.pass !== false
-      } : passCfgDefault();
-      try { LS.setItem(passCfgKey(), JSON.stringify(c)); } catch (e) {}
-      syncWithConfig(c);
-    });
-  });
+  if (!passAllowed() || !getCurrentUser().token) return;
+  var c = passCfgLocal();
+  if (!c) return;
+  var days = passMyDays(c), old = null;
+  try { old = JSON.parse(LS.getItem('passSync_' + getCurrentUser().employeeId) || 'null'); } catch (e) {}
+  if (old && JSON.stringify(old.days) === JSON.stringify(days) && Date.now() - old.at < 6 * 3600000) return;
+  passCfg = c;
+  passSaveNow(false);
 }
 document.addEventListener('visibilitychange', function () {
   if (document.visibilityState === 'visible') setTimeout(function () { try { passAutoSync(); } catch (e) {} }, 3000);
