@@ -961,7 +961,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <button type="button" class="crew-refresh crew-off" onclick="clearCrewLogin()">연동 해제</button>
     </div>
     <div id="crew-status" class="mp-crew-status"></div>
-    <div class="mp-note" style="margin-top:8px">※ 비밀번호는 이 기기의 브라우저 저장소에 보관됩니다(암호화 저장 아님). 승무원 조회 시 HTTPS로 연동 서버에 전달되어 CREW 로그인에 사용됩니다. 공용 기기에서는 사용하지 말고, 다른 서비스와 같은 비밀번호를 사용하지 마세요.</div>
+    <div class="mp-note" style="margin-top:8px">※ 비밀번호는 이 폰(브라우저)에만 저장되고, 서버에는 저장되지 않습니다. 공용 기기에서는 사용하지 마세요.</div>
   </div>
   </div></div>
 </div>
@@ -3340,14 +3340,12 @@ window.onCrewRoster = function (data) {
 };
 /* crew.korail.com 조회용 Supabase 함수 주소
    (Edge Functions 목록의 crew-roster 줄 URL 마지막 부분) */
-var CREW_FN_SLUG = 'crew-roster';
+var CREW_FN_SLUG = 'clever-action';
 var CREW_AUTO_MS = 3600000;         /* 자동 최신화는 1시간에 한 번까지 (앱을 열 때·다시 볼 때·켜 둔 동안) */
-/* CREW 연동은 로그인한 모든 철도비서 사용자에게 제공 */
-function crewAllowed() {
-  var u = getCurrentUser();
-  return !!(u && String(u.employeeId || '').trim());
-}
-/* 실제로 CREW 연동을 마친 사용자(로그인 + 이 기기에 CREW 비밀번호 저장)만 승무원 정보를 봄 */
+/* CREW 연동은 허용된 사원번호만 사용 가능 */
+var CREW_ALLOWED_IDS = ['199878', '198990', '196035', '198989', '198983', '198988'];   /* 199878 송주영(관리자), 198990 워니, 196035 전호연, 198989 이보아, 198983 안도현, 198988 조성모 */
+function crewAllowed() { return CREW_ALLOWED_IDS.indexOf(String(getCurrentUser().employeeId || '')) >= 0; }
+/* 실제로 CREW 연동을 마친 사람(허용 명단 + 이 폰에 CREW 비밀번호 저장)만 승무원 정보를 봄 */
 function crewLinked() { return crewAllowed() && !!getCrewPw(); }
 /* CREW 비밀번호: 이 폰(브라우저 저장소)에만 저장. 서버·백업 데이터에는 절대 넣지 않음 */
 function crewPwKey() { return 'crewPw_' + (getCurrentUser().employeeId || ''); }
@@ -3362,7 +3360,7 @@ function getCrewMeta() { try { return JSON.parse(LS.getItem(crewMetaKey()) || '{
 function setCrewMeta(o) { try { LS.setItem(crewMetaKey(), JSON.stringify(o)); } catch (e) {} }
 function renderCrewSetting() {
   var sec = document.querySelector('#vacation-section .mp-sec[data-sec="crew"]');
-  if (sec) sec.style.display = crewAllowed() ? '' : 'none';      /* 로그인한 모든 사용자에게 표시 */
+  if (sec) sec.style.display = crewAllowed() ? '' : 'none';      /* 관리자 외에는 메뉴 자체를 숨김 */
   if (!crewAllowed()) return;
   if ($('crew-id')) $('crew-id').textContent = getCurrentUser().employeeId || '-';
   if ($('crew-pw')) $('crew-pw').value = '';
@@ -3393,7 +3391,7 @@ function clearCrewLogin() {
    silent=true 는 로그인할 때 자동 실행(알림 최소화) */
 var crewBusy = false;
 function requestCrewRoster(silent, fromSave, ymKey) {
-  if (!crewAllowed()) { if (!silent) showToast('먼저 철도비서에 로그인해주세요.'); return; }
+  if (!crewAllowed()) { if (!silent) showToast('CREW 연동은 허용된 사용자만 사용할 수 있습니다.'); return; }
   /* 해당 월 1일~말일 (기본: 이번 달, 근무표에서 누르면 그 날짜의 달) */
   var t = todayKST(), y = t.y, m = t.m;
   var mk = String(ymKey || '').match(/^(\d{4})-(\d{2})/);
@@ -6023,9 +6021,9 @@ function payResetWork() {
    관리자가 pay_items.help 에 적으면 그 문구, 없으면 아래 기본 설명 (한국철도공사 보수규정·시행세칙 2026.7.27. 기준) */
 var PAY_HELP = [
   [/^기본급/, '직무급(직급별) + 근속급(호봉별)을 더한 월 기본 급여예요. 호봉은 매년 1월 1일에 1호봉씩 올라가요. (보수규정 별표3·4)'],
-  [/시간외|초과근무/, '기준근로시간을 넘겨 일한 시간에 대해 통상임금 ÷ 242 × 1.5 × 시간을 지급해요. (보수규정 별표7)'],
-  [/야간/, '22시~06시에 일한 시간에 대해 통상임금 ÷ 242 × 0.5 × 시간을 지급해요. (보수규정 별표7)'],
-  [/휴일/, '공휴일에 일한 시간에 대해 통상임금 ÷ 242 × 1.5 × 시간을 지급해요. (보수규정 별표7)'],
+  [/시간외|초과근무/, '기준근로시간을 넘겨 일한 시간에 대해 통상임금 ÷ 209 × 1.5 × 시간을 지급해요. (보수규정 별표7)'],
+  [/야간/, '22시~06시에 일한 시간에 대해 통상임금 ÷ 209 × 0.5 × 시간을 지급해요. (보수규정 별표7)'],
+  [/휴일/, '공휴일에 일한 시간에 대해 통상임금 ÷ 209 × 1.5 × 시간을 지급해요. (보수규정 별표7)'],
   [/무사고/, '무사고 100만km(KTX기장 200만km) 운전 실적이 공인되면 승무수당에 월 3만원이 더해져요. (시행세칙 제17조)'],
   [/1인/, '1인 승무를 한 경우 월 50만원 범위에서 지급해요. (보수규정 별표7)'],
   [/승무/, '기관사 월 22만원, 부기관사 월 10만원. 한 달 실 근무일 17일 이상이면 전액, 미만이면 ÷17 × 근무일수예요. 휴가 기간은 빼고 계산해요. (시행세칙 별표6)'],
@@ -6037,7 +6035,7 @@ var PAY_HELP = [
   [/명절|설날|추석/, '상여금 중 정률수당 기준액의 120%를 설날·추석에 나눠 지급해요(각 60%로 계산). 실제 지급 시기는 명절 전후로 달라질 수 있어요. (시행세칙 제25조)'],
   [/노동절/, '상여금 중 평균 지급액의 20%를 노동절 기준으로 지급해요. (시행세칙 제25조)'],
   [/상여/, '3급 이하 직원에게 기본급(정률수당 기준액) 140% 범위에서 지급하는 상여금이에요. (시행세칙 제25조)'],
-  [/연차수당/, '쓰지 않은 연차 1일당 통상임금 ÷ 242 × 8시간을 다음 해 1월에 지급해요. (보수규정 별표7)'],
+  [/연차수당/, '쓰지 않은 연차 1일당 통상임금 ÷ 209 × 8시간을 다음 해 1월에 지급해요. (보수규정 별표7)'],
   [/급식/, '복지후생규정의 급식보조비예요. 식대는 월 20만원까지 세금이 붙지 않아요(비과세).'],
   [/국민연금/, '노후에 받는 연금을 위한 보험료예요. 기준소득월액(상한 659만원) × 4.75%를 근로자가 내고, 같은 금액을 회사가 내요.'],
   [/장기요양/, '노인장기요양보험료예요. 건강보험료 × 13.14%예요.'],
@@ -6181,7 +6179,7 @@ function payCalc(T, prefs, work, grade, step, payM, payY, joinDate) {
     var f = fixedVal(it);
     if (f) ordinary += f.v;
   });
-  var hourly = Math.round(ordinary / Math.max(1, paySetNum(S, '통상임금_기준시간', 242))); /* 교번제 기관사 기본값: 242시간; 관리자 설정값 우선 */   /* 통상시급(원 단위) */
+  var hourly = Math.round(ordinary / Math.max(1, paySetNum(S, '통상임금_기준시간', 209))); /* Supabase 설정 우선, 기본 기준시간 209시간 */
   out.ordinary = Math.round(ordinary);
   out.hourly = Math.round(hourly);
   var HOURS = { '야간시간': ['nh', '야간'], '휴일시간': ['hh', '휴일'], '초과시간': ['oh', '초과'], '근무시간': ['h', '근무'] };
