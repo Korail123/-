@@ -3409,26 +3409,38 @@ function requestCrewRoster(silent, fromSave, ymKey) {
   if (/^eyJ/.test(SUPABASE_KEY)) headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
   var ctl = null, timer = null;
   try { ctl = new AbortController(); timer = setTimeout(function () { ctl.abort(); }, 120000); } catch (e) {}
-  fetch(SUPABASE_URL + '/functions/v1/' + CREW_FN_SLUG, {
+  var crewUrl = SUPABASE_URL + '/functions/v1/' + CREW_FN_SLUG;
+  fetch(crewUrl, {
     method: 'POST', headers: headers,
     body: JSON.stringify({ employeeId: u.employeeId, token: u.token, userPw: pw, dates: dates }),
     signal: ctl ? ctl.signal : undefined
-  }).then(function (r) { return r.json(); }).then(function (j) {
+  }).then(async function (r) {
+    var raw = await r.text();
+    var j = null;
+    try { j = raw ? JSON.parse(raw) : null; } catch (parseErr) {}
+    if (!r.ok) {
+      var serverMsg = j && (j.message || j.error);
+      throw new Error('HTTP ' + r.status + (serverMsg ? ' · ' + serverMsg : ' · ' + raw.slice(0, 160)));
+    }
+    if (!j) throw new Error('HTTP ' + r.status + ' · 서버 응답이 JSON이 아닙니다: ' + raw.slice(0, 120));
+    return j;
+  }).then(function (j) {
     if (timer) clearTimeout(timer);
     crewBusy = false;
     if (j && j.success) {
       setCrewMeta({ ok: true, at: stampNow().slice(5, 16), tried: Date.now() });
       window.onCrewRoster({ days: j.days || [] });
     } else {
-      var msg = (j && j.message) || '승무원 정보를 불러오지 못했습니다.';
-      setCrewMeta({ ok: false, msg: msg, tried: Date.now() });
+      var msg = (j && (j.message || j.error)) || '승무원 정보를 불러오지 못했습니다.';
+      setCrewMeta({ ok: false, msg: 'CREW 함수 응답: ' + msg, tried: Date.now() });
     }
     renderCrewSetting();
     crewNextInQueue();
   }).catch(function (e) {
     if (timer) clearTimeout(timer);
     crewBusy = false;
-    setCrewMeta({ ok: false, msg: '서버에 연결하지 못했습니다. (함수 주소 확인 필요)', tried: Date.now() });
+    var detail = (e && e.name === 'AbortError') ? '요청 시간 초과(120초)' : ((e && e.message) || '네트워크/CORS 오류');
+    setCrewMeta({ ok: false, msg: 'CREW 연결 오류: ' + detail + ' · ' + CREW_FN_SLUG, tried: Date.now() });
     renderCrewSetting();
     crewNextInQueue();
   });
