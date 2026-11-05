@@ -3312,7 +3312,10 @@ function rsWidgetMonth(y, m, cb) {
       var swap = info && (info.swapPartnerName || info.swapPartnerId) ? 1 : 0;
       /* 한 칸: 구분|색|공휴일|교환 */
       out.push([label, tone, holidayName(y, m, d) ? 1 : 0, swap].join('|'));
-      ex.push([info && info.dia ? String(info.dia) : '', info ? String(info.swapPartnerName || info.swapPartnerId || '').trim() : '']);
+      var credit = info && (info.creditStatus === '대기충당' || info.creditStatus === '휴무충당') ? info.creditStatus
+        : (info && (info.status === '대기충당' || info.status === '휴무충당') ? info.status
+        : (info && (info.label === '대기충당' || info.label === '휴무충당') ? info.label : ''));
+      ex.push([info && info.dia ? String(info.dia) : '', info ? String(info.swapPartnerName || info.swapPartnerId || '').trim() : '', credit]);
     }
     cb({ ym: y + '-' + pad2(m + 1), days: out, ex: ex, name: me ? me.name : '' });
   });
@@ -3324,40 +3327,142 @@ function rsWidgetMonth(y, m, cb) {
 var RS_FEED_TONE = { day: '#e5a800', night: '#1a73e8', off: '#e53935', status: '#e53935' };
 function rsFeedKey() { var u = getCurrentUser(); return u && u.employeeId ? 'rs_feed_' + u.employeeId : ''; }
 function rsFeedOn() { var k = rsFeedKey(); try { return !!(k && localStorage.getItem(k)); } catch (e) { return false; } }
-function rsFeedSet(on) { var k = rsFeedKey(); if (!k) return; try { if (on) localStorage.setItem(k, '1'); else { localStorage.removeItem(k); localStorage.removeItem(k + '_last'); } } catch (e) {} }
+function rsFeedSet(on) { var k = rsFeedKey(); if (!k) return; try { if (on) localStorage.setItem(k, '1'); else { localStorage.removeItem(k); localStorage.removeItem(k + '_last'); localStorage.removeItem(k + '_sig'); } } catch (e) {} }
 var rsFeedBusy = false;
 function rsFeedPush(force) {
   if (rsFeedBusy || !rsFeedOn()) return;
   var u = getCurrentUser();
   if (!u || !u.token || u.employeeId === 'guest') return;
   rsFeedBusy = true;
-  var t = todayKST(), want = [], got = {}, left = 3, name = u.name || '';
-  for (var i = 0; i < 3; i++) { var dt = new Date(t.y, t.m + i - (t.d === 1 ? 1 : 0), 1); want.push([dt.getFullYear(), dt.getMonth()]); }
+  /* 이번 달 기준 앞뒤 6개월 = 13달 */
+  var t = todayKST(), want = [], got = {}, left = 13, name = u.name || '';
+  for (var i = -6; i <= 6; i++) { var dt = new Date(t.y, t.m + i, 1); want.push([dt.getFullYear(), dt.getMonth()]); }
   want.forEach(function (ym) {
     rsWidgetMonth(ym[0], ym[1], function (r) {
       if (r) { got[r.ym] = r; if (r.name) name = r.name; }
       if (--left > 0) return;
-      var days = {}, base = new Date(t.y, t.m, t.d - 1);
-      for (var k = 0; k < 46; k++) {
-        var d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + k);
-        var mm = got[d.getFullYear() + '-' + pad2(d.getMonth() + 1)];
-        if (!mm) continue;
-        var cell = String(mm.days[d.getDate() - 1] || '').split('|'), ex = (mm.ex && mm.ex[d.getDate() - 1]) || ['', ''];
-        if (!cell[0]) continue;
-        days[d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate())] = [cell[0], RS_FEED_TONE[cell[1]] || '#1a73e8', ex[0].slice(0, 12), ex[1].slice(0, 10)];
-      }
-      var body = JSON.stringify({ name: name, days: days }), lk = rsFeedKey() + '_last', last = '';
-      try { last = localStorage.getItem(lk) || ''; } catch (e) {}
-      /* 바뀐 게 없으면 6시간에 한 번만 */
-      var lastObj = null; try { lastObj = JSON.parse(last); } catch (e) {}
-      if (!force && lastObj && lastObj.b === body && Date.now() - lastObj.at < 6 * 3600000) { rsFeedBusy = false; return; }
-      api({ action: 'widgetSave', employeeId: u.employeeId, token: u.token, name: name.slice(0, 20), days: days }, function (res) {
-        rsFeedBusy = false;
-        if (res && res.success && res.on === false) { rsFeedSet(false); return; }   /* 다른 폰에서 끈 경우 */
-        if (res && res.success) { try { localStorage.setItem(lk, JSON.stringify({ b: body, at: Date.now() })); } catch (e) {} }
-      });
+      rsFeedSend(u, t, want, got, name, force);
     });
   });
+}
+function rsFeedSend(u, t, want, got, name, force) {
+  /* ① 오늘~45일 근무 요약 (글자용) */
+  var days = {}, base = new Date(t.y, t.m, t.d - 1);
+  for (var k = 0; k < 46; k++) {
+    var d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + k);
+    var mm = got[d.getFullYear() + '-' + pad2(d.getMonth() + 1)];
+    if (!mm) continue;
+    var cell = String(mm.days[d.getDate() - 1] || '').split('|'), ex = (mm.ex && mm.ex[d.getDate() - 1]) || ['', '', ''];
+    if (!cell[0] && !ex[2]) continue;
+    days[d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate())] = [cell[0], RS_FEED_TONE[cell[1]] || '#1a73e8', String(ex[0] || '').slice(0, 12), String(ex[1] || '').slice(0, 10)];
+  }
+  /* ② 달마다 그림: 바뀐 달만 새로 그려서 올림 (이번 달은 오늘 표시 때문에 날마다 한 번) */
+  var sk = rsFeedKey() + '_sig', sig = {};
+  try { sig = JSON.parse(localStorage.getItem(sk) || '{}') || {}; } catch (e) { sig = {}; }
+  var curYm = t.y + '-' + pad2(t.m + 1), keep = [], todo = [], newSig = {};
+  want.forEach(function (ym) {
+    var key = ym[0] + '-' + pad2(ym[1] + 1); keep.push(key);
+    var mm = got[key];
+    if (!mm) { if (sig[key]) newSig[key] = sig[key]; return; }
+    var h = JSON.stringify([mm.days, mm.ex, name, key === curYm ? t.d : 0, 3]);
+    newSig[key] = h;
+    if (force || sig[key] !== h) todo.push({ key: key, mm: mm, y: ym[0], m: ym[1] });
+  });
+  var lk = rsFeedKey() + '_last', lastAt = 0;
+  try { lastAt = +(localStorage.getItem(lk) || 0); } catch (e) {}
+  if (!todo.length && Date.now() - lastAt < 6 * 3600000) { rsFeedBusy = false; return; }
+  /* 한 번에 3달씩 나눠서 올림 */
+  var batches = [];
+  for (var i = 0; i < todo.length; i += 3) batches.push(todo.slice(i, i + 3));
+  if (!batches.length) batches.push([]);
+  var bi = 0;
+  (function next() {
+    var pngs = {};
+    batches[bi].forEach(function (it) { try { pngs[it.key] = wgDrawPng(it.mm, it.y, it.m, name); } catch (e) {} });
+    api({ action: 'widgetSave', employeeId: u.employeeId, token: u.token, name: String(name).slice(0, 20), days: days, pngs: pngs, keep: keep }, function (res) {
+      if (res && res.success && res.on === false) { rsFeedSet(false); rsFeedBusy = false; return; }   /* 다른 폰에서 끈 경우 */
+      if (!res || !res.success) { rsFeedBusy = false; return; }
+      batches[bi].forEach(function (it) { sig[it.key] = newSig[it.key]; });
+      if (++bi < batches.length) { next(); return; }
+      var out = {}; keep.forEach(function (k) { if (sig[k]) out[k] = sig[k]; });
+      try { localStorage.setItem(sk, JSON.stringify(out)); localStorage.setItem(lk, String(Date.now())); } catch (e) {}
+      rsFeedBusy = false;
+      if (typeof wgAfterSync === 'function') wgAfterSync();
+    });
+  })();
+}
+/* KWGT 4x4 위젯용 근무표 달력 그림 (흰 둥근 카드, 근무는 색 동그라미, 아래에 교환 상대 · 휴무충당 · 대기충당만) */
+function wgDrawPng(mm, y, m, name) {
+  var W = 720, H = 720, S = W / 360;
+  var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  var c = cv.getContext('2d');
+  var F = "'Samsung Sans','SamsungOneKorean','Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif";
+  function rr(x, y0, w, h, r) { c.beginPath(); c.moveTo(x + r, y0); c.arcTo(x + w, y0, x + w, y0 + h, r); c.arcTo(x + w, y0 + h, x, y0 + h, r); c.arcTo(x, y0 + h, x, y0, r); c.arcTo(x, y0, x + w, y0, r); c.closePath(); }
+  rr(0, 0, W, H, 26 * S); c.fillStyle = '#ffffff'; c.fill();
+  c.save(); rr(0, 0, W, H, 26 * S); c.clip();
+  /* 머리: 2026. 11 */
+  var headH = 46 * S, wdH = 22 * S, padX = 0;
+  c.fillStyle = '#2b2f36'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = '500 ' + (17 * S) + 'px ' + F;
+  c.fillText(y + '. ' + pad2(m + 1), W / 2, 27 * S);
+  /* ‹ › (KWGT에서 이 자리를 누르면 이전 · 다음 달) */
+  c.strokeStyle = '#8a929e'; c.lineWidth = 2 * S; c.lineCap = 'round'; c.lineJoin = 'round';
+  c.beginPath(); c.moveTo(W / 2 - 62 * S, 22 * S); c.lineTo(W / 2 - 67 * S, 27 * S); c.lineTo(W / 2 - 62 * S, 32 * S); c.stroke();
+  c.beginPath(); c.moveTo(W / 2 + 62 * S, 22 * S); c.lineTo(W / 2 + 67 * S, 27 * S); c.lineTo(W / 2 + 62 * S, 32 * S); c.stroke();
+  var at = new Date(Date.now() + 9 * 3600000);
+  c.font = '500 ' + (7.5 * S) + 'px ' + F; c.fillStyle = '#a0a8b4'; c.textAlign = 'right';
+  c.fillText(pad2(at.getUTCHours()) + ':' + pad2(at.getUTCMinutes()) + ' 갱신', W - 12 * S, 27 * S);
+  c.textAlign = 'left'; c.fillStyle = '#a0a8b4';
+  c.fillText(String(name || '').slice(0, 6), 12 * S, 27 * S);
+  /* 요일 */
+  var cw = W / 7, wd = ['일', '월', '화', '수', '목', '금', '토'];
+  c.textAlign = 'center'; c.font = '500 ' + (8.5 * S) + 'px ' + F;
+  for (var i = 0; i < 7; i++) { c.fillStyle = i === 0 ? '#e5484d' : i === 6 ? '#2f6fd6' : '#5f6670'; c.fillText(wd[i], cw * i + cw / 2, headH + wdH / 2); }
+  var first = new Date(y, m, 1).getDay(), last = new Date(y, m + 1, 0).getDate();
+  var rows = Math.ceil((first + last) / 7), top = headH + wdH, ch = (H - top - 4 * S) / rows;
+  /* 칸 구분선 */
+  c.strokeStyle = '#eef0f3'; c.lineWidth = 1.2;
+  for (var r = 0; r <= rows; r++) { c.beginPath(); c.moveTo(0, top + ch * r); c.lineTo(W, top + ch * r); c.stroke(); }
+  for (var k = 1; k < 7; k++) { c.beginPath(); c.moveTo(cw * k, top); c.lineTo(cw * k, top + ch * rows); c.stroke(); }
+  var t = todayKST();
+  var COL = { '주': ['#ffd21f', '#4a3b00'], '야': ['#5b8def', '#ffffff'], '비': ['#5b8def', '#ffffff'], 'X': ['#5b8def', '#ffffff'], '휴': ['#e8590c', '#ffffff'] };
+  for (var d = 1; d <= last; d++) {
+    var idx = first + d - 1, col = idx % 7, row = Math.floor(idx / 7);
+    var x = cw * col, y0 = top + ch * row;
+    var cell = String((mm && mm.days && mm.days[d - 1]) || '').split('|');
+    var ex = (mm && mm.ex && mm.ex[d - 1]) || ['', '', ''];
+    var hol = holidayName(y, m, d);
+    if (t.y === y && t.m === m && t.d === d) {
+      c.fillStyle = '#e3eefe'; c.fillRect(x + 1, y0 + 1, cw - 2, ch - 2);
+      c.strokeStyle = '#2f80ed'; c.lineWidth = 2.2 * S; c.strokeRect(x + 1.1 * S, y0 + 1.1 * S, cw - 2.2 * S, ch - 2.2 * S);
+    }
+    /* 날짜 (+ 공휴일 이름) */
+    c.font = '500 ' + (8 * S) + 'px ' + F; c.textAlign = 'center';
+    c.fillStyle = (hol || col === 0) ? '#e5484d' : col === 6 ? '#2f6fd6' : '#4b5563';
+    var dtxt = (d === 1 ? (m + 1) + '.' : '') + pad2(d) + (hol ? ' ' + hol.slice(0, 4) : '');
+    c.fillText(dtxt, x + cw / 2, y0 + 10 * S);
+    /* 근무 동그라미 */
+    var lab = String(cell[0] || '').replace(/^\*/, '');
+    var cy = y0 + 10 * S + (ch - 10 * S) * 0.42;
+    if (lab) {
+      var clr = COL[lab] || (cell[1] === 'status' ? ['#e53935', '#ffffff'] : ['#5b8def', '#ffffff']);
+      var rad = Math.min(cw, ch) * 0.2;
+      c.beginPath(); c.arc(x + cw / 2, cy, rad, 0, Math.PI * 2); c.fillStyle = clr[0]; c.fill();
+      var fs = lab.length >= 3 ? 7 : lab.length === 2 ? 8.5 : 11;
+      c.font = '700 ' + (fs * S) + 'px ' + F; c.fillStyle = clr[1];
+      while (c.measureText(lab).width > rad * 2.1 && fs > 5) { fs -= .5; c.font = '700 ' + (fs * S) + 'px ' + F; }
+      c.fillText(lab, x + cw / 2, cy + 0.5 * S);
+    }
+    /* 아래: 교환 상대 · 휴무충당 · 대기충당만 */
+    var sub = ex[1] ? '⇄ ' + ex[1] : (ex[2] || '');
+    if (sub) {
+      c.font = '600 ' + (6.6 * S) + 'px ' + F; c.fillStyle = ex[1] ? '#7c5cc4' : '#d9480f';
+      while (c.measureText(sub).width > cw - 4 * S && sub.length > 2) sub = sub.slice(0, -1);
+      c.fillText(sub, x + cw / 2, y0 + ch - 7 * S);
+    }
+  }
+  c.restore();
+  return cv.toDataURL('image/png');
 }
 function rsFeedUrl(token) { return SUPABASE_URL + '/rest/v1/rpc/widget?t=' + token + '&apikey=' + SUPABASE_KEY; }
 function openWidgetPanel() {
@@ -3370,6 +3475,7 @@ function openWidgetPanel() {
     if (!r || !r.success) { wgRender({ error: (r && r.message) || '불러오지 못했어요.' }); return; }
     if (r.on) rsFeedSet(true); else rsFeedSet(false);
     wgRender(r);
+    if (r.on) wgFillPreview();
   });
 }
 function closeWidgetPanel() { $('wg-panel').classList.remove('active'); }
@@ -3379,33 +3485,40 @@ function wgRender(r) {
   if (r.error) { box.innerHTML = '<div class="wg-msg err">' + esc(r.error) + '</div>'; return; }
   if (!r.on) {
     box.innerHTML = '<div class="wg-intro">홈화면 위젯 앱 <b>KWGT</b>로 오늘 · 내일 · 7일 근무를 보여줄 수 있어요.<br>' +
-      '아래 버튼을 누르면 <b>나만의 위젯 주소</b>가 만들어지고, 앱을 열 때마다 근무 요약(어제~45일)이 갱신돼요.</div>' +
+      '아래 버튼을 누르면 <b>나만의 위젯 주소</b>가 만들어지고, 철도비서를 열 때마다 달력 그림이 새로 올라가요.</div>' +
       '<div class="wg-warn">위젯 주소를 아는 사람은 내 근무표 요약을 볼 수 있어요. 다른 사람에게 보내지 마세요.</div>' +
       '<button type="button" class="wg-main" onclick="wgMake()">위젯 주소 만들기</button>';
     return;
   }
   var url = rsFeedUrl(r.token);
   window.wgUrlNow = url;
+  window.wgPngNow = SUPABASE_URL + '/rest/v1/rpc/widget_png?t=' + r.token + '&apikey=' + SUPABASE_KEY;
   function row(label, f) { return '<div class="wg-f"><span>' + label + '</span><code>' + esc(f) + '</code><button type="button" onclick="wgCopy(this.previousElementSibling.textContent)">복사</button></div>'; }
   box.innerHTML =
     '<div class="wg-on">● 위젯 연결 켜짐' + (r.updatedAt ? ' <small>마지막 갱신 ' + esc(r.updatedAt) + '</small>' : '') + '</div>' +
-    '<div class="wg-lab">① 위젯 주소</div>' +
-    '<div class="wg-url"><code id="wg-url">' + esc(url) + '</code></div>' +
-    '<div class="wg-btns"><button type="button" onclick="wgCopy(window.wgUrlNow)">주소 복사</button><button type="button" onclick="window.open(window.wgUrlNow,\'_blank\')">브라우저로 확인</button></div>' +
-    '<div class="wg-lab">② KWGT 전역변수</div>' +
-    '<div class="wg-tip">KWGT 위젯 편집 › <b>전역변수(Globals)</b> › + › <b>텍스트</b>, 이름 <b>url</b>, 값에 위 주소 붙여넣기</div>' +
-    '<div class="wg-lab">③ 텍스트 · 색에 넣을 수식</div>' +
-    row('오늘 근무', '$wg(gv(url), json, .today.l)$') +
-    row('오늘 다이아', '$wg(gv(url), json, .today.dia)$') +
-    row('오늘 색', '$wg(gv(url), json, .today.c)$') +
-    row('내일 근무', '$wg(gv(url), json, .tomorrow.l)$') +
-    row('2일 뒤 근무', '$wg(gv(url), json, .w[2].l)$') +
-    row('2일 뒤 날짜', '$wg(gv(url), json, .w[2].date)$') +
-    row('2일 뒤 요일', '$wg(gv(url), json, .w[2].wd)$') +
-    row('교환 상대', '$wg(gv(url), json, .today.p)$') +
-    row('갱신 시각', '$wg(gv(url), json, .at)$') +
-    '<div class="wg-tip">w[0]=오늘, w[1]=내일 … w[6]=6일 뒤. 근무 글자는 l, 색은 c, 다이아는 dia, 날짜는 date, 요일은 wd예요.</div>' +
+    '<div class="wg-lab">① 내 달력 미리보기 <small id="wg-sync-at"></small></div>' +
+    '<div class="wg-prev"><img id="wg-prev" alt="위젯 미리보기"></div>' +
+    '<div class="wg-btns"><button type="button" onclick="wgCopy(window.wgPngNow + \'&m=$gv(mo)$\')">비트맵 수식 복사</button><button type="button" onclick="window.open(window.wgPngNow,\'_blank\')">브라우저로 확인</button></div>' +
+    '<div class="wg-tip">이번 달 기준 <b>앞뒤 6개월(13달)</b> 달력이 올라가요. 주소 끝 <b>&m=</b> 숫자: 0 = 이번 달, -1 = 지난달, 1 = 다음 달 … (-6 ~ 6)</div>' +
+    '<div class="wg-lab">② KWGT에서 만들기</div>' +
+    '<ol class="wg-steps">' +
+    '<li>홈화면에 <b>KWGT 4x4</b> 위젯 추가 › 위젯 눌러 편집</li>' +
+    '<li><b>전역변수(Globals)</b> › + › <b>텍스트</b>, 이름 <b>mo</b>, 값 <b>0</b></li>' +
+    '<li>+ › <b>이미지(Image)</b> › <b>비트맵(Bitmap)</b> 옆 수식(계산기) 누르고 <b>비트맵 수식 복사</b>한 것 붙여넣기 › 너비를 위젯 가득</li>' +
+    '<li>+ › <b>도형(Shape)</b> 2개를 달력 위쪽 ‹ › 자리에 놓고 색을 투명(알파 0)으로</li>' +
+    '<li>‹ 도형 › 터치 › <b>전역변수 전환(Switch Global)</b> › mo › 값<br><code>' + esc('$mu(max, gv(mo)-1, -6)$') + '</code> <button type="button" class="wg-mini" onclick="wgCopy(\'$mu(max, gv(mo)-1, -6)$\')">복사</button></li>' +
+    '<li>› 도형도 같은 방법으로 값<br><code>' + esc('$mu(min, gv(mo)+1, 6)$') + '</code> <button type="button" class="wg-mini" onclick="wgCopy(\'$mu(min, gv(mo)+1, 6)$\')">복사</button></li>' +
+    '<li>(선택) 이미지 › 터치 › 전역변수 전환 › mo › 값 <b>0</b> = 누르면 이번 달로</li>' +
+    '</ol>' +
+    '<div class="wg-tip">철도비서를 열 때마다 바뀐 달만 새로 그려서 올려요(오늘 표시 · 근무 변경 반영). 근무 아래에는 <b>교환 상대</b>와 <b>휴무충당 · 대기충당</b>만 보여요.</div>' +
     '<div class="wg-btns end"><button type="button" onclick="wgSync()">지금 갱신</button><button type="button" onclick="wgMake(true)">새 주소로 바꾸기</button><button type="button" class="danger" onclick="wgOff()">연결 끄기</button></div>';
+}
+function wgAfterSync() { if ($('wg-panel') && $('wg-panel').classList.contains('active')) { var e = $('wg-sync-at'); if (e) e.textContent = '방금 갱신했어요'; showToast('위젯 달력을 갱신했어요.'); } }
+function wgFillPreview() {
+  var img = $('wg-prev'); if (!img) return;
+  var u = getCurrentUser(); if (!u) return;
+  var t = todayKST();
+  rsWidgetMonth(t.y, t.m, function (mm) { if (mm) img.src = wgDrawPng(mm, t.y, t.m, mm.name || u.name || ''); });
 }
 function wgCopy(text) {
   try { navigator.clipboard.writeText(text).then(function () { showToast('복사했어요.'); }, function () { wgCopyOld(text); }); }
@@ -3425,11 +3538,12 @@ function wgMake(renew) {
     if (!r || !r.success) { wgRender({ error: (r && r.message) || '만들지 못했어요.' }); return; }
     rsFeedSet(true);
     wgRender(r);
+    wgFillPreview();
     rsFeedPush(true);
     showToast(renew ? '새 위젯 주소를 만들었어요.' : '위젯 주소를 만들었어요.');
   });
 }
-function wgSync() { rsFeedBusy = false; rsFeedPush(true); showToast('근무 요약을 갱신하고 있어요.'); setTimeout(function () { if ($('wg-panel').classList.contains('active')) openWidgetPanel(); }, 2500); }
+function wgSync() { rsFeedBusy = false; rsFeedPush(true); var e = $('wg-sync-at'); if (e) e.textContent = '13달 올리는 중…'; showToast('13달 달력을 올리고 있어요.'); }
 function wgOff() {
   if (!confirm('위젯 연결을 끌까요? 서버의 위젯 주소와 근무 요약이 지워져요.')) return;
   var u = getCurrentUser() || {};
@@ -14262,6 +14376,14 @@ html body #main-section .menu-grid > .menu-btn > span{display:flex;align-items:f
 #wg-panel .wg-f span{flex:0 0 72px;font-size:12px;font-weight:700;color:#33415c}
 #wg-panel .wg-f code{flex:1;min-width:0;font-size:11px;color:#1b2b45;word-break:break-all}
 #wg-panel .wg-f button{padding:5px 9px;font-size:11.5px}
+#wg-panel .wg-prev{border-radius:16px;overflow:hidden;background:#e9eef5;padding:8px}
+#wg-panel .wg-prev img{display:block;width:100%;height:auto;min-height:40px}
+#wg-panel .wg-steps{margin:0;padding-left:20px;font-size:12.5px;line-height:1.6;color:#33415c}
+#wg-panel .wg-steps li{margin:2px 0}
+#wg-panel .wg-steps code{font-size:11px;background:#f4f7fb;border-radius:6px;padding:1px 5px}
+#wg-panel .wg-mini{padding:2px 8px;border:1.5px solid #c9dbf7;border-radius:999px;background:#fff;color:#2f6fd6;font-size:11px;font-weight:800}
+#wg-panel .wg-lab small{font-weight:600;color:#17a85a;margin-left:6px}
 </style>
+<style id="widget-panel-style-end"></style>
 </body>
 </html>
