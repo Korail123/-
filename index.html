@@ -1233,6 +1233,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <button type="button" class="ns-test-btn ns-orange" onclick="testAlarmRing()"><img class="ns-btn-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="지금알람테스트" alt="" aria-hidden="true"><span>지금 테스트</span></button>
       <button type="button" class="ns-test-btn ns-blue" onclick="pushTestNow()"><img class="ns-btn-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="앱꺼짐알림" alt="" aria-hidden="true"><span>꺼진 상태 테스트</span></button>
     </div>
+    <div id="push-last" class="push-last"></div>
     </div>
     <div class="dia-dialog-actions">
       <button type="button" class="dia-text-btn" onclick="closePermPanel()">닫기</button>
@@ -10111,7 +10112,22 @@ function openPermPanel() {
   permRender();
   notiPrefsRender();
   try { alarmLoadUi(); } catch (e) {}
+  try { pushLastRender(); } catch (e) {}
   $('perm-panel').classList.add('active');
+}
+/* 앱이 꺼져 있을 때 휴대폰이 마지막으로 받은 알림 (sw.js가 기록) → 알림이 제때 오는지 확인용 */
+function pushLastRender() {
+  var el = $('push-last');
+  if (!el || !('caches' in window)) return;
+  caches.open('rs-prefs').then(function (c) { return c.match(new URL('lastpush.json', location.href).href); })
+    .then(function (r) { return r ? r.json() : null; })
+    .then(function (j) {
+      if (!j || !j.at) { el.innerHTML = '앱이 꺼져 있을 때 받은 알림: <b>아직 없음</b>'; return; }
+      var d = new Date(j.at + 9 * 3600000);
+      el.innerHTML = '앱이 꺼져 있을 때 마지막으로 받은 알림: <b>' + (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + ' ' +
+        pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()) + ':' + pad2(d.getUTCSeconds()) + '</b> · ' + esc(j.title || '') +
+        '<br><span style="color:#8a96a8">꺼진 상태 테스트를 누르고 앱을 닫은 뒤 1분 후에 다시 열어, 이 시각이 바로 그때로 찍혔는지 보세요. 앱을 연 시각으로 찍히면 휴대폰이 알림을 막고 있다가 늦게 준 거예요.</span>';
+    }).catch(function () {});
 }
 function closePermPanel() { $('perm-panel').classList.remove('active'); permRender(); notiPrefsRender(); }
 /* 버튼 한 번으로: 알림 권한 요청 → 소리 준비 → 진동 확인 → 앱 꺼짐 알림 등록 */
@@ -12432,6 +12448,14 @@ height: calc(90px + env(safe-area-inset-bottom));
 #perm-panel .nu-vol{display:flex;align-items:center;gap:8px;font-size:14px}
 #perm-panel .nu-vol .alarm-range{flex:1;margin:4px 0!important}
 #perm-panel #np-vol-val{color:#3d6fd1;font-weight:800}
+/* 조절 바·동그라미 조금 작게 */
+#perm-panel .nu-detail .alarm-range{height:7px!important;border-radius:6px}
+#perm-panel .nu-detail .alarm-range::-webkit-slider-thumb{width:20px!important;height:20px!important;border-width:2.5px!important}
+#perm-panel .nu-detail .alarm-range::-moz-range-thumb{width:16px!important;height:16px!important;border-width:2.5px!important}
+#perm-panel .nu-detail .ns-alarm-value{font-size:17px!important}
+#perm-panel .nu-vol{font-size:12px}
+.push-last{margin:8px 2px 0;font-size:11.5px;line-height:1.5;color:#667085}
+.push-last b{color:#1b2b45}
 </style>
 </body>
 </html>
