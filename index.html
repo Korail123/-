@@ -1198,38 +1198,33 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <button type="button" id="perm-btn" class="ns-banner-btn" onclick="permRequestAll()">허용하기</button>
     </div>
     <div id="perm-warn" class="perm-warn" style="display:none"></div>
-    <div class="ns-card alarm-card" id="alarm-card" role="group" tabindex="0" aria-label="출근 알람 시간 조절, 제목이나 카드 영역을 눌러 펼치기" aria-expanded="false" onclick="alarmToggleDetail(event)" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();alarmToggleDetail(event)}">
-      <div class="ns-row">
-        <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알람설정" alt="" aria-hidden="true"><span><b class="ns-t">출근 알람</b><small>주간·야간 출근일만 · 비번·휴무·휴가 제외</small></span><span class="alarm-expand-chevron" id="alarm-expand-chevron" aria-hidden="true">⌄</span></span>
-        <input type="checkbox" id="alarm-on" class="ns-switch" onchange="alarmToggleChanged()">
+    <!-- 출근 알람 · 휴대폰 팝업 · 소리 · 진동을 한 칸에 (시간·볼륨은 ⌄ 눌러 펼치기) -->
+    <div class="ns-card nu-card" id="alarm-card">
+      <div class="ns-row nu-row">
+        <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알람설정" alt="" aria-hidden="true"><span><b class="ns-t">출근 알람</b><small id="alarm-sum">주간·야간 출근일만 · 비번·휴무·휴가 제외</small></span></span>
+        <button type="button" class="nu-fold" id="alarm-expand-chevron" aria-expanded="false" aria-controls="alarm-detail" aria-label="알람 시간 조절 펼치기" onclick="alarmToggleDetail()">⌄</button>
+        <input type="checkbox" id="alarm-on" class="ns-switch" onchange="alarmToggleChanged()" aria-label="출근 알람">
       </div>
-      <div id="alarm-detail" class="ns-sub" style="display:none">
+      <div id="alarm-detail" class="nu-detail" style="display:none">
         <div id="alarm-value" class="ns-alarm-value"></div>
         <input type="range" id="alarm-range" class="alarm-range ns-range" min="0" max="17" step="1" value="12" oninput="alarmUiUpdate()" onchange="alarmAutoSave(false)">
         <div class="alarm-scale"><span>3시간 전</span><span>10분 전</span></div>
       </div>
-    </div>
-    <div class="ns-card">
       <div class="ns-row">
         <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="팝업알림" alt="" aria-hidden="true"><span><b class="ns-t">휴대폰 팝업</b><small>상단 팝업·잠금화면 · 앱 꺼짐 알림 포함</small></span></span>
-        <input type="checkbox" id="np-popup" class="ns-switch" onchange="notiPrefsChanged()">
+        <input type="checkbox" id="np-popup" class="ns-switch" onchange="notiPrefsChanged()" aria-label="휴대폰 팝업">
       </div>
-      <div class="ns-row">
-        <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알림소리" alt="" aria-hidden="true"><span><b class="ns-t">소리</b></span></span>
-        <input type="checkbox" id="np-sound" class="ns-switch" onchange="notiPrefsChanged()">
+      <div class="ns-row nu-row">
+        <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알림소리" alt="" aria-hidden="true"><span><b class="ns-t">소리</b><small>볼륨 <b id="np-vol-val">80%</b></small></span></span>
+        <button type="button" class="nu-fold" id="np-vol-toggle" aria-expanded="false" aria-controls="np-vol-detail" aria-label="볼륨 조절 펼치기" onclick="toggleNotificationVolume()"><span id="np-vol-chevron">⌄</span></button>
+        <input type="checkbox" id="np-sound" class="ns-switch" onchange="notiPrefsChanged()" aria-label="소리">
       </div>
-      <div class="ns-card ns-vol" id="np-vol-row">
-        <button type="button" class="np-vol-toggle" id="np-vol-toggle" aria-expanded="false" aria-controls="np-vol-detail" onclick="toggleNotificationVolume()">
-          <span class="np-vol-label"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="볼륨조절" alt="" aria-hidden="true"><b class="ns-t">볼륨 조절</b></span>
-          <span class="np-vol-right"><span id="np-vol-val" class="np-vol-val">80%</span><span id="np-vol-chevron" class="np-vol-chevron" aria-hidden="true">⌄</span></span>
-        </button>
-        <div id="np-vol-detail" class="np-vol-detail" hidden>
-          <input type="range" id="np-vol" class="alarm-range ns-range" min="0" max="100" step="5" value="80" oninput="notiPrefsVolume()">
-        </div>
+      <div id="np-vol-detail" class="nu-detail" hidden>
+        <div class="nu-vol"><span>🔈</span><input type="range" id="np-vol" class="alarm-range ns-range" min="0" max="100" step="5" value="80" oninput="notiPrefsVolume()"><span>🔊</span></div>
       </div>
       <div class="ns-row">
         <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="진동" alt="" aria-hidden="true"><span><b class="ns-t">진동</b><small id="np-vib-note" style="display:none">아이폰은 휴대폰 설정(햅틱)을 따릅니다</small></span></span>
-        <input type="checkbox" id="np-vib" class="ns-switch" onchange="notiPrefsChanged()">
+        <input type="checkbox" id="np-vib" class="ns-switch" onchange="notiPrefsChanged()" aria-label="진동">
       </div>
     </div>
     <div class="ns-card ns-test-card">
@@ -7836,7 +7831,8 @@ function alarmUiUpdate() {
     alarmCard.classList.toggle('open', detailOpen);
   }
   var expandChevron = $('alarm-expand-chevron');
-  if (expandChevron) expandChevron.textContent = detailOpen ? '⌃' : '⌄';
+  if (expandChevron) { expandChevron.textContent = detailOpen ? '⌃' : '⌄'; expandChevron.setAttribute('aria-expanded', detailOpen ? 'true' : 'false'); expandChevron.classList.toggle('open', detailOpen); expandChevron.style.opacity = on ? '' : '.35'; }
+  if ($('alarm-sum')) $('alarm-sum').textContent = on ? '출근 ' + alarmMinText(min) + ' · 주간·야간 출근일만' : '꺼짐 · 주간·야간 출근일만 울려요';
   var t = todayKST();
   var w = alarmWorkInfo(getDateKey(t.y, t.m, t.d));
   var pv = $('alarm-preview') || document.createElement('div');   /* 미리보기 칸은 화면에서 뺐음 */
@@ -9962,7 +9958,9 @@ function notiPrefsRender() {
     r.style.background = 'linear-gradient(to right,#9dbdf7 ' + np.vol + '%,#e3e8f0 ' + np.vol + '%)';
   }
   if ($('np-vol-val')) $('np-vol-val').textContent = np.sound ? np.vol + '%' : '꺼짐';
-  if ($('np-vol-row')) $('np-vol-row').style.display = np.sound ? '' : 'none';   /* 소리를 끄면 볼륨은 접기 */
+  /* 소리를 끄면 볼륨 조절은 접고 화살표를 흐리게 */
+  if ($('np-vol-toggle')) $('np-vol-toggle').style.opacity = np.sound ? '' : '.35';
+  if (!np.sound && $('np-vol-detail') && !$('np-vol-detail').hidden) toggleNotificationVolume();
   var ios = permIsIOS();
   if ($('np-vib-note')) $('np-vib-note').style.display = ios ? '' : 'none';
   renderNotiSub();
@@ -9985,7 +9983,9 @@ function toggleNotificationVolume() {
   var chevron = $('np-vol-chevron');
   if (!detail || !toggle) return;
   var open = detail.hidden;
+  if (open && !getNotiPrefs().sound) { showToast('소리를 켜면 볼륨을 조절할 수 있어요.'); return; }
   detail.hidden = !open;
+  toggle.classList.toggle('open', open);
   toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
   if (chevron) chevron.textContent = open ? '⌃' : '⌄';
 }
@@ -12417,5 +12417,21 @@ height: calc(90px + env(safe-area-inset-bottom));
 #vacation-management-section > .sch-note{white-space:normal}
 </style>
 
+
+<style id="noti-unified-card">
+/* 알림 설정: 출근 알람·팝업·소리·진동을 한 칸으로 */
+#perm-panel .nu-card{padding:4px 12px!important}
+#perm-panel .ns-row.nu-row{grid-template-columns:minmax(0,1fr) 30px 42px!important}
+#perm-panel .nu-card .ns-row + .ns-row,#perm-panel .nu-card .nu-detail + .ns-row{border-top:1px solid #e9edf3}
+#perm-panel .nu-fold{width:28px;height:28px;border:0;border-radius:50%;background:#edf3fb;color:#52749e;font-size:16px;font-weight:900;line-height:28px;padding:0;cursor:pointer;justify-self:center;transition:background .15s,color .15s}
+#perm-panel .nu-fold.open{background:#dce9fc;color:#2867bd}
+#perm-panel .nu-detail{margin:0 0 8px;padding:10px 12px 8px;border-radius:12px;background:#f1f6fd}
+#perm-panel .nu-detail[hidden]{display:none!important}
+#perm-panel .nu-detail .ns-alarm-value{margin:0 0 2px}
+#perm-panel .nu-detail .alarm-range{display:block;width:100%;box-sizing:border-box;margin:8px 0 4px!important}
+#perm-panel .nu-vol{display:flex;align-items:center;gap:8px;font-size:14px}
+#perm-panel .nu-vol .alarm-range{flex:1;margin:4px 0!important}
+#perm-panel #np-vol-val{color:#3d6fd1;font-weight:800}
+</style>
 </body>
 </html>
