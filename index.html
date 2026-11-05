@@ -1381,7 +1381,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="fav-sub">체크한 메뉴가 <b>하단 고정메뉴</b>에 들어가요. <span class="fav-count"><b id="fav-cnt">0</b>/6</span></div>
     <div id="fav-list" class="fav-list"></div>
     <div id="fav-msg" class="fav-msg"></div>
-    <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="favReset()">기본값</button><button type="button" class="dia-text-btn" onclick="closeFavMenu()">취소</button><button type="button" class="dia-text-btn fav-save" onclick="favSave()">저장</button></div>
+    <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="favReset()">초기화</button><button type="button" class="dia-text-btn" onclick="closeFavMenu()">취소</button><button type="button" class="dia-text-btn fav-save" onclick="favSave()">저장</button></div>
   </div>
 </div>
 <div id="trainq-panel" class="dia-modal" style="z-index:405" onclick="if(event.target===this)closeTrainQuery()">
@@ -1390,7 +1390,14 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="tq-sub">날짜와 열차번호를 넣으면 NXLogis에서 열차의 <b>운행 위치</b>를 불러와 보여줘요.</div>
     <div class="tq-sec">
       <label class="tq-lab" for="tq-day">날짜</label>
-      <input id="tq-day" class="tq-field" type="date">
+      <input id="tq-day" type="hidden">
+      <button type="button" id="tq-day-btn" class="tq-field tq-daybtn" onclick="tqCalToggle()"><span id="tq-day-txt"></span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></button>
+      <div id="tq-cal" class="tq-cal" hidden>
+        <div class="tq-cal-head"><button type="button" onclick="tqCalMove(-1)" aria-label="이전 달">‹</button><b id="tq-cal-title"></b><button type="button" onclick="tqCalMove(1)" aria-label="다음 달">›</button></div>
+        <div class="tq-cal-wd"><span class="sun">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span class="sat">토</span></div>
+        <div id="tq-cal-grid" class="tq-cal-grid"></div>
+        <div class="tq-cal-foot"><button type="button" onclick="tqCalPickToday()">오늘</button></div>
+      </div>
       <label class="tq-lab" for="tq-in">열차번호</label>
       <input id="tq-in" class="tq-field" inputmode="numeric" maxlength="6" placeholder="예: 3224" autocomplete="off" onkeydown="if(event.key==='Enter')trainQueryInput()">
       <div id="tq-msg" class="tq-msg"></div>
@@ -3384,7 +3391,6 @@ function favToggle(k, el) {
     if (favTemp.length >= FAV_MAX) { el.checked = false; msg.textContent = '최대 6개까지 고를 수 있어요.'; return; }
     if (i < 0) favTemp.push(k);
   } else {
-    if (favTemp.length <= 1) { el.checked = true; msg.textContent = '최소 1개는 남겨야 해요.'; return; }
     if (i >= 0) favTemp.splice(i, 1);
   }
   var st = $('fav-list').scrollTop;
@@ -3392,13 +3398,13 @@ function favToggle(k, el) {
   $('fav-list').scrollTop = st;
 }
 function favReset() {
-  favTemp = FAV_DEFAULT.slice();
+  favTemp = [];
   favRenderList();
-  $('fav-msg').textContent = '기본 메뉴로 되돌렸어요. 저장을 눌러 적용하세요.';
+  $('fav-msg').textContent = '선택을 모두 해제했어요. 1~6개를 골라 저장하세요.';
 }
 function favSave() {
   var v = favClean(favTemp);
-  if (!v.length) { $('fav-msg').textContent = '최소 1개는 골라주세요.'; return; }
+  if (!v.length) { $('fav-msg').textContent = '최소 1개는 골라야 저장할 수 있어요.'; return; }
   try { LS.setItem(favKey(), JSON.stringify(v)); } catch (e) {}
   renderBottomNav();
   closeFavMenu();
@@ -8385,7 +8391,32 @@ function passDelayChip(n) {
 }
 function passSame(a, b) { return String(a || '').replace(/역$/, '') === String(b || '').replace(/역$/, ''); }
 /* NXLogis 역별 운행 정보 (nx-check 함수의 route 모드) */
+/* 빠른 조회: 역별 운행 정보 한 번만 불러오고(운휴 여부도 ZONE에 들어 있음),
+   그게 실패했을 때만 운휴 확인을 따로 함. 같은 열차는 20초 동안 다시 묻지 않음. */
+var passRouteCache = {};
+function passRouteOrCancel(train, dateKey, cb) {
+  passRoute(train, dateKey, false, function (j) {
+    var ok = j && j.success && Array.isArray(j.stations) && j.stations.length;
+    var zoneTxt = [j && j.zone, j && j.status, j && j.message].filter(Boolean).join(' ');
+    if (ok || /(?:열차\s*)?운휴|운행\s*중지|운행중지/.test(zoneTxt)) { cb('ok', '', j); return; }
+    passCheckCancelled(train, dateKey, function (state, why) { cb(state, why, j); });
+  });
+}
+/* 함수 깨우기: 잘못된 요청은 NXLogis까지 가지 않고 바로 돌아오므로 서버만 미리 준비됨 */
+var passWarmAt = 0;
+function passWarmUp() {
+  if (Date.now() - passWarmAt < 60000) return;
+  passWarmAt = Date.now();
+  try {
+    var headers = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY };
+    if (/^eyJ/.test(SUPABASE_KEY)) headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
+    fetch(SUPABASE_URL + '/functions/v1/' + PASS_FN, { method: 'POST', headers: headers, body: JSON.stringify({ mode: 'route', train: '', date: '' }) }).catch(function () {});
+  } catch (e) {}
+}
 function passRoute(train, dateKey, raw, cb) {
+  var cacheKey = String(train).toUpperCase() + '|' + String(dateKey).replace(/-/g, '');
+  var hit = !raw && passRouteCache[cacheKey];
+  if (hit && Date.now() - hit.at < 20000) { cb(hit.j); return; }
   var headers = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY };
   if (/^eyJ/.test(SUPABASE_KEY)) headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
   var ctl = null, timer = null;
@@ -8396,6 +8427,7 @@ function passRoute(train, dateKey, raw, cb) {
   }).then(function (r) { return r.json(); }).then(function (j) {
     if (timer) clearTimeout(timer);
     if (j && !j.stations && !j.message && j.error) j.message = String(j.error);
+    if (!raw && j && j.success) passRouteCache[cacheKey] = { at: Date.now(), j: j };
     cb(j || { success: false, message: '응답이 없습니다.' });
   }).catch(function () {
     if (timer) clearTimeout(timer);
@@ -8848,11 +8880,62 @@ function trainQueryToday() { var t = todayKST(); return getDateKey(t.y, t.m, t.d
 function openTrainQuery() {
   if (!passAllowed()) { alert('로그인 후 이용할 수 있습니다.'); return; }
   if (!$('tq-day').value) $('tq-day').value = trainQueryToday();
+  tqDayRender();
+  $('tq-cal').hidden = true;
+  passWarmUp();
   $('tq-msg').textContent = '';
   $('trainq-panel').classList.add('active');
   setTimeout(function () { try { $('tq-in').focus(); } catch (e) {} }, 60);
 }
 function closeTrainQuery() { $('trainq-panel').classList.remove('active'); }
+/* 날짜: 앱 안의 달력으로 고르기 */
+var tqCalY = 0, tqCalM = 0;
+function tqParse(v) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return m ? { y: +m[1], m: +m[2] - 1, d: +m[3] } : null; }
+function tqDayRender() {
+  var d = tqParse($('tq-day').value);
+  if (!d) { $('tq-day-txt').textContent = '날짜 선택'; return; }
+  var wd = '일월화수목금토'.charAt(new Date(d.y, d.m, d.d).getDay());
+  var isToday = $('tq-day').value === trainQueryToday();
+  $('tq-day-txt').innerHTML = d.y + '년 ' + (d.m + 1) + '월 ' + d.d + '일 (' + wd + ')' + (isToday ? ' <small>오늘</small>' : '');
+}
+function tqCalToggle() {
+  var cal = $('tq-cal');
+  if (!cal.hidden) { cal.hidden = true; $('tq-day-btn').classList.remove('open'); return; }
+  var d = tqParse($('tq-day').value) || tqParse(trainQueryToday());
+  tqCalY = d.y; tqCalM = d.m;
+  tqCalDraw();
+  cal.hidden = false;
+  $('tq-day-btn').classList.add('open');
+}
+function tqCalMove(n) {
+  tqCalM += n;
+  if (tqCalM < 0) { tqCalM = 11; tqCalY--; }
+  if (tqCalM > 11) { tqCalM = 0; tqCalY++; }
+  tqCalDraw();
+}
+function tqCalDraw() {
+  $('tq-cal-title').textContent = tqCalY + '년 ' + (tqCalM + 1) + '월';
+  var first = new Date(tqCalY, tqCalM, 1).getDay();
+  var days = new Date(tqCalY, tqCalM + 1, 0).getDate();
+  var sel = $('tq-day').value, today = trainQueryToday();
+  var html = '';
+  for (var i = 0; i < first; i++) html += '<span></span>';
+  for (var d = 1; d <= days; d++) {
+    var key = getDateKey(tqCalY, tqCalM, d);
+    var dow = (first + d - 1) % 7;
+    var cls = 'tq-day' + (dow === 0 ? ' sun' : dow === 6 ? ' sat' : '') + (key === today ? ' today' : '') + (key === sel ? ' sel' : '');
+    html += '<button type="button" class="' + cls + '" onclick="tqCalPick(\'' + key + '\')">' + d + '</button>';
+  }
+  $('tq-cal-grid').innerHTML = html;
+}
+function tqCalPick(key) {
+  $('tq-day').value = key;
+  tqDayRender();
+  $('tq-cal').hidden = true;
+  $('tq-day-btn').classList.remove('open');
+  $('tq-msg').textContent = '';
+}
+function tqCalPickToday() { tqCalPick(trainQueryToday()); }
 function trainQueryInput() {
   var day = String($('tq-day').value || '');
   var v = String($('tq-in').value || '').replace(/\s/g, '').toUpperCase();
@@ -8875,7 +8958,7 @@ function passRunCheck(list, c, overviewOnly) {
 
   list.forEach(function (it, n) {
     /* 운휴로 확인된 열차는 위치 애니메이션 대신 운휴 안내만 표시 */
-    passCheckCancelled(it.train, it.date, function (cancelState, cancelWhy) {
+    passRouteOrCancel(it.train, it.date, function (cancelState, cancelWhy, pre) {
       if (cancelState === 'cancel') {
         pages[n] = {
           kind: 'cancel', train: it.train, date: it.date,
@@ -8901,7 +8984,7 @@ function passRunCheck(list, c, overviewOnly) {
         return;
       }
 
-      passRoute(it.train, it.date, false, function (j) {
+      (function (f) { if (pre) f(pre); else passRoute(it.train, it.date, false, f); })(function (j) {
       var page = null;
       var routeStateText = [
         j && j.zone, j && j.status, j && j.state,
@@ -12965,6 +13048,30 @@ height: calc(90px + env(safe-area-inset-bottom));
 #trainq-panel .tq-lab{display:block;margin:0 2px 6px;font-size:13px;font-weight:800;color:#344054}
 #trainq-panel .tq-field{display:block;width:100%;box-sizing:border-box;margin:0 0 12px;padding:11px 13px;border:1px solid #d6dde6;border-radius:12px;font-size:15px;background:#fff;color:#1b2b45;min-height:46px;-webkit-appearance:none;appearance:none}
 #trainq-panel .tq-msg{min-height:16px;margin:-4px 2px 0;font-size:12px;color:#d64545;font-weight:700}
+</style>
+<style id="trainq-cal-style">
+#trainq-panel .tq-dialog{max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+#trainq-panel .tq-cal-grid{row-gap:0}
+#trainq-panel .tq-day{height:34px!important;width:34px!important}
+#trainq-panel .tq-daybtn{display:flex;align-items:center;justify-content:space-between;text-align:left;cursor:pointer;font-weight:700}
+#trainq-panel .tq-daybtn small{margin-left:4px;padding:1px 7px;border-radius:999px;background:#eef4ff;color:#2f6fd6;font-size:11px;font-weight:800;vertical-align:1px}
+#trainq-panel .tq-daybtn svg{width:20px;height:20px;flex:none;fill:none;stroke:#2f6fd6;stroke-width:2;stroke-linecap:round}
+#trainq-panel .tq-daybtn.open{border-color:#2f6fd6;box-shadow:0 0 0 3px rgba(47,111,214,.12)}
+#trainq-panel .tq-cal{margin:-6px 0 12px;padding:10px 8px 8px;background:#fff;border:1px solid #dfe6f0;border-radius:14px;box-shadow:0 6px 18px rgba(20,40,80,.08)}
+#trainq-panel .tq-cal[hidden]{display:none}
+#trainq-panel .tq-cal-head{display:flex;align-items:center;justify-content:space-between;margin:0 2px 6px}
+#trainq-panel .tq-cal-head b{font-size:15px;color:#1b2b45}
+#trainq-panel .tq-cal-head button{width:34px;height:34px;border:0;border-radius:50%;background:#f1f5fb;color:#2f6fd6;font-size:20px;font-weight:800;cursor:pointer;line-height:1}
+#trainq-panel .tq-cal-wd,#trainq-panel .tq-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);text-align:center}
+#trainq-panel .tq-cal-wd span{font-size:11.5px;font-weight:800;color:#8a96a8;padding:4px 0}
+#trainq-panel .tq-cal-wd .sun,#trainq-panel .tq-day.sun{color:#e5484d}
+#trainq-panel .tq-cal-wd .sat,#trainq-panel .tq-day.sat{color:#2f6fd6}
+#trainq-panel .tq-cal-grid{row-gap:2px}
+#trainq-panel .tq-day{height:36px;margin:0 auto;width:36px;border:0;border-radius:50%;background:none;font-size:14px;font-weight:700;color:#1b2b45;cursor:pointer}
+#trainq-panel .tq-day.today{box-shadow:inset 0 0 0 1.5px #2f6fd6}
+#trainq-panel .tq-day.sel{background:#2f6fd6;color:#fff!important}
+#trainq-panel .tq-cal-foot{display:flex;justify-content:flex-end;margin-top:4px}
+#trainq-panel .tq-cal-foot button{border:0;background:#eef4ff;color:#2f6fd6;font-weight:800;font-size:12.5px;padding:6px 12px;border-radius:999px;cursor:pointer}
 </style>
 </body>
 </html>
