@@ -3464,6 +3464,96 @@ function wgDrawPng(mm, y, m, name) {
   c.restore();
   return cv.toDataURL('image/png');
 }
+/* ============ KWGT 프리셋(.kwgt) 만들기: 불러오기만 하면 바로 쓰는 4x4 달력 위젯 ============
+   .kwgt = preset.json + 미리보기 그림이 든 zip
+   - 전역변수 mo(텍스트, 0 = 이번 달)
+   - 달력 그림: 내 그림 주소 + &m=mo  (누르면 이번 달로)
+   - ‹ › 자리 투명 도형: 누르면 mo -1 / +1 (-6 ~ 6) */
+function wgCrc32(u8) {
+  var t = wgCrc32.t;
+  if (!t) { t = wgCrc32.t = []; for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } }
+  var crc = -1;
+  for (var i = 0; i < u8.length; i++) crc = t[(crc ^ u8[i]) & 0xff] ^ (crc >>> 8);
+  return (crc ^ -1) >>> 0;
+}
+function wgZip(entries) {
+  /* 압축 없이(STORED) 묶는 간단한 zip */
+  var enc = new TextEncoder(), parts = [], central = [], off = 0;
+  function u16(v) { return [v & 255, (v >>> 8) & 255]; }
+  function u32(v) { return [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]; }
+  entries.forEach(function (e) {
+    var name = enc.encode(e.name), data = typeof e.data === 'string' ? enc.encode(e.data) : e.data, crc = wgCrc32(data);
+    var head = [].concat(u32(0x04034b50), u16(20), u16(0x0800), u16(0), u16(0), u16(33), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0));
+    parts.push(new Uint8Array(head), name, data);
+    central.push(new Uint8Array([].concat(u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(33), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(off))), name);
+    off += head.length + name.length + data.length;
+  });
+  var cenLen = central.reduce(function (a, b) { return a + b.length; }, 0);
+  var end = new Uint8Array([].concat(u32(0x06054b50), u16(0), u16(0), u16(entries.length), u16(entries.length), u32(cenLen), u32(off), u16(0)));
+  return new Blob(parts.concat(central, [end]), { type: 'application/zip' });
+}
+function wgKwgtPreset(imgUrl) {
+  var S = '$mu(min, si(rwidth), si(rheight))$';
+  var s = 'mu(min, si(rwidth), si(rheight))';
+  var ox = '(si(rwidth)-' + s + ')/2', oy = '(si(rheight)-' + s + ')/2';
+  function base(type, title) { return { internal_type: type, internal_title: title, position_anchor: 'TOPLEFT', internal_toggles: {}, internal_formulas: {} }; }
+  function f(m, k, v) { m.internal_formulas[k] = v; m.internal_toggles[k] = 10; }
+  var cal = base('BitmapModule', '근무표 달력');
+  cal.bitmap_scale_mode = 'CENTER_CROP';
+  f(cal, 'bitmap_bitmap', imgUrl + '&m=$gv(mo)$');
+  f(cal, 'bitmap_width', S); f(cal, 'bitmap_height', S);
+  f(cal, 'position_padding_left', '$' + ox + '$'); f(cal, 'position_padding_top', '$' + oy + '$');
+  cal.internal_events = [{ type: 'SINGLE_TAP', action: 'SWITCH_GLOBAL', 'switch': 'mo', switch_text: '0' }];
+  function tap(title, cx, val) {
+    var m = base('ShapeModule', title);
+    m.shape_type = 'RECT';
+    m.paint_color = '#00000000'; m.internal_toggles.paint_color = 10;
+    f(m, 'shape_width', '$' + s + '*0.16$'); f(m, 'shape_height', '$' + s + '*0.13$');
+    f(m, 'position_padding_left', '$' + ox + '+' + s + '*' + (cx - 0.08).toFixed(3) + '$');
+    f(m, 'position_padding_top', '$' + oy + '+' + s + '*0.01$');
+    m.internal_events = [{ type: 'SINGLE_TAP', action: 'SWITCH_GLOBAL', 'switch': 'mo', switch_text: val }];
+    return m;
+  }
+  return {
+    preset_info: { version: 13, title: '철도비서 근무표 달력', description: '철도비서 4x4 근무표 달력 (‹ › 로 앞뒤 6개월)', author: '철도비서', email: '', features: '', release: 0, locked: false, pflags: 0 },
+    preset_root: {
+      internal_type: 'RootLayerModule',
+      globals_list: { mo: { index: 1, type: 'TEXT', title: 'mo', description: '보고 있는 달 (0 = 이번 달)', global_formula: '', value: '0' } },
+      viewgroup_items: [cal, tap('이전 달', 0.321, '$mu(max, gv(mo)-1, -6)$'), tap('다음 달', 0.679, '$mu(min, gv(mo)+1, 6)$')]
+    }
+  };
+}
+function wgKwgtDownload() {
+  if (!window.wgPngNow) { showToast('위젯 주소를 먼저 만들어주세요.'); return; }
+  if (window.RsWidget) { showToast('앱 안에서는 파일을 받을 수 없어요. 크롬에서 철도비서를 열고 받아주세요.'); return; }
+  var u = getCurrentUser() || {}, t = todayKST();
+  rsWidgetMonth(t.y, t.m, function (mm) {
+    var thumb = new Uint8Array(0);
+    function finish() {
+      var blob = wgZip([
+        { name: 'preset.json', data: JSON.stringify(wgKwgtPreset(window.wgPngNow)) },
+        { name: 'preset_thumb_portrait.jpg', data: thumb },
+        { name: 'preset_thumb_landscape.jpg', data: thumb }
+      ]);
+      var a = document.createElement('a'), href = URL.createObjectURL(blob);
+      a.href = href; a.download = '철도비서_근무표.kwgt';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(href); }, 5000);
+      showToast('철도비서_근무표.kwgt 파일을 받았어요.');
+    }
+    if (!mm) { finish(); return; }
+    var img = new Image();
+    img.onload = function () {
+      var cv = document.createElement('canvas'); cv.width = 360; cv.height = 360;
+      var c = cv.getContext('2d'); c.fillStyle = '#dfe6ef'; c.fillRect(0, 0, 360, 360); c.drawImage(img, 0, 0, 360, 360);
+      var b64 = cv.toDataURL('image/jpeg', 0.85).split(',')[1], bin = atob(b64);
+      thumb = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) thumb[i] = bin.charCodeAt(i);
+      finish();
+    };
+    img.onerror = finish;
+    img.src = wgDrawPng(mm, t.y, t.m, mm.name || u.name || '');
+  });
+}
 function rsFeedUrl(token) { return SUPABASE_URL + '/rest/v1/rpc/widget?t=' + token + '&apikey=' + SUPABASE_KEY; }
 function openWidgetPanel() {
   var u = getCurrentUser();
@@ -3500,7 +3590,15 @@ function wgRender(r) {
     '<div class="wg-prev"><img id="wg-prev" alt="위젯 미리보기"></div>' +
     '<div class="wg-btns"><button type="button" onclick="wgCopy(window.wgPngNow + \'&m=$gv(mo)$\')">비트맵 수식 복사</button><button type="button" onclick="window.open(window.wgPngNow,\'_blank\')">브라우저로 확인</button></div>' +
     '<div class="wg-tip">이번 달 기준 <b>앞뒤 6개월(13달)</b> 달력이 올라가요. 주소 끝 <b>&m=</b> 숫자: 0 = 이번 달, -1 = 지난달, 1 = 다음 달 … (-6 ~ 6)</div>' +
-    '<div class="wg-lab">② KWGT에서 만들기</div>' +
+    '<div class="wg-lab">② KWGT 프리셋으로 한 번에 (추천)</div>' +
+    '<button type="button" class="wg-main" onclick="wgKwgtDownload()">KWGT 프리셋 받기 (.kwgt)</button>' +
+    '<ol class="wg-steps">' +
+    '<li>위 버튼으로 <b>철도비서_근무표.kwgt</b> 받기 (크롬 등 브라우저에서)</li>' +
+    '<li><b>내 파일</b> 앱 › 다운로드 › 그 파일을 길게 눌러 <b>이동</b> › 내장 메모리 › <b>Kustom</b> › <b>widgets</b> 폴더에 넣기 (폴더가 없으면 KWGT를 한 번 열면 생겨요)</li>' +
+    '<li>홈화면에 <b>KWGT 4x4</b> 위젯 추가 › 위젯 누르기 › 프리셋 목록 위쪽 탭 중 <b>내보냄(Exported)</b> 또는 <b>SD 카드</b> › <b>철도비서 근무표 달력</b> 선택</li>' +
+    '<li>오른쪽 위 <b>저장</b> 누르면 끝 (‹ › 누르면 달 이동, 달력 누르면 이번 달)</li>' +
+    '</ol>' +
+    '<details class="wg-manual"><summary>직접 만들기 (프리셋이 안 될 때)</summary>' +
     '<ol class="wg-steps">' +
     '<li>홈화면에 <b>KWGT 4x4</b> 위젯 추가 › 위젯 눌러 편집</li>' +
     '<li><b>전역변수(Globals)</b> › + › <b>텍스트</b>, 이름 <b>mo</b>, 값 <b>0</b></li>' +
@@ -3508,8 +3606,7 @@ function wgRender(r) {
     '<li>+ › <b>도형(Shape)</b> 2개를 달력 위쪽 ‹ › 자리에 놓고 색을 투명(알파 0)으로</li>' +
     '<li>‹ 도형 › 터치 › <b>전역변수 전환(Switch Global)</b> › mo › 값<br><code>' + esc('$mu(max, gv(mo)-1, -6)$') + '</code> <button type="button" class="wg-mini" onclick="wgCopy(\'$mu(max, gv(mo)-1, -6)$\')">복사</button></li>' +
     '<li>› 도형도 같은 방법으로 값<br><code>' + esc('$mu(min, gv(mo)+1, 6)$') + '</code> <button type="button" class="wg-mini" onclick="wgCopy(\'$mu(min, gv(mo)+1, 6)$\')">복사</button></li>' +
-    '<li>(선택) 이미지 › 터치 › 전역변수 전환 › mo › 값 <b>0</b> = 누르면 이번 달로</li>' +
-    '</ol>' +
+    '</ol></details>' +
     '<div class="wg-tip">철도비서를 열 때마다 바뀐 달만 새로 그려서 올려요(오늘 표시 · 근무 변경 반영). 근무 아래에는 <b>교환 상대</b>와 <b>휴무충당 · 대기충당</b>만 보여요.</div>' +
     '<div class="wg-btns end"><button type="button" onclick="wgSync()">지금 갱신</button><button type="button" onclick="wgMake(true)">새 주소로 바꾸기</button><button type="button" class="danger" onclick="wgOff()">연결 끄기</button></div>';
 }
@@ -14380,6 +14477,9 @@ html body #main-section .menu-grid > .menu-btn > span{display:flex;align-items:f
 #wg-panel .wg-prev img{display:block;width:100%;height:auto;min-height:40px}
 #wg-panel .wg-steps{margin:0;padding-left:20px;font-size:12.5px;line-height:1.6;color:#33415c}
 #wg-panel .wg-steps li{margin:2px 0}
+#wg-panel .wg-main + .wg-steps{margin-top:8px}
+#wg-panel .wg-manual{margin-top:10px;border:1px solid #e3e8f0;border-radius:10px;padding:8px 10px}
+#wg-panel .wg-manual summary{font-size:12.5px;font-weight:800;color:#0b376d;cursor:pointer}
 #wg-panel .wg-steps code{font-size:11px;background:#f4f7fb;border-radius:6px;padding:1px 5px}
 #wg-panel .wg-mini{padding:2px 8px;border:1.5px solid #c9dbf7;border-radius:999px;background:#fff;color:#2f6fd6;font-size:11px;font-weight:800}
 #wg-panel .wg-lab small{font-weight:600;color:#17a85a;margin-left:6px}
