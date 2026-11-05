@@ -899,6 +899,9 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="mp-sec" data-sec="swaps"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('swaps')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무교환내역" alt="" aria-hidden="true">근무교환 내역<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
   <div id="mypage-swaps" class="mypage-box"></div>
   </div></div>
+  <div class="mp-sec" data-sec="history"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('history');renderMyHistory()" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무변경" alt="" aria-hidden="true">근무 변경 기록<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
+  <div id="mypage-history" class="mypage-box"></div>
+  </div></div>
 <div class="mp-sec" data-sec="crew"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('crew')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="CREW연동" alt="" aria-hidden="true">CREW 연동<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
   <div class="mypage-box">
     <div class="mp-note">crew.korail.com(승무원 외부망) 비밀번호를 저장해 두면, 함께 타는 <b>승무원</b> 정보를 알림 없이 <b>자동으로 최신화</b>해서 근무표 상세정보에 보여줍니다. (월말에는 다음 달까지)</div>
@@ -3465,6 +3468,56 @@ function pngDownload() {
   document.body.appendChild(a); a.click(); a.remove();
   showToast('달력 이미지를 저장했어요.');
 }
+/* ============ 마이페이지 › 근무 변경 기록 (서버 override_history) ============
+   언제 · 어느 날짜를 · 무엇에서 무엇으로 바꿨는지 (근무교환 상대 포함) */
+var histCache = null, histAt = 0, histLimit = 100, histBusy = false;
+function histLabel(type, dia, status) {
+  var st = String(status || '').trim(), d = String(dia || '').trim();
+  if (st) return st;
+  if (d) return d + '다이아';
+  return String(type || '').trim() || '변경';
+}
+function renderMyHistory(force) {
+  var box = $('mypage-history');
+  if (!box) return;
+  var u = getCurrentUser();
+  if (!u || !u.token || u.employeeId === 'guest') { box.innerHTML = '<div class="mp-empty">로그인 후 볼 수 있어요.</div>'; return; }
+  if (histCache && !force && Date.now() - histAt < 60000) { histDraw(box); return; }
+  if (histBusy) return;
+  histBusy = true;
+  if (!histCache) box.innerHTML = '<div class="mp-empty">기록을 불러오는 중…</div>';
+  api({ action: 'getHistory', employeeId: u.employeeId, token: u.token, limit: histLimit }, function (r) {
+    histBusy = false;
+    if (!r || !r.success) {
+      box.innerHTML = '<div class="mp-empty">' + ((r && r.errorCode === 'AUTH') ? '로그인이 만료되었어요.' : '기록을 불러오지 못했어요. (서버에 근무 변경 기록 SQL을 적용했는지 확인)') + '</div>';
+      return;
+    }
+    histCache = r.items || []; histAt = Date.now();
+    histDraw(box);
+  });
+}
+function histDraw(box) {
+  var list = histCache || [];
+  if (!list.length) { box.innerHTML = '<div class="mp-empty">아직 근무 변경 기록이 없어요.</div>'; return; }
+  var wd = '일월화수목금토';
+  var html = list.map(function (it) {
+    var date = it[0], act = it[1];
+    var dt = new Date(date + 'T00:00:00');
+    var dLab = (dt.getMonth() + 1) + '/' + dt.getDate() + ' (' + wd.charAt(dt.getDay()) + ')';
+    var oldL = act === 'set' && (it[2] || it[3] || it[4]) ? histLabel(it[2], it[3], it[4]) : (act === 'initial' ? '' : '원래 근무');
+    var newL = act === 'clear' ? '원래 근무' : histLabel(it[6], it[7], it[8]);
+    if (act === 'clear') oldL = histLabel(it[2], it[3], it[4]);
+    var partner = act === 'clear' ? '' : (it[9] || '');
+    var when = String(it[10] || '').slice(5).replace('-', '/');
+    var change = act === 'initial'
+      ? '<span class="hi-new">' + esc(newL) + '</span><small class="hi-tag">기록 시작 전</small>'
+      : '<span class="hi-old">' + esc(oldL) + '</span><span class="hi-arrow">→</span><span class="hi-new">' + esc(newL) + '</span>';
+    return '<div class="hi-row"><div class="hi-top"><b class="hi-date">' + dLab + '</b><small class="hi-when">' + esc(when) + '</small></div>' +
+      '<div class="hi-change">' + change + (partner ? '<span class="hi-swap">⇄ ' + esc(partner) + '</span>' : '') + '</div></div>';
+  }).join('');
+  if (list.length >= histLimit) html += '<button type="button" class="hi-more" onclick="histLimit+=200;renderMyHistory(true)">더 보기</button>';
+  box.innerHTML = '<div class="hi-list">' + html + '</div>';
+}
 /* ============ 애니메이션 효과 (메인화면 열차 장면) · 이 폰에만 저장 ============
    on: 켜기/끄기, times/stations/signs/trains: 고른 것 중 랜덤 (비어 있으면 전체 랜덤) */
 var ANIM_OPTS = {
@@ -5813,6 +5866,7 @@ function renderMyPageExtras() {
   try { renderMyTenure(); } catch (e) { console.warn('tenure', e); }
   try { renderMyStats(); } catch (e) { console.warn('stats', e); }
   try { renderMySwaps(); } catch (e) { console.warn('swaps', e); }
+  try { renderMyHistory(); } catch (e) { console.warn('history', e); }
   applyMySections();
   if (!renderMyPageExtras.__synced) { renderMyPageExtras.__synced = true; syncMyProfile(); }
 }
@@ -9408,6 +9462,25 @@ function passBoarding(track, at) {
   });
   box.innerHTML = h;
 }
+/* ============ 조회 중: 돋보기가 선로 위 역들을 훑고 역 불이 차례로 켜짐 ============ */
+function passSearchAnim(on) {
+  var track = $('pp-track');
+  if (!track) return;
+  var el = track.querySelector('.pp-search');
+  if (!on) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'pp-search';
+    var dots = '';
+    for (var i = 0; i < 5; i++) dots += '<i style="left:' + (10 + i * 20) + '%;animation-delay:' + (i * 0.3).toFixed(1) + 's"></i>';
+    el.innerHTML = '<div class="ps-dots">' + dots + '</div>' +
+      '<svg class="ps-glass" viewBox="0 0 44 44" aria-hidden="true"><circle cx="17" cy="17" r="12" fill="rgba(230,241,251,.65)" stroke="#185FA5" stroke-width="3.5"/>' +
+      '<path d="M11 13 Q14 9 19 9" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/>' +
+      '<line x1="26" y1="26" x2="38" y2="38" stroke="#185FA5" stroke-width="5" stroke-linecap="round"/></svg>';
+    track.appendChild(el);
+  }
+  var st = $('pp-stops'); if (st) st.innerHTML = '';
+}
 /* ============ 열차운휴 장면: 열차가 회색으로 바래고 '운휴' 도장이 쿵 ============ */
 function cancelSceneHtml(train, kind, ttOverride) {
   /* 운휴는 화물열차뿐: 기관차(무궁화 기관차 · 새마을) + 화차 4량, 열차 전체를 가운데에 */
@@ -9854,7 +9927,14 @@ function passDraw(d, quiet) {
     /* 불러오는 동안: 열차 그림을 가운데에 두고 깜빡임 (팝업을 먼저 띄워 기다림이 짧게 느껴지게) */
     /* 조회 실패도: 열차를 가운데 세우고 위 표시를 '조회실패'로 */
     var trL = $('pp-train');
-    if (trL) {
+    passSearchAnim(!!d.loading);
+    if (trL && d.loading) {
+      trL.hidden = true;
+      var cmpL = $('pp-compose-scene'); if (cmpL) cmpL.hidden = true;
+      try { passStandbySignal($('pp-track'), null); } catch (e) {}
+      $('pass-pop-panel').classList.add('active');
+    }
+    else if (trL) {
       trL.hidden = false;
       passSetTrainArt(trL, passTrainType('', d.train), d.train);
       var cmp = $('pp-compose-scene'); if (cmp) cmp.hidden = true;
@@ -9927,6 +10007,7 @@ function passReplay() {
   if (passPopAnim) { try { passPopAnim.cancel(); } catch (e) {} passPopAnim = null; }
 
   var track = $('pp-track'), train = $('pp-train'), compose = $('pp-compose-scene');
+  passSearchAnim(false);
   if (!passRefreshBusy) train.classList.remove('refreshing');
   if (compose) { compose.hidden = true; compose.classList.remove('play'); compose.style.transform = ''; }
   train.hidden = false;
@@ -13938,6 +14019,29 @@ html body #main-section .logout-btn, html body #main-section .logout-btn:hover{b
 .cx-scene{background:#dff0fc}
 .cx-rail{border-top-color:#9aa7b8}
 #pass-pop-panel .pp-fail-note span{font-size:12px;color:#8a96a8}
+</style>
+<style id="history-style">
+#mypage-history .hi-list{display:flex;flex-direction:column}
+#mypage-history .hi-row{padding:9px 2px;border-bottom:1px solid #eef1f5}
+#mypage-history .hi-row:last-of-type{border-bottom:0}
+#mypage-history .hi-top{display:flex;justify-content:space-between;align-items:baseline}
+#mypage-history .hi-date{font-size:13.5px;color:#1b2b45}
+#mypage-history .hi-when{font-size:11px;color:#98a2b3}
+#mypage-history .hi-change{margin-top:3px;display:flex;flex-wrap:wrap;align-items:center;gap:5px;font-size:13px}
+#mypage-history .hi-old{color:#8a96a8;text-decoration:line-through}
+#mypage-history .hi-arrow{color:#b0b9c6}
+#mypage-history .hi-new{font-weight:800;color:#2f6fd6}
+#mypage-history .hi-tag{padding:0 6px;border-radius:999px;background:#f1f4f8;color:#8a96a8;font-size:10.5px}
+#mypage-history .hi-swap{padding:0 7px;border-radius:999px;background:#f2edfb;color:#7a5cc4;font-size:11.5px;font-weight:700}
+#mypage-history .hi-more{width:100%;margin-top:8px;padding:9px;border:1px solid #d6dde6;border-radius:10px;background:#fff;color:#475467;font-weight:700;cursor:pointer}
+</style>
+<style id="pp-search-style">
+/* 조회 중: 돋보기 찾기 */
+#pass-pop-panel .pp-search{position:absolute;inset:0;z-index:7;pointer-events:none}
+#pass-pop-panel .pp-search .ps-dots i{position:absolute;bottom:26px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:#fff;border:2.5px solid #378add;box-sizing:border-box;opacity:.25;animation:psPing 1.5s ease-in-out infinite}
+#pass-pop-panel .pp-search .ps-glass{position:absolute;left:8%;bottom:40px;width:40px;height:40px;animation:psSweep 2.4s ease-in-out infinite;filter:drop-shadow(0 2px 3px rgba(15,61,117,.25))}
+@keyframes psPing{0%,100%{opacity:.25;transform:scale(.9)}50%{opacity:1;transform:scale(1.15);box-shadow:0 0 0 4px rgba(55,138,221,.18)}}
+@keyframes psSweep{0%,100%{left:6%}50%{left:76%}}
 </style>
 </body>
 </html>
