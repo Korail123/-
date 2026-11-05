@@ -9207,7 +9207,7 @@ function passArtKey(tt, no) {
 function passArtSize(key) {
   var dm = PASS_TRAIN_DIM[key] || PASS_TRAIN_DIM.ktx;
   /* 기관차가 끄는 열차는 원본 71px = 22px 축척, KTX·새마을은 높이 23px */
-  var h = /^run_/.test(key) ? Math.round(dm[1] * 22 / 71) : 23;
+  var h = /^run_/.test(key) ? Math.round(dm[1] * 31 / 71) : 32;   /* 40% 크게 (기존 22·23px) */
   return { w: Math.round(h * dm[0] / dm[1]), h: h };
 }
 function passSetTrainArt(train, tt, no) {
@@ -9222,7 +9222,7 @@ function passSetTrainArt(train, tt, no) {
 }
 /* 조성대기 장면: 화물 = 화차 2량 + 기관차(전기·디젤), 여객 = 객차 + 전기기관차(새마을은 새마을 차량) */
 function passBuildCompose(compose, tt, no) {
-  var S = 0.315;   /* 객차·화차·기관차 공통 축척 */
+  var S = 0.44;   /* 객차·화차·기관차 공통 축척 (40% 크게) */
   function sz(k) { var dm = PASS_TRAIN_DIM[k]; return { w: Math.round(dm[0] * S), h: Math.round(dm[1] * S) }; }
   var freight = tt === 'freight';
   var carKey = freight ? 'tank' : 'coach', car = sz(carKey), n = freight ? 2 : 1;
@@ -9236,7 +9236,7 @@ function passBuildCompose(compose, tt, no) {
   if (link) { link.style.display = n > 1 ? '' : 'none'; link.style.left = (car.w - 2) + 'px'; }
   if (hook) hook.style.left = (carsW - 3) + 'px';
   var locoKey = freight ? passFreightLoco(no) : (tt === 'saemaul' ? 'saemaul' : 'eloco');
-  var lo = locoKey === 'saemaul' ? { w: Math.round(21 * 152 / 66), h: 21 } : sz(locoKey);
+  var lo = locoKey === 'saemaul' ? { w: Math.round(29 * 152 / 66), h: 29 } : sz(locoKey);
   var loco = compose.querySelector('.pc-loco'), limg = loco && loco.querySelector('img');
   if (limg) limg.setAttribute('src', PASS_TRAIN_ART[locoKey]);
   if (loco) loco.style.cssText = 'left:' + (carsW + 2) + 'px;width:' + lo.w + 'px;height:' + lo.h + 'px';
@@ -9245,15 +9245,16 @@ function passBuildCompose(compose, tt, no) {
   var spark = compose.querySelector('.pc-spark'), tag = compose.querySelector('.pc-tag');
   if (spark) spark.style.left = (carsW - 4) + 'px';
   if (tag) tag.style.left = (carsW - 14) + 'px';
+  compose.style.setProperty('height', Math.max(lo.h, car.h) + 'px', 'important');
   compose.style.setProperty('width', (carsW + 2 + lo.w) + 'px', 'important');
   compose.setAttribute('data-kind', freight ? 'freight' : 'passenger');
 }
 /* ============ 열차운휴 장면: 열차가 회색으로 바래고 '운휴' 도장이 쿵 ============ */
 function cancelSceneHtml(train, kind, ttOverride) {
   var tt = ttOverride || passTrainType(kind || '', train), key = passArtKey(tt, train), sz = passArtSize(key);
-  var k = 30 / sz.h;   /* 장면에서는 조금 크게 */
+  var k = 42 / sz.h;   /* 장면에서는 크게 */
   return '<div class="cx-scene" onclick="cancelSceneReplay(this)" title="눌러서 다시 보기">' +
-    '<div class="cx-hills"></div><div class="cx-rail"></div>' +
+    '<div class="cx-rail"></div>' +
     '<img class="cx-train" alt="" aria-hidden="true" src="' + PASS_TRAIN_ART[key] + '" style="width:' + Math.round(sz.w * k) + 'px;height:' + Math.round(sz.h * k) + 'px">' +
     '<div class="cx-stamp">운휴</div></div>';
 }
@@ -13629,6 +13630,14 @@ html body #login-section #login-btn:disabled, html body #signup-section #signup-
 @keyframes cxStamp{0%{opacity:0;transform:translateX(-50%) rotate(-12deg) scale(2.4)}70%{opacity:1;transform:translateX(-50%) rotate(-12deg) scale(.92)}100%{opacity:1;transform:translateX(-50%) rotate(-12deg) scale(1)}}
 @keyframes cxThud{0%,100%{transform:translateY(0)}35%{transform:translateY(2px)}70%{transform:translateY(-1px)}}
 #pp-cancel-scene[hidden]{display:none}
+</style>
+<style id="anim-bigger-style">
+/* 운행 팝업 열차 40% 크게: 그림 칸 높이도 조금 늘림 */
+#pass-pop-panel .pp-track{height:128px!important}
+#pass-pop-panel .pp-compose-scene.pc2{height:31px!important}
+.pc2 .pc-tag{top:-19px}
+.cx-scene{height:118px}
+.cx-stamp{top:12px}
 </style>
 </body>
 </html>
