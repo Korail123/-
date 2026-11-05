@@ -9438,7 +9438,7 @@ function passRunCheck(list, c, overviewOnly, opts) {
                 : phase === 'done'
                 ? '운행을 마친 열차예요.' + (st[st.length - 1] && st[st.length - 1].act ? ' ' + st[st.length - 1].name + ' 도착 ' + passHm(st[st.length - 1].act) : '')
                 : waiting
-                ? '첫 출발역(' + (st[0] ? st[0].name : '-') + ')에서 출발을 기다리고 있어요.'
+                ? '첫 출발역(' + (st[0] ? st[0].name : '-') + ')에서 기관차와 ' + (passTrainType(j.kind || '', it.train) === 'freight' ? '화차' : '객차') + '를 연결하며 출발을 기다리고 있어요.'
                 : composing
                 ? '현재 역에서 기관차와 객차를 연결하는 조성대기 상태입니다.'
                 : '현재 위치를 가운데에 두고 앞뒤 역을 함께 보여줘요.',
@@ -9697,6 +9697,8 @@ function passDraw(d, quiet) {
 function passReplay() {
   var d = passPopData;
   if (!d) return;
+  /* 조성대기 · 연결대기중: 객차(화차)와 기관차가 연결되는 장면 (출발 전은 제외) */
+  var coupling = !!(d.composing || (d.waiting && d.phase !== 'before'));
   passPopTimers.forEach(clearTimeout); passPopTimers = [];
   if (passPopAnim) { try { passPopAnim.cancel(); } catch (e) {} passPopAnim = null; }
 
@@ -9746,8 +9748,8 @@ function passReplay() {
 
   var xStart, xEnd, dur, ease;
   /* 열차 가운데가 놓일 자리: 역에 있으면 그 역 바로 위, 역 사이를 달리는 중이면 두 역의 한가운데 */
-  var passedNow = passed || (d.overview && d.stopped) || d.composing;
-  var atIdx = d.composing ? Math.max(0, Math.min(n - 1, curOff)) : ti;
+  var passedNow = passed || (d.overview && d.stopped) || coupling;
+  var atIdx = coupling ? Math.max(0, Math.min(n - 1, curOff)) : ti;
   var centerX;
   if (passedNow) centerX = xs[atIdx];
   else if (d.overview) centerX = n > ti + 1 ? (xs[ti] + xs[ti + 1]) / 2 : xs[ti];
@@ -9762,12 +9764,12 @@ function passReplay() {
     dur = Math.abs(xEnd - xStart) < 1 ? 0 : 900;
   }
   passLastX = { key: d.train + '|' + d.date, x: xEnd };
-  if (d.composing || d.waiting) { xStart = xEnd; dur = 0; }
+  if (coupling || d.waiting) { xStart = xEnd; dur = 0; }
   var markX = centerX - xEnd;   /* 열차 아래 위치 표시선 (열차 기준 좌표) */
   train.style.setProperty('--mark-x', Math.max(6, Math.min(TW - 6, markX)).toFixed(1) + 'px');
 
   if (!d.waiting) train.classList.add('run'); else train.classList.remove('run');
-  if (d.composing) {
+  if (coupling) {
     train.hidden = true;
     if (compose) {
       passBuildCompose(compose, trainType, d.train);
