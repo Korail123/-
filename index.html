@@ -8175,20 +8175,24 @@ function passEval(route, w, now) {
         : '운행 시작 전 또는 위치 확인 전');
   var futureStops = st.slice(Math.max(0, passedIdx + 1), i + 1).map(function (x) { return x.name; });
 
-  // 선로 애니메이션은 마지막 확인 역부터 목적역까지 실제 역 순서를 표시한다.
-  var trackStart = Math.max(0, Math.min(i, passedIdx >= 0 ? passedIdx : 0));
-  var trackNames = st.slice(trackStart, i + 1).map(function (x) { return x.name; });
-  if (!trackNames.length) trackNames = [s.name];
+  // 지정역 조회는 ZONE의 정차역/운행구간 판정을 우선해 실제 현재 기준 역(B)을 찾는다.
+  // B역은 맨 왼쪽, 지정역(A)은 맨 오른쪽, 가운데는 경로상 중간 3개 역이다.
+  var livePosition = passCurrentStation(route);
+  var trackStart = livePosition && livePosition.idx >= 0
+    ? livePosition.idx
+    : Math.max(0, Math.min(i, passedIdx >= 0 ? passedIdx : Math.max(0, i - 1)));
+  var preview = passTrackBetweenStations(st, trackStart, i);
 
   return {
     idx: i, passed: passed, soon: soon, approaching: approaching,
     delay: Number(delay), expect: expect, plan: s.plan, act: s.act,
     prev: st.slice(Math.max(0, i - 2), i).map(function (x) { return x.name; }),
     next: st.slice(i + 1, i + 2).map(function (x) { return x.name; }),
-    last: last, zone: route.zone || '', currentIdx: passedIdx,
+    last: last, zone: route.zone || '', currentIdx: trackStart,
     targetIdx: i, remainingStops: remainingStops, currentText: currentText,
-    futureStops: futureStops, trackNames: trackNames,
-    trackTargetOffset: trackNames.length - 1
+    futureStops: futureStops, trackNames: preview.names,
+    trackCurrentOffset: preview.currentOffset,
+    trackTargetOffset: preview.targetOffset
   };
 }
 /* ----- 설정 (감시 열차번호 + 역 + 곧 도착/통과) ----- */
@@ -8445,6 +8449,81 @@ function passCurrentStation(route) {
 
   return null;
 }
+function passPadNames(names, size) {
+  var out = Array.isArray(names) ? names.slice(0, size) : [];
+  while (out.length < size) out.push('');
+  return out;
+}
+function passTrackFromCurrent(st, currentIdx) {
+  var names = [];
+  for (var i = 0; i < 5; i++) {
+    var idx = currentIdx + i;
+    names.push(idx >= 0 && idx < st.length ? st[idx].name : '');
+  }
+  return { names: passPadNames(names, 5), currentOffset: 0, targetOffset: 0 };
+}
+function passPickMiddleStations(innerNames, count) {
+  innerNames = Array.isArray(innerNames) ? innerNames.filter(function (x) { return String(x || '').trim(); }) : [];
+  if (!innerNames.length) return passPadNames([], count);
+  if (innerNames.length <= count) return passPadNames(innerNames, count);
+
+  var picked = [], used = {};
+  for (var step = 1; step <= count; step++) {
+    var pos = Math.round((innerNames.length + 1) * step / (count + 1)) - 1;
+    pos = Math.max(0, Math.min(innerNames.length - 1, pos));
+    while (used[pos] && pos < innerNames.length - 1) pos++;
+    while (used[pos] && pos > 0) pos--;
+    used[pos] = true;
+    picked.push(innerNames[pos]);
+  }
+  return passPadNames(picked, count);
+}
+function passTrackBetweenStations(st, currentIdx, targetIdx) {
+  currentIdx = Math.max(0, Math.min(st.length - 1, Number(currentIdx) || 0));
+  targetIdx = Math.max(0, Math.min(st.length - 1, Number(targetIdx) || 0));
+  if (targetIdx <= currentIdx) {
+    var fallback = passTrackFromCurrent(st, currentIdx);
+    fallback.names[4] = st[targetIdx] ? st[targetIdx].name : fallback.names[4];
+    fallback.targetOffset = 4;
+    return fallback;
+  }
+  var inner = st.slice(currentIdx + 1, targetIdx).map(function (x) { return x.name; });
+  var mids = passPickMiddleStations(inner, 3);
+  return {
+    names: passPadNames([st[currentIdx].name, mids[0], mids[1], mids[2], st[targetIdx].name], 5),
+    currentOffset: 0,
+    targetOffset: 4
+  };
+}
+
+/* 열차통과/도착 조회 전에 운휴 여부를 먼저 확인한다.
+   smart-handler의 기본(items) 모드는 NXLogis 운휴 상태(cancel/ok/unknown)를 반환한다. */
+function passCheckCancelled(train, dateKey, cb) {
+  var item = {
+    id: String(dateKey).replace(/-/g, '') + '|' + String(train).trim(),
+    train: String(train).trim(),
+    date: String(dateKey).replace(/-/g, '')
+  };
+  nxCallServer([item], function (results, why) {
+    if (!Array.isArray(results)) {
+      cb('unknown', why || '운휴 조회 서버 응답이 없습니다.');
+      return;
+    }
+    var found = null;
+    for (var i = 0; i < results.length; i++) {
+      var r = results[i] || {};
+      var sameTrain = String(r.train || '').trim().toUpperCase() === item.train.toUpperCase();
+      var rd = String(r.date || '').replace(/[^0-9]/g, '');
+      var sameDate = !rd || rd === item.date;
+      if (sameTrain && sameDate) { found = r; break; }
+    }
+    var state = found && ['cancel', 'ok', 'unknown'].indexOf(found.state) >= 0
+      ? found.state : 'unknown';
+    cb(state, state === 'unknown'
+      ? ((found && (found.message || found.reason || found.error)) || 'NXLogis에서 운휴 여부를 확인하지 못했습니다.')
+      : '');
+  });
+}
 
 function passCheckNow() {
   var c = passCfg || passCfgLocal() || passCfgDefault();
@@ -8457,51 +8536,62 @@ function passCheckNow() {
   var pages = [], left = list.length;
 
   list.forEach(function (it, n) {
-    passRoute(it.train, it.date, false, function (j) {
+    /* 운휴로 확인된 열차는 위치 애니메이션 대신 운휴 안내만 표시 */
+    passCheckCancelled(it.train, it.date, function (cancelState, cancelWhy) {
+      if (cancelState === 'cancel') {
+        pages[n] = {
+          kind: 'cancel', train: it.train, date: it.date,
+          msg: 'NXLogis에서 열차 운휴로 확인했습니다.'
+        };
+        if (--left === 0) {
+          pages = pages.filter(Boolean);
+          if (!pages.length) { showToast('조회된 열차가 없어요.'); return; }
+          showPassPages(pages);
+        }
+        return;
+      }
+      if (cancelState !== 'ok') {
+        pages[n] = {
+          kind: 'err', train: it.train, date: it.date,
+          msg: '열차 운휴 여부를 확인하지 못했습니다. ' + (cancelWhy || '')
+        };
+        if (--left === 0) {
+          pages = pages.filter(Boolean);
+          if (!pages.length) { showToast('조회된 열차가 없어요.'); return; }
+          showPassPages(pages);
+        }
+        return;
+      }
+
+      passRoute(it.train, it.date, false, function (j) {
       var page = null;
       if (j && j.success && Array.isArray(j.stations) && j.stations.length) {
         if (noStationMode) {
           var current = passCurrentStation(j);
           if (current) {
             var st = j.stations;
-            var center = current.idx;
-            var stopped = !!current.stopped || center >= st.length - 1;
-            var slots, targetOffset;
-            if (stopped) {
-              // 정차 중: 현재 역을 가운데에 두고 앞·뒤 두 역씩 (없는 역은 빈 슬롯으로 유지)
-              slots = [center - 2, center - 1, center, center + 1, center + 2].map(function (idx) {
-                return idx >= 0 && idx < st.length ? st[idx].name : '';
-              });
-              targetOffset = 2;
-            } else {
-              // 역 사이 운행 중: 열차 위치를 가운데에 두고, 진행 방향 양쪽에 두 역씩
-              slots = [center - 1, center, center + 1, center + 2].map(function (idx) {
-                return idx >= 0 && idx < st.length ? st[idx].name : '';
-              });
-              targetOffset = 1;
-            }
+            var start = current.idx;
+            var stopped = !!current.stopped || start >= st.length - 1;
+            var preview = passTrackFromCurrent(st, start);
             page = {
               kind: 'now',
               overview: true,
               stopped: stopped,
               train: it.train,
-              station: st[center].name,
+              station: st[start].name,
               date: it.date,
-              currentText: current.zone || st[center].name,
+              currentText: current.zone || st[start].name,
               zone: current.zone || j.zone || '',
               note: stopped
-                ? '현재 정차역을 가운데에 두고 앞뒤 최대 2개 역을 표시합니다.'
-                : '현재 열차 위치를 가운데에 두고 진행 방향 양쪽 2개 역을 표시합니다.',
+                ? '현재 역을 맨 왼쪽에 두고, 이후 4개 역을 오른쪽에 표시합니다.'
+                : '현재 기준 역을 맨 왼쪽에 두고, 앞으로 갈 4개 역을 오른쪽에 표시합니다.',
               passed: false,
               remainingStops: null,
-              trackNames: slots,
-              trackTargetOffset: targetOffset,
-              prev: stopped
-                ? st.slice(Math.max(0, center - 2), center).map(function (x) { return x.name; })
-                : st.slice(Math.max(0, center - 1), center + 1).map(function (x) { return x.name; }),
-              next: stopped
-                ? st.slice(center + 1, Math.min(st.length, center + 3)).map(function (x) { return x.name; })
-                : st.slice(center + 1, Math.min(st.length, center + 3)).map(function (x) { return x.name; })
+              trackNames: preview.names,
+              trackCurrentOffset: preview.currentOffset,
+              trackTargetOffset: preview.targetOffset,
+              prev: [],
+              next: st.slice(start + 1, Math.min(st.length, start + 5)).map(function (x) { return x.name; })
             };
           } else {
             page = {
@@ -8536,6 +8626,7 @@ function passCheckNow() {
         }
         showPassPages(pages);
       }
+      });
     });
   });
 }
@@ -8666,6 +8757,22 @@ function showPassPopup(d, quiet) {
 function passDraw(d, quiet) {
   if (!d) return;
   passPopData = d;
+  if (d.kind === 'cancel') {
+    $('pp-badge').className = 'pp-badge k-cancel';
+    $('pp-badge').textContent = '열차운휴';
+    $('pp-title').innerHTML = '<b>' + esc(d.train) + '</b>열차';
+    $('pp-date').textContent = d.date ? String(d.date).replace(/-/g, '.') : '';
+    $('pp-stops').innerHTML = '';
+    $('pp-track').style.display = 'none';
+    $('pp-info').innerHTML = '<div class="pp-row"><span>운행 상태</span><b style="color:#c62828">열차운휴</b></div>';
+    $('pp-zone').textContent = d.msg || 'NXLogis에서 해당 열차의 운휴가 확인되었습니다.';
+    if (passPopAnim) { try { passPopAnim.cancel(); } catch (e) {} passPopAnim = null; }
+    passPopTimers.forEach(clearTimeout); passPopTimers = [];
+    $('pass-pop-panel').classList.add('active');
+    if (!quiet) { try { alarmBeep(); } catch (e) {} try { appVibrate([400, 150, 400]); } catch (e) {} }
+    return;
+  }
+  $('pp-track').style.display = '';
   if (d.kind === 'err') {
     $('pp-badge').className = 'pp-badge k-now'; $('pp-badge').textContent = '조회 실패';
     $('pp-title').innerHTML = '<b>' + esc(d.train) + '</b>열차';
@@ -8691,7 +8798,7 @@ function passDraw(d, quiet) {
     rows.push('<div class="pp-row"><span>지정역까지</span><b>' + (d.passed ? '통과 완료' : (d.remainingStops == null ? '-' : d.remainingStops + '정거장')) + '</b></div>');
   } else {
     rows.push('<div class="pp-row"><span>운행 상태</span><b>' + (d.stopped ? '역 정차 중' : '역 사이 운행 중') + '</b></div>');
-    rows.push('<div class="pp-row"><span>표시 역</span><b>현재 위치 기준 앞뒤 최대 2개 역</b></div>');
+    rows.push('<div class="pp-row"><span>표시 역</span><b>현재 역 + 앞으로 갈 4개 역</b></div>');
   }
   if (kind === 'pass' || (kind === 'now' && d.passed)) {
     rows.push('<div class="pp-row"><span>실제 통과</span><b>' + (d.act ? passHm(d.act, true) : '확인됨') + '</b></div>');
@@ -10420,6 +10527,7 @@ to{transform:translate3d(calc(-1 * var(--train-w)),0,0)}
 .pp-badge.k-soon{background:#fff0e3;color:#c06416}
 .pp-badge.k-pass{background:#e6f6ec;color:#257a45}
 .pp-badge.k-now{background:#e9f2ff;color:#2f5aa8}
+.pp-badge.k-cancel{background:#fff0f0;color:#c62828}
 .pp-title{margin:8px 0 10px;font-size:18px;font-weight:800;color:#1b2b45;letter-spacing:-.3px}
 .pp-title b{font-weight:900}
 .pp-track{position:relative;height:118px;border-radius:16px;overflow:hidden;background:linear-gradient(180deg,#e3f0ff 0%,#f5f9ff 70%);cursor:pointer}
