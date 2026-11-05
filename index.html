@@ -1195,12 +1195,12 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <button type="button" id="perm-btn" class="ns-banner-btn" onclick="permRequestAll()">허용하기</button>
     </div>
     <div id="perm-warn" class="perm-warn" style="display:none"></div>
-    <div class="ns-card">
+    <div class="ns-card alarm-card" id="alarm-card" role="group" tabindex="0" aria-label="출근 알람 시간 조절, 제목이나 카드 영역을 눌러 펼치기" aria-expanded="false" onclick="alarmToggleDetail(event)" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();alarmToggleDetail(event)}">
       <div class="ns-row">
-        <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알람설정" alt="" aria-hidden="true"><span><b class="ns-t">출근 알람</b><small>주간·야간 출근일만 · 비번·휴무·휴가 제외</small></span></span>
+        <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알람설정" alt="" aria-hidden="true"><span><b class="ns-t">출근 알람</b><small>주간·야간 출근일만 · 비번·휴무·휴가 제외</small></span><span class="alarm-expand-chevron" id="alarm-expand-chevron" aria-hidden="true">⌄</span></span>
         <input type="checkbox" id="alarm-on" class="ns-switch" onchange="alarmToggleChanged()">
       </div>
-      <div id="alarm-detail" class="ns-sub">
+      <div id="alarm-detail" class="ns-sub" style="display:none">
         <div id="alarm-value" class="ns-alarm-value"></div>
         <input type="range" id="alarm-range" class="alarm-range ns-range" min="0" max="17" step="1" value="12" oninput="alarmUiUpdate()" onchange="alarmAutoSave(false)">
         <div class="alarm-scale"><span>3시간 전</span><span>10분 전</span></div>
@@ -1215,7 +1215,13 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알림소리" alt="" aria-hidden="true"><span><b class="ns-t">소리</b></span></span>
         <input type="checkbox" id="np-sound" class="ns-switch" onchange="notiPrefsChanged()">
       </div>
-      <div class="ns-vol" id="np-vol-row"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="볼륨조절" alt="" aria-hidden="true"><input type="range" id="np-vol" class="alarm-range ns-range" min="0" max="100" step="5" value="80" oninput="notiPrefsVolume()"><span id="np-vol-val" class="np-vol-val">80%</span></div>
+      <div class="ns-vol" id="np-vol-row">
+        <div class="np-vol-head">
+          <span class="np-vol-label"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="볼륨조절" alt="" aria-hidden="true"><b class="ns-t">볼륨 조절</b></span>
+          <span id="np-vol-val" class="np-vol-val">80%</span>
+        </div>
+        <input type="range" id="np-vol" class="alarm-range ns-range" min="0" max="100" step="5" value="80" oninput="notiPrefsVolume()">
+      </div>
       <div class="ns-row">
         <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="진동" alt="" aria-hidden="true"><span><b class="ns-t">진동</b><small id="np-vib-note" style="display:none">아이폰은 휴대폰 설정(햅틱)을 따릅니다</small></span></span>
         <input type="checkbox" id="np-vib" class="ns-switch" onchange="notiPrefsChanged()">
@@ -1301,7 +1307,8 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <button type="button" class="ns-test-btn ns-orange" onclick="nxTestPopup()"><img class="ns-btn-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="팝업테스트" alt="" aria-hidden="true"><span>팝업 테스트</span></button>
       <button type="button" class="ns-test-btn ns-red" onclick="nxPushTestNow()"><img class="ns-btn-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="앱꺼짐알림" alt="" aria-hidden="true"><span>꺼진 상태</span></button>
     </div>
-    <div class="ns-note">※ 꺼진 상태 테스트는 앱을 닫고 1분 기다려주세요.</div>
+    <div class="ns-note">※ 서버 접수 후 앱을 완전히 닫고 최대 1분 기다려주세요. 실제 수신 여부는 휴대폰 알림창에서 확인합니다.</div>
+    <div id="nx-push-test-result" class="bg-push-result" aria-live="polite">아직 테스트하지 않았습니다.</div>
     </div>
     <div id="nx-result" class="ns-result"></div>
     <div class="dia-dialog-actions">
@@ -1331,6 +1338,12 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <button type="button" class="pass-live-test" onclick="passTestLiveNow()">실시간 운행 테스트</button>
       </div>
       <div id="pass-live-test-result" class="pass-live-test-result" aria-live="polite">실시간 운행 테스트는 실제 NXLogis 운행정보만 사용합니다.</div>
+      <div class="pass-push-test-card">
+        <div class="pass-push-test-title">앱 종료 상태 푸시 테스트</div>
+        <div class="pass-push-test-desc">테스트 푸시를 실제 휴대폰으로 전송합니다. 서버 접수 후 앱을 완전히 닫고 최대 1분 기다려주세요.</div>
+        <button type="button" class="pass-push-test-btn" onclick="passPushTestNow()">열차통과/도착 꺼진 상태 테스트</button>
+        <div id="pass-push-test-result" class="bg-push-result" aria-live="polite">아직 테스트하지 않았습니다.</div>
+      </div>
       <div class="pass-raw-row"><span id="pass-saved"></span><button type="button" class="pass-raw-link" onclick="passShowRaw()">NXLogis 원본 보기</button></div>
       <div id="pass-raw" class="pass-raw" style="display:none"><textarea readonly></textarea><button type="button" onclick="passCopyRaw()">복사</button></div>
     </div>
@@ -1341,10 +1354,14 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 </div>
 <div id="pass-pop-panel" class="dia-modal" style="z-index:412" onclick="if(event.target===this)closePassPop()">
   <div class="dia-dialog pp-dialog">
-    <div id="pp-pager" class="pp-pager" style="display:none"><button type="button" onclick="passPage(-1)" aria-label="이전 열차">‹</button><span id="pp-page"></span><button type="button" onclick="passPage(1)" aria-label="다음 열차">›</button></div>
-    <div id="pp-badge" class="pp-badge"></div>
-    <div id="pp-title" class="pp-title"></div>
-    <div id="pp-date" class="pp-date"></div>
+    <div class="pp-head">
+      <div class="pp-kicker"><span class="pp-live-dot"></span> 열차 운행 알림</div>
+      <div id="pp-pager" class="pp-pager" style="display:none"><button type="button" onclick="passPage(-1)" aria-label="이전 열차">‹</button><span id="pp-page"></span><button type="button" onclick="passPage(1)" aria-label="다음 열차">›</button></div>
+      <div id="pp-badge" class="pp-badge"></div>
+      <div id="pp-title" class="pp-title"></div>
+      <div id="pp-date" class="pp-date"></div>
+    </div>
+    <div class="pp-track-caption"><span>실시간 운행 위치</span><small>그림을 누르면 다시 재생</small></div>
     <div id="pp-track" class="pp-track" onclick="passReplay()" title="운행 위치 다시 보기">
       <div class="pp-hills"></div>
       <div class="pp-rail"></div>
@@ -1358,6 +1375,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <div class="pp-compose-hit"></div>
       </div>
     </div>
+    <div class="pp-details-heading"><span>운행 정보</span><i></i></div>
     <div id="pp-info" class="pp-info"></div>
     <div id="pp-zone" class="pp-zone"></div>
     <div class="dia-dialog-actions" style="gap:10px">
@@ -2931,7 +2949,7 @@ function loadMeta(cb) {
 var now0 = todayKST();
 var calendarYear = Math.max(now0.y, CAL_MIN_Y);
 var calendarMonth = now0.y < CAL_MIN_Y ? 0 : now0.m;
-var selDate = null;
+var selDate = { y: calendarYear, m: calendarMonth, d: (now0.y < CAL_MIN_Y ? 1 : now0.d) };
 var myMonth = null;
 function getInfo(y, m, d) {
   if (myMonth && myMonth.y === y && myMonth.m === m) {
@@ -2940,6 +2958,12 @@ function getInfo(y, m, d) {
   return null;
 }
 function openSchedule() {
+  if (!selDate) {
+    var today = todayKST();
+    calendarYear = Math.max(today.y, CAL_MIN_Y);
+    calendarMonth = today.y < CAL_MIN_Y ? 0 : today.m;
+    selDate = { y: calendarYear, m: calendarMonth, d: (today.y < CAL_MIN_Y ? 1 : today.d) };
+  }
   switchSection('schedule-section');
   renderCalendar();
   renderDayDetail();
@@ -7758,10 +7782,22 @@ function alarmClockText(totalMin) {
 /* 출근 알람은 '알림 설정' 화면으로 합쳐짐 */
 function openAlarmSettings() { openPermPanel(); }
 function closeAlarmSettings() { closePermPanel(); }
+var alarmDetailExpanded = false;
 function alarmLoadUi() {
   var cfg = getAlarmCfg();
+  alarmDetailExpanded = false; /* 환경설정에 다시 들어오면 시간 조절은 접힌 상태 */
   $('alarm-on').checked = cfg.on;
   $('alarm-range').value = String((180 - cfg.min) / 10);
+  alarmUiUpdate();
+}
+function alarmToggleDetail(ev) {
+  var target = ev && ev.target;
+  if (target && target.closest && target.closest('input,button,select,textarea,a,#alarm-detail')) return;
+  if (!$('alarm-on').checked) {
+    showToast('출근 알람을 켜면 시간 조절을 펼칠 수 있습니다.');
+    return;
+  }
+  alarmDetailExpanded = !alarmDetailExpanded;
   alarmUiUpdate();
 }
 function alarmUiMin() {
@@ -7777,7 +7813,15 @@ function alarmUiUpdate() {
   rng.disabled = !on;
   rng.style.opacity = on ? '1' : '.45';
   $('alarm-value').style.color = on ? '#1a73e8' : '#9aa5b4';
-  if ($('alarm-detail')) $('alarm-detail').style.display = on ? '' : 'none';     /* 알람을 끄면 시간 조절은 접기 */
+  var detailOpen = !!(on && alarmDetailExpanded);
+  if ($('alarm-detail')) $('alarm-detail').style.display = detailOpen ? '' : 'none';
+  var alarmCard = $('alarm-card');
+  if (alarmCard) {
+    alarmCard.setAttribute('aria-expanded', detailOpen ? 'true' : 'false');
+    alarmCard.classList.toggle('open', detailOpen);
+  }
+  var expandChevron = $('alarm-expand-chevron');
+  if (expandChevron) expandChevron.textContent = detailOpen ? '⌃' : '⌄';
   var t = todayKST();
   var w = alarmWorkInfo(getDateKey(t.y, t.m, t.d));
   var pv = $('alarm-preview') || document.createElement('div');   /* 미리보기 칸은 화면에서 뺐음 */
@@ -8104,7 +8148,10 @@ function pushClearOnLogout() {
    - 앱이 열려 있으면 열차가 달려가는 애니메이션 팝업
    - 모든 로그인 사용자가 개인별 설정으로 이용 */
 var PASS_FN = 'smart-handler';        /* nx-check 함수 주소 */
-function passAllowed() { return String((getCurrentUser() || {}).employeeId || '') === '199878'; }
+function passAllowed() {
+  var u = getCurrentUser();
+  return !!(u && u.employeeId && String(u.employeeId) !== 'guest');
+}
 var passState = { date: '', train: '', route: null, idx: -1, lead: 10, list: [], raw: null };
 function passHm(ms, sec) {
   if (ms === null || ms === undefined) return '-';
@@ -8240,7 +8287,7 @@ function passMyDays(cfg) {
   return out;
 }
 function openPassSettings() {
-  if (!passAllowed()) { alert('열차통과/도착 알림은 현재 개발 중입니다.'); return; }
+  if (!passAllowed()) { alert('로그인 후 이용할 수 있습니다.'); return; }
   passCardRender();
   $('pass-panel').classList.add('active');
 }
@@ -9480,6 +9527,98 @@ function nxLoginCheck(gen) {
     if (tries >= 3000) { clearInterval(nxLoginTimer); nxLoginTimer = null; }   /* 최대 약 30초 대기 */
   }, 10);
 }
+
+/* 앱 종료 푸시 테스트: 서버가 Push API로 현재 기기에 실제 알림을 보내도록 요청 */
+function backgroundPushTestStatus(id, message, isError) {
+  var el = $(id);
+  if (!el) return;
+  el.textContent = message;
+  el.className = 'bg-push-result' + (isError ? ' err' : ' ok');
+}
+function sendBackgroundPushTest(kind) {
+  var isPass = kind === 'pass';
+  var resultId = isPass ? 'pass-push-test-result' : 'nx-push-test-result';
+  var cfg = isPass ? (passCfg || passCfgLocal() || passCfgDefault()) : null;
+  if (!getNotiPrefs().popup) {
+    backgroundPushTestStatus(resultId, '휴대폰 팝업 알림이 꺼져 있습니다. 알림 설정에서 먼저 켜주세요.', true);
+    showToast('휴대폰 팝업 알림을 먼저 켜주세요.');
+    return;
+  }
+  if (!pushSupported()) {
+    var unsupported = /iPhone|iPad|iPod/.test(navigator.userAgent)
+      ? '아이폰은 Safari에서 홈 화면에 추가한 웹앱으로 실행해야 푸시를 받을 수 있습니다.'
+      : '이 브라우저는 백그라운드 푸시를 지원하지 않습니다.';
+    backgroundPushTestStatus(resultId, unsupported, true);
+    showToast(unsupported);
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    var denied = '브라우저 또는 기기 설정에서 알림이 차단되어 있습니다. 알림 권한을 허용해주세요.';
+    backgroundPushTestStatus(resultId, denied, true);
+    showToast('알림 권한이 차단되어 있습니다.');
+    return;
+  }
+
+  backgroundPushTestStatus(resultId, '서비스워커·푸시 구독을 확인하고 있습니다…', false);
+  pushEnsureSub(true).then(function (sub) {
+    if (!sub) {
+      backgroundPushTestStatus(resultId, '푸시 등록 실패: 알림 권한, 서비스워커(sw.js), 로그인 토큰을 확인해주세요.', true);
+      showToast('푸시 등록에 실패했습니다. 알림 권한과 sw.js를 확인해주세요.');
+      return;
+    }
+    var u = getCurrentUser();
+    if (!u || !u.token || !u.employeeId) {
+      backgroundPushTestStatus(resultId, '로그인 정보가 없어 서버에 테스트를 요청하지 못했습니다.', true);
+      return;
+    }
+
+    var train = '6127';
+    var station = '팔당';
+    if (isPass) {
+      var today = todayKeyKST();
+      var list = passMyDays(cfg).filter(function (x) { return x.date === today; });
+      if (list.length) train = String(list[0].train);
+      else if (cfg.trains && cfg.trains.length) train = String(cfg.trains[0]);
+      if (cfg.stations && cfg.stations.length) station = String(cfg.stations[0]);
+    } else {
+      try {
+        var item = nxTestItem();
+        if (item && item.train) train = String(item.train);
+      } catch (e) {}
+    }
+
+    var title = isPass ? '열차 통과·도착 알림 테스트' : '열차 운휴 알림 테스트';
+    var body = isPass
+      ? train + '열차 ' + station + '역 통과·도착 푸시 테스트입니다. 앱 종료 상태에서도 이 알림이 오면 푸시 전달 경로가 정상입니다.'
+      : train + '열차 운휴 알림 푸시 테스트입니다. 앱 종료 상태에서도 이 알림이 오면 푸시 전달 경로가 정상입니다.';
+
+    backgroundPushTestStatus(resultId, '푸시 구독 확인 완료 · Supabase 서버에 테스트 전송을 요청하고 있습니다…', false);
+    api({
+      action: 'pushTest',
+      employeeId: u.employeeId,
+      token: u.token,
+      endpoint: sub.endpoint,
+      title: title,
+      body: body,
+      tag: (isPass ? 'pass-test-' : 'nx-test-') + Date.now()
+    }, function (r) {
+      if (r && r.success) {
+        backgroundPushTestStatus(resultId,
+          '서버 접수 완료. 지금 철도비서 앱/브라우저를 완전히 닫고 최대 1분 기다려주세요. 휴대폰 알림창에 "' + title + '"이 나타나는지 확인하면 됩니다. 이 테스트는 푸시 전달 경로만 검증하며 실제 열차 감시 판정은 별도입니다.',
+          false);
+        showToast('테스트 푸시를 서버에 요청했어요. 앱을 닫고 1분 기다려주세요.');
+      } else {
+        var msg = (r && (r.message || r.error || r.errorCode)) || '서버가 테스트 푸시를 접수하지 못했습니다.';
+        backgroundPushTestStatus(resultId, '서버 전송 실패: ' + msg, true);
+        showToast('테스트 푸시 요청에 실패했습니다.');
+      }
+    });
+  }).catch(function (e) {
+    backgroundPushTestStatus(resultId, '푸시 등록 중 오류: ' + String(e && e.message || e), true);
+  });
+}
+function passPushTestNow() { sendBackgroundPushTest('pass'); }
+
 /* 테스트용: 내 근무표의 가장 가까운 열차(7일 안)로 보여줌, 없으면 오늘 날짜 예시 열차 */
 function nxTestItem() {
   var list = [];
@@ -9493,29 +9632,7 @@ function nxTestPopup() {
 }
 /* 꺼진 상태 운휴 알림 테스트: 서버에서 실제 푸시로 1분 안에 보내 줌 */
 function nxPushTestNow() {
-  if (!getNotiPrefs().popup) { showToast('팝업 알림이 꺼져 있어요. 알림 설정에서 켜주세요.'); return; }
-  if (!pushSupported()) {
-    showToast(/iPhone|iPad|iPod/.test(navigator.userAgent)
-      ? '아이폰은 홈 화면에 추가해야 알림을 받아요.'
-      : '이 브라우저는 푸시 알림을 지원하지 않습니다.');
-    return;
-  }
-  if (Notification.permission === 'denied') {
-    showToast('알림이 차단돼 있어요. 휴대폰 설정에서 허용해주세요.');
-    return;
-  }
-  var it = nxTestItem();
-  var p = it.date.split('-').map(Number);
-  var w = ['일', '월', '화', '수', '목', '금', '토'][new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay()];
-  pushEnsureSub(true).then(function (sub) {
-    if (!sub) { showToast('알림 등록 실패 · sw.js 파일을 확인해주세요.'); return; }
-    var u = getCurrentUser();
-    api({ action: 'pushTest', employeeId: u.employeeId, token: u.token, endpoint: sub.endpoint,
-          title: '열차 운휴 알림 (테스트)', body: p[1] + '/' + p[2] + '(' + w + ') ' + it.train + '열차가 운휴되었습니다.', tag: 'nx-test' }, function (r) {
-      if (r && r.success) showToast('1분 안에 운휴 알림이 와요. 앱을 닫아보세요.');
-      else { try { LS.removeItem('pushSubMark'); } catch (e) {} showToast('테스트 요청에 실패했습니다. 잠시 후 다시 시도해주세요.'); }
-    });
-  });
+  sendBackgroundPushTest('nx');
 }
 function todayKeyKST() {
   var t = todayKST();
@@ -11696,7 +11813,7 @@ min-height:76px;padding:10px 6px!important;border-radius:16px!important;text-ali
 .set-tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;min-width:0;min-height:101px;padding:6px 2px;background:transparent;border:0;border-radius:12px;color:#0b376d;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center;-webkit-tap-highlight-color:transparent}
 .set-tile:active{background:#eef4fb}
 .set-art{width:55px;height:55px;object-fit:contain;flex:none}
-.set-label{display:block;width:100%;line-height:1.25;white-space:nowrap;word-break:keep-all;letter-spacing:-.65px;font-size:10px;transform:scaleX(.84);transform-origin:center center;overflow:visible;text-overflow:clip}@media(min-width:481px){.set-label{font-size:12px;letter-spacing:-.45px;transform:scaleX(.9)}}
+.set-label{display:flex;align-items:center;justify-content:center;width:100%;min-height:2.4em;padding:0 2px;box-sizing:border-box;text-align:center;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;line-height:1.2;letter-spacing:-.4px;font-size:clamp(12px,3.36vw,16px);font-weight:700;transform:none;}.setting-grid{grid-auto-rows:minmax(122px,auto);gap:9px 5px;}.set-tile{min-height:122px;gap:6px;padding:7px 3px;overflow:visible;}.set-art{width:55px;height:55px;flex:0 0 auto;}@media(max-width:420px){.setting-grid{grid-auto-rows:minmax(116px,auto);gap:8px 4px;}.set-tile{min-height:116px;padding:6px 2px;gap:5px;}.set-art{width:53px;height:53px;}.set-label{font-size:12px;letter-spacing:-.35px;min-height:2.4em;}}@media(min-width:481px){.set-art{width:65px;height:65px;}.set-tile{min-height:140px;gap:7px;padding:8px 4px;}.setting-grid{grid-auto-rows:minmax(140px,auto);gap:10px 7px;}}
 .set-tile.danger{color:#c62828}
 .set-badge{position:absolute;top:2px;right:6px;padding:0 5px;border-radius:999px;background:#3d8fe8;color:#fff;font-size:9px;font-weight:800;line-height:15px}
 @media(min-width:481px){.set-art{width:64px;height:64px}.set-tile{font-size:13px;min-height:112px}}
@@ -11816,6 +11933,146 @@ height: calc(90px + env(safe-area-inset-bottom));
 #pass-pop-panel .dia-text-btn{min-height:38px;padding:8px 13px;border-radius:10px;background:#f1f5fb;color:#46566d;font-size:12px;font-weight:800}
 #pass-pop-panel .dia-text-btn.pass-save{background:#1769d2;color:#fff!important;min-width:76px}
 @media(max-width:380px){#pass-pop-panel{padding:10px}#pass-pop-panel .pp-dialog{padding:17px 14px 12px;border-radius:18px}#pass-pop-panel .pp-title{font-size:17px}#pass-pop-panel .pp-track{height:104px}}
+
+/* ===== 열차 통과·도착 알림 팝업 리디자인 ===== */
+#pass-pop-panel{padding:14px;background:rgba(13,27,48,.42);backdrop-filter:blur(5px)}
+#pass-pop-panel .pp-dialog{
+  position:relative;overflow:hidden;width:min(100%,420px);box-sizing:border-box;
+  padding:0 18px 14px;border:1px solid rgba(226,234,245,.95);border-radius:24px;
+  background:linear-gradient(180deg,#fff 0%,#fbfdff 100%);
+  box-shadow:0 24px 70px rgba(14,34,66,.28);text-align:left
+}
+#pass-pop-panel .pp-dialog:before{
+  content:"";position:absolute;left:0;right:0;top:0;height:4px;
+  background:linear-gradient(90deg,#75b7ff 0%,#4b83e6 52%,#8c9cf4 100%)
+}
+#pass-pop-panel .pp-head{position:relative;padding:17px 2px 12px;text-align:center}
+#pass-pop-panel .pp-kicker{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  margin:0 0 10px;color:#8190a5;font-size:10px;font-weight:900;letter-spacing:.9px
+}
+#pass-pop-panel .pp-live-dot{width:7px;height:7px;border-radius:50%;background:#38b879;box-shadow:0 0 0 4px rgba(56,184,121,.12)}
+#pass-pop-panel .pp-pager{margin:0 0 8px}
+#pass-pop-panel .pp-pager button{width:30px;height:30px;background:#f0f4fa;color:#53657e;font-weight:800}
+#pass-pop-panel .pp-badge{
+  display:inline-flex;align-items:center;justify-content:center;min-height:25px;
+  margin:0;padding:5px 12px;border-radius:999px;font-size:11px;font-weight:900;letter-spacing:-.1px
+}
+#pass-pop-panel .pp-badge.k-soon{background:#fff2df;color:#bd6b17}
+#pass-pop-panel .pp-badge.k-pass{background:#e6f7ed;color:#21824e}
+#pass-pop-panel .pp-badge.k-now{background:#eaf2ff;color:#3469bb}
+#pass-pop-panel .pp-badge.k-cancel{background:#fff0f0;color:#c43e46}
+#pass-pop-panel .pp-badge.k-compose{background:#eef0ff;color:#5965b7}
+#pass-pop-panel .pp-title{margin:9px 0 3px;color:#172b49;font-size:25px;line-height:1.2;font-weight:800;letter-spacing:-.9px;text-align:center}
+#pass-pop-panel .pp-title b{font-weight:950}
+#pass-pop-panel .pp-date{
+  min-height:17px;margin:0;color:#7d8ba0;font-size:11px;font-weight:700;
+  line-height:1.45;letter-spacing:-.15px;text-align:center
+}
+#pass-pop-panel .pp-track-caption{display:flex;align-items:center;justify-content:space-between;margin:0 1px 7px;color:#536781;font-size:11px;font-weight:900}
+#pass-pop-panel .pp-track-caption small{color:#9aa6b7;font-size:9.5px;font-weight:600}
+#pass-pop-panel .pp-track{
+  height:124px;border:1px solid #e2ebf6;border-radius:17px;
+  background:linear-gradient(180deg,#eaf4ff 0%,#f5f9ff 70%,#f9fbff 100%);
+  box-shadow:inset 0 1px 3px rgba(46,91,150,.06)
+}
+#pass-pop-panel .pp-hills{opacity:.9}
+#pass-pop-panel .pp-rail{bottom:31px}
+#pass-pop-panel .pp-stop{bottom:27px}
+#pass-pop-panel .pp-stop span{font-size:10px;font-weight:800;color:#65758d}
+#pass-pop-panel .pp-stop.tgt span{color:#1f3e68;font-size:11px;font-weight:950}
+#pass-pop-panel .pp-stop.tgt i{border-color:#4c86e8}
+#pass-pop-panel .pp-train{bottom:20px}
+#pass-pop-panel .pp-compose-scene{bottom:20px}
+#pass-pop-panel .pp-details-heading{
+  display:flex;align-items:center;gap:8px;margin:14px 2px 7px;
+  color:#40536d;font-size:11px;font-weight:950;letter-spacing:-.1px
+}
+#pass-pop-panel .pp-details-heading i{height:1px;flex:1;background:#e9eef5}
+#pass-pop-panel .pp-info{
+  display:flex;flex-direction:column;gap:0;margin:0;padding:5px 13px;
+  border:1px solid #e8eef6;border-radius:15px;background:#fff;text-align:left;
+  box-shadow:0 3px 12px rgba(29,57,91,.035)
+}
+#pass-pop-panel .pp-row{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  min-height:35px;padding:6px 0;border-bottom:1px solid #f0f3f8;
+  color:#7b899d;font-size:11px;line-height:1.35
+}
+#pass-pop-panel .pp-row:last-child{border-bottom:0}
+#pass-pop-panel .pp-row b{max-width:65%;color:#263b59;font-size:13px;font-weight:900;text-align:right;font-variant-numeric:tabular-nums}
+#pass-pop-panel .pp-row:first-child{color:#62748d}
+#pass-pop-panel .pp-row:first-child b{font-size:13px}
+#pass-pop-panel .pp-chip{padding:4px 9px;font-size:10px}
+#pass-pop-panel .pp-zone{
+  margin:9px 2px 2px;padding:8px 10px;border-radius:11px;
+  background:#f5f7fb;color:#8592a5;font-size:10px;line-height:1.5;text-align:left
+}
+#pass-pop-panel .dia-dialog-actions{
+  display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:10px;
+  border-top:1px solid #edf1f6
+}
+#pass-pop-panel .dia-text-btn{
+  min-height:39px;padding:9px 14px;border:0;border-radius:11px;
+  background:#f0f4f9;color:#52647d;font-size:11px;font-weight:900
+}
+#pass-pop-panel .dia-text-btn.pass-save{
+  min-width:92px;background:linear-gradient(135deg,#3979db,#2862bd);
+  color:#fff!important;box-shadow:0 5px 12px rgba(48,104,194,.2)
+}
+#pass-pop-panel #pp-track[style*="display: none"] + .pp-details-heading{margin-top:4px}
+@media(max-width:380px){
+  #pass-pop-panel{padding:9px}
+  #pass-pop-panel .pp-dialog{padding:0 13px 11px;border-radius:20px}
+  #pass-pop-panel .pp-head{padding-top:15px}
+  #pass-pop-panel .pp-title{font-size:22px}
+  #pass-pop-panel .pp-track{height:112px}
+  #pass-pop-panel .pp-row{min-height:32px}
+}
+
+
+/* 앱 종료 푸시 테스트 상태 */
+.bg-push-result{margin-top:7px;padding:9px 10px;border-radius:10px;background:#f2f5f9;color:#64748b;font-size:11px;line-height:1.55;overflow-wrap:anywhere}
+.bg-push-result.ok{background:#edf8f1;color:#267349}
+.bg-push-result.err{background:#fff1f0;color:#b33a36}
+.pass-push-test-card{margin-top:10px;padding:12px;border:1px solid #dce8f4;border-radius:13px;background:linear-gradient(180deg,#f8fbff,#fff)}
+.pass-push-test-title{font-size:12px;font-weight:900;color:#344b69}
+.pass-push-test-desc{margin:5px 0 9px;color:#7b899b;font-size:10.5px;line-height:1.5}
+.pass-push-test-btn{width:100%;border:0;border-radius:11px;padding:11px 10px;background:linear-gradient(135deg,#3979db,#285fb7);color:#fff;font-size:12px;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 4px 10px rgba(47,105,193,.16)}
+
+
+/* 출근 알람 시간 조절: 접기/펼치기 */
+.ns-expand-btn{
+  display:flex;align-items:center;justify-content:space-between;width:100%;
+  margin:8px 0 0;padding:10px 11px;border:1px solid #e4ebf4;border-radius:10px;
+  background:#f7f9fc;color:#536781;font-family:inherit;font-size:12px;font-weight:700;line-height:1.2;text-align:left;
+  cursor:pointer;-webkit-tap-highlight-color:transparent
+}
+.ns-expand-btn:disabled{opacity:.55;cursor:default}
+.ns-expand-btn.open{background:#edf4ff;border-color:#d5e4fb;color:#2867bd}
+.ns-expand-chevron{display:inline-block;font-size:17px;line-height:10px;transition:transform .18s ease}
+.ns-expand-btn.open .ns-expand-chevron{transform:rotate(180deg)}
+#alarm-detail{padding:10px 2px 2px;animation:alarmDetailIn .18s ease-out}
+@keyframes alarmDetailIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+
+
+/* 출근 알람: 카드/제목을 눌러 접기·펼치기 */
+.alarm-card{cursor:pointer;transition:border-color .16s ease,background .16s ease,box-shadow .16s ease}
+.alarm-card:focus-visible{outline:2px solid #78a8ef;outline-offset:2px}
+.alarm-card.open{border-color:#c9dcf7;background:#fbfdff;box-shadow:0 3px 12px rgba(48,105,185,.06)}
+.alarm-card .ns-row{cursor:pointer}
+.alarm-expand-chevron{display:inline-flex;align-items:center;justify-content:center;flex:0 0 23px;width:23px;height:23px;margin-left:5px;border-radius:50%;background:#edf3fb;color:#52749e;font-size:16px;font-weight:800;line-height:1;transition:transform .18s ease,background .18s ease}
+.alarm-card.open .alarm-expand-chevron{background:#e2edfc;color:#2867bd}
+#alarm-detail{padding-top:9px}
+#alarm-detail .alarm-range{display:block;width:100%;max-width:100%;box-sizing:border-box;margin:16px 0 6px!important}
+/* 소리 볼륨 슬라이더: 출근 알람과 동일한 좌우 길이·트랙 비율 */
+.ns-vol{display:block;width:100%;padding:7px 0 5px}
+.np-vol-head{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;margin:0 0 3px}
+.np-vol-label{display:flex;align-items:center;gap:8px;min-width:0}
+.np-vol-label .ns-ico{width:28px;height:28px}
+.np-vol-label .ns-t{font-size:13px}
+#np-vol.alarm-range{display:block;width:100%;max-width:100%;box-sizing:border-box;flex:none;margin:16px 0 6px!important}
+
 </style>
 </body>
 </html>
