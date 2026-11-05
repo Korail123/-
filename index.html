@@ -837,10 +837,11 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <button type="button" class="menu-btn" onclick="openSchedule()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무표" alt="" aria-hidden="true" decoding="async"><span>근무표</span></button>
     <button type="button" class="menu-btn" onclick="openGroupSection()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무그룹" alt="" aria-hidden="true" decoding="async"><span>근무그룹</span></button>
     <button type="button" class="menu-btn" onclick="openPattern()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무패턴" alt="" aria-hidden="true" decoding="async"><span>근무패턴</span></button>
+    <button type="button" class="menu-btn" onclick="openVacation()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="휴가관리" alt="" aria-hidden="true" decoding="async"><span>휴가관리</span></button>
     <button type="button" class="menu-btn" onclick="openSitesPanel()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="사이트" alt="" aria-hidden="true" decoding="async"><span>사이트</span></button>
-    <button type="button" class="menu-btn" onclick="openVacation()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="마이페이지" alt="" aria-hidden="true" decoding="async"><span>마이페이지</span></button>
-    <button type="button" class="menu-btn" onclick="openSettings()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="환경설정" alt="" aria-hidden="true" decoding="async"><span>환경설정</span></button>
     <button type="button" class="menu-btn menu-dev" onclick="openPayslipPreview()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="예상월급명세서" alt="" aria-hidden="true" decoding="async"><span><b class="menu-one-line">미리보는 월급</b><small class="dev-badge" id="payslip-dev-badge">개발 중</small></span></button>
+    <button type="button" class="menu-btn" onclick="openMyPage()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="마이페이지" alt="" aria-hidden="true" decoding="async"><span>마이페이지</span></button>
+    <button type="button" class="menu-btn" onclick="openSettings()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="환경설정" alt="" aria-hidden="true" decoding="async"><span>환경설정</span></button>
   </div>
   <button type="button" class="logout-btn" onclick="logout()">로그아웃</button>
 </div>
@@ -902,22 +903,9 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="current-dia-label" style="text-align:left;margin:0 4px 8px">전체 순서표 (파란 칸이 오늘 · 칸을 누르면 다이아 정보)</div>
   <div id="pattern-list" class="dia-list" style="margin-bottom:18px"></div>
 </div>
-<div id="vacation-section" class="page-view">
-  <h1 class="screen-title"><span class="page-heading-icon" aria-hidden="true"><img class="heading-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="마이페이지" alt="" decoding="async"></span>마이페이지</h1>
-  <div id="mypage-profile" class="mypage-profile"></div>
-  <div class="mp-sec" data-sec="join"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('join')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="입사직급" alt="" aria-hidden="true">입사일 · 직급 설정<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
-  <div class="mypage-box">
-    <label class="mp-field"><span>입사일</span><input type="date" id="mp-join" onchange="saveMyProfileField()"></label>
-    <div class="mp-field"><span>직급 · 호봉</span>
-      <span class="mp-selects">
-        <select id="mp-grade" onchange="saveMyProfileField()"></select>
-        <select id="mp-step" onchange="saveMyProfileField()"></select>
-      </span>
-    </div>
-    <div class="mp-note" style="margin-top:4px">※ 호봉은 매년 1월 1일에 자동으로 1호봉씩 올라갑니다.</div>
-  </div>
-  </div></div>
-  <div class="mp-sec" data-sec="vac"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('vac')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="휴가관리" alt="" aria-hidden="true">휴가관리<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
+<div id="vacation-management-section" class="page-view">
+  <h1 class="screen-title"><span class="page-heading-icon" aria-hidden="true"><img class="heading-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="휴가관리" alt="" decoding="async"></span>휴가관리</h1>
+
   <div class="sch-head" style="margin-bottom:10px;">
     <button type="button" class="sch-nav plain" onclick="changeVacYear(-1)">◀&#xFE0E;</button>
     <div id="vac-title" class="sch-title" style="font-size:clamp(13px,4.2vw,17px);cursor:default"></div>
@@ -943,6 +931,21 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div id="vac-dates" class="current-dia-card" style="margin-top:12px"></div>
   </div>
   <div class="sch-note" style="margin:10px 4px 14px">※ 야간+비번은 1일, 야간·주간 동일 휴가는 3일로 계산합니다.</div>
+</div>
+<div id="vacation-section" class="page-view">
+  <h1 class="screen-title"><span class="page-heading-icon" aria-hidden="true"><img class="heading-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="마이페이지" alt="" decoding="async"></span>마이페이지</h1>
+  <div id="mypage-profile" class="mypage-profile"></div>
+  <div class="mp-sec" data-sec="join"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('join')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="입사직급" alt="" aria-hidden="true">입사일 · 직급 설정<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
+  <div class="mypage-box">
+    <label class="mp-field"><span>입사일</span><input type="date" id="mp-join" onchange="saveMyProfileField()"></label>
+    <div class="mp-field"><span>직급 · 호봉</span>
+      <span class="mp-selects">
+        <select id="mp-grade" onchange="saveMyProfileField()"></select>
+        <select id="mp-step" onchange="saveMyProfileField()"></select>
+      </span>
+    </div>
+    <div class="mp-note" style="margin-top:4px">※ 호봉은 매년 1월 1일에 자동으로 1호봉씩 올라갑니다.</div>
+  </div>
   </div></div>
   <div class="mp-sec" data-sec="stats"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('stats')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무통계" alt="" aria-hidden="true">이번 달 근무 통계<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
   <div id="mypage-stats" class="mypage-box"></div>
@@ -1215,12 +1218,14 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알림소리" alt="" aria-hidden="true"><span><b class="ns-t">소리</b></span></span>
         <input type="checkbox" id="np-sound" class="ns-switch" onchange="notiPrefsChanged()">
       </div>
-      <div class="ns-vol" id="np-vol-row">
-        <div class="np-vol-head">
+      <div class="ns-card ns-vol" id="np-vol-row">
+        <button type="button" class="np-vol-toggle" id="np-vol-toggle" aria-expanded="false" aria-controls="np-vol-detail" onclick="toggleNotificationVolume()">
           <span class="np-vol-label"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="볼륨조절" alt="" aria-hidden="true"><b class="ns-t">볼륨 조절</b></span>
-          <span id="np-vol-val" class="np-vol-val">80%</span>
+          <span class="np-vol-right"><span id="np-vol-val" class="np-vol-val">80%</span><span id="np-vol-chevron" class="np-vol-chevron" aria-hidden="true">⌄</span></span>
+        </button>
+        <div id="np-vol-detail" class="np-vol-detail" hidden>
+          <input type="range" id="np-vol" class="alarm-range ns-range" min="0" max="100" step="5" value="80" oninput="notiPrefsVolume()">
         </div>
-        <input type="range" id="np-vol" class="alarm-range ns-range" min="0" max="100" step="5" value="80" oninput="notiPrefsVolume()">
       </div>
       <div class="ns-row">
         <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="진동" alt="" aria-hidden="true"><span><b class="ns-t">진동</b><small id="np-vib-note" style="display:none">아이폰은 휴대폰 설정(햅틱)을 따릅니다</small></span></span>
@@ -1520,8 +1525,8 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <button type="button" class="bn-btn" data-sec="main-section" onclick="switchSection('main-section')"><span class="bn-ico"><img class="nav-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="메인화면" alt="" aria-hidden="true" decoding="async"></span>메인화면</button>
   <button type="button" class="bn-btn" data-sec="schedule-section" onclick="openSchedule()"><span class="bn-ico"><img class="nav-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무표" alt="" aria-hidden="true" decoding="async"></span>근무표</button>
   <button type="button" class="bn-btn" data-sec="group-section" onclick="openGroupSection()"><span class="bn-ico"><img class="nav-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무그룹" alt="" aria-hidden="true" decoding="async"></span>근무그룹</button>
-  <button type="button" class="bn-btn" data-sec="pattern-section" onclick="openPattern()"><span class="bn-ico"><img class="nav-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무패턴" alt="" aria-hidden="true" decoding="async"></span>근무패턴</button>
-  <button type="button" class="bn-btn" data-sec="vacation-section" onclick="openVacation()"><span class="bn-ico"><img class="nav-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="마이페이지" alt="" aria-hidden="true" decoding="async"></span>마이페이지</button>
+  <button type="button" class="bn-btn" data-sec="vacation-management-section" onclick="openVacation()"><span class="bn-ico"><img class="nav-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="휴가관리" alt="" aria-hidden="true" decoding="async"></span>휴가관리</button>
+  <button type="button" class="bn-btn" data-sec="vacation-section" onclick="openMyPage()"><span class="bn-ico"><img class="nav-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="마이페이지" alt="" aria-hidden="true" decoding="async"></span>마이페이지</button>
   <button type="button" class="bn-btn" data-sec="settings-section" onclick="openSettings()"><span class="bn-ico"><img class="nav-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="환경설정" alt="" aria-hidden="true" decoding="async"></span>환경설정</button>
 </nav>
 <div id="route-viewer" class="route-viewer">
@@ -2023,7 +2028,7 @@ function onSnapshotUpdated() {
   }
   if (active('schedule-section')) loadMyMonth();
   if (active('group-section')) loadGroupSchedule(false);
-  if (active('vacation-section')) renderVacation();
+  if (active('vacation-management-section')) renderVacation();
   if (active('payslip-section') && typeof renderPayslip === 'function') renderPayslip();
 }
 /* ---- 폰에서 직접 계산 ---- */
@@ -2849,7 +2854,7 @@ function switchSection(id) {
   if (id !== 'group-section') stopGroupAutoRefresh();
   [
     'login-section', 'signup-section', 'main-section', 'schedule-section',
-    'group-section', 'pattern-section', 'vacation-section', 'settings-section', 'payslip-section',
+    'group-section', 'pattern-section', 'vacation-management-section', 'vacation-section', 'settings-section', 'payslip-section',
     'notice-panel', 'suggestion-panel', 'board-post-page', 'board-edit-page'
   ].forEach(function (s) {
     var e = $(s);
@@ -3564,14 +3569,15 @@ function openCrewSetting() {
     var st = mySecState(); st.crew = false;
     LS.setItem('mpCollapsed_' + (getCurrentUser().employeeId || ''), JSON.stringify(st));
   } catch (e) {}
-  openVacation();
+  openMyPage();
 }
 /* 승무원(함께 타는 기관사) 표시를 하지 않는 날: 비번·휴무·대기근무 */
 var CREW_STANDBY_DIAS = ['12941', '12942', '12901', '12902', '12932', '12B07', '12937'];
 function crewSkipDay(diaNo, type, status, label) {
   var t = String(type || '').trim(), st = String(status || '').trim(), lb = String(label || '').trim();
-  if (t === '비' || t === '비번' || t === '휴' || t === '휴무') return true;
-  if (st === '비번' || st === '휴무' || lb === '비' || lb === '휴' || lb === '휴무') return true;
+  var combined = (t + ' ' + st + ' ' + lb).toUpperCase().replace(/\s+/g, ' ');
+  /* X·비번·휴무와 각종 휴가일에는 함께 타는 승무원 정보를 표시하지 않음 */
+  if (/(^|\s)X($|\s)|비번|휴무|(^|\s)휴($|\s)|(^|\s)비($|\s)|휴가|연차|병가|공가|출산|육아|돌봄/.test(combined)) return true;
   return CREW_STANDBY_DIAS.indexOf(String(diaNo || '').trim().toUpperCase()) >= 0;
 }
 /* 날짜·다이아(+열차번호)로 CREW 표의 행을 찾고, 본인(selfName)을 뺀 함께 타는 승무원 목록을 돌려줌 */
@@ -5386,13 +5392,20 @@ function openVacation() {
   vacYear = todayKST().y;
   vacSel = '';
   vacCalMonth = todayKST().m;
-  switchSection('vacation-section');
-  renderMyPageProfile();
-  renderMyPageExtras();
+  switchSection('vacation-management-section');
   $('vac-status').textContent = '불러오는 중...';
   loadMeta(function (failMsg) {
     $('vac-status').textContent = failMsg || '';
     renderVacation();
+  });
+}
+function openMyPage() {
+  switchSection('vacation-section');
+  renderMyPageProfile();
+  renderMyPageExtras();
+  loadMeta(function () {
+    renderMyPageProfile();
+    renderMyPageExtras();
   });
 }
 function changeVacYear(diff) {
@@ -7156,7 +7169,7 @@ function doLogin(id, name, isAuto) {
       try { lastSec = LS.getItem('railwaySecretaryLastSection') || ''; } catch (e) {}
       var allowed = {
         'main-section': 1, 'schedule-section': 1, 'group-section': 1,
-        'pattern-section': 1, 'vacation-section': 1, 'settings-section': 1, 'payslip-section': 1
+        'pattern-section': 1, 'vacation-management-section': 1, 'vacation-section': 1, 'settings-section': 1, 'payslip-section': 1
       };
       if (!allowed[lastSec]) lastSec = 'main-section';
       suppressSectionHistory = true;
@@ -7167,7 +7180,8 @@ function doLogin(id, name, isAuto) {
         if (lastSec === 'schedule-section' && typeof openSchedule === 'function') openSchedule();
         else if (lastSec === 'group-section' && typeof openGroupSection === 'function') openGroupSection();
         else if (lastSec === 'pattern-section' && typeof openPattern === 'function') openPattern();
-        else if (lastSec === 'vacation-section' && typeof openVacation === 'function') openVacation();
+        else if (lastSec === 'vacation-management-section' && typeof openVacation === 'function') openVacation();
+        else if (lastSec === 'vacation-section' && typeof openMyPage === 'function') openMyPage();
         else if (lastSec === 'settings-section' && typeof openSettings === 'function') openSettings();
         else if (lastSec === 'payslip-section' && typeof openPayslip === 'function') openPayslip();
       } catch (e) {}
@@ -7533,7 +7547,7 @@ function logout() {
     try { lastSec = LS.getItem('railwaySecretaryLastSection') || ''; } catch (e) {}
     var allowed = {
       'main-section': 1, 'schedule-section': 1, 'group-section': 1,
-      'pattern-section': 1, 'vacation-section': 1, 'settings-section': 1, 'payslip-section': 1
+      'pattern-section': 1, 'vacation-management-section': 1, 'vacation-section': 1, 'settings-section': 1, 'payslip-section': 1
     };
     if (!allowed[lastSec]) lastSec = 'main-section';
     suppressSectionHistory = true;
@@ -7544,7 +7558,8 @@ function logout() {
       if (lastSec === 'schedule-section' && typeof openSchedule === 'function') openSchedule();
       else if (lastSec === 'group-section' && typeof openGroupSection === 'function') openGroupSection();
       else if (lastSec === 'pattern-section' && typeof openPattern === 'function') openPattern();
-      else if (lastSec === 'vacation-section' && typeof openVacation === 'function') openVacation();
+      else if (lastSec === 'vacation-management-section' && typeof openVacation === 'function') openVacation();
+        else if (lastSec === 'vacation-section' && typeof openMyPage === 'function') openMyPage();
       else if (lastSec === 'settings-section' && typeof openSettings === 'function') openSettings();
       else if (lastSec === 'payslip-section' && typeof openPayslip === 'function') openPayslip();
     } catch (e) {}
@@ -8866,11 +8881,13 @@ function passDraw(d, quiet) {
   if (d.kind === 'cancel') {
     $('pp-badge').className = 'pp-badge k-cancel';
     $('pp-badge').textContent = '열차운휴';
-    $('pp-title').innerHTML = '<b>' + esc(d.train) + '</b>열차';
-    $('pp-date').textContent = d.date ? String(d.date).replace(/-/g, '.') : '';
+    $('pp-title').innerHTML = '<b>' + esc(d.train) + '</b>열차 운휴';
+    $('pp-date').textContent = d.date ? nxShortDateText(d.date) : '';
     $('pp-stops').innerHTML = '';
     $('pp-track').style.display = 'none';
-    $('pp-info').innerHTML = '<div class="pp-row"><span>운행 상태</span><b style="color:#c62828">열차운휴</b></div>';
+    $('pp-info').innerHTML =
+      '<div class="pp-row"><span>운행 상태</span><b style="color:#c62828">열차운휴</b></div>' +
+      '<div class="pp-row"><span>알림 내용</span><b>' + esc((d.date ? nxShortDateText(d.date) + ' ' : '') + d.train + '열차 운휴') + '</b></div>';
     $('pp-zone').textContent = d.msg || 'NXLogis에서 해당 열차의 운휴가 확인되었습니다.';
     if (passPopAnim) { try { passPopAnim.cancel(); } catch (e) {} passPopAnim = null; }
     passPopTimers.forEach(clearTimeout); passPopTimers = [];
@@ -9161,6 +9178,23 @@ function nxFitRows(root) {
 function nxTrainText(it) {
   return it && it.link ? it.link + ' ' + it.train + '열차' : String(it.train) + '호 열차';
 }
+function nxTrainShortText(it) {
+  return it && it.link ? it.link + ' ' + it.train + '열차' : String(it.train) + '열차';
+}
+function nxShortDateText(dateKey) {
+  var p = String(dateKey || '').split('-');
+  if (p.length < 3) return String(dateKey || '');
+  var w = ['일', '월', '화', '수', '목', '금', '토'][new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])).getUTCDay()];
+  return parseInt(p[1], 10) + '월 ' + parseInt(p[2], 10) + '일 (' + w + ')';
+}
+function nxPopupRowsHtml(items) {
+  return (items || []).map(function (it) {
+    return '<div class="nx-popup-item">' +
+      '<div class="nx-popup-item-badge">열차운휴</div>' +
+      '<div class="nx-popup-item-title">' + esc(nxShortDateText(it.date)) + ' ' + esc(nxTrainShortText(it)) + ' 운휴</div>' +
+      '</div>';
+  }).join('');
+}
 function nxCollectTrains(daysOverride) {
   var out = [];
   var mb = findMyMember();
@@ -9445,11 +9479,9 @@ function nxLoginRender(list, opts) {
     if (s.cancelled.length) {
       nxShowing = s.cancelled.slice();
       emoji.innerHTML = nxRingIcon('열차운휴알림');
-      body.innerHTML = '내 근무표의 열차가 운휴입니다.<br>' + s.cancelled.map(function (it) {
-        return '<div class="nx-row1" style="margin:6px 0"><b>' + esc(nxDateText(it.date)) + '</b> · <b style="color:#c62828">' +
-          esc(nxTrainText(it)) + ' 운휴</b></div>';
-      }).join('') +
-        '<div style="font-size:12px;color:#7a8696;margin-top:6px">NXLogis에서 자세히 확인하세요.</div>';
+      body.innerHTML = '<div class="nx-popup-lead">내 근무표의 열차가 운휴입니다.</div>' +
+        nxPopupRowsHtml(s.cancelled) +
+        '<div class="nx-popup-note">NXLogis에서 자세히 확인하세요.</div>';
       setTimeout(function () { nxFitRows(body); }, 0);
       /* 처음 보여주거나 운휴 목록이 바뀌었을 때만 소리·진동 */
       if (sig !== nxLoginShownSig) {
@@ -9642,12 +9674,11 @@ function nxShowRing(items, isTest) {
   nxShowing = isTest ? [] : items.slice();
   $('nx-ring-panel').removeAttribute('data-login');
   $('nx-ring-emoji').innerHTML = nxRingIcon('열차운휴알림');
-  var rows = items.map(function (it) {
-    return '<div class="nx-row1" style="margin:6px 0"><b>' + esc(nxDateText(it.date)) + '</b> · <b style="color:#c62828">' +
-      esc(nxTrainText(it)) + ' 운휴</b></div>';
-  }).join('');
-  $('nx-ring-body').innerHTML = (isTest ? '팝업 테스트입니다.<br>' : '내 근무표의 열차가 운휴입니다.<br>') + rows +
-    (isTest ? '' : '<div style="font-size:12px;color:#7a8696;margin-top:6px">NXLogis에서 자세히 확인하세요.</div>');
+  var rows = nxPopupRowsHtml(items);
+  $('nx-ring-body').innerHTML =
+    (isTest ? '<div class="nx-popup-lead">팝업 테스트입니다.</div>' : '<div class="nx-popup-lead">내 근무표의 열차가 운휴입니다.</div>') +
+    rows +
+    (isTest ? '' : '<div class="nx-popup-note">NXLogis에서 자세히 확인하세요.</div>');
   $('nx-ring-panel').classList.add('active');
   nxFitRows($('nx-ring-body'));
   try { alarmBeep(); } catch (e) {}
@@ -9948,6 +9979,16 @@ function notiPrefsChanged() {
   if (np.vib && !before.vib) appVibrate([200, 100, 200]);
 }
 var npVolTimer = null;
+function toggleNotificationVolume() {
+  var detail = $('np-vol-detail');
+  var toggle = $('np-vol-toggle');
+  var chevron = $('np-vol-chevron');
+  if (!detail || !toggle) return;
+  var open = detail.hidden;
+  detail.hidden = !open;
+  toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (chevron) chevron.textContent = open ? '⌃' : '⌄';
+}
 function notiPrefsVolume() {
   var np = getNotiPrefs();
   np.vol = parseInt($('np-vol').value, 10) || 0;
@@ -12074,5 +12115,307 @@ height: calc(90px + env(safe-area-inset-bottom));
 #np-vol.alarm-range{display:block;width:100%;max-width:100%;box-sizing:border-box;flex:none;margin:16px 0 6px!important}
 
 </style>
+
+<style id="pastel-auth-backup-nx-pass">
+/* 로그인 / 회원가입 파스텔 */
+#login-section form,
+#signup-section form{
+  margin-top:8px;
+  padding:18px 16px 16px;
+  border:1px solid #e3ebf6;
+  border-radius:26px;
+  background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%);
+  box-shadow:0 10px 28px rgba(25,72,140,.07);
+}
+#signup-section h1{
+  margin:4px 0 12px;
+  color:#28486d;
+  font-size:22px;
+  letter-spacing:-.6px;
+}
+#login-section .input-group label,
+#signup-section .input-group label{
+  color:#6d7f95;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:-.2px;
+}
+#login-section .input-group input,
+#signup-section .input-group input{
+  border:1.5px solid #d9e5f5;
+  border-radius:16px;
+  background:#f9fbff;
+  color:#24364c;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8);
+}
+#login-section .input-group input:focus,
+#signup-section .input-group input:focus{
+  border-color:#92b8f3;
+  box-shadow:0 0 0 4px rgba(142,183,241,.18);
+}
+#login-section .login-options,
+#signup-section .login-options,
+#login-section .remember-me,
+#signup-section .remember-me{
+  color:#68809f;
+}
+#login-section .btn,
+#signup-section .btn{
+  border-radius:16px;
+  background:linear-gradient(180deg,#ddebff 0%,#bfd8ff 100%)!important;
+  color:#245fa8!important;
+  border:1px solid #b9cff2!important;
+  box-shadow:0 7px 18px rgba(75,125,199,.14);
+}
+#login-section .btn:hover,
+#signup-section .btn:hover{
+  background:linear-gradient(180deg,#e7f1ff 0%,#c8ddff 100%)!important;
+}
+#login-section .signup-link-btn,
+#signup-section .signup-link-btn{
+  border-radius:16px;
+  background:linear-gradient(180deg,#f7f2ff 0%,#eee5ff 100%)!important;
+  color:#6a5ea8!important;
+  border:1px solid #ddd0f8!important;
+}
+#login-section .signup-link-btn:hover,
+#signup-section .signup-link-btn:hover{
+  background:linear-gradient(180deg,#fbf7ff 0%,#f2ebff 100%)!important;
+}
+#signup-verify-btn{
+  min-width:104px!important;
+}
+
+/* 로그아웃 버튼 파스텔 */
+#main-section .logout-btn{
+  border-radius:18px!important;
+  background:linear-gradient(180deg,#fff2f5 0%,#ffe7ee 100%)!important;
+  color:#b75b76!important;
+  border:1px solid #f3c9d4!important;
+  box-shadow:0 7px 18px rgba(199,102,136,.10);
+}
+#main-section .logout-btn:hover{
+  background:linear-gradient(180deg,#fff6f8 0%,#ffedf2 100%)!important;
+}
+
+/* 백업 / 동기화 팝업 + 불러오기 버튼 파스텔 */
+#backup-panel{padding:14px;background:rgba(16,28,46,.36);backdrop-filter:blur(6px)}
+#backup-panel .dia-dialog{
+  max-width:392px!important;
+  padding:22px 18px 16px!important;
+  border-radius:28px!important;
+  border:1px solid #e4ebf6;
+  background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%);
+  box-shadow:0 18px 52px rgba(21,42,72,.18);
+}
+#backup-panel .dia-dialog-title{color:#223a5b}
+#backup-panel .dia-dialog-note{white-space:normal!important;color:#7a8ba1;line-height:1.65}
+#backup-panel #backup-info{
+  margin-top:12px;
+  border-radius:18px!important;
+  border:1px solid #d7e5f7!important;
+  background:linear-gradient(180deg,#f6fbff 0%,#edf5ff 100%)!important;
+  color:#31465e!important;
+}
+#backup-panel #backup-download-btn{
+  margin-top:12px!important;
+  border-radius:18px!important;
+  background:linear-gradient(180deg,#eef5ff 0%,#dcecff 100%)!important;
+  color:#2a62aa!important;
+  border:1px solid #bfd4f6!important;
+  box-shadow:0 8px 20px rgba(67,113,180,.11);
+}
+#backup-panel #backup-download-btn .btn-ico{filter:none}
+#backup-panel .dia-dialog-actions{padding-top:18px!important}
+
+/* 열차운휴 알림 팝업: pass popup과 비슷한 파스텔 카드 */
+#nx-ring-panel{
+  padding:14px;
+  background:rgba(13,27,48,.42);
+  backdrop-filter:blur(5px);
+}
+#nx-ring-panel .dia-dialog{
+  position:relative;
+  width:min(100%,390px);
+  box-sizing:border-box;
+  padding:20px 18px 16px;
+  border:1px solid #e7edf5;
+  border-radius:24px;
+  background:linear-gradient(180deg,#ffffff 0%,#fbfcff 100%);
+  box-shadow:0 18px 55px rgba(20,42,76,.22);
+}
+#nx-ring-panel .dia-dialog-title{
+  text-align:center!important;
+  color:#172b49;
+  font-size:22px;
+  font-weight:900;
+  letter-spacing:-.8px;
+}
+#nx-ring-panel #nx-ring-emoji{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:52px;
+  height:52px;
+  margin:0 auto 10px;
+  border-radius:18px;
+  background:linear-gradient(180deg,#eef5ff 0%,#e6eefc 100%);
+}
+#nx-ring-panel .popup-ico{width:34px;height:34px}
+#nx-ring-panel .alarm-ring-info{
+  margin:12px 0 14px;
+  padding:14px 14px 12px;
+  border-radius:18px;
+  background:linear-gradient(180deg,#fafcff 0%,#f5f8fd 100%);
+  border:1px solid #e8edf4;
+}
+.nx-popup-lead{
+  margin:0 0 10px;
+  color:#455d79;
+  font-size:13px;
+  font-weight:800;
+}
+.nx-popup-item{
+  padding:11px 12px;
+  border-radius:15px;
+  border:1px solid #f0d7da;
+  background:linear-gradient(180deg,#fff8f8 0%,#fff4f4 100%);
+  text-align:left;
+}
+.nx-popup-item + .nx-popup-item{margin-top:9px}
+.nx-popup-item-badge{
+  display:inline-block;
+  margin-bottom:6px;
+  padding:4px 10px;
+  border-radius:999px;
+  background:#fff0f0;
+  color:#c43e46;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.2px;
+}
+.nx-popup-item-title{
+  color:#223856;
+  font-size:14px;
+  font-weight:900;
+  letter-spacing:-.2px;
+  line-height:1.45;
+}
+.nx-popup-note{
+  margin-top:11px;
+  color:#8794a5;
+  font-size:11.5px;
+  font-weight:700;
+}
+#nx-ring-panel .pill-btn.pill-primary{
+  display:flex!important;
+  margin:14px auto 2px!important;
+  min-width:144px;
+  height:42px;
+  border-radius:999px!important;
+  background:linear-gradient(180deg,#ddebff 0%,#c7ddff 100%)!important;
+  border:1.5px solid #b6cef3!important;
+  color:#245fa8!important;
+  box-shadow:0 8px 18px rgba(75,125,199,.14);
+}
+
+/* 열차통과/도착 알림에서 '열차운휴' 팝업 확인 버튼도 파스텔 블루 */
+#pass-pop-panel .dia-text-btn.pass-save{
+  background:linear-gradient(180deg,#ddebff 0%,#c7ddff 100%)!important;
+  color:#245fa8!important;
+  border:1.5px solid #b6cef3!important;
+  box-shadow:0 8px 18px rgba(75,125,199,.14);
+}
+#pass-pop-panel .pp-info .pp-row b{
+  white-space:normal;
+  text-align:right;
+}
+</style>
+
+
+<style id="settings-row-balance-and-vacation-nav">
+/* 알림 설정 항목: 아이콘·설명·스위치 열을 통일해 각 칸의 비율을 맞춤 */
+#perm-panel .ns-card{box-sizing:border-box}
+#perm-panel .ns-row{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 42px!important;
+  align-items:center!important;
+  gap:10px!important;
+  min-height:54px!important;
+  padding:8px 2px!important;
+}
+#perm-panel .ns-k{
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  min-width:0!important;
+  width:100%!important;
+}
+#perm-panel .ns-k > span{min-width:0;flex:1}
+#perm-panel .ns-k .ns-t{display:block;line-height:1.25}
+#perm-panel .ns-k small{white-space:normal}
+#perm-panel .ns-switch{justify-self:end;width:34px!important}
+#perm-panel .ns-vol{
+  display:block!important;
+  margin:8px 0 0!important;
+  padding:0!important;
+  border-radius:14px!important;
+  background:#f8fbff!important;
+}
+#perm-panel .np-vol-toggle{
+  display:flex;
+  width:100%;
+  min-height:54px;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:8px 10px;
+  border:0;
+  border-radius:14px;
+  background:transparent;
+  color:inherit;
+  font:inherit;
+  text-align:left;
+  cursor:pointer;
+}
+#perm-panel .np-vol-label{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+#perm-panel .np-vol-label .ns-ico{width:32px;height:32px;flex:none}
+#perm-panel .np-vol-label .ns-t{font-size:15px}
+#perm-panel .np-vol-right{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex:none;
+}
+#perm-panel .np-vol-val{font-size:12px;font-weight:800;color:#71839b}
+#perm-panel .np-vol-chevron{font-size:18px;color:#8092aa;line-height:1}
+#perm-panel .np-vol-detail{
+  padding:0 14px 12px 52px;
+}
+#perm-panel .np-vol-detail[hidden]{display:none!important}
+#perm-panel #np-vol.alarm-range{
+  display:block;
+  width:100%;
+  max-width:100%;
+  box-sizing:border-box;
+  margin:8px 0 2px!important;
+}
+#perm-panel .ns-test-btn{
+  min-height:64px;
+  height:100%;
+  box-sizing:border-box;
+}
+#perm-panel .ns-tests{align-items:stretch}
+#bottom-nav .bn-btn{flex:1 1 0;min-width:0;font-size:10.5px;letter-spacing:-.35px}
+#bottom-nav .bn-btn .nav-art{width:23px;height:23px;object-fit:contain}
+#vacation-management-section{backface-visibility:hidden}
+#vacation-management-section > .sch-note{white-space:normal}
+</style>
+
 </body>
 </html>
