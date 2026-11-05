@@ -3351,7 +3351,7 @@ function rsFeedPush(force) {
       /* 바뀐 게 없으면 6시간에 한 번만 */
       var lastObj = null; try { lastObj = JSON.parse(last); } catch (e) {}
       if (!force && lastObj && lastObj.b === body && Date.now() - lastObj.at < 6 * 3600000) { rsFeedBusy = false; return; }
-      api({ action: 'widgetSave', name: name.slice(0, 20), days: days }, function (res) {
+      api({ action: 'widgetSave', employeeId: u.employeeId, token: u.token, name: name.slice(0, 20), days: days }, function (res) {
         rsFeedBusy = false;
         if (res && res.success && res.on === false) { rsFeedSet(false); return; }   /* 다른 폰에서 끈 경우 */
         if (res && res.success) { try { localStorage.setItem(lk, JSON.stringify({ b: body, at: Date.now() })); } catch (e) {} }
@@ -3366,7 +3366,7 @@ function openWidgetPanel() {
   $('wg-panel').classList.add('active');
   favLiftOverlays();
   wgRender({ loading: true });
-  api({ action: 'widgetInfo' }, function (r) {
+  api({ action: 'widgetInfo', employeeId: u.employeeId, token: u.token }, function (r) {
     if (!r || !r.success) { wgRender({ error: (r && r.message) || '불러오지 못했어요.' }); return; }
     if (r.on) rsFeedSet(true); else rsFeedSet(false);
     wgRender(r);
@@ -3419,8 +3419,9 @@ function wgCopyOld(text) {
 }
 function wgMake(renew) {
   if (renew && !confirm('새 주소로 바꾸면 예전 주소를 넣은 위젯은 더 이상 보이지 않아요. 바꿀까요?')) return;
+  var u = getCurrentUser() || {};
   wgRender({ loading: true });
-  api({ action: 'widgetMake' }, function (r) {
+  api({ action: 'widgetMake', employeeId: u.employeeId, token: u.token }, function (r) {
     if (!r || !r.success) { wgRender({ error: (r && r.message) || '만들지 못했어요.' }); return; }
     rsFeedSet(true);
     wgRender(r);
@@ -3431,7 +3432,8 @@ function wgMake(renew) {
 function wgSync() { rsFeedBusy = false; rsFeedPush(true); showToast('근무 요약을 갱신하고 있어요.'); setTimeout(function () { if ($('wg-panel').classList.contains('active')) openWidgetPanel(); }, 2500); }
 function wgOff() {
   if (!confirm('위젯 연결을 끌까요? 서버의 위젯 주소와 근무 요약이 지워져요.')) return;
-  api({ action: 'widgetOff' }, function (r) {
+  var u = getCurrentUser() || {};
+  api({ action: 'widgetOff', employeeId: u.employeeId, token: u.token }, function (r) {
     if (!r || !r.success) { showToast((r && r.message) || '끄지 못했어요.'); return; }
     rsFeedSet(false);
     wgRender(r);
