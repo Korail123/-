@@ -1,4 +1,3 @@
-
 /* 철도비서 Service Worker
    PWA 백그라운드 푸시 및 앱 화면 캐시
 */
@@ -127,6 +126,12 @@ self.addEventListener('push', function (e) {
 
   var title = d.title || '철도비서 알림';
 
+  /* 알림을 받은 시각 기록 (앱의 알림 설정 화면에서 '마지막으로 받은 알림'으로 보여줌) */
+  var mark = caches.open('rs-prefs').then(function (c) {
+    return c.put(new URL('lastpush.json', self.registration.scope).href,
+      new Response(JSON.stringify({ at: Date.now(), title: title }), { headers: { 'Content-Type': 'application/json' } }));
+  }).catch(function () {});
+
   var toApp = d.pass
     ? self.clients.matchAll({
         type: 'window',
@@ -144,6 +149,7 @@ self.addEventListener('push', function (e) {
   e.waitUntil(
     Promise.all([
       toApp,
+      mark,
       readPrefs().then(function (p) {
         var sound = p.sound !== false;
         var vib = p.vib !== false;
@@ -154,8 +160,8 @@ self.addEventListener('push', function (e) {
           renotify: true,
           silent: !sound && !vib,
           requireInteraction: true,
-          icon: '/icon-192.png',
-          badge: '/icon-192.png',
+          icon: 'icon-192.png',
+          badge: 'icon-192.png',
           vibrate: vib
             ? [500, 250, 500, 250, 500, 250, 500]
             : [],
