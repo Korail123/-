@@ -9422,7 +9422,8 @@ function passArtKey(tt, no) {
 function passArtSize(key) {
   var dm = PASS_TRAIN_DIM[key] || PASS_TRAIN_DIM.run_mugunghwa;
   /* 기관차가 끄는 열차는 원본 71px = 22px 축척, KTX·새마을은 높이 23px */
-  var h = /^run_/.test(key) ? Math.round(dm[1] * 31 / 71) : 32;   /* 40% 크게 (기존 22·23px) */
+  /* 열차 크기: 기존(원본 71px = 31px)에서 30% 줄임 */
+  var h = /^run_/.test(key) ? Math.round(dm[1] * 31 / 71 * 0.7) : 22;
   return { w: Math.round(h * dm[0] / dm[1]), h: h };
 }
 function passSetTrainArt(train, tt, no) {
@@ -9437,7 +9438,7 @@ function passSetTrainArt(train, tt, no) {
 }
 /* 조성대기 장면: 화물 = 화차 2량 + 기관차(전기·디젤), 여객 = 객차 + 전기기관차(새마을은 새마을 차량) */
 function passBuildCompose(compose, tt, no) {
-  var S = 0.44;   /* 객차·화차·기관차 공통 축척 (40% 크게) */
+  var S = 0.44 * 0.7;   /* 객차·화차·기관차 공통 축척 (기존에서 30% 줄임) */
   function sz(k) { var dm = PASS_TRAIN_DIM[k]; return { w: Math.round(dm[0] * S), h: Math.round(dm[1] * S) }; }
   var freight = tt === 'freight';
   var carKey = freight ? 'tank' : 'coach', car = sz(carKey), n = freight ? 2 : 1;
@@ -14098,6 +14099,14 @@ html body #main-section .menu-grid > .menu-btn{gap:2px!important;justify-content
 html body #main-section .menu-grid > .menu-btn > span{display:flex;align-items:flex-start;justify-content:center;min-height:2.4em}
 /* 새로고침 아이콘 */
 .refresh-btn .rf-ico{display:block;width:30px;height:30px}
+</style>
+<style id="pass-train-third-size">
+/* 열차운행조회 애니메이션 열차 30% 축소: 연결 장면 부품도 같이 */
+.pc2 .pc-link{bottom:3px!important}
+.pc2 .pc-hook{bottom:3px!important}
+.pc2 .pc-spark{bottom:1px!important;width:8px!important;height:8px!important}
+.pc2.play .pc-loco{animation-name:pcLocoS!important}
+@keyframes pcLocoS{0%,14%{transform:translateX(22px)}52%{transform:translateX(0)}56%{transform:translateX(-1.2px)}60%,84%{transform:translateX(0)}100%{transform:translateX(22px)}}
 </style>
 </body>
 </html>
