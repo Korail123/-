@@ -3731,7 +3731,7 @@ function wgZip(entries) {
 function wgBitmapFormula() {
   /* v: 10분마다 바뀌는 값 + 달력을 누를 때마다 커지는 rf → 주소가 바뀌어 KWGT가 그림을 새로 받음
      (KWGT의 $wg()$ 버전 확인은 KWGT가 오래 저장해 둬서 바로 안 바뀌는 경우가 있어 시간 방식으로 변경) */
-  return window.wgPngNow + '&m=$gv(mo)$&v=$df(dHH)$$mu(floor, df(m)/10)$-$gv(rf)$';
+  return window.wgPngNow + '&m=$gv(mo)$&v=$df(dHHmm)$-$gv(rf)$';   /* 1분마다 주소가 바뀌어 새 그림을 받음 */
 }
 function wgKwgtPreset(imgUrl) {
   var S = '$mu(min, si(rwidth), si(rheight))$';
@@ -9466,9 +9466,22 @@ function passEval(route, w, now) {
     ? Number(livePosition.idx)
     : (passedIdx >= 0 ? Math.floor(passedIdx) : -1);
   var composing = passIsComposeWaiting(route);
-  var passed = s.act !== null && s.act !== undefined;
-  if (!passed && passedIdx >= i) passed = true;
-
+  /* 통과 · 곧 도착 판단 (예정 시각은 쓰지 않음)
+     통과   ① 실제 통과 시각(drv_date2 = act)이 지정역이나 그 뒤 역에 찍힘
+            ② zone: 지정역보다 뒤 역에 정차 중, 또는 'A - B 운행중'의 A가 지정역이거나 그 뒤
+     곧 도착 ① zone: 'A - B 운행중'에서 B가 지정역 (A를 지나 지정역으로 가는 중), 또는 지정역에 정차(도착) 중
+            ② zone에 역 이름이 없을 때만: 바로 앞 역(i-1)에 실제 시각이 찍혔고 지정역은 아직 */
+  var hasAct = function (x) { return x && x.act !== null && x.act !== undefined; };
+  var zonePos = livePosition && !livePosition.estimated ? livePosition : null;
+  var passed = hasAct(s) || st.slice(i + 1).some(hasAct), zoneSoon = false;
+  if (composing) { zoneSoon = false; }
+  else if (zonePos) {
+    var zk = Number(zonePos.idx);
+    if (zonePos.stopped) { if (zk > i) passed = true; zoneSoon = zk === i; }
+    else { if (zk >= i) passed = true; zoneSoon = zk === i - 1; }
+  } else {
+    zoneSoon = i > 0 && hasAct(st[i - 1]);
+  }
   var delay = route.delay;
   var last = null;
   for (var k = Math.min(passedIdx, st.length - 1); k >= 0; k--) {
@@ -9485,7 +9498,7 @@ function passEval(route, w, now) {
   var approaching = !passed && movingSegment && displayCurrentIdx === i - 1;
   var leadMinutes = (w.lead === null || w.lead === undefined || isNaN(Number(w.lead))) ? 0 : Number(w.lead);
   var withinScheduleLead = expect !== null && expect >= now - 2 * 60000 && expect - now <= leadMinutes * 60000;
-  var soon = !passed && (approaching || (!movingSegment && leadMinutes > 0 && withinScheduleLead));
+  var soon = !passed && !!zoneSoon;   /* 예정 시각(withinScheduleLead)은 판단에 쓰지 않음 */
 
   // passedIdx는 NXLogis가 마지막 통과/운행 구간의 기준으로 표시한 역 인덱스.
   // 목적역까지 남은 정거장 수는 목적역을 포함하여 계산한다.
