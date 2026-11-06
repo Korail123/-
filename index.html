@@ -3540,6 +3540,27 @@ function openGuidePanel() {
   document.querySelectorAll('#guide-panel .guide-sec[open]').forEach(function (d) { gdPlay(d.getAttribute('data-g')); });
 }
 function closeGuidePanel() { $('guide-panel').classList.remove('active'); gdStopAll(); }
+/* ===== 접속 기록: 앱을 열거나 로그인할 때 서버에 '오늘 접속' 표시 (같은 폰에서는 10분에 한 번만) ===== */
+function rsSeenInfo() {
+  var ua = navigator.userAgent || '';
+  var device = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ? '아이폰' : /Android/.test(ua) ? '안드로이드' : 'PC';
+  var browser = /SamsungBrowser/.test(ua) ? '삼성 인터넷' : /Firefox|FxiOS/.test(ua) ? '파이어폭스' : /EdgA|EdgiOS|Edg\//.test(ua) ? '엣지' : /CriOS|Chrome/.test(ua) ? '크롬' : /Safari/.test(ua) ? '사파리' : '기타';
+  if (window.RsWidget) browser = '철도비서 앱';
+  var standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  return { device: device, browser: browser, mode: window.RsWidget ? '안드로이드 앱' : standalone ? '홈 화면 앱' : '브라우저' };
+}
+function rsSeen(force) {
+  var u = getCurrentUser();
+  if (!u || !u.token || u.employeeId === 'guest') return;
+  var k = 'rs_seen_' + u.employeeId, last = 0;
+  try { last = +(localStorage.getItem(k) || 0); } catch (e) {}
+  var day = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10), lastDay = last ? new Date(last + 9 * 3600000).toISOString().slice(0, 10) : '';
+  if (!force && day === lastDay && Date.now() - last < 10 * 60000) return;
+  try { localStorage.setItem(k, String(Date.now())); } catch (e) {}
+  var info = rsSeenInfo();
+  try { api({ action: 'seen', employeeId: u.employeeId, token: u.token, device: info.device, browser: info.browser, mode: info.mode }, function () {}); } catch (e) {}
+}
+document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { try { rsSeen(); } catch (e) {} } });
 var RS_FEED_TONE = { day: '#e5a800', night: '#1a73e8', off: '#e53935', status: '#e53935' };
 function rsFeedKey() { var u = getCurrentUser(); return u && u.employeeId ? 'rs_feed_' + u.employeeId : ''; }
 function rsFeedOn() { var k = rsFeedKey(); try { return !!(k && localStorage.getItem(k)); } catch (e) { return false; } }
@@ -11630,7 +11651,7 @@ function promptWorkSettingIfNeeded(gen) {
 var loginPopupGen = 0;
 function runLoginPopups() {
   try { passWarmUp(); } catch (e) {}   /* 조회 서버 미리 깨우기 → 첫 조회가 빠르게 */
-  setTimeout(function () { try { rsFeedCheck(); } catch (e) {} try { rsWidgetPush(); } catch (e) {} }, 3000);
+  setTimeout(function () { try { rsSeen(true); } catch (e) {} try { rsFeedCheck(); } catch (e) {} try { rsWidgetPush(); } catch (e) {} }, 3000);
   renderMyPageExtras.__synced = false;
   loginPopupGen++;
   var gen = loginPopupGen;
