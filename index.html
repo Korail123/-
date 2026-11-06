@@ -3508,6 +3508,11 @@ function wgZip(entries) {
   var end = new Uint8Array([].concat(u32(0x06054b50), u16(0), u16(0), u16(entries.length), u16(entries.length), u32(cenLen), u32(off), u16(0)));
   return new Blob(parts.concat(central, [end]), { type: 'application/octet-stream' });   /* zip 형식이면 크롬이 이름 끝을 .zip으로 바꿔버려서 */
 }
+/* KWGT 비트맵 수식: 달력 그림 주소 + 보고 있는 달(mo) + 버전(v)
+   v = 작은 '버전' 주소의 값 → 근무표가 바뀌어 그림이 새로 올라갈 때만 바뀌므로, 그때만 그림을 새로 받음 */
+function wgBitmapFormula() {
+  return window.wgPngNow + '&m=$gv(mo)$&v=$wg("' + window.wgVerNow + '", json, .v)$';
+}
 function wgKwgtPreset(imgUrl) {
   var S = '$mu(min, si(rwidth), si(rheight))$';
   var s = 'mu(min, si(rwidth), si(rheight))';
@@ -3516,7 +3521,7 @@ function wgKwgtPreset(imgUrl) {
   function f(m, k, v) { m.internal_formulas[k] = v; m.internal_toggles[k] = 10; }
   var cal = base('BitmapModule', '근무표 달력');
   cal.bitmap_scale_mode = 'CENTER_CROP';
-  f(cal, 'bitmap_bitmap', imgUrl + '&m=$gv(mo)$&v=$df(dHH)$$mu(floor, df(m)/30)$');   /* v: 30분마다 바뀌어서 KWGT가 그림을 새로 받음 */
+  f(cal, 'bitmap_bitmap', wgBitmapFormula());
   f(cal, 'bitmap_width', S); f(cal, 'bitmap_height', S);
   f(cal, 'position_padding_left', '$' + ox + '$'); f(cal, 'position_padding_top', '$' + oy + '$');
   cal.internal_events = [{ type: 'SINGLE_TAP', action: 'SWITCH_GLOBAL', 'switch': 'mo', switch_text: '0' }];
@@ -3609,12 +3614,13 @@ function wgRender(r) {
   var url = rsFeedUrl(r.token);
   window.wgUrlNow = url;
   window.wgPngNow = SUPABASE_URL + '/rest/v1/rpc/widget_png?t=' + r.token + '&apikey=' + SUPABASE_KEY;
+  window.wgVerNow = SUPABASE_URL + '/rest/v1/rpc/widget_ver?t=' + r.token + '&apikey=' + SUPABASE_KEY;
   function row(label, f) { return '<div class="wg-f"><span>' + label + '</span><code>' + esc(f) + '</code><button type="button" onclick="wgCopy(this.previousElementSibling.textContent)">복사</button></div>'; }
   box.innerHTML =
     '<div class="wg-on">● 위젯 연결 켜짐' + (r.updatedAt ? ' <small>마지막 갱신 ' + esc(r.updatedAt) + '</small>' : '') + '</div>' +
     '<div class="wg-lab">① 내 달력 미리보기 <small id="wg-sync-at"></small></div>' +
     '<div class="wg-prev"><img id="wg-prev" alt="위젯 미리보기"></div>' +
-    '<div class="wg-btns"><button type="button" onclick="wgCopy(window.wgPngNow)">그림 주소 복사</button><button type="button" onclick="wgCopy(window.wgPngNow + \'&m=$gv(mo)$&v=$df(dHH)$$mu(floor, df(m)/30)$\')">비트맵 수식 복사</button><button type="button" onclick="window.open(window.wgPngNow,\'_blank\')">브라우저로 확인</button></div>' +
+    '<div class="wg-btns"><button type="button" onclick="wgCopy(window.wgPngNow)">그림 주소 복사</button><button type="button" onclick="wgCopy(wgBitmapFormula())">비트맵 수식 복사</button><button type="button" onclick="window.open(window.wgPngNow,\'_blank\')">브라우저로 확인</button></div>' +
     '<div class="wg-tip">이번 달 기준 <b>앞뒤 6개월(13달)</b> 달력이 올라가요. 주소 끝 <b>&m=</b> 숫자: 0 = 이번 달, -1 = 지난달, 1 = 다음 달 … (-6 ~ 6)</div>' +
     '<div class="wg-lab">② KWGT 프리셋으로 한 번에 (추천)</div>' +
     '<button type="button" class="wg-main" onclick="wgKwgtDownload()">KWGT 프리셋 받기 (.kwgt)</button>' +
