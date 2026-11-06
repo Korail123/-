@@ -1327,21 +1327,21 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="dia-dialog ns-dialog guide-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="규정자료" alt="" aria-hidden="true">철도비서 가이드</div>
     <div class="guide-dev">관리자 미리보기 · 다른 사용자에게는 '개발 중입니다'로 보여요</div>
-    <details class="guide-sec" open><summary>처음 시작하기</summary><ol>
+    <details class="guide-sec" data-g="start" open><summary>처음 시작하기</summary><div class="gd-stage" data-g="start"></div><ol>
       <li>회원가입 후 로그인해요.</li>
       <li>환경설정 › <b>근무설정</b>에서 근무 패턴과 기준일을 정해요.</li>
       <li>메인화면 › <b>근무표</b>에서 이번 달 근무를 확인해요.</li></ol></details>
-    <details class="guide-sec"><summary>근무 변경 · 교환</summary><ol>
+    <details class="guide-sec" data-g="change"><summary>근무 변경 · 교환</summary><div class="gd-stage" data-g="change"></div><ol>
       <li>근무표에서 날짜를 눌러 근무를 바꿔요.</li>
       <li>교환한 근무는 상대 이름이 함께 기록되고, 마이페이지 › 근무 변경 기록에서 다시 볼 수 있어요.</li></ol></details>
-    <details class="guide-sec"><summary>열차운행정보 조회</summary><ol>
+    <details class="guide-sec" data-g="train"><summary>열차운행정보 조회</summary><div class="gd-stage" data-g="train"></div><ol>
       <li>메인화면 › <b>열차운행정보 조회</b>에서 날짜와 열차번호를 넣어요.</li>
       <li>열차를 누르면 바로 새로고침되고, 30초마다 자동으로 갱신돼요.</li></ol></details>
-    <details class="guide-sec"><summary>홈화면 위젯 (KWGT)</summary><ol>
+    <details class="guide-sec" data-g="widget"><summary>홈화면 위젯 (KWGT)</summary><div class="gd-stage" data-g="widget"></div><ol>
       <li>환경설정 › <b>위젯 연결</b> › 위젯 주소 만들기.</li>
       <li>KWGT에서 프리셋을 들여오거나 이미지 항목을 추가해요.</li>
       <li>비트맵 수식에 <b>비트맵 수식 복사</b>한 것을 붙여넣고 저장해요.</li></ol></details>
-    <details class="guide-sec"><summary>근무표 PNG 저장</summary><ol>
+    <details class="guide-sec" data-g="png"><summary>근무표 PNG 저장</summary><div class="gd-stage" data-g="png"></div><ol>
       <li>근무표 달력 아래 <b>근무표 PNG 저장</b>을 누르면 이미지로 저장돼요.</li></ol></details>
     <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeGuidePanel()">닫기</button></div>
   </div>
@@ -3348,13 +3348,113 @@ function rsWidgetMonth(y, m, cb) {
    - 환경설정 › 위젯 연결에서 '위젯 주소'를 만들면, 앱을 열 때마다 어제~약 45일 근무 요약(구분·색·다이아·교환상대)을 서버에 올림
    - KWGT가 그 주소를 읽어 오늘 · 내일 · 7일 근무를 보여줌 (오늘 날짜는 서버가 한국시간으로 계산)
    - 위젯 연결을 끄면 서버의 주소와 근무 요약을 지움 */
+/* ===== 철도비서 가이드 애니메이션: 항목마다 작은 휴대폰 화면 + 손가락이 눌러 보이는 장면을 차례로 재생 ===== */
+var GD_SCENES = {
+  start: [
+    { cap: '① 사번 · 비밀번호로 로그인', tap: [50, 78], html:
+      '<div class="gd-top">철도비서</div><div class="gd-in">사번</div><div class="gd-in">비밀번호</div><div class="gd-btn">로그인</div>' },
+    { cap: '② 환경설정 › 근무설정', tap: [24, 52], html:
+      '<div class="gd-top">환경설정</div><div class="gd-grid"><i class="hl">근무설정</i><i>근무그룹</i><i>휴가관리</i><i>위젯 연결</i><i>알람설정</i><i>가이드</i></div>' },
+    { cap: '③ 근무 순서와 기준일 정하고 저장', tap: [50, 84], html:
+      '<div class="gd-top">근무설정</div><div class="gd-chips"><b class="d">주</b><b class="n">야</b><b class="n">비</b><b class="o">휴</b></div><div class="gd-in">기준일 2026-11-01</div><div class="gd-btn">저장</div>' },
+    { cap: '④ 근무표에 한 달 근무가 채워져요', tap: null, html: 'CAL' }
+  ],
+  change: [
+    { cap: '① 근무표에서 바꿀 날짜를 눌러요', tap: [64, 58], html: 'CAL' },
+    { cap: '② 근무를 고르거나 교환을 눌러요', tap: [70, 72], html:
+      '<div class="gd-top">11월 12일 (목)</div><div class="gd-chips"><b class="d">주</b><b class="n">야</b><b class="n">비</b><b class="o">휴</b></div><div class="gd-row"><span class="gd-pill">휴가</span><span class="gd-pill hl">근무 교환</span></div>' },
+    { cap: '③ 교환 상대를 골라요', tap: [50, 50], html:
+      '<div class="gd-top">교환 상대</div><div class="gd-list"><i>김철수 · 주</i><i class="hl">이영희 · 야</i><i>박민수 · 휴</i></div>' },
+    { cap: '④ 달력에 ⇄ 상대 이름이 표시돼요', tap: null, html: 'CAL_SWAP' }
+  ],
+  train: [
+    { cap: '① 메인화면 › 열차운행정보 조회', tap: [76, 52], html:
+      '<div class="gd-top">메인화면</div><div class="gd-grid"><i>근무표</i><i>휴가관리</i><i class="hl">열차운행</i><i>메모장</i><i>공지사항</i><i>환경설정</i></div>' },
+    { cap: '② 날짜와 열차번호 넣고 조회', tap: [50, 84], html:
+      '<div class="gd-top">열차운행정보 조회</div><div class="gd-in">2026-11-06</div><div class="gd-in">1001<span class="gd-caret"></span></div><div class="gd-btn">조회</div>' },
+    { cap: '③ 지금 위치가 애니메이션으로 보여요', tap: null, html: 'TRACK' },
+    { cap: '④ 열차를 누르면 바로 새로고침 (30초마다 자동)', tap: [50, 40], sel: '.gd-train', html: 'TRACK' }
+  ],
+  widget: [
+    { cap: '① 환경설정 › 위젯 연결', tap: [76, 66], html:
+      '<div class="gd-top">환경설정</div><div class="gd-grid"><i>근무설정</i><i>근무그룹</i><i>휴가관리</i><i>알람설정</i><i>즐겨찾기</i><i class="hl">위젯 연결</i></div>' },
+    { cap: '② 위젯 주소 만들고 비트맵 수식 복사', tap: [50, 80], html:
+      '<div class="gd-top">위젯 연결</div><div class="gd-mini-cal"></div><div class="gd-btn">비트맵 수식 복사</div>' },
+    { cap: '③ KWGT 이미지 › 비트맵 수식에 붙여넣기 · 저장', tap: [50, 72], html:
+      '<div class="gd-top dark">KWGT</div><div class="gd-in dark">$gv(url)$…</div><div class="gd-btn dark">붙여넣기</div>' },
+    { cap: '④ 홈화면에 근무표 달력 위젯 완성', tap: null, html: 'HOME' }
+  ],
+  png: [
+    { cap: '① 근무표 달력 아래 버튼을 눌러요', tap: [50, 90], html: 'CAL_BTN' },
+    { cap: '② 사진(갤러리)이나 다운로드에 PNG로 저장', tap: null, html: 'CAL_SAVED' }
+  ]
+};
+function gdCal(opt) {
+  var L = '휴휴주야비휴휴주주야비휴휴주야비주휴휴주주야비휴휴주야비주휴', cls = { '주': 'd', '야': 'n', '비': 'n', '휴': 'o' }, h = '';
+  for (var i = 0; i < 28; i++) {
+    var c = L[i], sw = opt === 'swap' && i === 11;
+    h += '<span class="' + (i === 11 && opt !== 'btn' && opt !== 'saved' ? 'sel ' : '') + '"><b class="' + cls[c] + '">' + (sw ? '야' : c) + '</b>' + (sw ? '<em>⇄이영희</em>' : '') + '</span>';
+  }
+  return '<div class="gd-top">2026. 11</div><div class="gd-cal">' + h + '</div>' +
+    (opt === 'btn' || opt === 'saved' ? '<div class="gd-btn sm">근무표 PNG 저장</div>' : '') +
+    (opt === 'saved' ? '<div class="gd-toast">PNG로 저장했어요</div>' : '');
+}
+function gdScreenHtml(sc) {
+  if (sc.html === 'CAL') return gdCal('');
+  if (sc.html === 'CAL_SWAP') return gdCal('swap');
+  if (sc.html === 'CAL_BTN') return gdCal('btn');
+  if (sc.html === 'CAL_SAVED') return gdCal('saved');
+  if (sc.html === 'TRACK') return '<div class="gd-top">1001 · 운행 중</div><div class="gd-track"><i></i><i></i><i></i><i></i><b class="gd-train"></b></div><div class="gd-st"><span>서울</span><span>용산</span><span>공덕</span><span>행신</span></div>';
+  if (sc.html === 'HOME') return '<div class="gd-home"><div class="gd-apps"><i></i><i></i><i></i><i></i></div><div class="gd-widget">' + gdCal('') + '</div></div>';
+  return sc.html;
+}
+var gdTimers = {};
+function gdPlay(key) {
+  var st = document.querySelector('.gd-stage[data-g="' + key + '"]'), list = GD_SCENES[key];
+  if (!st || !list) return;
+  gdStop(key);
+  st.innerHTML = '<div class="gd-phone"><div class="gd-scr"></div><div class="gd-finger"></div></div><div class="gd-cap"></div><div class="gd-dots">' +
+    list.map(function () { return '<i></i>'; }).join('') + '</div>';
+  var scr = st.querySelector('.gd-scr'), fin = st.querySelector('.gd-finger'), cap = st.querySelector('.gd-cap'), dots = st.querySelectorAll('.gd-dots i'), i = 0;
+  function show() {
+    var sc = list[i];
+    scr.classList.remove('in'); void scr.offsetWidth;
+    scr.innerHTML = gdScreenHtml(sc); scr.classList.add('in');
+    cap.textContent = sc.cap;
+    for (var k = 0; k < dots.length; k++) dots[k].className = k === i ? 'on' : '';
+    fin.className = 'gd-finger';
+    if (sc.tap) {
+      fin.style.left = '50%'; fin.style.top = '110%';
+      setTimeout(function () {
+        /* 누를 곳(강조된 칸 · 버튼 · 선택한 날짜)의 한가운데로 손가락 이동 */
+        var tg = scr.querySelector(sc.sel || '.hl, .gd-btn, .gd-cal .sel'), ph = st.querySelector('.gd-phone');
+        var x = sc.tap[0] + '%', y = sc.tap[1] + '%';
+        if (tg && ph) { var a = tg.getBoundingClientRect(), b = ph.getBoundingClientRect(); x = (a.left + a.width / 2 - b.left) + 'px'; y = (a.top + a.height / 2 - b.top) + 'px'; }
+        fin.classList.add('show'); fin.style.left = x; fin.style.top = y;
+      }, 250);
+      setTimeout(function () { fin.classList.add('tap'); var hl = scr.querySelector(sc.sel || '.hl, .gd-btn, .gd-cal .sel'); if (hl) hl.classList.add('press'); }, 1250);
+    }
+    var wait = sc.tap ? 2300 : 2600;
+    gdTimers[key] = setTimeout(function () { i = (i + 1) % list.length; show(); }, wait);
+  }
+  show();
+}
+function gdStop(key) { clearTimeout(gdTimers[key]); delete gdTimers[key]; }
+function gdStopAll() { Object.keys(gdTimers).forEach(gdStop); }
+document.addEventListener('toggle', function (e) {
+  var d = e.target;
+  if (!d || !d.matches || !d.matches('#guide-panel .guide-sec')) return;
+  var k = d.getAttribute('data-g');
+  if (d.open) gdPlay(k); else gdStop(k);
+}, true);
 /* 철도비서 가이드: 아직 개발 중 → 관리자(199878 송주영)만 열 수 있고, 다른 사용자는 안내만 */
 function openGuidePanel() {
   if (!(typeof isBoardAdmin === 'function' && isBoardAdmin())) { showToast('개발 중입니다.'); return; }
   $('guide-panel').classList.add('active');
   favLiftOverlays();
+  document.querySelectorAll('#guide-panel .guide-sec[open]').forEach(function (d) { gdPlay(d.getAttribute('data-g')); });
 }
-function closeGuidePanel() { $('guide-panel').classList.remove('active'); }
+function closeGuidePanel() { $('guide-panel').classList.remove('active'); gdStopAll(); }
 var RS_FEED_TONE = { day: '#e5a800', night: '#1a73e8', off: '#e53935', status: '#e53935' };
 function rsFeedKey() { var u = getCurrentUser(); return u && u.employeeId ? 'rs_feed_' + u.employeeId : ''; }
 function rsFeedOn() { var k = rsFeedKey(); try { return !!(k && localStorage.getItem(k)); } catch (e) { return false; } }
@@ -14556,6 +14656,61 @@ html body #main-section .menu-grid > .menu-btn > span{display:flex;align-items:f
 #guide-panel .guide-sec{border:1px solid #e3e8f0;border-radius:12px;padding:10px 12px;margin-bottom:8px;background:#fff}
 #guide-panel .guide-sec summary{font-size:14px;font-weight:800;color:#0b376d;cursor:pointer}
 #guide-panel .guide-sec ol{margin:8px 0 2px;padding-left:20px;font-size:13px;line-height:1.6;color:#33415c}
+</style>
+<style id="guide-anim-style">
+#guide-panel .gd-stage{display:flex;flex-direction:column;align-items:center;margin:10px 0 4px}
+#guide-panel .gd-phone{position:relative;width:180px;height:260px;border-radius:24px;background:#16233a;padding:8px;box-shadow:0 6px 18px rgba(16,40,80,.18)}
+#guide-panel .gd-scr{position:relative;width:100%;height:100%;border-radius:17px;background:#f6f8fc;overflow:hidden;padding:10px 9px;box-sizing:border-box;font-size:10px;color:#22324d}
+#guide-panel .gd-scr.in{animation:gdIn .35s ease}
+@keyframes gdIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+#guide-panel .gd-finger{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:rgba(47,111,214,.28);border:2px solid #2f6fd6;opacity:0;transition:left .8s cubic-bezier(.4,.1,.2,1),top .8s cubic-bezier(.4,.1,.2,1),opacity .3s;pointer-events:none;z-index:3}
+#guide-panel .gd-finger.show{opacity:1}
+#guide-panel .gd-finger.tap{animation:gdTap .5s ease}
+@keyframes gdTap{40%{transform:scale(.7);background:rgba(47,111,214,.55)}100%{transform:scale(1.5);opacity:0}}
+#guide-panel .gd-cap{margin-top:10px;font-size:13px;font-weight:800;color:#0b376d;text-align:center;min-height:1.4em}
+#guide-panel .gd-dots{display:flex;gap:5px;margin-top:6px}
+#guide-panel .gd-dots i{width:6px;height:6px;border-radius:50%;background:#cfd8e6}
+#guide-panel .gd-dots i.on{background:#2f6fd6;width:16px;border-radius:4px}
+#guide-panel .gd-top{font-size:11.5px;font-weight:800;margin:2px 2px 9px;color:#0b376d}
+#guide-panel .gd-top.dark{color:#fff}
+#guide-panel .gd-in{background:#fff;border:1px solid #d9e1ee;border-radius:8px;padding:7px 8px;margin:0 0 7px;color:#7b879a}
+#guide-panel .gd-in.dark{background:#2a2f36;border-color:#3b424c;color:#cdd5e0}
+#guide-panel .gd-btn{background:#2f6fd6;color:#fff;text-align:center;font-weight:800;border-radius:9px;padding:8px;margin-top:10px;transition:transform .15s}
+#guide-panel .gd-btn.sm{padding:6px;margin-top:6px;font-size:9.5px}
+#guide-panel .gd-btn.dark{background:#3d7bf0}
+#guide-panel .press{transform:scale(.94);filter:brightness(.92)}
+#guide-panel .gd-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+#guide-panel .gd-grid i{font-style:normal;display:flex;align-items:flex-end;justify-content:center;height:46px;border-radius:9px;background:#fff;border:1px solid #e1e7f1;font-size:8.5px;font-weight:700;padding-bottom:4px;position:relative;transition:transform .15s}
+#guide-panel .gd-grid i::before{content:'';position:absolute;top:7px;left:50%;width:20px;height:20px;margin-left:-10px;border-radius:6px;background:#dbe8fb}
+#guide-panel .gd-grid i.hl{border-color:#2f6fd6;background:#eef4ff}
+#guide-panel .gd-chips{display:flex;gap:6px;justify-content:center;margin:4px 0 10px}
+#guide-panel .gd-chips b,#guide-panel .gd-cal b{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:10px;color:#fff}
+#guide-panel b.d{background:#ffd21f;color:#4a3b00}#guide-panel b.n{background:#5b8def}#guide-panel b.o{background:#e8590c}
+#guide-panel .gd-row{display:flex;gap:6px;justify-content:center}
+#guide-panel .gd-pill{padding:6px 9px;border-radius:999px;background:#fff;border:1px solid #d9e1ee;font-weight:700}
+#guide-panel .gd-pill.hl{border-color:#7c5cc4;color:#7c5cc4}
+#guide-panel .gd-list i{display:block;font-style:normal;background:#fff;border:1px solid #e1e7f1;border-radius:8px;padding:9px;margin-bottom:6px;font-weight:700}
+#guide-panel .gd-list i.hl{border-color:#2f6fd6;background:#eef4ff}
+#guide-panel .gd-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px 0}
+#guide-panel .gd-cal span{display:flex;flex-direction:column;align-items:center;height:28px;border-radius:5px}
+#guide-panel .gd-cal span.sel{background:#e3eefe;outline:1.5px solid #2f80ed}
+#guide-panel .gd-cal b{width:15px;height:15px;font-size:7.5px;margin-top:3px}
+#guide-panel .gd-cal em{font-style:normal;font-size:6px;color:#7c5cc4;font-weight:800;white-space:nowrap}
+#guide-panel .gd-toast{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(20,30,50,.88);color:#fff;border-radius:999px;padding:6px 11px;font-size:9px;white-space:nowrap;animation:gdIn .4s ease .3s both}
+#guide-panel .gd-caret{display:inline-block;width:1px;height:10px;background:#2f6fd6;margin-left:2px;vertical-align:middle;animation:gdBlink 1s steps(1) infinite}
+@keyframes gdBlink{50%{opacity:0}}
+#guide-panel .gd-track{position:relative;height:60px;margin:26px 4px 6px;display:flex;justify-content:space-between;align-items:center}
+#guide-panel .gd-track::before{content:'';position:absolute;left:4px;right:4px;top:50%;height:3px;background:#9fb3d1;border-radius:2px}
+#guide-panel .gd-track i{position:relative;width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #5b8def;z-index:1}
+#guide-panel .gd-train{position:absolute;top:50%;left:0;width:34px;height:13px;margin-top:-17px;border-radius:7px 9px 3px 3px;background:linear-gradient(#e8f0ff,#5b8def);animation:gdRun 4.6s linear infinite}
+@keyframes gdRun{from{left:2%}to{left:70%}}
+#guide-panel .gd-st{display:flex;justify-content:space-between;font-size:8px;font-weight:700;color:#5f6b7f}
+#guide-panel .gd-mini-cal{height:120px;border-radius:10px;background:#fff;border:1px solid #e1e7f1;background-image:radial-gradient(circle,#5b8def 3px,transparent 3.5px),radial-gradient(circle,#ffd21f 3px,transparent 3.5px);background-size:22px 22px,22px 22px;background-position:4px 4px,15px 15px}
+#guide-panel .gd-home{position:absolute;inset:0;background:linear-gradient(#7aa4e0,#f2b88c);padding:12px 9px}
+#guide-panel .gd-apps{display:flex;gap:10px;justify-content:center;margin-bottom:12px}
+#guide-panel .gd-apps i{width:24px;height:24px;border-radius:7px;background:rgba(255,255,255,.8)}
+#guide-panel .gd-widget{background:#fff;border-radius:14px;padding:7px 5px;animation:gdIn .5s ease}
+#guide-panel .gd-widget .gd-top{margin:0 0 4px;text-align:center}
 </style>
 </body>
 </html>
