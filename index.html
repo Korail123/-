@@ -1323,6 +1323,13 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeNxViewSettings()">닫기</button></div>
   </div>
 </div>
+<div id="nr-panel" class="dia-modal" style="z-index:420" onclick="if(event.target===this)closeNoticeReaders()">
+  <div class="dia-dialog ns-dialog nr-dialog">
+    <div class="dia-dialog-title">공지 읽은 사람</div>
+    <div id="nr-body"></div>
+    <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeNoticeReaders()">닫기</button></div>
+  </div>
+</div>
 <div id="guide-panel" class="dia-modal" style="z-index:405" onclick="if(event.target===this)closeGuidePanel()">
   <div class="dia-dialog ns-dialog guide-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="사용가이드" alt="" aria-hidden="true">철도비서 사용가이드</div>
@@ -3540,6 +3547,32 @@ function openGuidePanel() {
   document.querySelectorAll('#guide-panel .guide-sec[open]').forEach(function (d) { gdPlay(d.getAttribute('data-g')); });
 }
 function closeGuidePanel() { $('guide-panel').classList.remove('active'); gdStopAll(); }
+/* ===== 공지사항 읽은 사람: 공지를 열면 서버에 '읽음' 기록, 관리자는 읽은 사람 / 안 읽은 사람 목록 ===== */
+function noticeReadMark(id) {
+  var u = getCurrentUser();
+  if (!u || !u.token || u.employeeId === 'guest' || !id) return;
+  try { api({ action: 'noticeRead', employeeId: u.employeeId, token: u.token, id: String(id) }, function () {}); } catch (e) {}
+}
+function openNoticeReaders(id) {
+  var u = getCurrentUser();
+  var box = $('nr-body');
+  $('nr-panel').classList.add('active');
+  box.innerHTML = '<div class="nr-msg">불러오는 중…</div>';
+  api({ action: 'noticeReaders', employeeId: u.employeeId, token: u.token, id: String(id) }, function (r) {
+    if (!r || !r.success) { box.innerHTML = '<div class="nr-msg err">' + esc((r && r.message) || '불러오지 못했어요.') + '</div>'; return; }
+    var rd = r.read || [], ur = r.unread || [];
+    box.innerHTML =
+      '<div class="nr-sum"><b>' + rd.length + '</b>명 읽음 · <b>' + ur.length + '</b>명 안 읽음</div>' +
+      '<div class="nr-h">읽은 사람</div>' +
+      (rd.length ? '<div class="nr-list">' + rd.map(function (x) {
+        return '<div class="nr-row"><span>' + esc(x[0]) + '</span><small>' + esc(x[1]) + (x[2] > 1 ? ' · ' + x[2] + '번' : '') + '</small></div>';
+      }).join('') + '</div>' : '<div class="nr-msg">아직 없어요.</div>') +
+      '<div class="nr-h">안 읽은 사람</div>' +
+      (ur.length ? '<div class="nr-chips">' + ur.map(function (n) { return '<span>' + esc(n) + '</span>'; }).join('') + '</div>' : '<div class="nr-msg">모두 읽었어요.</div>') +
+      '<div class="nr-note">※ 공지를 직접 열어 본 사람만 읽음으로 기록돼요. 기록 기능을 넣기 전에 읽은 사람은 안 읽음으로 보여요.</div>';
+  });
+}
+function closeNoticeReaders() { $('nr-panel').classList.remove('active'); }
 /* ===== 접속 기록: 앱을 열거나 로그인할 때 서버에 '오늘 접속' 표시 (같은 폰에서는 10분에 한 번만) ===== */
 function rsSeenInfo() {
   var ua = navigator.userAgent || '';
@@ -5318,9 +5351,15 @@ function renderGroupTable() {
     return;
   }
   var me = getCurrentUser().employeeId;
+  /* 순서표 번호(1~24번) 순서대로 정렬. 순서 번호가 없는 사람은 맨 뒤에 이름순 */
+  function groupSeqOf(m) {
+    var v = m && (m.settings && m.settings.seq != null ? m.settings.seq : m.seq);
+    var n = parseInt(String(v == null ? '' : v).trim(), 10);
+    return isNaN(n) || n < 1 ? 9999 : n;
+  }
   var members = groupData.members.slice().sort(function (a, b) {
-    if (a.employeeId === me) return -1;
-    if (b.employeeId === me) return 1;
+    var sa = groupSeqOf(a), sb = groupSeqOf(b);
+    if (sa !== sb) return sa - sb;
     return String(a.name || a.employeeId).localeCompare(String(b.name || b.employeeId), 'ko');
   });
   /* 내 기기에서 직접 수정한 DIA/상태는 서버 근무표보다 우선해 이번 주 표에도 반영 */
@@ -5703,6 +5742,8 @@ function openGroupSwapSelector(mode) {
   if (!list) return;
   var members = (groupRows || []).filter(function (mem) {
     return mem && String(mem.employeeId) !== String(me && me.employeeId);
+  }).slice().sort(function (a, b) {   /* 선택 팝업은 이름 가나다순 (근무그룹 표는 순서표 번호순) */
+    return String(a.name || a.employeeId).localeCompare(String(b.name || b.employeeId), 'ko');
   });
   swapSelectableMembers = members;
   if (!members.length) {
@@ -7855,9 +7896,12 @@ function openBoardDetail(type, id) {
     $('board-detail-title').textContent = type === 'notice' ? noticeTitleOf(post) : (post.title || '건의사항');
     $('board-detail-content').textContent = post.content || post.body || '';
     var canEdit = type === 'notice' ? isBoardAdmin() : String(authorId) === String(getCurrentUser().employeeId);
-    $('board-detail-actions').innerHTML = canEdit
+    $('board-detail-actions').innerHTML = (type === 'notice' && isBoardAdmin()
+      ? '<button type="button" class="bp-act bp-readers" onclick="openNoticeReaders(decodeURIComponent(\'' + encodeURIComponent(String(id)) + '\'))">읽은 사람</button>' : '') +
+      (canEdit
       ? '<button type="button" class="bp-act" onclick="editActiveBoardPost()">수정</button><button type="button" class="bp-act bp-del" onclick="deleteActiveBoardPost()">삭제</button>'
-      : '';
+      : '');
+    if (type === 'notice') noticeReadMark(id);
   });
   if (type === 'notice') return; // 공지사항에는 댓글 기능을 제공하지 않음
   loadBoardComments(id);
@@ -11942,6 +11986,7 @@ function closeTopOverlayForBack() {
     ['trainq-panel', closeTrainQuery],
     ['png-panel', closePngPanel],
     ['anim-panel', closeAnimSettings],
+    ['nr-panel', closeNoticeReaders],
     ['guide-panel', closeGuidePanel],
     ['wg-panel', closeWidgetPanel],
     ['fav-panel', closeFavMenu],
@@ -14921,6 +14966,22 @@ html body #main-section .menu-grid > .menu-btn > span{display:flex;align-items:f
 #pass-pop-panel .pp-track.moving .pp-rail{border-top:0!important;height:2px!important;background:repeating-linear-gradient(90deg,#c3cedd 0 6px,transparent 6px 12px)!important;background-size:12px 2px!important;animation:ppRailMove .45s linear infinite}
 @keyframes ppRailMove{to{background-position:-12px 0}}
 #pass-pop-panel .pp-zone[hidden]{display:none!important}
+</style>
+<style id="notice-readers-style">
+#nr-panel .nr-dialog{max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow-y:auto}
+#nr-panel .nr-sum{font-size:14px;color:#33415c;margin:2px 0 10px}
+#nr-panel .nr-sum b{color:#2f6fd6;font-size:16px}
+#nr-panel .nr-h{font-size:12.5px;font-weight:800;color:#0b376d;margin:12px 0 6px}
+#nr-panel .nr-list{border:1px solid #e3e8f0;border-radius:12px;overflow:hidden}
+#nr-panel .nr-row{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-bottom:1px solid #eef1f6;font-size:13.5px;font-weight:700;color:#1b2b45}
+#nr-panel .nr-row:last-child{border-bottom:0}
+#nr-panel .nr-row small{font-weight:600;color:#7b879a;font-size:11.5px}
+#nr-panel .nr-chips{display:flex;flex-wrap:wrap;gap:6px}
+#nr-panel .nr-chips span{padding:5px 10px;border-radius:999px;background:#f1f3f7;color:#5f6b7f;font-size:12.5px;font-weight:700}
+#nr-panel .nr-msg{font-size:13px;color:#7b879a;padding:8px 2px}
+#nr-panel .nr-msg.err{color:#d93636}
+#nr-panel .nr-note{font-size:11.5px;color:#98a2b3;margin-top:12px;line-height:1.5}
+.bp-act.bp-readers{color:#2f6fd6;border-color:#c9dbf7}
 </style>
 </body>
 </html>
