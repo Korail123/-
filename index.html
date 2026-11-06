@@ -1273,7 +1273,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <div id="pass-panel" class="dia-modal" onclick="if(event.target===this)closePassSettings()">
   <div class="dia-dialog ns-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차통과알림" alt="" aria-hidden="true">열차통과/도착 알림</div>
-    <div class="pv2-sub">정한 역에 <b>곧 도착</b>·<b>통과</b>하면 알려줘요.</div>
+    <div class="pv2-sub">정한 역에 <b>진입 중</b>·<b>통과</b>하면 알려줘요.</div>
     <div id="pass-card" class="pv2">
       <div class="pv2-sec">
         <div class="pv2-h">열차 <small>파란색은 오늘 근무표 열차</small></div>
@@ -1287,7 +1287,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       </div>
       <div class="pv2-sec pv2-opts">
         <div class="pv2-h">알림</div>
-        <label class="pv2-tog"><input type="checkbox" id="pass-soon" onchange="passOptChanged()"><span>곧 도착</span></label>
+        <label class="pv2-tog"><input type="checkbox" id="pass-soon" onchange="passOptChanged()"><span>진입 중</span></label>
         <label class="pv2-tog"><input type="checkbox" id="pass-pass" onchange="passOptChanged()"><span>통과</span></label>
         <div id="pass-lead" class="pv2-lead"></div>
       </div>
@@ -1347,8 +1347,8 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <li>환경설정 › <b>열차통과/도착 알림</b>을 열어요.</li>
       <li><b>열차</b>에 알림 받을 열차번호를 추가해요. 파란색은 오늘 근무표 열차예요.</li>
       <li><b>역</b>에 알림 받을 역 이름을 추가해요. (예: 팔당)</li>
-      <li><b>곧 도착</b> · <b>통과</b> 중 받고 싶은 알림을 켜요.</li>
-      <li>열차가 그 역에 곧 도착하거나 통과하면 알림이 와요. 팝업의 NXLogis 버튼으로 바로 확인할 수 있어요.</li></ol></details>
+      <li><b>진입 중</b> · <b>통과</b> 중 받고 싶은 알림을 켜요.</li>
+      <li>NXLogis에 <b>앞 역 - 그 역 운행중</b>이 뜨면 <b>진입 중</b>, 그 역에 <b>실제 정차/통과 시각</b>이 찍히면 <b>통과</b> 알림이 와요.</li></ol></details>
     <details class="guide-sec" data-g="nx"><summary>열차 운휴 알림</summary><div class="gd-stage" data-g="nx"></div><ol>
       <li>환경설정 › <b>열차 운휴 알림</b>을 열어요.</li>
       <li><b>운휴 알림</b> 스위치를 켜요.</li>
@@ -3418,7 +3418,7 @@ var GD_SCENES = {
       '<div class="gd-top">환경설정</div><div class="gd-grid"><i>근무설정</i><i>출근알림</i><i>운휴 알림</i><i class="hl">통과/도착</i><i>위젯 연결</i><i>가이드</i></div>' },
     { cap: '② 알림 받을 열차번호 추가', tap: [80, 40], sel: '.gd-add.hl b', html: 'PASS1' },
     { cap: '③ 알림 받을 역 이름 추가', tap: [80, 60], sel: '.gd-add.hl b', html: 'PASS2' },
-    { cap: '④ 곧 도착 · 통과 중 받을 알림 켜기', tap: [70, 80], sel: '.gd-tog.hl', html: 'PASS3' },
+    { cap: '④ 진입 중 · 통과 중 받을 알림 켜기', tap: [70, 80], sel: '.gd-tog.hl', html: 'PASS3' },
     { cap: '⑤ 그 역에 다가오면 알림이 와요', tap: null, html: 'PASS_NOTI' }
   ],
   nx: [
@@ -3461,12 +3461,12 @@ function gdScreenHtml(sc) {
       '<div class="gd-add' + (sc.html === 'PASS1' ? ' hl' : '') + '"><i>' + (sc.html === 'PASS1' ? '1003<span class="gd-caret"></span>' : '열차번호 추가') + '</i><b>＋</b></div>' +
       '<div class="gd-lab">역</div><div class="gd-tags">' + (st3 ? '<span>팔당</span>' : '') + '</div>' +
       '<div class="gd-add' + (sc.html === 'PASS2' ? ' hl' : '') + '"><i>' + (sc.html === 'PASS2' ? '팔당<span class="gd-caret"></span>' : '역 이름 추가') + '</i><b>＋</b></div>' +
-      '<div class="gd-lab">알림</div><div class="gd-row"><span class="gd-tog' + (st3 ? ' hl on' : '') + '">곧 도착</span><span class="gd-tog' + (st3 ? ' on' : '') + '">통과</span></div>';
+      '<div class="gd-lab">알림</div><div class="gd-row"><span class="gd-tog' + (st3 ? ' hl on' : '') + '">진입 중</span><span class="gd-tog' + (st3 ? ' on' : '') + '">통과</span></div>';
   }
   if (sc.html === 'PASS_NOTI' || sc.html === 'NX_NOTI') {
     var nx = sc.html === 'NX_NOTI';
     return '<div class="gd-lock"><div class="gd-clock">07:42</div><div class="gd-noti"><b>철도비서</b><span>' +
-      (nx ? '⚠ 내일 1003 열차 운휴' : '1001 열차 팔당역 곧 도착 (3분 전)') + '</span><em>' + (nx ? '근무 열차가 운휴되었어요' : '도착 예정 07:45') + '</em></div></div>';
+      (nx ? '⚠ 내일 1003 열차 운휴' : '1001 열차 팔당역 진입 중') + '</span><em>' + (nx ? '근무 열차가 운휴되었어요' : '도심 - 팔당 운행중') + '</em></div></div>';
   }
   if (sc.html === 'NX1') return '<div class="gd-top">열차 운휴 알림</div><div class="gd-card"><div class="gd-row3"><span><b>운휴 알림</b><small>내 근무 열차가 운휴되면 알려드려요</small></span><i class="gd-sw"></i></div>' +
     '<div class="gd-pt">· 로그인 시 오늘~모레 조회 → 팝업</div><div class="gd-pt">· 앱이 꺼져도 7일간 10분마다 확인</div></div>';
@@ -9467,9 +9467,8 @@ function passEval(route, w, now) {
     : (passedIdx >= 0 ? Math.floor(passedIdx) : -1);
   var composing = passIsComposeWaiting(route);
   /* 통과 · 곧 도착 판단 (예정 시각은 쓰지 않음)
-     통과   ① 실제 통과 시각(drv_date2 = act)이 지정역이나 그 뒤 역에 찍힘
-            ② zone: 지정역보다 뒤 역에 정차 중, 또는 'A - B 운행중'의 A가 지정역이거나 그 뒤
-     곧 도착 ① zone: 'A - B 운행중'에서 B가 지정역 (A를 지나 지정역으로 가는 중), 또는 지정역에 정차(도착) 중
+     통과   실제 정차/통과 시각(drv_date2 = act)이 지정역에 찍힘 (지정역 기록이 빠졌으면 그 뒤 역의 기록으로)
+     진입 중 ① zone에 'A - B 운행중'이 보이면 바로 B로 진입 중 → B가 지정역이면 알림
             ② zone에 역 이름이 없을 때만: 바로 앞 역(i-1)에 실제 시각이 찍혔고 지정역은 아직 */
   var hasAct = function (x) { return x && x.act !== null && x.act !== undefined; };
   var zonePos = livePosition && !livePosition.estimated ? livePosition : null;
@@ -9477,8 +9476,7 @@ function passEval(route, w, now) {
   if (composing) { zoneSoon = false; }
   else if (zonePos) {
     var zk = Number(zonePos.idx);
-    if (zonePos.stopped) { if (zk > i) passed = true; zoneSoon = zk === i; }
-    else { if (zk >= i) passed = true; zoneSoon = zk === i - 1; }
+    if (!zonePos.stopped) zoneSoon = zk === i - 1;   /* 통과는 drv_date2(실제 시각)로만 판단 */
   } else {
     zoneSoon = i > 0 && hasAct(st[i - 1]);
   }
@@ -9623,7 +9621,7 @@ function passRemove(kind, i) { passCfg[kind].splice(i, 1); passRender(); passSav
 function passSetLead(m) { passCfg.lead = m; passRender(); passSaveSoon(); }
 function passOptChanged() {
   passCfg.soon = $('pass-soon').checked; passCfg.pass = $('pass-pass').checked;
-  if (!passCfg.soon && !passCfg.pass) showToast('곧 도착 · 통과가 모두 꺼져 있으면 알림이 오지 않아요.');
+  if (!passCfg.soon && !passCfg.pass) showToast('진입 중 · 통과가 모두 꺼져 있으면 알림이 오지 않아요.');
   passRender(); passSaveSoon();
 }
 function passSaveSoon() {
@@ -10445,7 +10443,7 @@ function passTestLiveNow() {
   if (!stations.length) { report('먼저 알림 받을 역을 추가해주세요.', true); showToast('알림 받을 역을 먼저 설정해주세요.'); return; }
   if (invalidTrains.length) { report('열차번호 형식을 확인해주세요: ' + invalidTrains.join(', '), true); showToast('열차번호는 숫자 또는 영문+숫자 형식으로 입력해주세요.'); return; }
   if (!list.length) { report('오늘 근무표 열차 또는 직접 지정한 열차번호가 없습니다.', true); showToast('감시할 열차번호를 추가해주세요.'); return; }
-  if (!c.soon && !c.pass) { report('곧 도착과 통과 알림이 모두 꺼져 있습니다. 설정에서 하나 이상 켜주세요.', true); return; }
+  if (!c.soon && !c.pass) { report('진입 중과 통과 알림이 모두 꺼져 있습니다. 설정에서 하나 이상 켜주세요.', true); return; }
 
   /* 중복 열차 제거 */
   var seen = {};
@@ -10620,18 +10618,19 @@ function passDraw(d, quiet) {
   badge.className = 'pp-badge k-' + ((d.composing || d.waiting) ? 'compose' : kind);
   badge.textContent = d.composing ? '조성대기' : d.phase === 'boarding' ? '운행대기' : d.phase === 'before' ? '출발 전' : d.phase === 'done' ? '운행 종료' : d.waiting ? '연결대기' : (d.overview ? '실시간 열차 위치' :
     (kind === 'pass' ? '지정역 통과' :
-      (d.approaching ? '지정역 접근 중' : kind === 'soon' ? '곧 도착' : '현재 위치')));
+      (d.approaching ? '지정역 진입 중' : kind === 'soon' ? '진입 중' : '현재 위치')));
   $('pp-title').innerHTML = '<b>' + esc(d.train) + '</b>열차';
   var currentLabel = d.currentText || d.station || '-';
   var dateLabel = d.date ? String(d.date).replace(/-/g, '.') : '';
-  $('pp-date').textContent = '현재 위치 · ' + currentLabel + (dateLabel ? '  |  ' + dateLabel : '');
+  $('pp-date').textContent = dateLabel;   /* 현재 위치는 아래 운행 정보 › 운행 상태로 옮김 */
   var rows = [];
   if (!d.overview) {
     rows.push('<div class="pp-row"><span>알림 대상 역</span><b>' + esc(d.station || '-') + '</b></div>');
+    rows.push('<div class="pp-row"><span>운행 상태</span><b>' + esc(d.composing ? '조성 대기 중' : (d.zone || currentLabel || '-')) + '</b></div>');
     rows.push('<div class="pp-row"><span>지정역까지</span><b>' + (d.passed ? '통과 완료' : (d.remainingStops == null ? '-' : d.remainingStops + '정거장')) + '</b></div>');
     if (d.composing) rows.push('<div class="pp-row"><span>현재 상태</span><b>조성대기</b></div>');
   } else {
-    rows.push('<div class="pp-row"><span>운행 상태</span><b>' + (d.composing ? '조성 대기 중' : d.phase === 'boarding' ? '운행 대기 중' : d.phase === 'before' ? '출발 전' : d.phase === 'done' ? '운행 종료' : d.waiting ? '연결 대기 중 (출발 전)' : (d.stopped ? '역 정차 중' : '역 사이 운행 중')) + '</b></div>');
+    rows.push('<div class="pp-row"><span>운행 상태</span><b>' + (d.composing ? '조성 대기 중' : d.phase === 'boarding' ? '운행 대기 중' : d.phase === 'before' ? '출발 전' : d.phase === 'done' ? '운행 종료' : d.waiting ? '연결 대기 중 (출발 전)' : esc(d.zone || currentLabel || (d.stopped ? '역 정차 중' : '역 사이 운행 중'))) + '</b></div>');
     rows.push('<div class="pp-row"><span>종착역까지</span><b>' + (d.terminalStops == null ? '-' : (d.terminalStops === 0 ? '종착역 도착' : (d.terminalName ? esc(d.terminalName) + ' · ' : '') + d.terminalStops + '정거장')) + '</b></div>');
   }
   if (kind === 'pass' || (kind === 'now' && d.passed)) {
@@ -10650,7 +10649,8 @@ function passDraw(d, quiet) {
       dlEl.className = 'pp-delay ' + (dl > 0 ? 'late' : dl < 0 ? 'early' : 'ontime');
     }
   }
-  $('pp-zone').textContent = (d.note ? d.note + ' ' : '') + (d.zone ? 'NXLogis: ' + d.zone : '');
+  $('pp-zone').textContent = d.note || '';
+  $('pp-zone').hidden = !d.note;
   $('pass-pop-panel').classList.add('active');
   passReplay();
   if (!quiet) { try { alarmBeep(); } catch (e) {} try { appVibrate([400, 150, 400, 150, 400]); } catch (e) {} }
@@ -10735,6 +10735,7 @@ function passReplay() {
 
   if (!d.waiting) train.classList.add('run'); else train.classList.remove('run');
   if (coupling) {
+    track.classList.remove('moving');
     train.hidden = true;
     if (compose) {
       passBuildCompose(compose, trainType, d.train);
@@ -10758,7 +10759,10 @@ function passReplay() {
     { transform: 'translateX(' + xStart + 'px)' },
     { transform: 'translateX(' + xEnd + 'px)' }
   ], { duration: dur, easing: ease, fill: 'forwards' });
-  passPopTimers.push(setTimeout(function () { train.classList.remove('run'); }, dur + 50));
+  /* 역 사이를 달리는 중이면 도착 후에도 계속 달리는 모습(바퀴 흔들림 + 풍경 · 선로가 뒤로 흐름) */
+  var keepRun = !passedNow && !d.waiting && d.phase !== 'before' && d.phase !== 'done' && d.phase !== 'boarding' && !d.stopped;
+  track.classList.toggle('moving', keepRun);
+  if (!keepRun) passPopTimers.push(setTimeout(function () { train.classList.remove('run'); }, dur + 50));
   if (passedNow && tgt) passPopTimers.push(setTimeout(function () { tgt.classList.add('done'); }, dur));
 }
 function closePassPop() {
@@ -14887,6 +14891,15 @@ html body #main-section .menu-grid > .menu-btn > span{display:flex;align-items:f
 <style id="icons3-style">
 .ico-lab{display:inline-flex!important;align-items:center;gap:6px}
 .ico-lab .lab-ico{width:26px;height:26px;object-fit:contain;flex:0 0 auto}
+</style>
+<style id="pp-moving-style">
+/* 열차운행조회: 역 사이 운행 중이면 풍경과 선로가 계속 뒤로 흘러 달리는 모습 */
+#pass-pop-panel .pp-track{overflow:hidden}
+#pass-pop-panel .pp-track.moving .pp-hills{right:auto!important;width:200%!important;background:radial-gradient(48px 26px at 18% 100%,#d4e8d0 98%,transparent 100%),radial-gradient(64px 22px at 50% 100%,#dcedd8 98%,transparent 100%),radial-gradient(52px 24px at 82% 100%,#d4e8d0 98%,transparent 100%)!important;background-size:50% 100%!important;background-repeat:repeat-x!important;animation:ppHillMove 10s linear infinite}
+@keyframes ppHillMove{to{transform:translateX(-50%)}}
+#pass-pop-panel .pp-track.moving .pp-rail{border-top:0!important;height:2px!important;background:repeating-linear-gradient(90deg,#c3cedd 0 6px,transparent 6px 12px)!important;background-size:12px 2px!important;animation:ppRailMove .45s linear infinite}
+@keyframes ppRailMove{to{background-position:-12px 0}}
+#pass-pop-panel .pp-zone[hidden]{display:none!important}
 </style>
 </body>
 </html>
