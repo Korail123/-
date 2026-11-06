@@ -1331,9 +1331,15 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <li>회원가입 후 로그인해요.</li>
       <li>환경설정 › <b>근무설정</b>에서 근무 패턴과 기준일을 정해요.</li>
       <li>메인화면 › <b>근무표</b>에서 이번 달 근무를 확인해요.</li></ol></details>
-    <details class="guide-sec" data-g="change"><summary>근무 변경 · 교환</summary><div class="gd-stage" data-g="change"></div><ol>
-      <li>근무표에서 날짜를 눌러 근무를 바꿔요.</li>
-      <li>교환한 근무는 상대 이름이 함께 기록되고, 마이페이지 › 근무 변경 기록에서 다시 볼 수 있어요.</li></ol></details>
+    <details class="guide-sec" data-g="change"><summary>근무 변경</summary><div class="gd-stage" data-g="change"></div><ol>
+      <li><b>근무표</b>에서 바꿀 날짜를 <b>꾹(길게)</b> 눌러요.</li>
+      <li>근무 변경 창에서 바꾼 사람 이름, DIA 번호(또는 대기충당 · 휴무충당), 휴가 · 근무 상태를 입력해요.</li>
+      <li><b>저장</b>을 누르면 그 날짜에 <b>*</b> 표시가 붙고 바로 자동 백업돼요. 되돌리려면 '원래 근무로 되돌리기'.</li></ol></details>
+    <details class="guide-sec" data-g="swap"><summary>근무 교환</summary><div class="gd-stage" data-g="swap"></div><ol>
+      <li>하단 <b>근무그룹</b> › <b>근무교환</b> 버튼을 눌러요.</li>
+      <li>'누구와 바꾸시겠습니까?'에서 교환할 그룹원을 골라요.</li>
+      <li>내 근무표와 상대 근무표를 나란히 보면서 <b>시작일 · 종료일</b>을 눌러 기간을 골라요.</li>
+      <li><b>교환</b>을 누르면 그 기간의 근무가 서로 바뀌고 <b>*</b> 표시가 붙어요.</li></ol></details>
     <details class="guide-sec" data-g="train"><summary>열차운행정보 조회</summary><div class="gd-stage" data-g="train"></div><ol>
       <li>메인화면 › <b>열차운행정보 조회</b>에서 날짜와 열차번호를 넣어요.</li>
       <li>열차를 누르면 바로 새로고침되고, 30초마다 자동으로 갱신돼요.</li></ol></details>
@@ -3360,12 +3366,25 @@ var GD_SCENES = {
     { cap: '④ 근무표에 한 달 근무가 채워져요', tap: null, html: 'CAL' }
   ],
   change: [
-    { cap: '① 근무표에서 바꿀 날짜를 눌러요', tap: [64, 58], html: 'CAL' },
-    { cap: '② 근무를 고르거나 교환을 눌러요', tap: [70, 72], html:
-      '<div class="gd-top">11월 12일 (목)</div><div class="gd-chips"><b class="d">주</b><b class="n">야</b><b class="n">비</b><b class="o">휴</b></div><div class="gd-row"><span class="gd-pill">휴가</span><span class="gd-pill hl">근무 교환</span></div>' },
-    { cap: '③ 교환 상대를 골라요', tap: [50, 50], html:
-      '<div class="gd-top">교환 상대</div><div class="gd-list"><i>김철수 · 주</i><i class="hl">이영희 · 야</i><i>박민수 · 휴</i></div>' },
-    { cap: '④ 달력에 ⇄ 상대 이름이 표시돼요', tap: null, html: 'CAL_SWAP' }
+    { cap: '① 근무표에서 바꿀 날짜를 꾹 눌러요', tap: [64, 58], long: true, html: 'CAL' },
+    { cap: '② 바꾼 사람 · DIA(대기충당 · 휴무충당) · 상태 입력', tap: [50, 50], sel: '.gd-chip2.hl', html:
+      '<div class="gd-top">근무 변경 <small>11월 12일</small></div><div class="gd-lab">누구와 근무를 변경했나요?</div><div class="gd-in">이영희<span class="gd-caret"></span></div>' +
+      '<div class="gd-lab">DIA 번호</div><div class="gd-row2"><div class="gd-in sm">12602</div><span class="gd-chip2">대기충당</span><span class="gd-chip2 hl">휴무충당</span></div>' +
+      '<div class="gd-lab">휴가 / 근무 상태</div><div class="gd-st3"><i>연차</i><i>병가</i><i>휴무</i></div>' },
+    { cap: '③ 저장을 눌러요', tap: [70, 88], sel: '.gd-btn', html:
+      '<div class="gd-top">근무 변경 <small>11월 12일</small></div><div class="gd-lab">누구와 근무를 변경했나요?</div><div class="gd-in">이영희</div>' +
+      '<div class="gd-lab">DIA 번호</div><div class="gd-row2"><div class="gd-in sm">12602</div><span class="gd-chip2">대기충당</span><span class="gd-chip2 on">휴무충당</span></div>' +
+      '<div class="gd-btns2"><span>취소</span><span class="gd-btn">저장</span></div>' },
+    { cap: '④ 바뀐 날짜에 * 표시 · 바로 자동 백업', tap: null, html: 'CAL_STAR' }
+  ],
+  swap: [
+    { cap: '① 근무그룹 › 근무교환 버튼', tap: [70, 18], sel: '.gd-pill.hl', html:
+      '<div class="gd-top">근무그룹</div><div class="gd-row" style="justify-content:flex-end;margin-bottom:8px"><span class="gd-pill">비교하기</span><span class="gd-pill hl">근무교환</span></div>' +
+      '<div class="gd-table"><i>송주영</i><b class="d">주</b><b class="n">야</b><b class="o">휴</b><i>김명재</i><b class="o">휴</b><b class="d">주</b><b class="n">야</b><i>박유진</i><b class="n">야</b><b class="n">비</b><b class="o">휴</b></div>' },
+    { cap: '② 교환할 그룹원을 골라요', tap: [30, 40], sel: '.gd-ppl .hl', html:
+      '<div class="gd-top">누구와 바꾸시겠습니까?</div><div class="gd-ppl"><i class="hl">김명재</i><i>김정훈</i><i>김현서</i><i>민현주</i><i>박유진</i><i>안도현</i><i>워니</i><i>이보아</i><i>이용호</i></div>' },
+    { cap: '③ 두 근무표를 보며 시작일 · 종료일 선택', tap: [30, 58], sel: '.gd-two .pick2', html: 'TWO' },
+    { cap: '④ 교환하면 서로 바뀌고 * 표시', tap: null, html: 'TWO_DONE' }
   ],
   train: [
     { cap: '① 메인화면 › 열차운행정보 조회', tap: [76, 52], html:
@@ -3393,6 +3412,7 @@ function gdCal(opt) {
   var L = '휴휴주야비휴휴주주야비휴휴주야비주휴휴주주야비휴휴주야비주휴', cls = { '주': 'd', '야': 'n', '비': 'n', '휴': 'o' }, h = '';
   for (var i = 0; i < 28; i++) {
     var c = L[i], sw = opt === 'swap' && i === 11;
+    if (opt === 'star' && i === 11) { h += '<span class="sel"><b class="o">*휴</b><em>휴무충당</em></span>'; continue; }
     h += '<span class="' + (i === 11 && opt !== 'btn' && opt !== 'saved' ? 'sel ' : '') + '"><b class="' + cls[c] + '">' + (sw ? '야' : c) + '</b>' + (sw ? '<em>⇄이영희</em>' : '') + '</span>';
   }
   return '<div class="gd-top">2026. 11</div><div class="gd-cal">' + h + '</div>' +
@@ -3404,6 +3424,20 @@ function gdScreenHtml(sc) {
   if (sc.html === 'CAL_SWAP') return gdCal('swap');
   if (sc.html === 'CAL_BTN') return gdCal('btn');
   if (sc.html === 'CAL_SAVED') return gdCal('saved');
+  if (sc.html === 'CAL_STAR') return gdCal('star');
+  if (sc.html === 'TWO' || sc.html === 'TWO_DONE') {
+    var me = '주주야비휴휴주주야비휴휴주야', ot = '휴야비휴주주야비휴휴주야비휴', cl = { '주': 'd', '야': 'n', '비': 'n', '휴': 'o' }, done = sc.html === 'TWO_DONE';
+    function side(name, L, O) {
+      var h = '';
+      for (var i = 0; i < 14; i++) {
+        var sw = done && i >= 2 && i <= 4, c = sw ? O[i] : L[i];
+        h += '<span class="' + (i === 2 ? 'pick ' : '') + (i === 4 ? 'pick pick2 ' : '') + (i > 2 && i < 4 ? 'pick ' : '') + '"><b class="' + cl[c] + '">' + (sw ? '*' : '') + c + '</b></span>';
+      }
+      return '<div class="gd-side"><div class="gd-sn">' + name + '</div><div class="gd-mc">' + h + '</div></div>';
+    }
+    return '<div class="gd-top">근무표 비교 및 교환</div><div class="gd-two">' + side('내 근무표', me, ot) + side('김명재', ot, me) + '</div>' +
+      (done ? '<div class="gd-toast">교환했어요</div>' : '<div class="gd-btn sm">교환</div>');
+  }
   if (sc.html === 'TRACK') return '<div class="gd-top">1001 · 운행 중</div><div class="gd-track"><i></i><i></i><i></i><i></i><b class="gd-train"></b></div><div class="gd-st"><span>서울</span><span>용산</span><span>공덕</span><span>행신</span></div>';
   if (sc.html === 'HOME') return '<div class="gd-home"><div class="gd-apps"><i></i><i></i><i></i><i></i></div><div class="gd-widget">' + gdCal('') + '</div></div>';
   return sc.html;
@@ -3432,9 +3466,10 @@ function gdPlay(key) {
         if (tg && ph) { var a = tg.getBoundingClientRect(), b = ph.getBoundingClientRect(); x = (a.left + a.width / 2 - b.left) + 'px'; y = (a.top + a.height / 2 - b.top) + 'px'; }
         fin.classList.add('show'); fin.style.left = x; fin.style.top = y;
       }, 250);
-      setTimeout(function () { fin.classList.add('tap'); var hl = scr.querySelector(sc.sel || '.hl, .gd-btn, .gd-cal .sel'); if (hl) hl.classList.add('press'); }, 1250);
+      if (sc.long) setTimeout(function () { fin.classList.add('hold'); }, 1100);
+      setTimeout(function () { fin.classList.add(sc.long ? 'tapl' : 'tap'); var hl = scr.querySelector(sc.sel || '.hl, .gd-btn, .gd-cal .sel'); if (hl) hl.classList.add('press'); }, sc.long ? 2100 : 1250);
     }
-    var wait = sc.tap ? 2300 : 2600;
+    var wait = sc.tap ? (sc.long ? 2900 : 2400) : 2600;
     gdTimers[key] = setTimeout(function () { i = (i + 1) % list.length; show(); }, wait);
   }
   show();
@@ -3642,7 +3677,7 @@ function wgZip(entries) {
 /* KWGT 비트맵 수식: 달력 그림 주소 + 보고 있는 달(mo) + 버전(v)
    v = 작은 '버전' 주소의 값 → 근무표가 바뀌어 그림이 새로 올라갈 때만 바뀌므로, 그때만 그림을 새로 받음 */
 function wgBitmapFormula() {
-  return window.wgPngNow + '&m=$gv(mo)$&v=$wg("' + window.wgVerNow + '", json, .v)$';
+  return window.wgPngNow + '&m=$gv(mo)$&v=$wg("' + window.wgVerNow + '", json, .v)$-$gv(rf)$';
 }
 function wgKwgtPreset(imgUrl) {
   var S = '$mu(min, si(rwidth), si(rheight))$';
@@ -3655,7 +3690,8 @@ function wgKwgtPreset(imgUrl) {
   f(cal, 'bitmap_bitmap', wgBitmapFormula());
   f(cal, 'bitmap_width', S); f(cal, 'bitmap_height', S);
   f(cal, 'position_padding_left', '$' + ox + '$'); f(cal, 'position_padding_top', '$' + oy + '$');
-  cal.internal_events = [{ type: 'SINGLE_TAP', action: 'SWITCH_GLOBAL', 'switch': 'mo', switch_text: '0' }];
+  /* 달력을 누르면 rf가 1씩 커짐 → 주소가 바뀌어 그림을 바로 새로 받음 */
+  cal.internal_events = [{ type: 'SINGLE_TAP', action: 'SWITCH_GLOBAL', 'switch': 'rf', switch_text: '$gv(rf)+1$' }];
   function tap(title, cx, val) {
     var m = base('ShapeModule', title);
     m.shape_type = 'RECT';
@@ -3670,7 +3706,10 @@ function wgKwgtPreset(imgUrl) {
     preset_info: { version: 13, title: '철도비서 근무표 달력', description: '철도비서 4x4 근무표 달력 (‹ › 로 앞뒤 6개월)', author: '철도비서', email: '', features: '', release: 0, locked: false, pflags: 0 },
     preset_root: {
       internal_type: 'RootLayerModule',
-      globals_list: { mo: { index: 1, type: 'TEXT', title: 'mo', description: '보고 있는 달 (0 = 이번 달)', global_formula: '', value: '0' } },
+      globals_list: {
+        mo: { index: 1, type: 'TEXT', title: 'mo', description: '보고 있는 달 (0 = 이번 달)', global_formula: '', value: '0' },
+        rf: { index: 2, type: 'TEXT', title: 'rf', description: '달력을 누를 때마다 1씩 커짐 (새로고침)', global_formula: '', value: '0' }
+      },
       viewgroup_items: [cal, tap('이전 달', 0.321, '$mu(max, gv(mo)-1, -6)$'), tap('다음 달', 0.679, '$mu(min, gv(mo)+1, 6)$')]
     }
   };
@@ -14711,6 +14750,37 @@ html body #main-section .menu-grid > .menu-btn > span{display:flex;align-items:f
 #guide-panel .gd-apps i{width:24px;height:24px;border-radius:7px;background:rgba(255,255,255,.8)}
 #guide-panel .gd-widget{background:#fff;border-radius:14px;padding:7px 5px;animation:gdIn .5s ease}
 #guide-panel .gd-widget .gd-top{margin:0 0 4px;text-align:center}
+#guide-panel .gd-finger.hold{background:rgba(47,111,214,.5);box-shadow:0 0 0 0 rgba(47,111,214,.45);animation:gdHold 1s ease-out forwards}
+@keyframes gdHold{to{box-shadow:0 0 0 14px rgba(47,111,214,0)}}
+#guide-panel .gd-finger.tapl{animation:gdTap .5s ease}
+#guide-panel .gd-finger.hold::after{content:'꾹';position:absolute;left:50%;top:-16px;transform:translateX(-50%);font-size:9px;font-weight:800;color:#2f6fd6;white-space:nowrap}
+#guide-panel .gd-top small{font-weight:600;color:#7b879a;margin-left:4px}
+#guide-panel .gd-lab{font-size:8.5px;font-weight:800;color:#33415c;margin:2px 0 4px}
+#guide-panel .gd-in.sm{flex:1;margin:0;padding:6px}
+#guide-panel .gd-row2{display:flex;gap:4px;align-items:center;margin-bottom:7px}
+#guide-panel .gd-chip2{font-size:8px;font-weight:800;padding:6px 5px;border-radius:7px;background:#fff;border:1px solid #d9e1ee;white-space:nowrap}
+#guide-panel .gd-chip2.hl{border-color:#2f6fd6}
+#guide-panel .gd-chip2.on{background:#2f6fd6;color:#fff;border-color:#2f6fd6}
+#guide-panel .gd-st3{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+#guide-panel .gd-st3 i{font-style:normal;text-align:center;background:#fff;border:1px solid #d9e1ee;border-radius:7px;padding:6px 0;font-weight:700}
+#guide-panel .gd-btns2{display:flex;gap:6px;justify-content:flex-end;margin-top:14px}
+#guide-panel .gd-btns2 span{padding:7px 12px;border-radius:999px;border:1px solid #d9e1ee;font-weight:800;background:#fff}
+#guide-panel .gd-btns2 .gd-btn{margin:0;border:0;background:#2f6fd6;color:#fff}
+#guide-panel .gd-table{display:grid;grid-template-columns:44px repeat(3,1fr);gap:5px 3px;align-items:center;background:#fff;border:1px solid #e1e7f1;border-radius:9px;padding:7px}
+#guide-panel .gd-table i{font-style:normal;font-weight:800;color:#2f4f8f;font-size:9px}
+#guide-panel .gd-table b{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;width:20px;height:20px;font-size:8.5px;justify-self:center}
+#guide-panel .gd-ppl{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+#guide-panel .gd-ppl i{font-style:normal;text-align:center;background:#fff;border:1px solid #e1e7f1;border-radius:8px;padding:9px 0;font-weight:700;transition:transform .15s}
+#guide-panel .gd-ppl i.hl{border-color:#2f6fd6;background:#eef4ff}
+#guide-panel .gd-two{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+#guide-panel .gd-side{min-width:0;overflow:hidden;background:#fff;border:1px solid #e1e7f1;border-radius:8px;padding:4px 1px}
+#guide-panel .gd-sn{font-size:7.5px;font-weight:800;text-align:center;margin-bottom:3px}
+#guide-panel .gd-mc{display:grid;grid-template-columns:repeat(7,1fr);gap:2px 0}
+#guide-panel .gd-mc span{display:flex;justify-content:center;padding:2px 0;border-radius:4px}
+#guide-panel .gd-mc span.pick{background:#e3eefe}
+#guide-panel .gd-mc b{display:inline-flex;align-items:center;justify-content:center;width:9px;height:9px;border-radius:50%;font-size:5px;color:#fff;letter-spacing:-.5px}
+#guide-panel .gd-mc b.d{color:#4a3b00}
 </style>
+<style id="guide-anim-style-end"></style>
 </body>
 </html>
