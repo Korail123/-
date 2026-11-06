@@ -949,6 +949,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <button type="button" class="set-tile" onclick="openNxViewSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="NXLogis조회" alt="" aria-hidden="true" decoding="async"><span class="set-label">NXLogis<br>조회 방식</span></button>
     <button type="button" class="set-tile" onclick="openFavMenu()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="즐겨찾기메뉴" alt="" aria-hidden="true" decoding="async"><span class="set-label">즐겨찾기 메뉴</span></button>
     <button type="button" class="set-tile" onclick="openWidgetPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무표" alt="" aria-hidden="true" decoding="async"><span class="set-label">위젯 연결</span></button>
+    <button type="button" class="set-tile" onclick="openGuidePanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="규정자료" alt="" aria-hidden="true" decoding="async"><span class="set-label">철도비서 가이드</span></button>
     <button type="button" class="set-tile" onclick="openAnimSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="애니메이션효과" alt="" aria-hidden="true" decoding="async"><span class="set-label">애니메이션 효과</span><small id="anim-sub" class="set-badge" hidden>OFF</small></button>
     <button type="button" class="set-tile" onclick="openBriefingSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="오늘의브리핑" alt="" aria-hidden="true" decoding="async"><span class="set-label">오늘의 브리핑</span><small id="brief-sub" class="set-badge" hidden>ON</small></button>
     <button type="button" class="set-tile danger" onclick="openResetAllDataPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="전체데이터초기화" alt="" aria-hidden="true" decoding="async"><span class="set-label">데이터 초기화</span></button>
@@ -1320,6 +1321,29 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
     <div class="nxv-note">열차통과/도착 알림 팝업의 NXLogis 버튼은 어느 방식이든 사이트로 바로 열려요. 이 설정은 이 폰에만 저장돼요.</div>
     <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeNxViewSettings()">닫기</button></div>
+  </div>
+</div>
+<div id="guide-panel" class="dia-modal" style="z-index:405" onclick="if(event.target===this)closeGuidePanel()">
+  <div class="dia-dialog ns-dialog guide-dialog">
+    <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="규정자료" alt="" aria-hidden="true">철도비서 가이드</div>
+    <div class="guide-dev">관리자 미리보기 · 다른 사용자에게는 '개발 중입니다'로 보여요</div>
+    <details class="guide-sec" open><summary>처음 시작하기</summary><ol>
+      <li>회원가입 후 로그인해요.</li>
+      <li>환경설정 › <b>근무설정</b>에서 근무 패턴과 기준일을 정해요.</li>
+      <li>메인화면 › <b>근무표</b>에서 이번 달 근무를 확인해요.</li></ol></details>
+    <details class="guide-sec"><summary>근무 변경 · 교환</summary><ol>
+      <li>근무표에서 날짜를 눌러 근무를 바꿔요.</li>
+      <li>교환한 근무는 상대 이름이 함께 기록되고, 마이페이지 › 근무 변경 기록에서 다시 볼 수 있어요.</li></ol></details>
+    <details class="guide-sec"><summary>열차운행정보 조회</summary><ol>
+      <li>메인화면 › <b>열차운행정보 조회</b>에서 날짜와 열차번호를 넣어요.</li>
+      <li>열차를 누르면 바로 새로고침되고, 30초마다 자동으로 갱신돼요.</li></ol></details>
+    <details class="guide-sec"><summary>홈화면 위젯 (KWGT)</summary><ol>
+      <li>환경설정 › <b>위젯 연결</b> › 위젯 주소 만들기.</li>
+      <li>KWGT에서 프리셋을 들여오거나 이미지 항목을 추가해요.</li>
+      <li>비트맵 수식에 <b>비트맵 수식 복사</b>한 것을 붙여넣고 저장해요.</li></ol></details>
+    <details class="guide-sec"><summary>근무표 PNG 저장</summary><ol>
+      <li>근무표 달력 아래 <b>근무표 PNG 저장</b>을 누르면 이미지로 저장돼요.</li></ol></details>
+    <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeGuidePanel()">닫기</button></div>
   </div>
 </div>
 <div id="wg-panel" class="dia-modal" style="z-index:405" onclick="if(event.target===this)closeWidgetPanel()">
@@ -3324,6 +3348,13 @@ function rsWidgetMonth(y, m, cb) {
    - 환경설정 › 위젯 연결에서 '위젯 주소'를 만들면, 앱을 열 때마다 어제~약 45일 근무 요약(구분·색·다이아·교환상대)을 서버에 올림
    - KWGT가 그 주소를 읽어 오늘 · 내일 · 7일 근무를 보여줌 (오늘 날짜는 서버가 한국시간으로 계산)
    - 위젯 연결을 끄면 서버의 주소와 근무 요약을 지움 */
+/* 철도비서 가이드: 아직 개발 중 → 관리자(199878 송주영)만 열 수 있고, 다른 사용자는 안내만 */
+function openGuidePanel() {
+  if (!(typeof isBoardAdmin === 'function' && isBoardAdmin())) { showToast('개발 중입니다.'); return; }
+  $('guide-panel').classList.add('active');
+  favLiftOverlays();
+}
+function closeGuidePanel() { $('guide-panel').classList.remove('active'); }
 var RS_FEED_TONE = { day: '#e5a800', night: '#1a73e8', off: '#e53935', status: '#e53935' };
 function rsFeedKey() { var u = getCurrentUser(); return u && u.employeeId ? 'rs_feed_' + u.employeeId : ''; }
 function rsFeedOn() { var k = rsFeedKey(); try { return !!(k && localStorage.getItem(k)); } catch (e) { return false; } }
@@ -11680,6 +11711,7 @@ function closeTopOverlayForBack() {
     ['trainq-panel', closeTrainQuery],
     ['png-panel', closePngPanel],
     ['anim-panel', closeAnimSettings],
+    ['guide-panel', closeGuidePanel],
     ['wg-panel', closeWidgetPanel],
     ['fav-panel', closeFavMenu],
     ['nxview-panel', closeNxViewSettings],
@@ -14518,5 +14550,12 @@ html body #main-section .menu-grid > .menu-btn > span{display:flex;align-items:f
 #wg-panel .wg-lab small{font-weight:600;color:#17a85a;margin-left:6px}
 </style>
 <style id="widget-panel-style-end"></style>
+<style id="guide-panel-style">
+#guide-panel .guide-dialog{max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+#guide-panel .guide-dev{font-size:12px;color:#b54708;background:#fff8eb;border:1px solid #fde3b4;border-radius:10px;padding:7px 10px;margin:2px 0 10px}
+#guide-panel .guide-sec{border:1px solid #e3e8f0;border-radius:12px;padding:10px 12px;margin-bottom:8px;background:#fff}
+#guide-panel .guide-sec summary{font-size:14px;font-weight:800;color:#0b376d;cursor:pointer}
+#guide-panel .guide-sec ol{margin:8px 0 2px;padding-left:20px;font-size:13px;line-height:1.6;color:#33415c}
+</style>
 </body>
 </html>
