@@ -1225,6 +1225,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div id="brief-hello" class="brief-hello"></div>
     <div id="brief-weather" class="brief-weather"></div>
     <div id="brief-duty" class="brief-duty"></div>
+    <div id="brief-mates" class="brief-mates" hidden></div>
     <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeBriefing()">확인</button></div>
   </div>
 </div>
@@ -5351,15 +5352,10 @@ function renderGroupTable() {
     return;
   }
   var me = getCurrentUser().employeeId;
-  /* 순서표 번호(1~24번) 순서대로 정렬. 순서 번호가 없는 사람은 맨 뒤에 이름순 */
-  function groupSeqOf(m) {
-    var v = m && (m.settings && m.settings.seq != null ? m.settings.seq : m.seq);
-    var n = parseInt(String(v == null ? '' : v).trim(), 10);
-    return isNaN(n) || n < 1 ? 9999 : n;
-  }
+  /* 나는 맨 위, 나머지는 이름 가나다순 */
   var members = groupData.members.slice().sort(function (a, b) {
-    var sa = groupSeqOf(a), sb = groupSeqOf(b);
-    if (sa !== sb) return sa - sb;
+    if (a.employeeId === me) return -1;
+    if (b.employeeId === me) return 1;
     return String(a.name || a.employeeId).localeCompare(String(b.name || b.employeeId), 'ko');
   });
   /* 내 기기에서 직접 수정한 DIA/상태는 서버 근무표보다 우선해 이번 주 표에도 반영 */
@@ -5660,6 +5656,77 @@ function briefTodayDuty() {
   var nextDay = !isNaN(parseHM(start)) && !isNaN(parseHM(end)) && parseHM(end) <= parseHM(start);
   return { off: false, dia: diaNo, kind: kindMap[type] || type, start: start, end: end, nextDay: nextDay, trains: trains };
 }
+/* 오늘의 브리핑: 내 출근 · 퇴근 시각 앞뒤 30분 안에 출근하거나 퇴근하는 그룹원
+   - 어제 야간 근무자의 오늘 아침 퇴근, 오늘 밤 퇴근 시각 근처의 내일 새벽 출근까지 포함 */
+var BRIEF_MATE_WINDOW = 30;   // 분
+function briefWorkEvents(mb, dia) {
+  var out = [], t = todayKST();
+  for (var d = -1; d <= 1; d++) {
+    var dt = new Date(t.y, t.m, t.d + d);
+    var key = dt.getFullYear() + '-' + pad2(dt.getMonth() + 1) + '-' + pad2(dt.getDate());
+    var info = null;
+    try { info = snapDayWithAuto(key, mb, dia, snapshot.ovMap); } catch (e) {}
+    if (!info || info.overrideType === 'status') continue;
+    var type = String(info.type || info.label || '').trim();
+    if (type !== '주' && type !== '야') continue;
+    var diaNo = String(info.dia || '').trim(), meta = diaNo ? diaByNumber(diaNo) : null;
+    var s0 = parseHM(String(info.start || (meta && meta.start) || '').slice(0, 5));
+    var e0 = parseHM(String(info.end || (meta && meta.end) || '').slice(0, 5));
+    if (isNaN(s0) || isNaN(e0)) continue;
+    var st = d * 1440 + s0, en = d * 1440 + e0 + (e0 <= s0 ? 1440 : 0);
+    out.push({ t: st, kind: '출근', dia: diaNo, type: type }, { t: en, kind: '퇴근', dia: diaNo, type: type });
+  }
+  return out;
+}
+function briefHM(min) {
+  var m = ((min % 1440) + 1440) % 1440;
+  return pad2(Math.floor(m / 60)) + ':' + pad2(m % 60) + (min >= 1440 ? ' (다음 날)' : min < 0 ? ' (전날)' : '');
+}
+function briefMates() {
+  var me = findMyMember();
+  if (!me || !snapshotUsable()) return null;
+  var dia = snapshot.raw.dia || [];
+  var mine = briefWorkEvents(me, dia);   /* [출근, 퇴근] 쌍으로 들어 있음 */
+  /* 오늘 출근하는 내 근무만 기준 (어제 야간의 오늘 아침 퇴근은 제외) */
+  var myStart = null, myEnd = null;
+  for (var i = 0; i < mine.length; i++) if (mine[i].kind === '출근' && mine[i].t >= 0 && mine[i].t < 1440) { myStart = mine[i]; myEnd = mine[i + 1]; break; }
+  if (!myStart) return { off: true };
+  var others = (snapshot.raw.members || []).filter(function (m) { return m && m.employeeId !== me.employeeId; });
+  function near(anchor) {
+    var list = [];
+    others.forEach(function (m) {
+      briefWorkEvents(m, dia).forEach(function (e) {
+        var diff = e.t - anchor.t;
+        if (Math.abs(diff) <= BRIEF_MATE_WINDOW) list.push({ name: m.name || m.employeeId, kind: e.kind, t: e.t, dia: e.dia, diff: diff });
+      });
+    });
+    list.sort(function (a, b) { return Math.abs(a.diff) - Math.abs(b.diff) || String(a.name).localeCompare(String(b.name), 'ko'); });
+    return list;
+  }
+  return { start: myStart, end: myEnd, atStart: near(myStart), atEnd: myEnd ? near(myEnd) : [] };
+}
+function briefRenderMates() {
+  var box = $('brief-mates');
+  if (!box) return;
+  var r = null;
+  try { r = briefMates(); } catch (e) { r = null; }
+  if (!r || r.off) { box.hidden = true; box.innerHTML = ''; return; }
+  function rows(list) {
+    if (!list.length) return '<div class="bm-none">비슷한 시간에 출퇴근하는 사람이 없어요.</div>';
+    return list.map(function (x) {
+      var d = x.diff === 0 ? '같은 시각' : (Math.abs(x.diff) + '분 ' + (x.diff < 0 ? '먼저' : '뒤'));
+      return '<div class="bm-row"><div class="bm-l1"><b>' + esc(x.name) + '</b><span class="bm-kind ' + (x.kind === '출근' ? 'in' : 'out') + '">' + x.kind + '</span></div>' +
+        '<div class="bm-l2"><span class="bm-time">' + esc(briefHM(x.t)) + '</span> <small>' + esc(d) + '</small></div></div>';
+    }).join('');
+  }
+  box.innerHTML =
+    '<div class="bm-title">같이 출퇴근하는 사람 <small>내 출근·퇴근 앞뒤 ' + BRIEF_MATE_WINDOW + '분</small></div>' +
+    '<div class="bm-grid">' +
+      '<div class="bm-sec"><div class="bm-h">출근 ' + esc(briefHM(r.start.t)) + ' 무렵</div>' + rows(r.atStart) + '</div>' +
+      (r.end ? '<div class="bm-sec"><div class="bm-h">퇴근 ' + esc(briefHM(r.end.t)) + ' 무렵</div>' + rows(r.atEnd) + '</div>' : '') +
+    '</div>';
+  box.hidden = false;
+}
 function showBriefing(fromSettings) {
   var t = todayKST();
   var W = ['일', '월', '화', '수', '목', '금', '토'];
@@ -5678,6 +5745,7 @@ function showBriefing(fromSettings) {
     line('퇴근시간', esc(duty.end || '-') + (duty.nextDay ? ' <small>다음 날</small>' : '')) +
     line('열차번호', duty.trains.length ? esc(duty.trains.join(', ')) : '-');
   $('brief-duty').innerHTML = dh;
+  briefRenderMates();
   /* 날씨 */
   var wbox = $('brief-weather');
   wbox.innerHTML = '<div class="brief-w-loading">현재 위치 날씨를 불러오는 중...</div>';
@@ -14983,5 +15051,25 @@ html body #main-section .menu-grid > .menu-btn > span{display:flex;align-items:f
 #nr-panel .nr-note{font-size:11.5px;color:#98a2b3;margin-top:12px;line-height:1.5}
 .bp-act.bp-readers{color:#2f6fd6;border-color:#c9dbf7}
 </style>
+<style id="brief-mates-style">
+.brief-mates{margin:10px 0 4px;border:1px solid #e3e8f0;border-radius:14px;padding:10px 12px;background:#fbfcfe}
+.brief-mates .bm-title{font-size:13.5px;font-weight:800;color:#0b376d;margin-bottom:8px}
+.brief-mates .bm-title small{font-weight:600;color:#98a2b3;font-size:11px;margin-left:4px}
+.brief-mates .bm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.brief-mates .bm-sec{min-width:0;background:#fff;border:1px solid #edf0f5;border-radius:11px;padding:8px 9px}
+.brief-mates .bm-h{font-size:12px;font-weight:800;color:#5f6b7f;margin-bottom:4px;padding-bottom:5px;border-bottom:1px solid #f0f3f7}
+.brief-mates .bm-row{padding:6px 0;border-bottom:1px dashed #eef1f6}
+.brief-mates .bm-row:last-child{border-bottom:0}
+.brief-mates .bm-l1{display:flex;align-items:center;gap:5px}
+.brief-mates .bm-l1 b{font-size:13px;color:#1b2b45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brief-mates .bm-kind{flex:0 0 auto;font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:999px}
+.brief-mates .bm-kind.in{background:#e8f1ff;color:#2f6fd6}
+.brief-mates .bm-kind.out{background:#fff1e6;color:#d9480f}
+.brief-mates .bm-l2{margin-top:2px;font-size:12px}
+.brief-mates .bm-time{font-weight:800;color:#33415c}
+.brief-mates .bm-l2 small{color:#98a2b3;font-size:10.5px;font-weight:600}
+.brief-mates .bm-none{font-size:11.5px;color:#98a2b3;padding:4px 0;line-height:1.4}
+</style>
+
 </body>
 </html>
