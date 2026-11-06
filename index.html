@@ -3330,6 +3330,16 @@ function rsFeedOn() { var k = rsFeedKey(); try { return !!(k && localStorage.get
 function rsFeedSet(on) { var k = rsFeedKey(); if (!k) return; try { if (on) localStorage.setItem(k, '1'); else { localStorage.removeItem(k); localStorage.removeItem(k + '_last'); localStorage.removeItem(k + '_sig'); } } catch (e) {} }
 var rsFeedBusy = false, rsFeedTimer = null;
 /* 근무표가 다시 그려질 때(근무 변경 · 교환 · 저장 후) 3초 뒤 위젯 달력도 갱신. 바뀐 달만 올라감 */
+function rsFeedCheck() {
+  var u = getCurrentUser();
+  if (!u || !u.token || u.employeeId === 'guest') return;
+  api({ action: 'widgetInfo', employeeId: u.employeeId, token: u.token }, function (r) {
+    if (!r || !r.success) return;
+    var was = rsFeedOn();
+    rsFeedSet(!!r.on);
+    if (r.on) { if (!was) rsFeedPush(true); else rsFeedSoon(); }
+  });
+}
 function rsFeedSoon() {
   if (!rsFeedOn()) return;
   clearTimeout(rsFeedTimer);
@@ -3506,7 +3516,7 @@ function wgKwgtPreset(imgUrl) {
   function f(m, k, v) { m.internal_formulas[k] = v; m.internal_toggles[k] = 10; }
   var cal = base('BitmapModule', '근무표 달력');
   cal.bitmap_scale_mode = 'CENTER_CROP';
-  f(cal, 'bitmap_bitmap', imgUrl + '&m=$gv(mo)$');
+  f(cal, 'bitmap_bitmap', imgUrl + '&m=$gv(mo)$&v=$df(dHH)$$mu(floor, df(m)/30)$');   /* v: 30분마다 바뀌어서 KWGT가 그림을 새로 받음 */
   f(cal, 'bitmap_width', S); f(cal, 'bitmap_height', S);
   f(cal, 'position_padding_left', '$' + ox + '$'); f(cal, 'position_padding_top', '$' + oy + '$');
   cal.internal_events = [{ type: 'SINGLE_TAP', action: 'SWITCH_GLOBAL', 'switch': 'mo', switch_text: '0' }];
@@ -3604,7 +3614,7 @@ function wgRender(r) {
     '<div class="wg-on">● 위젯 연결 켜짐' + (r.updatedAt ? ' <small>마지막 갱신 ' + esc(r.updatedAt) + '</small>' : '') + '</div>' +
     '<div class="wg-lab">① 내 달력 미리보기 <small id="wg-sync-at"></small></div>' +
     '<div class="wg-prev"><img id="wg-prev" alt="위젯 미리보기"></div>' +
-    '<div class="wg-btns"><button type="button" onclick="wgCopy(window.wgPngNow)">그림 주소 복사</button><button type="button" onclick="wgCopy(window.wgPngNow + \'&m=$gv(mo)$\')">비트맵 수식 복사</button><button type="button" onclick="window.open(window.wgPngNow,\'_blank\')">브라우저로 확인</button></div>' +
+    '<div class="wg-btns"><button type="button" onclick="wgCopy(window.wgPngNow)">그림 주소 복사</button><button type="button" onclick="wgCopy(window.wgPngNow + \'&m=$gv(mo)$&v=$df(dHH)$$mu(floor, df(m)/30)$\')">비트맵 수식 복사</button><button type="button" onclick="window.open(window.wgPngNow,\'_blank\')">브라우저로 확인</button></div>' +
     '<div class="wg-tip">이번 달 기준 <b>앞뒤 6개월(13달)</b> 달력이 올라가요. 주소 끝 <b>&m=</b> 숫자: 0 = 이번 달, -1 = 지난달, 1 = 다음 달 … (-6 ~ 6)</div>' +
     '<div class="wg-lab">② KWGT 프리셋으로 한 번에 (추천)</div>' +
     '<button type="button" class="wg-main" onclick="wgKwgtDownload()">KWGT 프리셋 받기 (.kwgt)</button>' +
@@ -11373,7 +11383,7 @@ function promptWorkSettingIfNeeded(gen) {
 var loginPopupGen = 0;
 function runLoginPopups() {
   try { passWarmUp(); } catch (e) {}   /* 조회 서버 미리 깨우기 → 첫 조회가 빠르게 */
-  setTimeout(function () { try { rsWidgetPush(); } catch (e) {} }, 3000);
+  setTimeout(function () { try { rsFeedCheck(); } catch (e) {} try { rsWidgetPush(); } catch (e) {} }, 3000);
   renderMyPageExtras.__synced = false;
   loginPopupGen++;
   var gen = loginPopupGen;
