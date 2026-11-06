@@ -3357,7 +3357,14 @@ function rsWidgetMonth(y, m, cb) {
       var credit = info && (info.creditStatus === '대기충당' || info.creditStatus === '휴무충당') ? info.creditStatus
         : (info && (info.status === '대기충당' || info.status === '휴무충당') ? info.status
         : (info && (info.label === '대기충당' || info.label === '휴무충당') ? info.label : ''));
-      ex.push([info && info.dia ? String(info.dia) : '', info ? String(info.swapPartnerName || info.swapPartnerId || '').trim() : '', credit]);
+      /* 그날 다이아의 열차번호 (최대 2개) */
+      var trs = [];
+      try {
+        var dno = info && info.dia ? String(info.dia).trim() : '', dm = dno && typeof diaByNumber === 'function' ? diaByNumber(dno) : null;
+        trs = [info && info.train1 || (dm && dm.train1), info && info.train2 || (dm && dm.train2), info && info.train3 || (dm && dm.train3)]
+          .map(function (x) { return String(x || '').trim(); }).filter(function (x) { return x; }).slice(0, 2);
+      } catch (e) {}
+      ex.push([info && info.dia ? String(info.dia) : '', info ? String(info.swapPartnerName || info.swapPartnerId || '').trim() : '', credit, trs.join(' ')]);
     }
     cb({ ym: y + '-' + pad2(m + 1), days: out, ex: ex, name: me ? me.name : '' });
   });
@@ -3589,7 +3596,7 @@ function rsFeedSend(u, t, want, got, name, force) {
     var key = ym[0] + '-' + pad2(ym[1] + 1); keep.push(key);
     var mm = got[key];
     if (!mm) { if (sig[key]) newSig[key] = sig[key]; return; }
-    var h = JSON.stringify([mm.days, mm.ex, name, key === curYm ? t.d : 0, 3]);
+    var h = JSON.stringify([mm.days, mm.ex, name, key === curYm ? t.d : 0, 6]);
     newSig[key] = h;
     if (force || sig[key] !== h) todo.push({ key: key, mm: mm, y: ym[0], m: ym[1] });
   });
@@ -3668,7 +3675,7 @@ function wgDrawPng(mm, y, m, name) {
     c.fillText(dtxt, x + cw / 2, y0 + 10 * S);
     /* 근무 동그라미 */
     var lab = String(cell[0] || '').replace(/^\*/, '');
-    var cy = y0 + 10 * S + (ch - 10 * S) * 0.42;
+    var cy = y0 + ch / 2 + 1 * S;   /* 근무 동그라미: 칸의 가운데 */
     if (lab) {
       var clr = COL[lab] || (cell[1] === 'status' ? ['#e53935', '#ffffff'] : ['#5b8def', '#ffffff']);
       var rad = Math.min(cw, ch) * 0.2;
@@ -3678,12 +3685,14 @@ function wgDrawPng(mm, y, m, name) {
       while (c.measureText(lab).width > rad * 2.1 && fs > 5) { fs -= .5; c.font = '700 ' + (fs * S) + 'px ' + F; }
       c.fillText(lab, x + cw / 2, cy + 0.5 * S);
     }
-    /* 아래: 교환 상대 · 휴무충당 · 대기충당만 */
-    var sub = ex[1] ? '⇄ ' + ex[1] : (ex[2] || '');
-    if (sub) {
-      c.font = '600 ' + (6.6 * S) + 'px ' + F; c.fillStyle = ex[1] ? '#7c5cc4' : '#d9480f';
-      while (c.measureText(sub).width > cw - 4 * S && sub.length > 2) sub = sub.slice(0, -1);
-      c.fillText(sub, x + cw / 2, y0 + ch - 7 * S);
+    /* 아래: 그날 근무 열차번호 2개까지, 한 줄에 가로로 (칸보다 길면 글자를 줄임) */
+    var trs = String(ex[3] || '').split(' ').filter(function (v) { return v; }).slice(0, 2);
+    if (trs.length) {
+      var line = trs.join(' '), fsz = 6.4;
+      c.font = '600 ' + (fsz * S) + 'px ' + F;
+      while (c.measureText(line).width > cw - 3 * S && fsz > 4) { fsz -= 0.2; c.font = '600 ' + (fsz * S) + 'px ' + F; }
+      c.fillStyle = '#4b5563';
+      c.fillText(line, x + cw / 2, y0 + ch - 7 * S);
     }
   }
   c.restore();
