@@ -3102,7 +3102,7 @@ function loadMyMonth(force) {
   });
 }
 function renderCalendar() {
-  try { if (window.RsWidget) rsWidgetPush(); } catch (e) {}
+  try { if (window.RsWidget) rsWidgetPush(); else rsFeedSoon(); } catch (e) {}
   var titleEl = $('calendar-title');
   if (titleEl) titleEl.textContent = calendarYear + '년 ' + (calendarMonth + 1) + '월';
   var grid = $('calendar-grid');
@@ -3328,7 +3328,13 @@ var RS_FEED_TONE = { day: '#e5a800', night: '#1a73e8', off: '#e53935', status: '
 function rsFeedKey() { var u = getCurrentUser(); return u && u.employeeId ? 'rs_feed_' + u.employeeId : ''; }
 function rsFeedOn() { var k = rsFeedKey(); try { return !!(k && localStorage.getItem(k)); } catch (e) { return false; } }
 function rsFeedSet(on) { var k = rsFeedKey(); if (!k) return; try { if (on) localStorage.setItem(k, '1'); else { localStorage.removeItem(k); localStorage.removeItem(k + '_last'); localStorage.removeItem(k + '_sig'); } } catch (e) {} }
-var rsFeedBusy = false;
+var rsFeedBusy = false, rsFeedTimer = null;
+/* 근무표가 다시 그려질 때(근무 변경 · 교환 · 저장 후) 3초 뒤 위젯 달력도 갱신. 바뀐 달만 올라감 */
+function rsFeedSoon() {
+  if (!rsFeedOn()) return;
+  clearTimeout(rsFeedTimer);
+  rsFeedTimer = setTimeout(function () { rsFeedTimer = null; try { rsFeedPush(); } catch (e) {} }, 3000);
+}
 function rsFeedPush(force) {
   if (rsFeedBusy || !rsFeedOn()) return;
   var u = getCurrentUser();
@@ -3490,7 +3496,7 @@ function wgZip(entries) {
   });
   var cenLen = central.reduce(function (a, b) { return a + b.length; }, 0);
   var end = new Uint8Array([].concat(u32(0x06054b50), u16(0), u16(0), u16(entries.length), u16(entries.length), u32(cenLen), u32(off), u16(0)));
-  return new Blob(parts.concat(central, [end]), { type: 'application/zip' });
+  return new Blob(parts.concat(central, [end]), { type: 'application/octet-stream' });   /* zip 형식이면 크롬이 이름 끝을 .zip으로 바꿔버려서 */
 }
 function wgKwgtPreset(imgUrl) {
   var S = '$mu(min, si(rwidth), si(rheight))$';
@@ -3523,23 +3529,19 @@ function wgKwgtPreset(imgUrl) {
     }
   };
 }
-function wgKwgtDownload() {
-  if (!window.wgPngNow) { showToast('위젯 주소를 먼저 만들어주세요.'); return; }
-  if (window.RsWidget) { showToast('앱 안에서는 파일을 받을 수 없어요. 크롬에서 철도비서를 열고 받아주세요.'); return; }
+/* 패널을 열 때 미리 만들어 두고, 버튼을 누르면 바로 내려받음 (늦게 받으면 브라우저가 막는 경우가 있어서) */
+function wgKwgtPrepare(cb) {
+  if (!window.wgPngNow) { if (cb) cb(null); return; }
   var u = getCurrentUser() || {}, t = todayKST();
   rsWidgetMonth(t.y, t.m, function (mm) {
     var thumb = new Uint8Array(0);
     function finish() {
-      var blob = wgZip([
+      window.wgKwgtBlob = wgZip([
         { name: 'preset.json', data: JSON.stringify(wgKwgtPreset(window.wgPngNow)) },
         { name: 'preset_thumb_portrait.jpg', data: thumb },
         { name: 'preset_thumb_landscape.jpg', data: thumb }
       ]);
-      var a = document.createElement('a'), href = URL.createObjectURL(blob);
-      a.href = href; a.download = '철도비서_근무표.kwgt';
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(function () { URL.revokeObjectURL(href); }, 5000);
-      showToast('철도비서_근무표.kwgt 파일을 받았어요.');
+      if (cb) cb(window.wgKwgtBlob);
     }
     if (!mm) { finish(); return; }
     var img = new Image();
@@ -3553,6 +3555,20 @@ function wgKwgtDownload() {
     img.onerror = finish;
     img.src = wgDrawPng(mm, t.y, t.m, mm.name || u.name || '');
   });
+}
+function wgKwgtDownload() {
+  if (!window.wgPngNow) { showToast('위젯 주소를 먼저 만들어주세요.'); return; }
+  if (window.RsWidget) { showToast('앱 안에서는 파일을 받을 수 없어요. 크롬에서 철도비서를 열고 받아주세요.'); return; }
+  function go(blob) {
+    if (!blob) { showToast('프리셋을 만들지 못했어요. 다시 눌러주세요.'); return; }
+    var href = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = href; a.download = '철도비서_근무표.kwgt';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(href); }, 60000);
+    showToast('다운로드 폴더에 철도비서_근무표.kwgt를 받았어요.');
+  }
+  if (window.wgKwgtBlob) go(window.wgKwgtBlob);
+  else { showToast('프리셋을 만드는 중이에요. 잠시 뒤 한 번 더 눌러주세요.'); wgKwgtPrepare(); }
 }
 function rsFeedUrl(token) { return SUPABASE_URL + '/rest/v1/rpc/widget?t=' + token + '&apikey=' + SUPABASE_KEY; }
 function openWidgetPanel() {
@@ -3588,7 +3604,7 @@ function wgRender(r) {
     '<div class="wg-on">● 위젯 연결 켜짐' + (r.updatedAt ? ' <small>마지막 갱신 ' + esc(r.updatedAt) + '</small>' : '') + '</div>' +
     '<div class="wg-lab">① 내 달력 미리보기 <small id="wg-sync-at"></small></div>' +
     '<div class="wg-prev"><img id="wg-prev" alt="위젯 미리보기"></div>' +
-    '<div class="wg-btns"><button type="button" onclick="wgCopy(window.wgPngNow + \'&m=$gv(mo)$\')">비트맵 수식 복사</button><button type="button" onclick="window.open(window.wgPngNow,\'_blank\')">브라우저로 확인</button></div>' +
+    '<div class="wg-btns"><button type="button" onclick="wgCopy(window.wgPngNow)">그림 주소 복사</button><button type="button" onclick="wgCopy(window.wgPngNow + \'&m=$gv(mo)$\')">비트맵 수식 복사</button><button type="button" onclick="window.open(window.wgPngNow,\'_blank\')">브라우저로 확인</button></div>' +
     '<div class="wg-tip">이번 달 기준 <b>앞뒤 6개월(13달)</b> 달력이 올라가요. 주소 끝 <b>&m=</b> 숫자: 0 = 이번 달, -1 = 지난달, 1 = 다음 달 … (-6 ~ 6)</div>' +
     '<div class="wg-lab">② KWGT 프리셋으로 한 번에 (추천)</div>' +
     '<button type="button" class="wg-main" onclick="wgKwgtDownload()">KWGT 프리셋 받기 (.kwgt)</button>' +
@@ -3612,6 +3628,7 @@ function wgRender(r) {
 }
 function wgAfterSync() { if ($('wg-panel') && $('wg-panel').classList.contains('active')) { var e = $('wg-sync-at'); if (e) e.textContent = '방금 갱신했어요'; showToast('위젯 달력을 갱신했어요.'); } }
 function wgFillPreview() {
+  window.wgKwgtBlob = null; setTimeout(function () { try { wgKwgtPrepare(); } catch (e) {} }, 300);
   var img = $('wg-prev'); if (!img) return;
   var u = getCurrentUser(); if (!u) return;
   var t = todayKST();
@@ -3653,7 +3670,7 @@ function wgOff() {
 }
 var rsWidgetTimer = null, rsWidgetLast = '';
 function rsWidgetPush(now) {
-  try { rsFeedPush(); } catch (e) {}
+  try { rsFeedSoon(); } catch (e) {}
   if (!window.RsWidget || typeof window.RsWidget.update !== 'function') return;
   if (rsWidgetTimer) clearTimeout(rsWidgetTimer);
   rsWidgetTimer = setTimeout(function () {
