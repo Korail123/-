@@ -7672,6 +7672,10 @@ function payCalc(T, prefs, work, grade, step, payM, payY, joinDate) {
     if (it.input === '인원' && !(parseInt(prefs.counts[it.id], 10) > 0)) return false;
     return true;
   });
+  /* 조정수당: '조정수당(교번)'을 고르면(체크 · 적용 중이면) 그것만 — 일반 조정수당(일근 등)은 빼서 겹치지 않게 */
+  if (items.some(function (it) { return it.kind === '지급' && /조정수당/.test(it.name || '') && /교번/.test(it.name || ''); })) {
+    items = items.filter(function (it) { return !(it.kind === '지급' && /조정수당/.test(it.name || '') && !/교번/.test(it.name || '')); });
+  }
   function cnt(it) { return it.input === '인원' ? Math.min(+it.max || 10, parseInt(prefs.counts[it.id], 10) || 0) : 1; }
   function fixedVal(it, full) {
     var n = cnt(it), dayFactor = full ? 1 : dayFactor0, dayNote = full ? '' : dayNote0;
@@ -7695,6 +7699,8 @@ function payCalc(T, prefs, work, grade, step, payM, payY, joinDate) {
   var ordinary = base;
   items.forEach(function (it) {
     if (it.kind !== '지급' || !it.ordinary || String(it.months || '').trim()) return;
+    /* 명절상여금 · 평가금(성과급)은 통상임금에서 뺌 (보수표에 통상임금 표시가 되어 있어도) */
+    if (it.calc === '명절상여' || /명절|상여|평가/.test(String(it.name || ''))) return;
     var f = fixedVal(it, true);
     if (f) ordinary += f.v;
   });
@@ -7704,7 +7710,22 @@ function payCalc(T, prefs, work, grade, step, payM, payY, joinDate) {
   out.hourly = Math.round(hourly);
   /* 법정 통상임금: 회사 통상임금에 더 들어가야 하는 금액(월). 명세서의 '시간외수당_법정차액' 등은
      시간 × 배율 × (이 금액 ÷ 209)로 계산됨. 2026년 9월 명세서 기준 시간당 약 1,920원 → 월 401,280원 */
-  var legalExtra = paySetNum(S, '법정차액_통상임금추가', 401280);
+  /* 법정 통상임금 = 기본급 + 위험 + 기술 + 대우 + 조정 + 승무 + 1인승무 + 특별업무 + 업무지원 + 급식보조비
+     (명절상여금 · 평가금 제외). 회사 통상임금에 없는 승무 · 1인승무 · 특별업무 · 업무지원 · 급식보조비를 한 달 전액으로 더함 */
+  var LEGAL_RX = /승무수당|1인\s*승무|특별업무|업무지원|급식/, LEGAL_NO = /명절|상여|평가/;
+  var legalAdd = 0, legalNames = [], DAYS0 = { '근무일': 'days', '주간일': 'dayN', '야간일': 'nightN', '승무일': 'crew' };
+  items.forEach(function (it) {
+    if (it.kind !== '지급' || it.ordinary || String(it.months || '').trim()) return;
+    var nm = String(it.name || '');
+    if (!LEGAL_RX.test(nm) || LEGAL_NO.test(nm)) return;
+    var f = fixedVal(it, true), v = f ? f.v : 0;
+    if (!f && DAYS0[it.calc]) v = (work[DAYS0[it.calc]] || 0) * (+it.amount || 0);
+    if (v > 0) { legalAdd += v; legalNames.push(nm); }
+  });
+  var legalSet = S['법정차액_통상임금추가'];
+  var legalExtra = (legalSet != null && String(legalSet).trim() !== '') ? paySetNum(S, '법정차액_통상임금추가', 0) : legalAdd;
+  out.legalOrdinary = Math.round(ordinary + legalExtra);
+  out.legalNames = legalNames;
   var legalHourly = legalExtra > 0 ? legalExtra / STD_H : 0;
   out.legalExtra = legalExtra;
   out.legalHourly = Math.round(legalHourly);
@@ -7727,7 +7748,7 @@ function payCalc(T, prefs, work, grade, step, payM, payY, joinDate) {
         var lv = legalHourly > 0 && it.calc !== '근무시간' ? f10p(hrs * legalHourly * (+it.rate)) : 0;
         if (lv > 0) legalItems.push({ per: 'prev', name: String(it.name || '').replace(/근무수당$/, '수당') + '_법정차액', amt: lv,
           detail: HOURS[it.calc][1] + ' ' + hrs + '시간 × 차액시급 ' + won(legalHourly) + '원 × ' + (+it.rate),
-          help: '회사 통상임금으로 계산한 수당과, 법에 맞게 더 넓힌 통상임금(승무수당 · 급식비 등 포함)으로 계산한 수당의 차이를 따로 주는 항목이에요. 차액시급 = 월 ' + won(legalExtra) + '원 ÷ ' + STD_H + '시간. 실적 수당이라 전달 근무 시간으로 계산해요.' });
+          help: '회사 통상임금으로 계산한 수당과 법정 통상임금(기본급 + 위험 · 기술 · 대우 · 조정 · 승무 · 1인승무 · 특별업무 · 업무지원수당 + 급식보조비, 명절상여금 · 평가금 제외)으로 계산한 수당의 차이예요. 차액시급 = 월 ' + won(legalExtra) + '원' + (legalNames.length ? '(' + legalNames.join(' · ') + ')' : '') + ' ÷ ' + STD_H + '시간. 전달 근무 시간으로 계산해요.' });
       }
     } else if (DAYS[it.calc]) {
       var nd = work[DAYS[it.calc][0]] || 0;
@@ -8034,7 +8055,9 @@ function paySlipHtml(L) {
     '<div><div class="sl-sec">세금 · 3대보험</div><table class="sl-t sl-grid">' + C2 + '<tr><th>내역</th><th>금액</th></tr>' + col1(tax) + '</table></div></div>' +
     '<div class="sl-sec">근태 내역</div>' +
     '<table class="sl-t sl-att">' + CI + '<tr><td class="k">통상임금</td><td>' + won(r.ordinary) + '</td><td class="k">초과근무</td><td>' + (+w.oh || 0).toFixed(2) + '</td></tr>' +
-    '<tr><td class="k">야간근무</td><td>' + (+w.nh || 0).toFixed(2) + '</td><td class="k">휴일근무</td><td>' + (+w.hh || 0).toFixed(2) + '</td></tr></table>' +
+    '<tr><td class="k">야간근무</td><td>' + (+w.nh || 0).toFixed(2) + '</td><td class="k">휴일근무</td><td>' + (+w.hh || 0).toFixed(2) + '</td></tr>' +
+    (r.legalOrdinary && r.legalOrdinary !== r.ordinary ? '<tr><td class="k">법정통상</td><td>' + won(r.legalOrdinary) + payHelpBtn('법정 통상임금 = 기본급 + 위험수당 + 기술수당 + 대우수당 + 조정수당 + 승무수당 + 1인승무수당 + 특별업무수당 + 업무지원수당 + 급식보조비 (명절상여금 · 평가금 제외). 시간외 · 야간 · 휴일수당 법정차액을 계산할 때 써요.') + '</td><td class="k">차액시급</td><td>' + won(r.legalHourly) + '</td></tr>' : '') +
+    '</table>' +
     '<table class="sl-t sl-total"><tr><th>총지급액</th><th>총공제액</th><th>실지급액</th></tr><tr><td>' + won(r.gross) + '</td><td>' + won(r.dedSum) + '</td><td class="net">' + won(r.net) + '</td></tr></table>' +
     '<div class="sl-note">※ 항목 옆 ? 를 누르면 몇 월분인지와 설명이 나와요. 철도비서 근무표로 어림한 예상 명세서라 실제 금액과 다를 수 있어요.</div>' +
     '</div>';
