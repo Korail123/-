@@ -10233,9 +10233,18 @@ function passArtKey(tt, no, kind) {
 /* 기관차가 끄는 열차인지 (조성대기 장면은 이 열차들만) */
 function passArtHasLoco(key) { return /^run_(mugunghwa|mug_d|freight_e|freight_d)$/.test(key); }
 var PASS_TRAIN_LEN = 134;   /* 모든 열차 같은 길이 (112px에서 20% 키움) */
+/* 그림 높이 중 차체가 차지하는 비율: 무궁화 전기 8501 기준으로 디젤 7351 그림 축척을 맞출 때 씀 */
+var PASS_TRAIN_BODY_FRAC = { run_mugunghwa: 0.70, run_mug_d: 0.94, run_freight_d: 0.95 };
 function passArtSize(key) {
   var dm = PASS_TRAIN_DIM[key] || PASS_TRAIN_DIM.run_mugunghwa;
-  /* 모든 열차 길이를 똑같이(가로 PASS_TRAIN_LEN px), 높이는 그림 비율대로 */
+  /* 디젤 7351 그림(무궁화·새마을·화물 디젤): 무궁화 전기 8501과 같은 축척(차체 두께가 같게) */
+  if (PASS_TRAIN_BODY_FRAC[key] && key !== 'run_mugunghwa') {
+    var m = PASS_TRAIN_DIM.run_mugunghwa;
+    var body = PASS_TRAIN_LEN * m[1] / m[0] * PASS_TRAIN_BODY_FRAC.run_mugunghwa;   /* 8501 무궁화 차체 높이 */
+    var hh = Math.round(body / PASS_TRAIN_BODY_FRAC[key]);
+    return { w: Math.round(hh * dm[0] / dm[1]), h: hh };
+  }
+  /* 나머지 열차는 모두 같은 길이(가로 PASS_TRAIN_LEN px), 높이는 그림 비율대로 */
   var w = PASS_TRAIN_LEN;
   return { w: w, h: Math.round(w * dm[1] / dm[0]) };
 }
