@@ -3656,6 +3656,7 @@ function rsFeedCheck() {
     if (!r || !r.success) return;
     var was = rsFeedOn();
     rsFeedSet(!!r.on);
+    if (r.on && !wgLineSending) wgLineAdopt(r);
     if (r.on) { if (!was) rsFeedPush(true); else rsFeedSoon(); }
   });
 }
@@ -3669,6 +3670,14 @@ function rsFeedPush(force) {
   var u = getCurrentUser();
   if (!u || !u.token || u.employeeId === 'guest') return;
   rsFeedBusy = true;
+  /* 먼저 계정에 저장된 표시 방식(열차번호 · 출근시간 …)을 받아서 맞춘 뒤 그림을 그림 */
+  api({ action: 'widgetInfo', employeeId: u.employeeId, token: u.token }, function (r) {
+    if (r && r.success && r.on === false) { rsFeedSet(false); rsFeedBusy = false; return; }
+    if (r && r.success && !wgLineSending) wgLineAdopt(r);
+    rsFeedPushGo(u, force);
+  });
+}
+function rsFeedPushGo(u, force) {
   /* 이번 달 기준 앞뒤 6개월 = 13달 */
   var t = todayKST(), want = [], got = {}, left = 13, name = u.name || '';
   for (var i = -6; i <= 6; i++) { var dt = new Date(t.y, t.m + i, 1); want.push([dt.getFullYear(), dt.getMonth()]); }
@@ -3714,7 +3723,9 @@ function rsFeedSend(u, t, want, got, name, force) {
   (function next() {
     var pngs = {};
     batches[bi].forEach(function (it) { try { pngs[it.key] = wgDrawPng(it.mm, it.y, it.m, name); } catch (e) {} });
-    api({ action: 'widgetSave', employeeId: u.employeeId, token: u.token, name: String(name).slice(0, 20), days: days, pngs: pngs, keep: keep }, function (res) {
+    var lineNow = wgLineMode();
+    api({ action: 'widgetSave', employeeId: u.employeeId, token: u.token, name: String(name).slice(0, 20), days: days, pngs: pngs, keep: keep, line: lineNow }, function (res) {
+      if (res && res.success && wgLineSending === lineNow) wgLineSending = '';
       if (res && res.success && res.on === false) { rsFeedSet(false); rsFeedBusy = false; return; }   /* 다른 폰에서 끈 경우 */
       if (!res || !res.success) { rsFeedBusy = false; return; }
       batches[bi].forEach(function (it) { sig[it.key] = newSig[it.key]; });
@@ -3916,11 +3927,15 @@ function wgKwgtDownload() {
   else { showToast('프리셋을 만드는 중이에요. 잠시 뒤 한 번 더 눌러주세요.'); wgKwgtPrepare(); }
 }
 /* ===== 위젯 달력 날짜 아래 한 줄에 무엇을 보일지 (이 폰에만 저장) ===== */
+var wgLineSending = '';   /* 방금 이 폰에서 고른 값: 서버에 올라갈 때까지 서버 값으로 덮지 않음 */
 var WG_LINE_OPTS = [['train', '열차번호'], ['start', '출근시간'], ['range', '출근~퇴근'], ['none', '표시 안 함']];
 function wgLineKey() { var u = getCurrentUser(); return 'rs_wgline_' + ((u && u.employeeId) || ''); }
 function wgLineMode() { var v = ''; try { v = localStorage.getItem(wgLineKey()) || ''; } catch (e) {} return /^(train|start|range|none)$/.test(v) ? v : 'train'; }
+/* 서버(계정)에 저장된 표시 방식을 이 폰에도 맞춤: 여러 기기에서 써도 마지막에 고른 표시로 통일 */
+function wgLineAdopt(r) { if (r && /^(train|start|range|none)$/.test(r.line || '')) { try { localStorage.setItem(wgLineKey(), r.line); } catch (e) {} } }
 function wgLineSet(v) {
   try { localStorage.setItem(wgLineKey(), v); } catch (e) {}
+  wgLineSending = v;
   document.querySelectorAll('#wg-panel .wg-opt button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === v); });
   wgFillPreview();
   rsFeedBusy = false; rsFeedPush(true);
@@ -3977,6 +3992,7 @@ function openWidgetPanel() {
   api({ action: 'widgetInfo', employeeId: u.employeeId, token: u.token }, function (r) {
     if (!r || !r.success) { wgRender({ error: (r && r.message) || '불러오지 못했어요.' }); return; }
     if (r.on) rsFeedSet(true); else rsFeedSet(false);
+    if (r.on && !wgLineSending) wgLineAdopt(r);
     wgRender(r);
     if (r.on) { wgFillPreview(); wgTab(wgIsIphone() ? 'ios' : 'and'); }
   });
