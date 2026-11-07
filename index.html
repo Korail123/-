@@ -1418,7 +1418,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 </div>
 <div id="wg-panel" class="dia-modal" style="z-index:405" onclick="if(event.target===this)closeWidgetPanel()">
   <div class="dia-dialog ns-dialog wg-dialog">
-    <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="위젯연결" alt="" aria-hidden="true">위젯 연결 (KWGT)</div>
+    <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="위젯연결" alt="" aria-hidden="true">위젯 연결</div>
     <div id="wg-body"></div>
     <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeWidgetPanel()">닫기</button></div>
   </div>
@@ -3411,13 +3411,14 @@ function rsWidgetMonth(y, m, cb) {
         : (info && (info.status === '대기충당' || info.status === '휴무충당') ? info.status
         : (info && (info.label === '대기충당' || info.label === '휴무충당') ? info.label : ''));
       /* 그날 다이아의 열차번호 (최대 2개) */
-      var trs = [];
+      var trs = [], wst = '', wen = '';
       try {
         var dno = info && info.dia ? String(info.dia).trim() : '', dm = dno && typeof diaByNumber === 'function' ? diaByNumber(dno) : null;
+        if (dno) { wst = String(info.start || (dm && dm.start) || '').slice(0, 5); wen = String(info.end || (dm && dm.end) || '').slice(0, 5); }
         trs = [info && info.train1 || (dm && dm.train1), info && info.train2 || (dm && dm.train2), info && info.train3 || (dm && dm.train3)]
           .map(function (x) { return String(x || '').trim(); }).filter(function (x) { return x; }).slice(0, 2);
       } catch (e) {}
-      ex.push([info && info.dia ? String(info.dia) : '', info ? String(info.swapPartnerName || info.swapPartnerId || '').trim() : '', credit, trs.join(' ')]);
+      ex.push([info && info.dia ? String(info.dia) : '', info ? String(info.swapPartnerName || info.swapPartnerId || '').trim() : '', credit, trs.join(' '), wst, wen]);
     }
     cb({ ym: y + '-' + pad2(m + 1), days: out, ex: ex, name: me ? me.name : '' });
   });
@@ -3543,6 +3544,8 @@ function gdScreenHtml(sc) {
       (done ? '<div class="gd-toast">교환했어요</div>' : '<div class="gd-btn sm">교환</div>');
   }
   if (sc.html === 'TRACK') return '<div class="gd-top">1001 · 운행 중</div><div class="gd-track"><i></i><i></i><i></i><i></i><b class="gd-train"></b></div><div class="gd-st"><span>서울</span><span>용산</span><span>공덕</span><span>행신</span></div>';
+  if (sc.html === 'WPICK_A') return '<div class="gd-home"><div class="gd-apps"><i></i><i></i><i></i><i></i></div><div class="gd-sheet"><div class="gd-top">위젯</div><i>KWGT 2x2</i><i class="hl">KWGT 4x4</i><i>KWGT 4x2</i></div></div>';
+  if (sc.html === 'WPICK_I') return '<div class="gd-home"><div class="gd-apps"><i></i><i></i><i></i><i></i></div><div class="gd-sheet"><div class="gd-top">Scriptable · 큰 크기</div><div class="gd-lw"></div><div class="gd-btn sm">+ 위젯 추가</div></div></div>';
   if (sc.html === 'HOME') return '<div class="gd-home"><div class="gd-apps"><i></i><i></i><i></i><i></i></div><div class="gd-widget">' + gdCal('') + '</div></div>';
   return sc.html;
 }
@@ -3696,7 +3699,7 @@ function rsFeedSend(u, t, want, got, name, force) {
     var key = ym[0] + '-' + pad2(ym[1] + 1); keep.push(key);
     var mm = got[key];
     if (!mm) { if (sig[key]) newSig[key] = sig[key]; return; }
-    var h = JSON.stringify([mm.days, mm.ex, name, key === curYm ? t.d : 0, 6]);
+    var h = JSON.stringify([mm.days, mm.ex, name, key === curYm ? t.d : 0, 7, wgLineMode()]);
     newSig[key] = h;
     if (force || sig[key] !== h) todo.push({ key: key, mm: mm, y: ym[0], m: ym[1] });
   });
@@ -3785,10 +3788,13 @@ function wgDrawPng(mm, y, m, name) {
       while (c.measureText(lab).width > rad * 2.1 && fs > 5) { fs -= .5; c.font = '700 ' + (fs * S) + 'px ' + F; }
       c.fillText(lab, x + cw / 2, cy + 0.5 * S);
     }
-    /* 아래: 그날 근무 열차번호 2개까지, 한 줄에 가로로 (칸보다 길면 글자를 줄임) */
-    var trs = String(ex[3] || '').split(' ').filter(function (v) { return v; }).slice(0, 2);
-    if (trs.length) {
-      var line = trs.join(' '), fsz = 6.4;
+    /* 아래 한 줄: 위젯 연결에서 고른 항목 (열차번호 2개 · 출근시간 · 출근~퇴근 · 표시 안 함). 칸보다 길면 글자를 줄임 */
+    var lmode = wgLineMode(), line = '';
+    if (lmode === 'train') line = String(ex[3] || '').split(' ').filter(function (v) { return v; }).slice(0, 2).join(' ');
+    else if (lmode === 'start') line = String(ex[4] || '');
+    else if (lmode === 'range') line = ex[4] ? ex[4] + (ex[5] ? '~' + ex[5] : '') : '';
+    if (line) {
+      var fsz = lmode === 'range' ? 5.6 : 6.4;
       c.font = '600 ' + (fsz * S) + 'px ' + F;
       while (c.measureText(line).width > cw - 3 * S && fsz > 4) { fsz -= 0.2; c.font = '600 ' + (fsz * S) + 'px ' + F; }
       c.fillStyle = '#4b5563';
@@ -3909,6 +3915,58 @@ function wgKwgtDownload() {
   if (window.wgKwgtBlob) go(window.wgKwgtBlob);
   else { showToast('프리셋을 만드는 중이에요. 잠시 뒤 한 번 더 눌러주세요.'); wgKwgtPrepare(); }
 }
+/* ===== 위젯 달력 날짜 아래 한 줄에 무엇을 보일지 (이 폰에만 저장) ===== */
+var WG_LINE_OPTS = [['train', '열차번호'], ['start', '출근시간'], ['range', '출근~퇴근'], ['none', '표시 안 함']];
+function wgLineKey() { var u = getCurrentUser(); return 'rs_wgline_' + ((u && u.employeeId) || ''); }
+function wgLineMode() { var v = ''; try { v = localStorage.getItem(wgLineKey()) || ''; } catch (e) {} return /^(train|start|range|none)$/.test(v) ? v : 'train'; }
+function wgLineSet(v) {
+  try { localStorage.setItem(wgLineKey(), v); } catch (e) {}
+  document.querySelectorAll('#wg-panel .wg-opt button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === v); });
+  wgFillPreview();
+  rsFeedBusy = false; rsFeedPush(true);
+  showToast('위젯 달력에 ' + (WG_LINE_OPTS.filter(function (o) { return o[0] === v; })[0] || ['', ''])[1] + '(으)로 표시할게요.');
+}
+function wgLineHtml() {
+  var cur = wgLineMode();
+  return '<div class="wg-lab">날짜 아래에 보일 것</div><div class="wg-opt">' + WG_LINE_OPTS.map(function (o) {
+    return '<button type="button" data-v="' + o[0] + '" class="' + (o[0] === cur ? 'on' : '') + '" onclick="wgLineSet(\'' + o[0] + '\')">' + o[1] + '</button>';
+  }).join('') + '</div>';
+}
+/* ===== 안드로이드 / 아이폰 탭 + 따라하기 애니메이션 ===== */
+var WG_SCRIPTABLE = "// 철도비서 근무표 달력 위젯 (아이폰 · Scriptable 앱용)\n// 사용법\n//  1) 앱스토어에서 Scriptable 설치 → 열기 → 오른쪽 위 + → 이 내용 전체 붙여넣기 → 이름 '철도비서' → Done\n//  2) 홈 화면 길게 누르기 → 왼쪽 위 + (또는 편집 › 위젯 추가) → Scriptable → 큰 크기(Large) 추가\n//  3) 위젯 길게 누르기 › 위젯 편집\n//       Script    : 철도비서\n//       Parameter : 철도비서 › 환경설정 › 위젯 연결 › '그림 주소 복사' 한 주소 붙여넣기\n//       When Interacting : Run Script (누르면 바로 새로고침)\n//  ※ 위젯을 언제 새로 그릴지는 iOS가 정해요(보통 10~20분 간격). 바로 보려면 위젯을 누르세요.\n\nconst url = (args.widgetParameter || '').trim();\n\nconst widget = new ListWidget();\nwidget.backgroundColor = new Color('#ffffff', 0);\nwidget.setPadding(0, 0, 0, 0);\n// 15분 뒤 다시 그려 달라고 요청 (실제 시점은 iOS가 정함)\nwidget.refreshAfterDate = new Date(Date.now() + 15 * 60 * 1000);\n\nif (!url) {\n  const t = widget.addText('위젯 편집 › Parameter에\\n철도비서 그림 주소를 붙여넣어 주세요');\n  t.font = Font.boldSystemFont(14);\n  t.textColor = Color.gray();\n} else {\n  try {\n    // 주소 끝에 시각을 붙여서 예전 그림을 다시 쓰지 않게 함\n    const req = new Request(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now());\n    req.timeoutInterval = 20;\n    const img = await req.loadImage();\n    widget.addSpacer();\n    const row = widget.addStack();\n    row.addSpacer();\n    const pic = row.addImage(img);\n    pic.applyFittingContentMode();\n    pic.centerAlignImage();\n    row.addSpacer();\n    widget.addSpacer();\n  } catch (e) {\n    const t = widget.addText('달력을 불러오지 못했어요\\n(인터넷 연결 · 주소 확인)');\n    t.font = Font.systemFont(13);\n    t.textColor = Color.gray();\n  }\n}\n\nif (config.runsInWidget) {\n  Script.setWidget(widget);\n} else {\n  await widget.presentLarge();\n}\nScript.complete();\n";
+function wgIsIphone() { var ua = navigator.userAgent || ''; return /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+var wgTabNow = '';
+function wgTab(k) {
+  wgTabNow = k;
+  document.querySelectorAll('#wg-panel .wg-tabs button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-t') === k); });
+  document.querySelectorAll('#wg-panel .wg-pane').forEach(function (p) { p.hidden = p.getAttribute('data-t') !== k; });
+  gdStop('wa'); gdStop('wi');
+  gdPlay(k === 'ios' ? 'wi' : 'wa');
+}
+GD_SCENES.wa = [
+  { cap: '① 위젯 연결 › KWGT 프리셋 받기', tap: [50, 80], sel: '.gd-btn', html:
+    '<div class="gd-top">위젯 연결</div><div class="gd-mini-cal"></div><div class="gd-btn">KWGT 프리셋 받기 (.kwgt)</div>' },
+  { cap: '② 내 파일 › 다운로드 › 파일을 꾹 › 이동', tap: [50, 40], long: true, sel: '.gd-list i.hl', html:
+    '<div class="gd-top">내 파일 › 다운로드</div><div class="gd-list"><i>사진_1107.jpg</i><i class="hl">철도비서_근무표.kwgt</i><i>문서.pdf</i></div>' },
+  { cap: '③ 내장 메모리 › Kustom › widgets 에 넣기', tap: [50, 85], sel: '.gd-btn', html:
+    '<div class="gd-top">이동할 위치</div><div class="gd-path">내장 메모리 › Kustom › <b>widgets</b></div><div class="gd-list"><i>📁 fonts</i><i class="hl">📁 widgets</i><i>📁 wallpapers</i></div><div class="gd-btn sm">여기로 이동</div>' },
+  { cap: '④ 홈 화면 꾹 › 위젯 › KWGT 4x4 추가', tap: [50, 75], sel: '.gd-sheet i.hl', html: 'WPICK_A' },
+  { cap: '⑤ 빈 위젯 누르기 › 내보냄 탭 › 철도비서 근무표 달력', tap: [50, 55], sel: '.gd-list i.hl', html:
+    '<div class="gd-top dark">KWGT</div><div class="gd-ktab"><span>설치됨</span><span class="on">내보냄</span><span>SD 카드</span></div><div class="gd-list dark"><i class="hl">철도비서 근무표 달력</i><i>시계 위젯</i></div>' },
+  { cap: '⑥ 저장(💾)을 누르면 홈 화면에 근무표 완성', tap: null, html: 'HOME' }
+];
+GD_SCENES.wi = [
+  { cap: '① App Store에서 Scriptable 받기 (무료)', tap: [80, 30], sel: '.gd-get', html:
+    '<div class="gd-top">App Store</div><div class="gd-store"><i class="gd-appico">{ }</i><span><b>Scriptable</b><small>Simon B. Støvring · 무료</small></span><em class="gd-get">받기</em></div>' },
+  { cap: '② 위젯 연결 › 그림 주소 복사 · 스크립트 복사', tap: [50, 72], sel: '.gd-btn', html:
+    '<div class="gd-top">위젯 연결 · 아이폰</div><div class="gd-mini-cal"></div><div class="gd-btn sm">그림 주소 복사</div><div class="gd-btn sm alt">스크립트 복사</div>' },
+  { cap: '③ Scriptable › + › 붙여넣기 · 이름 철도비서 › Done', tap: [80, 8], sel: '.gd-done', html:
+    '<div class="gd-sbar"><span class="gd-sname">철도비서</span><em class="gd-done">Done</em></div><div class="gd-code"><i>// 철도비서 근무표 달력 위젯</i><i>const url = args.widgetParameter</i><i>const widget = new ListWidget()</i><i>…</i></div>' },
+  { cap: '④ 홈 화면 꾹 › + › Scriptable › 큰 크기 › 위젯 추가', tap: [50, 85], sel: '.gd-sheet .gd-btn', html: 'WPICK_I' },
+  { cap: '⑤ 위젯 꾹 › 위젯 편집 › Script · Parameter 넣기', tap: [50, 50], sel: '.gd-in.hl', html:
+    '<div class="gd-top">위젯 편집</div><div class="gd-lab">Script</div><div class="gd-in">철도비서</div><div class="gd-lab">Parameter</div><div class="gd-in hl">https://…widget_png?t=…<span class="gd-caret"></span></div><div class="gd-lab">When Interacting</div><div class="gd-in">Run Script</div>' },
+  { cap: '⑥ 홈 화면에 근무표 달력 완성 (누르면 새로고침)', tap: null, html: 'HOME' }
+];
 function rsFeedUrl(token) { return SUPABASE_URL + '/rest/v1/rpc/widget?t=' + token + '&apikey=' + SUPABASE_KEY; }
 function openWidgetPanel() {
   var u = getCurrentUser();
@@ -3920,16 +3978,16 @@ function openWidgetPanel() {
     if (!r || !r.success) { wgRender({ error: (r && r.message) || '불러오지 못했어요.' }); return; }
     if (r.on) rsFeedSet(true); else rsFeedSet(false);
     wgRender(r);
-    if (r.on) wgFillPreview();
+    if (r.on) { wgFillPreview(); wgTab(wgIsIphone() ? 'ios' : 'and'); }
   });
 }
-function closeWidgetPanel() { $('wg-panel').classList.remove('active'); }
+function closeWidgetPanel() { $('wg-panel').classList.remove('active'); try { gdStop('wa'); gdStop('wi'); } catch (e) {} }
 function wgRender(r) {
   var box = $('wg-body');
   if (r.loading) { box.innerHTML = '<div class="wg-msg">불러오는 중…</div>'; return; }
   if (r.error) { box.innerHTML = '<div class="wg-msg err">' + esc(r.error) + '</div>'; return; }
   if (!r.on) {
-    box.innerHTML = '<div class="wg-intro">홈화면 위젯 앱 <b>KWGT</b>로 오늘 · 내일 · 7일 근무를 보여줄 수 있어요.<br>' +
+    box.innerHTML = '<div class="wg-intro">홈 화면에 <b>근무표 달력 위젯</b>을 놓을 수 있어요.<br><b>안드로이드</b>는 KWGT, <b>아이폰</b>은 Scriptable 앱(둘 다 무료)을 써요.<br>' +
       '아래 버튼을 누르면 <b>나만의 위젯 주소</b>가 만들어지고, 철도비서를 열 때마다 달력 그림이 새로 올라가요.</div>' +
       '<div class="wg-warn">위젯 주소를 아는 사람은 내 근무표 요약을 볼 수 있어요. 다른 사람에게 보내지 마세요.</div>' +
       '<button type="button" class="wg-main" onclick="wgMake()">위젯 주소 만들기</button>';
@@ -3940,30 +3998,52 @@ function wgRender(r) {
   window.wgPngNow = SUPABASE_URL + '/rest/v1/rpc/widget_png?t=' + r.token + '&apikey=' + SUPABASE_KEY;
   window.wgVerNow = SUPABASE_URL + '/rest/v1/rpc/widget_ver?t=' + r.token + '&apikey=' + SUPABASE_KEY;
   function row(label, f) { return '<div class="wg-f"><span>' + label + '</span><code>' + esc(f) + '</code><button type="button" onclick="wgCopy(this.previousElementSibling.textContent)">복사</button></div>'; }
+  var ios = wgIsIphone();
   box.innerHTML =
     '<div class="wg-on">● 위젯 연결 켜짐' + (r.updatedAt ? ' <small>마지막 갱신 ' + esc(r.updatedAt) + '</small>' : '') + '</div>' +
-    '<div class="wg-lab">① 내 달력 미리보기 <small id="wg-sync-at"></small></div>' +
+    '<div class="wg-lab">내 달력 미리보기 <small id="wg-sync-at"></small></div>' +
     '<div class="wg-prev"><img id="wg-prev" alt="위젯 미리보기"></div>' +
-    '<div class="wg-btns"><button type="button" onclick="wgCopy(window.wgPngNow)">그림 주소 복사</button><button type="button" onclick="wgCopy(wgBitmapFormula())">비트맵 수식 복사</button><button type="button" onclick="window.open(window.wgPngNow,\'_blank\')">브라우저로 확인</button></div>' +
-    '<div class="wg-tip">이번 달 기준 <b>앞뒤 6개월(13달)</b> 달력이 올라가요. 주소 끝 <b>&m=</b> 숫자: 0 = 이번 달, -1 = 지난달, 1 = 다음 달 … (-6 ~ 6)</div>' +
-    '<div class="wg-lab">② KWGT 프리셋으로 한 번에 (추천)</div>' +
+    wgLineHtml() +
+    '<div class="wg-tip">이번 달 기준 <b>앞뒤 6개월(13달)</b> 달력이 올라가요.</div>' +
+    '<div class="wg-tabs"><button type="button" data-t="and" onclick="wgTab(\'and\')">안드로이드</button><button type="button" data-t="ios" onclick="wgTab(\'ios\')">아이폰</button></div>' +
+    /* ---- 안드로이드 (KWGT) ---- */
+    '<div class="wg-pane" data-t="and">' +
+    '<div class="gd-stage" data-g="wa"></div>' +
     '<button type="button" class="wg-main" onclick="wgKwgtDownload()">KWGT 프리셋 받기 (.kwgt)</button>' +
     '<ol class="wg-steps">' +
-    '<li>위 버튼으로 <b>철도비서_근무표.kwgt</b> 받기 (크롬 등 브라우저에서)</li>' +
-    '<li><b>내 파일</b> 앱 › 다운로드 › 그 파일을 길게 눌러 <b>이동</b> › 내장 메모리 › <b>Kustom</b> › <b>widgets</b> 폴더에 넣기 (폴더가 없으면 KWGT를 한 번 열면 생겨요)</li>' +
-    '<li>홈화면에 <b>KWGT 4x4</b> 위젯 추가 › 위젯 누르기 › 프리셋 목록 위쪽 탭 중 <b>내보냄(Exported)</b> 또는 <b>SD 카드</b> › <b>철도비서 근무표 달력</b> 선택</li>' +
-    '<li>오른쪽 위 <b>저장</b> 누르면 끝 (‹ › 누르면 달 이동, 달력 누르면 이번 달)</li>' +
+    '<li>Play 스토어에서 <b>KWGT</b>(무료)를 설치하고 한 번 열어요.</li>' +
+    '<li>위 버튼으로 <b>철도비서_근무표.kwgt</b>를 받아요 (크롬 등 브라우저에서).</li>' +
+    '<li><b>내 파일</b> 앱 › 다운로드 › 그 파일을 <b>꾹</b> 눌러 <b>이동</b> › 내장 메모리 › <b>Kustom</b> › <b>widgets</b> 폴더에 넣어요.</li>' +
+    '<li>홈 화면 빈 곳을 꾹 › <b>위젯</b> › <b>KWGT 4x4</b>를 추가해요.</li>' +
+    '<li>빈 위젯을 누르고 위쪽 탭 <b>내보냄(Exported)</b> 또는 <b>SD 카드</b> › <b>철도비서 근무표 달력</b>을 골라요.</li>' +
+    '<li>오른쪽 위 <b>저장(💾)</b>을 누르면 끝! ‹ › 누르면 달 이동, 달력을 누르면 새로고침.</li>' +
     '</ol>' +
+    '<div class="wg-btns"><button type="button" onclick="wgCopy(window.wgPngNow)">그림 주소 복사</button><button type="button" onclick="wgCopy(wgBitmapFormula())">비트맵 수식 복사</button><button type="button" onclick="window.open(window.wgPngNow,\'_blank\')">브라우저로 확인</button></div>' +
     '<details class="wg-manual"><summary>직접 만들기 (프리셋이 안 될 때)</summary>' +
     '<ol class="wg-steps">' +
     '<li>홈화면에 <b>KWGT 4x4</b> 위젯 추가 › 위젯 눌러 편집</li>' +
-    '<li><b>전역변수(Globals)</b> › + › <b>텍스트</b>, 이름 <b>mo</b>, 값 <b>0</b></li>' +
+    '<li><b>전역변수(Globals)</b> › + › <b>텍스트</b>, 이름 <b>mo</b>, 값 <b>0</b> / 같은 방법으로 <b>rf</b>, 값 <b>0</b></li>' +
     '<li>+ › <b>이미지(Image)</b> › <b>비트맵(Bitmap)</b> 옆 수식(계산기) 누르고 <b>비트맵 수식 복사</b>한 것 붙여넣기 › 너비를 위젯 가득</li>' +
     '<li>+ › <b>도형(Shape)</b> 2개를 달력 위쪽 ‹ › 자리에 놓고 색을 투명(알파 0)으로</li>' +
     '<li>‹ 도형 › 터치 › <b>전역변수 전환(Switch Global)</b> › mo › 값<br><code>' + esc('$mu(max, gv(mo)-1, -6)$') + '</code> <button type="button" class="wg-mini" onclick="wgCopy(\'$mu(max, gv(mo)-1, -6)$\')">복사</button></li>' +
     '<li>› 도형도 같은 방법으로 값<br><code>' + esc('$mu(min, gv(mo)+1, 6)$') + '</code> <button type="button" class="wg-mini" onclick="wgCopy(\'$mu(min, gv(mo)+1, 6)$\')">복사</button></li>' +
     '</ol></details>' +
-    '<div class="wg-tip">철도비서를 열 때마다 바뀐 달만 새로 그려서 올려요(오늘 표시 · 근무 변경 반영). 근무 아래에는 <b>교환 상대</b>와 <b>휴무충당 · 대기충당</b>만 보여요.</div>' +
+    '</div>' +
+    /* ---- 아이폰 (Scriptable) ---- */
+    '<div class="wg-pane" data-t="ios" hidden>' +
+    '<div class="gd-stage" data-g="wi"></div>' +
+    '<div class="wg-btns"><button type="button" onclick="wgCopy(window.wgPngNow)">① 그림 주소 복사</button><button type="button" onclick="wgCopy(WG_SCRIPTABLE)">② 스크립트 복사</button></div>' +
+    '<ol class="wg-steps">' +
+    '<li>App Store에서 <b>Scriptable</b>(무료, 광고 없음)을 설치해요.</li>' +
+    '<li>위 <b>② 스크립트 복사</b>를 누르고 Scriptable을 열어요 › 오른쪽 위 <b>+</b> › 붙여넣기 › 맨 위 이름을 <b>철도비서</b>로 › <b>Done</b>.</li>' +
+    '<li>홈 화면 빈 곳을 꾹 › 왼쪽 위 <b>+</b> (또는 <b>편집 › 위젯 추가</b>) › <b>Scriptable</b> › <b>큰 크기</b> › 위젯 추가.</li>' +
+    '<li>철도비서로 돌아와 <b>① 그림 주소 복사</b>를 눌러요.</li>' +
+    '<li>추가한 위젯을 꾹 › <b>위젯 편집</b> › <b>Script</b>: 철도비서 / <b>Parameter</b>: 붙여넣기 / <b>When Interacting</b>: Run Script.</li>' +
+    '<li>끝! 위젯은 iOS가 보통 15~30분마다 다시 그려요. 바로 보려면 위젯을 한 번 누르세요.</li>' +
+    '</ol>' +
+    '<div class="wg-tip">아이폰 위젯은 ‹ › 로 달을 넘길 수 없어서 <b>이번 달</b>만 보여요.</div>' +
+    '</div>' +
+    '<div class="wg-warn">위젯 주소(그림 주소)를 아는 사람은 내 근무표를 볼 수 있어요. 다른 사람에게 보내지 마세요.</div>' +
     '<div class="wg-btns end"><button type="button" onclick="wgSync()">지금 갱신</button><button type="button" onclick="wgMake(true)">새 주소로 바꾸기</button><button type="button" class="danger" onclick="wgOff()">연결 끄기</button></div>';
 }
 function wgAfterSync() { if ($('wg-panel') && $('wg-panel').classList.contains('active')) { var e = $('wg-sync-at'); if (e) e.textContent = '방금 갱신했어요'; showToast('위젯 달력을 갱신했어요.'); } }
@@ -3993,6 +4073,7 @@ function wgMake(renew) {
     rsFeedSet(true);
     wgRender(r);
     wgFillPreview();
+    wgTab(wgIsIphone() ? 'ios' : 'and');
     rsFeedPush(true);
     showToast(renew ? '새 위젯 주소를 만들었어요.' : '위젯 주소를 만들었어요.');
   });
@@ -15042,6 +15123,45 @@ html body #main-section .menu-grid > .menu-btn > span{display:flex;align-items:f
 #wg-panel .wg-lab small{font-weight:600;color:#17a85a;margin-left:6px}
 </style>
 <style id="widget-panel-style-end"></style>
+<style id="wg-tabs-style">
+#wg-panel .wg-dialog{max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+#wg-panel .wg-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:14px 0 4px;padding:4px;border-radius:12px;background:#eef2f8}
+#wg-panel .wg-tabs button{border:0;border-radius:9px;padding:9px 0;background:transparent;color:#5f6b7f;font-size:13.5px;font-weight:800}
+#wg-panel .wg-tabs button.on{background:#fff;color:#0b376d;box-shadow:0 1px 4px rgba(20,50,100,.12)}
+#wg-panel .wg-opt{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:6px}
+#wg-panel .wg-opt button{border:1.5px solid #d9e1ee;border-radius:10px;background:#fff;padding:8px 2px;font-size:12px;font-weight:800;color:#5f6b7f}
+#wg-panel .wg-opt button.on{border-color:#2f6fd6;background:#eef4ff;color:#2f6fd6}
+#wg-panel .gd-path{font-size:8.5px;color:#5f6b7f;margin:-4px 2px 8px}
+#wg-panel .gd-path b{color:#2f6fd6}
+#wg-panel .gd-list.dark i{background:#2a2f36;border-color:#3b424c;color:#e6ebf2}
+#wg-panel .gd-list.dark i.hl{border-color:#3d7bf0;background:#24324a}
+#wg-panel .gd-scr:has(.gd-ktab){background:#1d2127}
+#wg-panel .gd-ktab{display:flex;gap:4px;margin-bottom:8px}
+#wg-panel .gd-ktab span{flex:1;text-align:center;font-size:8px;font-weight:800;color:#9aa4b2;padding:5px 0;border-bottom:2px solid transparent}
+#wg-panel .gd-ktab span.on{color:#fff;border-color:#3d7bf0}
+#wg-panel .gd-sheet{position:absolute;left:6px;right:6px;bottom:8px;background:#fff;border-radius:14px;padding:9px;animation:gdDrop .45s ease both;animation-name:gdUp}
+@keyframes gdUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:none}}
+#wg-panel .gd-sheet i{display:block;font-style:normal;font-weight:700;padding:8px;border:1px solid #e1e7f1;border-radius:8px;margin-bottom:5px;transition:transform .15s}
+#wg-panel .gd-sheet i.hl{border-color:#2f6fd6;background:#eef4ff}
+#wg-panel .gd-lw{height:70px;border-radius:12px;background:#f1f4f9;background-image:radial-gradient(circle,#5b8def 2.5px,transparent 3px),radial-gradient(circle,#ffd21f 2.5px,transparent 3px);background-size:16px 16px,16px 16px;background-position:3px 3px,11px 11px}
+#wg-panel .gd-store{display:flex;align-items:center;gap:7px;background:#fff;border:1px solid #e1e7f1;border-radius:12px;padding:9px}
+#wg-panel .gd-appico{font-style:normal;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#22263a,#4b4f6b);color:#fff;font-weight:900;font-size:11px}
+#wg-panel .gd-store span{flex:1;min-width:0}
+#wg-panel .gd-store b{display:block;font-size:10.5px}
+#wg-panel .gd-store small{display:block;font-size:7px;color:#7b879a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#wg-panel .gd-get{font-style:normal;background:#eef1f6;color:#2f6fd6;font-weight:900;border-radius:999px;padding:5px 11px;transition:transform .15s}
+#wg-panel .gd-get.on{background:#2f6fd6;color:#fff}
+#wg-panel .gd-btn.alt{background:#fff;color:#2f6fd6;border:1px solid #2f6fd6}
+#wg-panel .gd-scr:has(.gd-code){background:#1d2127;color:#e6ebf2}
+#wg-panel .gd-sbar{display:flex;align-items:center;justify-content:space-between;margin:0 0 10px}
+#wg-panel .gd-sname{font-weight:800;font-size:11px}
+#wg-panel .gd-done{font-style:normal;color:#5aa2ff;font-weight:900;padding:3px 6px;border-radius:6px;transition:transform .15s}
+#wg-panel .gd-code i{display:block;font-style:normal;font-family:ui-monospace,Menlo,monospace;font-size:7.5px;color:#9ad18b;margin-bottom:5px;white-space:nowrap;overflow:hidden}
+#wg-panel .gd-code i:nth-child(n+2){color:#cfd8e6}
+#wg-panel .gd-in.hl{border-color:#2f6fd6;color:#22324d}
+#wg-panel .wg-pane{margin-top:6px}
+</style>
+
 <style id="guide-panel-style">
 #guide-panel .guide-dialog{max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow-y:auto;-webkit-overflow-scrolling:touch}
 #guide-panel .guide-intro{font-size:12.5px;color:#5f6b7f;margin:2px 0 10px}
@@ -15051,122 +15171,123 @@ html body #main-section .menu-grid > .menu-btn > span{display:flex;align-items:f
 #guide-panel .guide-sec ol{margin:8px 0 2px;padding-left:20px;font-size:13px;line-height:1.6;color:#33415c}
 </style>
 <style id="guide-anim-style">
-#guide-panel .gd-stage{display:flex;flex-direction:column;align-items:center;margin:10px 0 4px}
-#guide-panel .gd-phone{position:relative;width:180px;height:260px;border-radius:24px;background:#16233a;padding:8px;box-shadow:0 6px 18px rgba(16,40,80,.18)}
-#guide-panel .gd-scr{position:relative;width:100%;height:100%;border-radius:17px;background:#f6f8fc;overflow:hidden;padding:10px 9px;box-sizing:border-box;font-size:10px;color:#22324d}
-#guide-panel .gd-scr.in{animation:gdIn .35s ease}
+#guide-panel .gd-stage,#wg-panel .gd-stage{display:flex;flex-direction:column;align-items:center;margin:10px 0 4px}
+#guide-panel .gd-phone,#wg-panel .gd-phone{position:relative;width:180px;height:260px;border-radius:24px;background:#16233a;padding:8px;box-shadow:0 6px 18px rgba(16,40,80,.18)}
+#guide-panel .gd-scr,#wg-panel .gd-scr{position:relative;width:100%;height:100%;border-radius:17px;background:#f6f8fc;overflow:hidden;padding:10px 9px;box-sizing:border-box;font-size:10px;color:#22324d}
+#guide-panel .gd-scr.in,#wg-panel .gd-scr.in{animation:gdIn .35s ease}
 @keyframes gdIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
-#guide-panel .gd-finger{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:rgba(47,111,214,.28);border:2px solid #2f6fd6;opacity:0;transition:left .8s cubic-bezier(.4,.1,.2,1),top .8s cubic-bezier(.4,.1,.2,1),opacity .3s;pointer-events:none;z-index:3}
-#guide-panel .gd-finger.show{opacity:1}
-#guide-panel .gd-finger.tap{animation:gdTap .5s ease}
+#guide-panel .gd-finger,#wg-panel .gd-finger{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:rgba(47,111,214,.28);border:2px solid #2f6fd6;opacity:0;transition:left .8s cubic-bezier(.4,.1,.2,1),top .8s cubic-bezier(.4,.1,.2,1),opacity .3s;pointer-events:none;z-index:3}
+#guide-panel .gd-finger.show,#wg-panel .gd-finger.show{opacity:1}
+#guide-panel .gd-finger.tap,#wg-panel .gd-finger.tap{animation:gdTap .5s ease}
 @keyframes gdTap{40%{transform:scale(.7);background:rgba(47,111,214,.55)}100%{transform:scale(1.5);opacity:0}}
-#guide-panel .gd-cap{margin-top:10px;font-size:13px;font-weight:800;color:#0b376d;text-align:center;min-height:1.4em}
-#guide-panel .gd-dots{display:flex;gap:5px;margin-top:6px}
-#guide-panel .gd-dots i{width:6px;height:6px;border-radius:50%;background:#cfd8e6}
-#guide-panel .gd-dots i.on{background:#2f6fd6;width:16px;border-radius:4px}
-#guide-panel .gd-top{font-size:11.5px;font-weight:800;margin:2px 2px 9px;color:#0b376d}
-#guide-panel .gd-top.dark{color:#fff}
-#guide-panel .gd-in{background:#fff;border:1px solid #d9e1ee;border-radius:8px;padding:7px 8px;margin:0 0 7px;color:#7b879a}
-#guide-panel .gd-in.dark{background:#2a2f36;border-color:#3b424c;color:#cdd5e0}
-#guide-panel .gd-btn{background:#2f6fd6;color:#fff;text-align:center;font-weight:800;border-radius:9px;padding:8px;margin-top:10px;transition:transform .15s}
-#guide-panel .gd-btn.sm{padding:6px;margin-top:6px;font-size:9.5px}
-#guide-panel .gd-btn.dark{background:#3d7bf0}
-#guide-panel .press{transform:scale(.94);filter:brightness(.92)}
-#guide-panel .gd-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
-#guide-panel .gd-grid i{font-style:normal;display:flex;align-items:flex-end;justify-content:center;height:46px;border-radius:9px;background:#fff;border:1px solid #e1e7f1;font-size:8.5px;font-weight:700;padding-bottom:4px;position:relative;transition:transform .15s}
-#guide-panel .gd-grid i::before{content:'';position:absolute;top:7px;left:50%;width:20px;height:20px;margin-left:-10px;border-radius:6px;background:#dbe8fb}
-#guide-panel .gd-grid i.hl{border-color:#2f6fd6;background:#eef4ff}
-#guide-panel .gd-chips{display:flex;gap:6px;justify-content:center;margin:4px 0 10px}
-#guide-panel .gd-chips b,#guide-panel .gd-cal b{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:10px;color:#fff}
-#guide-panel b.d{background:#ffd21f;color:#4a3b00}#guide-panel b.n{background:#5b8def}#guide-panel b.o{background:#e8590c}
-#guide-panel .gd-row{display:flex;gap:6px;justify-content:center}
-#guide-panel .gd-pill{padding:6px 9px;border-radius:999px;background:#fff;border:1px solid #d9e1ee;font-weight:700}
-#guide-panel .gd-pill.hl{border-color:#7c5cc4;color:#7c5cc4}
-#guide-panel .gd-list i{display:block;font-style:normal;background:#fff;border:1px solid #e1e7f1;border-radius:8px;padding:9px;margin-bottom:6px;font-weight:700}
-#guide-panel .gd-list i.hl{border-color:#2f6fd6;background:#eef4ff}
-#guide-panel .gd-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px 0}
-#guide-panel .gd-cal span{display:flex;flex-direction:column;align-items:center;height:28px;border-radius:5px}
-#guide-panel .gd-cal span.sel{background:#e3eefe;outline:1.5px solid #2f80ed}
-#guide-panel .gd-cal b{width:15px;height:15px;font-size:7.5px;margin-top:3px}
-#guide-panel .gd-cal em{font-style:normal;font-size:6px;color:#7c5cc4;font-weight:800;white-space:nowrap}
-#guide-panel .gd-toast{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(20,30,50,.88);color:#fff;border-radius:999px;padding:6px 11px;font-size:9px;white-space:nowrap;animation:gdIn .4s ease .3s both}
-#guide-panel .gd-caret{display:inline-block;width:1px;height:10px;background:#2f6fd6;margin-left:2px;vertical-align:middle;animation:gdBlink 1s steps(1) infinite}
+#guide-panel .gd-cap,#wg-panel .gd-cap{margin-top:10px;font-size:13px;font-weight:800;color:#0b376d;text-align:center;min-height:1.4em}
+#guide-panel .gd-dots,#wg-panel .gd-dots{display:flex;gap:5px;margin-top:6px}
+#guide-panel .gd-dots i,#wg-panel .gd-dots i{width:6px;height:6px;border-radius:50%;background:#cfd8e6}
+#guide-panel .gd-dots i.on,#wg-panel .gd-dots i.on{background:#2f6fd6;width:16px;border-radius:4px}
+#guide-panel .gd-top,#wg-panel .gd-top{font-size:11.5px;font-weight:800;margin:2px 2px 9px;color:#0b376d}
+#guide-panel .gd-top.dark,#wg-panel .gd-top.dark{color:#fff}
+#guide-panel .gd-in,#wg-panel .gd-in{background:#fff;border:1px solid #d9e1ee;border-radius:8px;padding:7px 8px;margin:0 0 7px;color:#7b879a}
+#guide-panel .gd-in.dark,#wg-panel .gd-in.dark{background:#2a2f36;border-color:#3b424c;color:#cdd5e0}
+#guide-panel .gd-btn,#wg-panel .gd-btn{background:#2f6fd6;color:#fff;text-align:center;font-weight:800;border-radius:9px;padding:8px;margin-top:10px;transition:transform .15s}
+#guide-panel .gd-btn.sm,#wg-panel .gd-btn.sm{padding:6px;margin-top:6px;font-size:9.5px}
+#guide-panel .gd-btn.dark,#wg-panel .gd-btn.dark{background:#3d7bf0}
+#guide-panel .press,#wg-panel .press{transform:scale(.94);filter:brightness(.92)}
+#guide-panel .gd-grid,#wg-panel .gd-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+#guide-panel .gd-grid i,#wg-panel .gd-grid i{font-style:normal;display:flex;align-items:flex-end;justify-content:center;height:46px;border-radius:9px;background:#fff;border:1px solid #e1e7f1;font-size:8.5px;font-weight:700;padding-bottom:4px;position:relative;transition:transform .15s}
+#guide-panel .gd-grid i::before,#wg-panel .gd-grid i::before{content:'';position:absolute;top:7px;left:50%;width:20px;height:20px;margin-left:-10px;border-radius:6px;background:#dbe8fb}
+#guide-panel .gd-grid i.hl,#wg-panel .gd-grid i.hl{border-color:#2f6fd6;background:#eef4ff}
+#guide-panel .gd-chips,#wg-panel .gd-chips{display:flex;gap:6px;justify-content:center;margin:4px 0 10px}
+#guide-panel .gd-chips b,#guide-panel .gd-cal b,#wg-panel .gd-chips b,#wg-panel .gd-cal b{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:10px;color:#fff}
+#guide-panel b.d,#wg-panel b.d{background:#ffd21f;color:#4a3b00}#guide-panel b.n{background:#5b8def}#guide-panel b.o{background:#e8590c}
+#wg-panel b.n{background:#5b8def}#wg-panel b.o{background:#e8590c}
+#guide-panel .gd-row,#wg-panel .gd-row{display:flex;gap:6px;justify-content:center}
+#guide-panel .gd-pill,#wg-panel .gd-pill{padding:6px 9px;border-radius:999px;background:#fff;border:1px solid #d9e1ee;font-weight:700}
+#guide-panel .gd-pill.hl,#wg-panel .gd-pill.hl{border-color:#7c5cc4;color:#7c5cc4}
+#guide-panel .gd-list i,#wg-panel .gd-list i{display:block;font-style:normal;background:#fff;border:1px solid #e1e7f1;border-radius:8px;padding:9px;margin-bottom:6px;font-weight:700}
+#guide-panel .gd-list i.hl,#wg-panel .gd-list i.hl{border-color:#2f6fd6;background:#eef4ff}
+#guide-panel .gd-cal,#wg-panel .gd-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px 0}
+#guide-panel .gd-cal span,#wg-panel .gd-cal span{display:flex;flex-direction:column;align-items:center;height:28px;border-radius:5px}
+#guide-panel .gd-cal span.sel,#wg-panel .gd-cal span.sel{background:#e3eefe;outline:1.5px solid #2f80ed}
+#guide-panel .gd-cal b,#wg-panel .gd-cal b{width:15px;height:15px;font-size:7.5px;margin-top:3px}
+#guide-panel .gd-cal em,#wg-panel .gd-cal em{font-style:normal;font-size:6px;color:#7c5cc4;font-weight:800;white-space:nowrap}
+#guide-panel .gd-toast,#wg-panel .gd-toast{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(20,30,50,.88);color:#fff;border-radius:999px;padding:6px 11px;font-size:9px;white-space:nowrap;animation:gdIn .4s ease .3s both}
+#guide-panel .gd-caret,#wg-panel .gd-caret{display:inline-block;width:1px;height:10px;background:#2f6fd6;margin-left:2px;vertical-align:middle;animation:gdBlink 1s steps(1) infinite}
 @keyframes gdBlink{50%{opacity:0}}
-#guide-panel .gd-track{position:relative;height:60px;margin:26px 4px 6px;display:flex;justify-content:space-between;align-items:center}
-#guide-panel .gd-track::before{content:'';position:absolute;left:4px;right:4px;top:50%;height:3px;background:#9fb3d1;border-radius:2px}
-#guide-panel .gd-track i{position:relative;width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #5b8def;z-index:1}
-#guide-panel .gd-train{position:absolute;top:50%;left:0;width:34px;height:13px;margin-top:-17px;border-radius:7px 9px 3px 3px;background:linear-gradient(#e8f0ff,#5b8def);animation:gdRun 4.6s linear infinite}
+#guide-panel .gd-track,#wg-panel .gd-track{position:relative;height:60px;margin:26px 4px 6px;display:flex;justify-content:space-between;align-items:center}
+#guide-panel .gd-track::before,#wg-panel .gd-track::before{content:'';position:absolute;left:4px;right:4px;top:50%;height:3px;background:#9fb3d1;border-radius:2px}
+#guide-panel .gd-track i,#wg-panel .gd-track i{position:relative;width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #5b8def;z-index:1}
+#guide-panel .gd-train,#wg-panel .gd-train{position:absolute;top:50%;left:0;width:34px;height:13px;margin-top:-17px;border-radius:7px 9px 3px 3px;background:linear-gradient(#e8f0ff,#5b8def);animation:gdRun 4.6s linear infinite}
 @keyframes gdRun{from{left:2%}to{left:70%}}
-#guide-panel .gd-st{display:flex;justify-content:space-between;font-size:8px;font-weight:700;color:#5f6b7f}
-#guide-panel .gd-mini-cal{height:120px;border-radius:10px;background:#fff;border:1px solid #e1e7f1;background-image:radial-gradient(circle,#5b8def 3px,transparent 3.5px),radial-gradient(circle,#ffd21f 3px,transparent 3.5px);background-size:22px 22px,22px 22px;background-position:4px 4px,15px 15px}
-#guide-panel .gd-home{position:absolute;inset:0;background:linear-gradient(#7aa4e0,#f2b88c);padding:12px 9px}
-#guide-panel .gd-apps{display:flex;gap:10px;justify-content:center;margin-bottom:12px}
-#guide-panel .gd-apps i{width:24px;height:24px;border-radius:7px;background:rgba(255,255,255,.8)}
-#guide-panel .gd-widget{background:#fff;border-radius:14px;padding:7px 5px;animation:gdIn .5s ease}
-#guide-panel .gd-widget .gd-top{margin:0 0 4px;text-align:center}
-#guide-panel .gd-finger.hold{background:rgba(47,111,214,.5);box-shadow:0 0 0 0 rgba(47,111,214,.45);animation:gdHold 1s ease-out forwards}
+#guide-panel .gd-st,#wg-panel .gd-st{display:flex;justify-content:space-between;font-size:8px;font-weight:700;color:#5f6b7f}
+#guide-panel .gd-mini-cal,#wg-panel .gd-mini-cal{height:120px;border-radius:10px;background:#fff;border:1px solid #e1e7f1;background-image:radial-gradient(circle,#5b8def 3px,transparent 3.5px),radial-gradient(circle,#ffd21f 3px,transparent 3.5px);background-size:22px 22px,22px 22px;background-position:4px 4px,15px 15px}
+#guide-panel .gd-home,#wg-panel .gd-home{position:absolute;inset:0;background:linear-gradient(#7aa4e0,#f2b88c);padding:12px 9px}
+#guide-panel .gd-apps,#wg-panel .gd-apps{display:flex;gap:10px;justify-content:center;margin-bottom:12px}
+#guide-panel .gd-apps i,#wg-panel .gd-apps i{width:24px;height:24px;border-radius:7px;background:rgba(255,255,255,.8)}
+#guide-panel .gd-widget,#wg-panel .gd-widget{background:#fff;border-radius:14px;padding:7px 5px;animation:gdIn .5s ease}
+#guide-panel .gd-widget .gd-top,#wg-panel .gd-widget .gd-top{margin:0 0 4px;text-align:center}
+#guide-panel .gd-finger.hold,#wg-panel .gd-finger.hold{background:rgba(47,111,214,.5);box-shadow:0 0 0 0 rgba(47,111,214,.45);animation:gdHold 1s ease-out forwards}
 @keyframes gdHold{to{box-shadow:0 0 0 14px rgba(47,111,214,0)}}
-#guide-panel .gd-finger.tapl{animation:gdTap .5s ease}
-#guide-panel .gd-finger.hold::after{content:'꾹';position:absolute;left:50%;top:-16px;transform:translateX(-50%);font-size:9px;font-weight:800;color:#2f6fd6;white-space:nowrap}
-#guide-panel .gd-top small{font-weight:600;color:#7b879a;margin-left:4px}
-#guide-panel .gd-lab{font-size:8.5px;font-weight:800;color:#33415c;margin:2px 0 4px}
-#guide-panel .gd-in.sm{flex:1;margin:0;padding:6px}
-#guide-panel .gd-row2{display:flex;gap:4px;align-items:center;margin-bottom:7px}
-#guide-panel .gd-chip2{font-size:8px;font-weight:800;padding:6px 5px;border-radius:7px;background:#fff;border:1px solid #d9e1ee;white-space:nowrap}
-#guide-panel .gd-chip2.hl{border-color:#2f6fd6}
-#guide-panel .gd-chip2.on{background:#2f6fd6;color:#fff;border-color:#2f6fd6}
-#guide-panel .gd-st3{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
-#guide-panel .gd-st3 i{font-style:normal;text-align:center;background:#fff;border:1px solid #d9e1ee;border-radius:7px;padding:6px 0;font-weight:700}
-#guide-panel .gd-btns2{display:flex;gap:6px;justify-content:flex-end;margin-top:14px}
-#guide-panel .gd-btns2 span{padding:7px 12px;border-radius:999px;border:1px solid #d9e1ee;font-weight:800;background:#fff}
-#guide-panel .gd-btns2 .gd-btn{margin:0;border:0;background:#2f6fd6;color:#fff}
-#guide-panel .gd-table{display:grid;grid-template-columns:44px repeat(3,1fr);gap:5px 3px;align-items:center;background:#fff;border:1px solid #e1e7f1;border-radius:9px;padding:7px}
-#guide-panel .gd-table i{font-style:normal;font-weight:800;color:#2f4f8f;font-size:9px}
-#guide-panel .gd-table b{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;width:20px;height:20px;font-size:8.5px;justify-self:center}
-#guide-panel .gd-ppl{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
-#guide-panel .gd-ppl i{font-style:normal;text-align:center;background:#fff;border:1px solid #e1e7f1;border-radius:8px;padding:9px 0;font-weight:700;transition:transform .15s}
-#guide-panel .gd-ppl i.hl{border-color:#2f6fd6;background:#eef4ff}
-#guide-panel .gd-two{display:grid;grid-template-columns:1fr 1fr;gap:4px}
-#guide-panel .gd-side{min-width:0;overflow:hidden;background:#fff;border:1px solid #e1e7f1;border-radius:8px;padding:4px 1px}
-#guide-panel .gd-sn{font-size:7.5px;font-weight:800;text-align:center;margin-bottom:3px}
-#guide-panel .gd-mc{display:grid;grid-template-columns:repeat(7,1fr);gap:2px 0}
-#guide-panel .gd-mc span{display:flex;justify-content:center;padding:2px 0;border-radius:4px}
-#guide-panel .gd-mc span.pick{background:#e3eefe}
-#guide-panel .gd-mc b{display:inline-flex;align-items:center;justify-content:center;width:9px;height:9px;border-radius:50%;font-size:5px;color:#fff;letter-spacing:-.5px}
-#guide-panel .gd-mc b.d{color:#4a3b00}
-#guide-panel .gd-tags{display:flex;gap:4px;flex-wrap:wrap;min-height:4px;margin-bottom:4px}
-#guide-panel .gd-tags span{padding:3px 8px;border-radius:999px;background:#eef1f6;font-weight:800;font-size:8.5px;animation:gdIn .3s ease}
-#guide-panel .gd-tags span.blue{background:#2f6fd6;color:#fff}
-#guide-panel .gd-add{display:flex;gap:4px;margin-bottom:7px}
-#guide-panel .gd-add i{flex:1;font-style:normal;background:#fff;border:1px solid #d9e1ee;border-radius:7px;padding:5px 7px;color:#7b879a;font-size:8.5px}
-#guide-panel .gd-add.hl i{border-color:#2f6fd6;color:#22324d}
-#guide-panel .gd-add b{display:inline-flex;align-items:center;justify-content:center;width:24px;border-radius:7px;background:#2f6fd6;color:#fff;font-size:12px}
-#guide-panel .gd-tog{padding:5px 10px;border-radius:999px;border:1px solid #d9e1ee;background:#fff;font-weight:800;font-size:8.5px;transition:all .2s}
-#guide-panel .gd-tog.on{background:#2f6fd6;border-color:#2f6fd6;color:#fff}
-#guide-panel .gd-lock{position:absolute;inset:0;background:linear-gradient(#2b3d63,#6a83b3);padding:16px 8px;color:#fff}
-#guide-panel .gd-clock{text-align:center;font-size:30px;font-weight:300;margin:6px 0 14px}
-#guide-panel .gd-noti{background:rgba(255,255,255,.92);color:#1b2b45;border-radius:12px;padding:8px 9px;display:flex;flex-direction:column;gap:2px;animation:gdDrop .5s cubic-bezier(.2,1.4,.4,1) .2s both}
-#guide-panel .gd-noti b{font-size:8.5px;color:#2f6fd6}
-#guide-panel .gd-noti span{font-size:9.5px;font-weight:800}
-#guide-panel .gd-noti em{font-style:normal;font-size:8px;color:#5f6b7f}
+#guide-panel .gd-finger.tapl,#wg-panel .gd-finger.tapl{animation:gdTap .5s ease}
+#guide-panel .gd-finger.hold::after,#wg-panel .gd-finger.hold::after{content:'꾹';position:absolute;left:50%;top:-16px;transform:translateX(-50%);font-size:9px;font-weight:800;color:#2f6fd6;white-space:nowrap}
+#guide-panel .gd-top small,#wg-panel .gd-top small{font-weight:600;color:#7b879a;margin-left:4px}
+#guide-panel .gd-lab,#wg-panel .gd-lab{font-size:8.5px;font-weight:800;color:#33415c;margin:2px 0 4px}
+#guide-panel .gd-in.sm,#wg-panel .gd-in.sm{flex:1;margin:0;padding:6px}
+#guide-panel .gd-row2,#wg-panel .gd-row2{display:flex;gap:4px;align-items:center;margin-bottom:7px}
+#guide-panel .gd-chip2,#wg-panel .gd-chip2{font-size:8px;font-weight:800;padding:6px 5px;border-radius:7px;background:#fff;border:1px solid #d9e1ee;white-space:nowrap}
+#guide-panel .gd-chip2.hl,#wg-panel .gd-chip2.hl{border-color:#2f6fd6}
+#guide-panel .gd-chip2.on,#wg-panel .gd-chip2.on{background:#2f6fd6;color:#fff;border-color:#2f6fd6}
+#guide-panel .gd-st3,#wg-panel .gd-st3{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+#guide-panel .gd-st3 i,#wg-panel .gd-st3 i{font-style:normal;text-align:center;background:#fff;border:1px solid #d9e1ee;border-radius:7px;padding:6px 0;font-weight:700}
+#guide-panel .gd-btns2,#wg-panel .gd-btns2{display:flex;gap:6px;justify-content:flex-end;margin-top:14px}
+#guide-panel .gd-btns2 span,#wg-panel .gd-btns2 span{padding:7px 12px;border-radius:999px;border:1px solid #d9e1ee;font-weight:800;background:#fff}
+#guide-panel .gd-btns2 .gd-btn,#wg-panel .gd-btns2 .gd-btn{margin:0;border:0;background:#2f6fd6;color:#fff}
+#guide-panel .gd-table,#wg-panel .gd-table{display:grid;grid-template-columns:44px repeat(3,1fr);gap:5px 3px;align-items:center;background:#fff;border:1px solid #e1e7f1;border-radius:9px;padding:7px}
+#guide-panel .gd-table i,#wg-panel .gd-table i{font-style:normal;font-weight:800;color:#2f4f8f;font-size:9px}
+#guide-panel .gd-table b,#wg-panel .gd-table b{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;width:20px;height:20px;font-size:8.5px;justify-self:center}
+#guide-panel .gd-ppl,#wg-panel .gd-ppl{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+#guide-panel .gd-ppl i,#wg-panel .gd-ppl i{font-style:normal;text-align:center;background:#fff;border:1px solid #e1e7f1;border-radius:8px;padding:9px 0;font-weight:700;transition:transform .15s}
+#guide-panel .gd-ppl i.hl,#wg-panel .gd-ppl i.hl{border-color:#2f6fd6;background:#eef4ff}
+#guide-panel .gd-two,#wg-panel .gd-two{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+#guide-panel .gd-side,#wg-panel .gd-side{min-width:0;overflow:hidden;background:#fff;border:1px solid #e1e7f1;border-radius:8px;padding:4px 1px}
+#guide-panel .gd-sn,#wg-panel .gd-sn{font-size:7.5px;font-weight:800;text-align:center;margin-bottom:3px}
+#guide-panel .gd-mc,#wg-panel .gd-mc{display:grid;grid-template-columns:repeat(7,1fr);gap:2px 0}
+#guide-panel .gd-mc span,#wg-panel .gd-mc span{display:flex;justify-content:center;padding:2px 0;border-radius:4px}
+#guide-panel .gd-mc span.pick,#wg-panel .gd-mc span.pick{background:#e3eefe}
+#guide-panel .gd-mc b,#wg-panel .gd-mc b{display:inline-flex;align-items:center;justify-content:center;width:9px;height:9px;border-radius:50%;font-size:5px;color:#fff;letter-spacing:-.5px}
+#guide-panel .gd-mc b.d,#wg-panel .gd-mc b.d{color:#4a3b00}
+#guide-panel .gd-tags,#wg-panel .gd-tags{display:flex;gap:4px;flex-wrap:wrap;min-height:4px;margin-bottom:4px}
+#guide-panel .gd-tags span,#wg-panel .gd-tags span{padding:3px 8px;border-radius:999px;background:#eef1f6;font-weight:800;font-size:8.5px;animation:gdIn .3s ease}
+#guide-panel .gd-tags span.blue,#wg-panel .gd-tags span.blue{background:#2f6fd6;color:#fff}
+#guide-panel .gd-add,#wg-panel .gd-add{display:flex;gap:4px;margin-bottom:7px}
+#guide-panel .gd-add i,#wg-panel .gd-add i{flex:1;font-style:normal;background:#fff;border:1px solid #d9e1ee;border-radius:7px;padding:5px 7px;color:#7b879a;font-size:8.5px}
+#guide-panel .gd-add.hl i,#wg-panel .gd-add.hl i{border-color:#2f6fd6;color:#22324d}
+#guide-panel .gd-add b,#wg-panel .gd-add b{display:inline-flex;align-items:center;justify-content:center;width:24px;border-radius:7px;background:#2f6fd6;color:#fff;font-size:12px}
+#guide-panel .gd-tog,#wg-panel .gd-tog{padding:5px 10px;border-radius:999px;border:1px solid #d9e1ee;background:#fff;font-weight:800;font-size:8.5px;transition:all .2s}
+#guide-panel .gd-tog.on,#wg-panel .gd-tog.on{background:#2f6fd6;border-color:#2f6fd6;color:#fff}
+#guide-panel .gd-lock,#wg-panel .gd-lock{position:absolute;inset:0;background:linear-gradient(#2b3d63,#6a83b3);padding:16px 8px;color:#fff}
+#guide-panel .gd-clock,#wg-panel .gd-clock{text-align:center;font-size:30px;font-weight:300;margin:6px 0 14px}
+#guide-panel .gd-noti,#wg-panel .gd-noti{background:rgba(255,255,255,.92);color:#1b2b45;border-radius:12px;padding:8px 9px;display:flex;flex-direction:column;gap:2px;animation:gdDrop .5s cubic-bezier(.2,1.4,.4,1) .2s both}
+#guide-panel .gd-noti b,#wg-panel .gd-noti b{font-size:8.5px;color:#2f6fd6}
+#guide-panel .gd-noti span,#wg-panel .gd-noti span{font-size:9.5px;font-weight:800}
+#guide-panel .gd-noti em,#wg-panel .gd-noti em{font-style:normal;font-size:8px;color:#5f6b7f}
 @keyframes gdDrop{from{opacity:0;transform:translateY(-24px)}to{opacity:1;transform:none}}
-#guide-panel .gd-card{background:#fff;border:1px solid #e1e7f1;border-radius:10px;padding:9px}
-#guide-panel .gd-row3{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px}
-#guide-panel .gd-row3 b{display:block;font-size:10px}
-#guide-panel .gd-row3 small{display:block;font-size:7.5px;color:#7b879a}
-#guide-panel .gd-sw{position:relative;flex:0 0 auto;width:30px;height:17px;border-radius:999px;background:#cfd8e6;transition:background .25s}
-#guide-panel .gd-sw::after{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:left .25s}
-#guide-panel .gd-sw.on{background:#2f6fd6}
-#guide-panel .gd-sw.on::after{left:15px}
-#guide-panel .gd-pt{font-size:8.5px;color:#33415c;margin-top:3px}
-#guide-panel .gd-cancel{position:relative;height:110px;border-radius:10px;background:linear-gradient(#bfe0ff,#e9f6ff 60%,#9fd38a 60%);overflow:hidden}
-#guide-panel .gd-tank{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);display:flex;gap:2px}
-#guide-panel .gd-tank i{width:26px;height:12px;border-radius:6px;background:#5d6a7e}
-#guide-panel .gd-tank b{width:22px;height:15px;border-radius:3px 6px 2px 2px;background:#1f5fbf;margin-top:-3px}
-#guide-panel .gd-stamp{position:absolute;left:50%;top:14px;transform:translateX(-50%) rotate(-10deg);border:3px solid #e03131;color:#e03131;font-weight:900;font-size:20px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.7);z-index:2;animation:gdStamp .45s cubic-bezier(.2,1.6,.4,1) .3s both}
+#guide-panel .gd-card,#wg-panel .gd-card{background:#fff;border:1px solid #e1e7f1;border-radius:10px;padding:9px}
+#guide-panel .gd-row3,#wg-panel .gd-row3{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px}
+#guide-panel .gd-row3 b,#wg-panel .gd-row3 b{display:block;font-size:10px}
+#guide-panel .gd-row3 small,#wg-panel .gd-row3 small{display:block;font-size:7.5px;color:#7b879a}
+#guide-panel .gd-sw,#wg-panel .gd-sw{position:relative;flex:0 0 auto;width:30px;height:17px;border-radius:999px;background:#cfd8e6;transition:background .25s}
+#guide-panel .gd-sw::after,#wg-panel .gd-sw::after{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:left .25s}
+#guide-panel .gd-sw.on,#wg-panel .gd-sw.on{background:#2f6fd6}
+#guide-panel .gd-sw.on::after,#wg-panel .gd-sw.on::after{left:15px}
+#guide-panel .gd-pt,#wg-panel .gd-pt{font-size:8.5px;color:#33415c;margin-top:3px}
+#guide-panel .gd-cancel,#wg-panel .gd-cancel{position:relative;height:110px;border-radius:10px;background:linear-gradient(#bfe0ff,#e9f6ff 60%,#9fd38a 60%);overflow:hidden}
+#guide-panel .gd-tank,#wg-panel .gd-tank{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);display:flex;gap:2px}
+#guide-panel .gd-tank i,#wg-panel .gd-tank i{width:26px;height:12px;border-radius:6px;background:#5d6a7e}
+#guide-panel .gd-tank b,#wg-panel .gd-tank b{width:22px;height:15px;border-radius:3px 6px 2px 2px;background:#1f5fbf;margin-top:-3px}
+#guide-panel .gd-stamp,#wg-panel .gd-stamp{position:absolute;left:50%;top:14px;transform:translateX(-50%) rotate(-10deg);border:3px solid #e03131;color:#e03131;font-weight:900;font-size:20px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.7);z-index:2;animation:gdStamp .45s cubic-bezier(.2,1.6,.4,1) .3s both}
 @keyframes gdStamp{from{opacity:0;transform:translateX(-50%) rotate(-10deg) scale(2.2)}to{opacity:1;transform:translateX(-50%) rotate(-10deg) scale(1)}}
-#guide-panel .gd-cx{text-align:center;margin-top:10px;font-size:10px;font-weight:700}
-#guide-panel .gd-cx b{color:#e03131}
+#guide-panel .gd-cx,#wg-panel .gd-cx{text-align:center;margin-top:10px;font-size:10px;font-weight:700}
+#guide-panel .gd-cx b,#wg-panel .gd-cx b{color:#e03131}
 </style>
 <style id="guide-anim-style-end2"></style>
 <style id="guide-anim-style-end"></style>
