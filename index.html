@@ -6,14 +6,24 @@
 /* 화면 설정(글씨 크기 · 글꼴 · 화면 모드)을 그리기 전에 먼저 적용 — 이 폰에만 저장 */
 var UI_FONTS = {
   sys: { name: '기본 (시스템)', css: '' },
-  pretendard: { name: '프리텐다드', fam: "'Pretendard'", href: 'https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css' },
-  noto: { name: '본고딕 (Noto Sans)', fam: "'Noto Sans KR'", href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap' },
-  nanum: { name: '나눔고딕', fam: "'Nanum Gothic'", href: 'https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap' },
-  gowun: { name: '고운돋움', fam: "'Gowun Dodum'", href: 'https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap' }
+  /* 글꼴 파일은 두 곳에서 받음(구글 · jsDelivr): 한쪽이 막힌 폰(광고 차단 · 회사망 등)에서도 적용되게 */
+  pretendard: { name: '프리텐다드', fam: "'Pretendard'", href: ['https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css', 'https://fastly.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css'] },
+  noto: { name: '본고딕 (Noto Sans)', fam: "'Noto Sans KR'", href: ['https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap', 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-kr@5/index.css', 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-kr@5/700.css'] },
+  nanum: { name: '나눔고딕', fam: "'Nanum Gothic'", href: ['https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap', 'https://cdn.jsdelivr.net/npm/@fontsource/nanum-gothic@5/index.css', 'https://cdn.jsdelivr.net/npm/@fontsource/nanum-gothic@5/700.css'] },
+  gowun: { name: '고운돋움', fam: "'Gowun Dodum'", href: ['https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap', 'https://cdn.jsdelivr.net/npm/@fontsource/gowun-dodum@5/index.css'] }
 };
 function uiGet() { var o = {}; try { o = JSON.parse(localStorage.getItem('rs_ui') || '{}') || {}; } catch (e) {} return { size: +o.size || 1, font: UI_FONTS[o.font] ? o.font : 'sys', mode: /^(light|dark|system)$/.test(o.mode || '') ? o.mode : 'light' }; }
 function uiFontFam() { var f = UI_FONTS[uiGet().font]; return f && f.fam ? f.fam : ''; }
 function uiSave(o) { try { localStorage.setItem('rs_ui', JSON.stringify(o)); } catch (e) {} }
+function uiLoadFont(k) {
+  var f = UI_FONTS[k]; if (!f || !f.href) return;
+  [].concat(f.href).forEach(function (h, i) {
+    var id = 'ui-font-' + k + '-' + i;
+    if (document.getElementById(id)) return;
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = h; l.id = id; l.crossOrigin = 'anonymous';
+    (document.head || document.documentElement).appendChild(l);
+  });
+}
 var uiMq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 function uiApply() {
   var o = uiGet(), root = document.documentElement;
@@ -29,9 +39,7 @@ function uiApply() {
   /* 글꼴 */
   var f = UI_FONTS[o.font], st = document.getElementById('ui-font-style');
   if (!st) { st = document.createElement('style'); st.id = 'ui-font-style'; document.head.appendChild(st); }
-  if (f.href && !document.getElementById('ui-font-' + o.font)) {
-    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = f.href; l.id = 'ui-font-' + o.font; document.head.appendChild(l);
-  }
+  uiLoadFont(o.font);
   /* 모든 화면 · 모든 글자(버튼 · 입력칸 · 표 · 팝업 · 그림 속 SVG 글자까지)에 같은 글꼴. 코드 표시 글꼴만 제외 */
   st.textContent = f.fam ? 'html body,html body *:not(code):not(pre):not(kbd):not(samp){font-family:' + f.fam + ',-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif!important}' : '';
 }
@@ -1302,7 +1310,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="dia-dialog ns-dialog ui-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='6' y='10' width='52' height='38' rx='7' fill='%23e8f0ff' stroke='%232f6fd6' stroke-width='3'/%3E%3Ctext x='19' y='38' font-family='Arial' font-weight='900' font-size='22' fill='%232f6fd6'%3EA%3C/text%3E%3Ctext x='34' y='38' font-family='Arial' font-weight='900' font-size='15' fill='%23ff9f1c'%3Ea%3C/text%3E%3Cpath d='M44 18a6 6 0 1 0 6 6a4.5 4.5 0 0 1-6-6z' fill='%23334a73'/%3E%3Crect x='22' y='50' width='20' height='4' rx='2' fill='%232f6fd6'/%3E%3C/svg%3E" alt="" aria-hidden="true">화면 설정</div>
     <div class="ns-card"><div class="ui-lab">글씨 크기</div><div class="ui-seg" id="ui-size"></div><div class="ui-sample" id="ui-sample">근무표 · 오늘 09:00 출근 · 1208 열차</div></div>
-    <div class="ns-card"><div class="ui-lab">글꼴</div><div class="ui-list" id="ui-font"></div></div>
+    <div class="ns-card"><div class="ui-lab">글꼴</div><div class="ui-list" id="ui-font"></div><div class="ns-note" id="ui-font-state"></div></div>
     <div class="ns-card"><div class="ui-lab">화면 모드</div><div class="ui-seg" id="ui-mode"></div><div class="ns-note">시스템: 휴대폰 설정(다크 모드 켜짐/꺼짐)을 따라가요.</div></div>
     <div class="ns-note" style="margin:2px 4px 0">※ 화면 설정은 이 휴대폰에만 저장돼요.</div>
     <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="uiReset()">기본값</button><button type="button" class="dia-text-btn" onclick="closeUiPanel()">닫기</button></div>
@@ -5742,11 +5750,31 @@ function uiRender() {
   $('ui-mode').innerHTML = UI_MODES.map(function (m) { return '<button type="button" class="' + (o.mode === m[0] ? 'on' : '') + '" onclick="uiSet(\'mode\',\'' + m[0] + '\')">' + m[1] + '</button>'; }).join('');
   $('ui-font').innerHTML = Object.keys(UI_FONTS).map(function (k) {
     var f = UI_FONTS[k];
-    if (f.href && !document.getElementById('ui-font-' + k)) { var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = f.href; l.id = 'ui-font-' + k; document.head.appendChild(l); }   /* 미리보기용으로 글꼴 받아오기 */
+    uiLoadFont(k);   /* 미리보기용으로 글꼴 받아오기 */
     return '<button type="button" class="' + (o.font === k ? 'on' : '') + '" onclick="uiSet(\'font\',\'' + k + '\')" style="font-family:' + (f.fam ? f.fam.replace(/"/g, '') + ',' : '') + 'sans-serif"><b>' + esc(f.name) + '</b><span>철도비서 근무표 가나다 123</span></button>';
   }).join('');
+  uiFontState();
 }
 function uiSet(k, v) { var o = uiGet(); o[k] = v; uiSave(o); uiApply(); uiRender(); }
+/* 고른 글꼴이 이 폰에서 실제로 받아졌는지 보여줌 */
+function uiFontState() {
+  var el = $('ui-font-state'); if (!el) return;
+  var o = uiGet(), f = UI_FONTS[o.font];
+  if (!f.fam) { el.textContent = '휴대폰 기본 글꼴을 써요.'; return; }
+  if (!document.fonts || !document.fonts.load) { el.textContent = ''; return; }
+  el.textContent = f.name + ' 글꼴을 받는 중…';
+  var fam = f.fam.replace(/'/g, ''), tries = 0;
+  (function check() {
+    document.fonts.load('16px "' + fam + '"', '가나다').then(function () {
+      /* check()는 글꼴 정의가 아예 없어도 true라서, 실제로 받아진 글꼴이 있는지 직접 확인 */
+      var ok = false;
+      try { document.fonts.forEach(function (ff) { if (String(ff.family).replace(/["']/g, '') === fam && ff.status === 'loaded') ok = true; }); } catch (e) {}
+      if (ok) { el.textContent = '✓ ' + f.name + ' 글꼴이 적용됐어요.'; return; }
+      if (++tries < 8) setTimeout(check, 1000);
+      else el.textContent = '⚠ ' + f.name + ' 글꼴을 받지 못했어요. 인터넷 연결이나 광고 차단 기능(삼성 인터넷 · 크롬 · 파이어폭스)을 확인해 주세요.';
+    }).catch(function () { if (++tries < 8) setTimeout(check, 1000); });
+  })();
+}
 function uiReset() { uiSave({ size: 1, font: 'sys', mode: 'light' }); uiApply(); uiRender(); showToast('화면 설정을 기본값으로 되돌렸어요.'); }
 function openUiPanel() { uiRender(); $('ui-panel').classList.add('active'); }
 function closeUiPanel() { $('ui-panel').classList.remove('active'); }
