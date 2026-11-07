@@ -969,6 +969,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <button type="button" class="sch-nav plain" onclick="changePayMonth(1)" aria-label="다음 달">▶&#xFE0E;</button>
   </div>
   <div id="ps-status" class="ps-status"></div>
+  <div id="ps-slip-inline" class="ps-slip-inline"></div>
   <div id="ps-summary" class="ps-summary"></div>
   <details id="ps-me-box" class="ps-card ps-fold">
     <summary class="ps-card-h"><span>내 정보 · 선택 항목</span><small>이 폰에만 저장</small></summary>
@@ -1414,6 +1415,12 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <details class="guide-sec" data-g="png"><summary>근무표 PNG 저장</summary><div class="gd-stage" data-g="png"></div><ol>
       <li>근무표 달력 아래 <b>근무표 PNG 저장</b>을 누르면 이미지로 저장돼요.</li></ol></details>
     <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeGuidePanel()">닫기</button></div>
+  </div>
+</div>
+<div id="ps-slip-panel" class="dia-modal" style="z-index:405" onclick="if(event.target===this)closePaySlipView()">
+  <div class="dia-dialog ns-dialog ps-slip-dialog">
+    <div id="ps-slip-body"></div>
+    <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closePaySlipView()">닫기</button></div>
   </div>
 </div>
 <div id="wg-panel" class="dia-modal" style="z-index:405" onclick="if(event.target===this)closeWidgetPanel()">
@@ -7464,28 +7471,29 @@ function payWorkStats(y, m, S) {
   for (var d = 1; d <= last; d++) {
     var key = getDateKey(y, m, d);
     var info = snapDayWithAuto(key, mb, snapshot.raw.dia || [], snapshot.ovMap);
-    if (!info || info.overrideType === 'status') continue;
+    if (!info) continue;
+    /* 휴무충당: 쉬는 날 나와서 일한 날 → 휴일근무시간 (근무표에서 '휴무충당'으로 표시한 날) */
+    var isCredit = info.creditStatus === '휴무충당' || info.status === '휴무충당' || info.label === '휴무충당';
+    if (info.overrideType === 'status' && !isCredit) continue;
     var type = String(info.type || info.label || '').trim();
-    if (type !== '주' && type !== '야') continue;
+    if (type !== '주' && type !== '야' && !isCredit) continue;
     st.days++;
-    if (type === '주') st.dayN++; else st.nightN++;
+    if (type === '야') st.nightN++; else st.dayN++;
     var diaNo = String(info.dia || '').trim().toUpperCase();
     if (!(typeof CREW_STANDBY_DIAS !== 'undefined' && CREW_STANDBY_DIAS.indexOf(diaNo) >= 0)) st.crew++;
     var meta = diaNo ? diaByNumber(diaNo) : null;
     var a = parseHM(info.start || (meta && meta.start)), b = parseHM(info.end || (meta && meta.end));
+    if ((isNaN(a) || isNaN(b)) && isCredit) { st.holMin += 8 * 60; st.holDays = (st.holDays || 0) + 1; st.min += 8 * 60; continue; }   /* 시간 모르면 8시간 */
     if (isNaN(a) || isNaN(b)) { st.noTime++; continue; }
     if (b <= a) b += 1440;
     st.min += b - a;
+    if (isCredit) { st.holMin += b - a; st.holDays = (st.holDays || 0) + 1; }
     /* 야간 시간대(예: 22:00~06:00)와 겹치는 시간 — 전날 밤부터 다음 날 밤까지 확인 */
     for (var k = -1; k <= 1; k++) {
       var ws = ns + 1440 * k, we = (ne <= ns ? ne + 1440 : ne) + 1440 * k;
       st.nightMin += overlap(a, b, ws, we);
     }
-    /* 휴일 시간: 근무를 날짜(0시) 기준으로 나눠 공휴일에 걸친 부분만 */
-    for (var j = 0; j <= 1; j++) {
-      var part = overlap(a, b, 1440 * j, 1440 * (j + 1));
-      if (part && isHol(j, d)) st.holMin += part;
-    }
+    /* 휴일근무시간은 공휴일이 아니라 '휴무충당' 근무로 셈 (위에서 처리) */
   }
   var stdH = paySetNum(S, '월_기준근무시간', 0);
   var stdMin = stdH > 0 ? stdH * 60 : Math.round(last * 40 / 7 * 60);
@@ -7495,7 +7503,7 @@ function payWorkStats(y, m, S) {
 }
 var PAY_WORK_FIELDS = [
   ['days', '근무일', '일'], ['dayN', '주간', '회'], ['nightN', '야간', '회'], ['crew', '승무일(대기 제외)', '일'],
-  ['h', '총 근무시간', '시간'], ['nh', '야간 시간', '시간'], ['hh', '휴일 근무시간', '시간'], ['oh', '초과 근무시간', '시간']
+  ['h', '총 근무시간', '시간'], ['nh', '야간 시간', '시간'], ['hh', '휴일(휴무충당) 시간', '시간'], ['oh', '초과 근무시간', '시간']
 ];
 function payWorkAuto(st) {
   if (!st) return null;
@@ -7532,7 +7540,7 @@ var PAY_HELP = [
   [/^기본급/, '직무급(직급별) + 근속급(호봉별)을 더한 월 기본 급여예요. 호봉은 매년 1월 1일에 1호봉씩 올라가요. (보수규정 별표3·4)'],
   [/시간외|초과근무/, '기준근로시간을 넘겨 일한 시간에 대해 통상임금 ÷ 209 × 1.5 × 시간을 지급해요. (보수규정 별표7)'],
   [/야간/, '22시~06시에 일한 시간에 대해 통상임금 ÷ 209 × 0.5 × 시간을 지급해요. (보수규정 별표7)'],
-  [/휴일/, '공휴일에 일한 시간에 대해 통상임금 ÷ 209 × 1.5 × 시간을 지급해요. (보수규정 별표7)'],
+  [/휴일/, '휴무일에 나와서 일한 시간(근무표에 휴무충당으로 표시한 날)에 대해 통상임금 ÷ 209 × 1.5 × 시간을 지급해요. (보수규정 별표7)'],
   [/무사고/, '무사고 100만km(KTX기장 200만km) 운전 실적이 공인되면 승무수당에 월 3만원이 더해져요. (시행세칙 제17조)'],
   [/1인/, '1인 승무를 한 경우 월 50만원 범위에서 지급해요. (보수규정 별표7)'],
   [/승무/, '기관사 월 22만원, 부기관사 월 10만원. 한 달 실 근무일 17일 이상이면 전액, 미만이면 ÷17 × 근무일수예요. 휴가 기간은 빼고 계산해요. (시행세칙 별표6)'],
@@ -7592,6 +7600,7 @@ document.addEventListener('click', function (e) {
   tip.__btn = b;
   tip.__at = Date.now();
   tip.textContent = b.getAttribute('data-help') || '';
+  tip.style.whiteSpace = 'pre-line';
   tip.classList.add('show');
   var r = b.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
   var left = Math.max(8, Math.min(vw - tw - 8, r.left + r.width / 2 - tw / 2));
@@ -7637,8 +7646,8 @@ function payCalc(T, prefs, work, grade, step, payM, payY, joinDate) {
   });
   if (!rateBase) rateBase = base;      /* 정률수당 기준액이 없으면 기본급으로 */
   var DAYS_STD = Math.max(1, paySetNum(S, '근무일_기준', 17));
-  var dayFactor = Math.min(1, (work.days || 0) / DAYS_STD);   /* 17일 이상 전액, 미만 일할 */
-  var dayNote = (work.days || 0) >= DAYS_STD ? '' : ' × ' + (work.days || 0) + '/' + DAYS_STD + '일';
+  var dayFactor0 = Math.min(1, (work.days || 0) / DAYS_STD);   /* 17일 이상 전액, 미만 일할 */
+  var dayNote0 = (work.days || 0) >= DAYS_STD ? '' : ' × ' + (work.days || 0) + '/' + DAYS_STD + '일';
   /* 근속연수 (지급 월 1일 기준) */
   var serviceYears = -1;
   var jm = String(joinDate || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -7653,7 +7662,7 @@ function payCalc(T, prefs, work, grade, step, payM, payY, joinDate) {
     for (var d = 1; d <= last; d++) { var hn = holidayName(py, payM, d); if (hn === '설날' || hn === '추석') { holidayMonth = hn; return; } }
   })();
   out.base = base;
-  if (base > 0) out.pay.push({ name: '기본급', amt: base, detail: grade + '급 ' + step + '호봉' + (joinDate ? '' : '') });
+  if (base > 0) out.pay.push({ name: '기본급', amt: base, detail: grade + '급 ' + step + '호봉' + (joinDate ? '' : ''), per: 'cur' });
   function won(n) { return Math.round(n).toLocaleString('ko-KR'); }
   var items = (T.items || []).filter(function (it) {
     if (!(+it.amount > 0 || +it.rate > 0 || it.calc === '장기근속')) return false;
@@ -7664,8 +7673,8 @@ function payCalc(T, prefs, work, grade, step, payM, payY, joinDate) {
     return true;
   });
   function cnt(it) { return it.input === '인원' ? Math.min(+it.max || 10, parseInt(prefs.counts[it.id], 10) || 0) : 1; }
-  function fixedVal(it) {
-    var n = cnt(it);
+  function fixedVal(it, full) {
+    var n = cnt(it), dayFactor = full ? 1 : dayFactor0, dayNote = full ? '' : dayNote0;
     if (it.calc === '고정') return { v: +it.amount * n, d: n > 1 ? won(+it.amount) + '원 × ' + n + '명' : '' };
     if (it.calc === '기본급%') return { v: base * (+it.rate) / 100 * n, d: '기본급 × ' + (+it.rate) + '%' + (n > 1 ? ' × ' + n : '') };
     if (it.calc === '정률%') return { v: rateBase * (+it.rate) / 100 * n, d: '정률수당 기준액 ' + won(rateBase) + '원 × ' + (+it.rate) + '%' };
@@ -7681,16 +7690,26 @@ function payCalc(T, prefs, work, grade, step, payM, payY, joinDate) {
     if (it.calc === '명절상여') return holidayMonth ? { v: rateBase * (+it.rate) / 100, d: holidayMonth + ' · 정률수당 기준액 × ' + (+it.rate) + '%' } : { v: 0, d: '' };
     return null;
   }
-  /* 통상임금 = 기본급 + 통상임금 포함 고정 수당(매월 지급분) */
+  /* 통상임금 = 기본급 + 통상임금 포함 고정 수당(매월 지급분)
+     명세서처럼 조정수당 등은 근무일과 상관없이 '한 달 전액'으로 넣음 (예: 기본급 + 안전역할 + 기술 + 조정수당(교번) = 2,648,370원) */
   var ordinary = base;
   items.forEach(function (it) {
     if (it.kind !== '지급' || !it.ordinary || String(it.months || '').trim()) return;
-    var f = fixedVal(it);
+    var f = fixedVal(it, true);
     if (f) ordinary += f.v;
   });
-  var hourly = Math.round(ordinary / Math.max(1, paySetNum(S, '통상임금_기준시간', 209))); /* Supabase 설정 우선, 기본 기준시간 209시간 */
+  var STD_H = Math.max(1, paySetNum(S, '통상임금_기준시간', 209));   /* Supabase 설정 우선, 기본 기준시간 209시간 */
+  var hourly = ordinary / STD_H;   /* 시급은 반올림하지 않고 계산, 수당에서 10원 미만 절사 */
   out.ordinary = Math.round(ordinary);
   out.hourly = Math.round(hourly);
+  /* 법정 통상임금: 회사 통상임금에 더 들어가야 하는 금액(월). 명세서의 '시간외수당_법정차액' 등은
+     시간 × 배율 × (이 금액 ÷ 209)로 계산됨. 2026년 9월 명세서 기준 시간당 약 1,920원 → 월 401,280원 */
+  var legalExtra = paySetNum(S, '법정차액_통상임금추가', 401280);
+  var legalHourly = legalExtra > 0 ? legalExtra / STD_H : 0;
+  out.legalExtra = legalExtra;
+  out.legalHourly = Math.round(legalHourly);
+  var legalItems = [];
+  function f10p(n) { return Math.floor(n / 10) * 10; }
   var HOURS = { '야간시간': ['nh', '야간'], '휴일시간': ['hh', '휴일'], '초과시간': ['oh', '초과'], '근무시간': ['h', '근무'] };
   var DAYS = { '근무일': ['days', '근무'], '주간일': ['dayN', '주간'], '야간일': ['nightN', '야간'], '승무일': ['crew', '승무'] };
   var taxfree = 0;
@@ -7702,16 +7721,26 @@ function payCalc(T, prefs, work, grade, step, payM, payY, joinDate) {
     else if (HOURS[it.calc]) {
       var hrs = work[HOURS[it.calc][0]] || 0;
       if (+it.amount > 0) { v = hrs * (+it.amount); d = HOURS[it.calc][1] + ' ' + hrs + '시간 × ' + won(+it.amount) + '원'; }
-      else { v = hrs * hourly * (+it.rate); d = HOURS[it.calc][1] + ' ' + hrs + '시간 × 시급 ' + won(hourly) + '원 × ' + (+it.rate); }
+      else {
+        v = f10p(hrs * hourly * (+it.rate)); d = HOURS[it.calc][1] + ' ' + hrs + '시간 × 시급 ' + won(hourly) + '원 × ' + (+it.rate);
+        /* 같은 시간으로 법정차액도 따로 (명세서: 시간외수당_법정차액 · 야간수당_법정차액) */
+        var lv = legalHourly > 0 && it.calc !== '근무시간' ? f10p(hrs * legalHourly * (+it.rate)) : 0;
+        if (lv > 0) legalItems.push({ per: 'prev', name: String(it.name || '').replace(/근무수당$/, '수당') + '_법정차액', amt: lv,
+          detail: HOURS[it.calc][1] + ' ' + hrs + '시간 × 차액시급 ' + won(legalHourly) + '원 × ' + (+it.rate),
+          help: '회사 통상임금으로 계산한 수당과, 법에 맞게 더 넓힌 통상임금(승무수당 · 급식비 등 포함)으로 계산한 수당의 차이를 따로 주는 항목이에요. 차액시급 = 월 ' + won(legalExtra) + '원 ÷ ' + STD_H + '시간. 실적 수당이라 전달 근무 시간으로 계산해요.' });
+      }
     } else if (DAYS[it.calc]) {
       var nd = work[DAYS[it.calc][0]] || 0;
       v = nd * (+it.amount); d = DAYS[it.calc][1] + ' ' + nd + '회 × ' + won(+it.amount) + '원';
     }
-    v = Math.round(v);
+    v = f10p(Math.round(v));   /* 보수규정 제7조②: 10원 미만 절사 */
     if (v <= 0) return;
     if (+it.taxfree > 0) taxfree += Math.min(v, +it.taxfree);
-    out.pay.push({ name: it.name, amt: v, detail: d, note: it.note || '', help: it.help || '' });
+    /* 지급 시점: 근무 실적으로 정해지는 수당(시간 · 횟수 · 17일 기준 월액)은 전달분, 나머지 고정 수당은 그달분 */
+    var per = (HOURS[it.calc] || DAYS[it.calc] || /17일/.test(it.calc || '')) ? 'prev' : 'cur';
+    out.pay.push({ name: it.name, amt: v, detail: d, note: it.note || '', help: it.help || '', per: per });
   });
+  legalItems.forEach(function (x) { out.pay.push(x); });
   out.gross = out.pay.reduce(function (a, x) { return a + x.amt; }, 0);
   out.taxfree = taxfree;
   var taxable = Math.max(0, out.gross - taxfree);
@@ -7918,6 +7947,7 @@ function renderPayslip(full) {
     return;
   }
   var r = payCalc(T, prefs, work, gs.grade, gs.step, payState.m, payState.y, getMyProfile().joinDate);
+  payState.last = { r: r, work: work, wm: wm, y: payState.y, m: payState.m, grade: gs.grade, step: gs.step, payDay: payDay };
   var warn = '';
   if (!gs.grade || !gs.step) warn = '직급·호봉을 선택하면 기본급이 들어가요.';
   else if (!r.baseFound) warn = gs.grade + '급 ' + gs.step + '호봉 기본급이 아직 등록되지 않았어요.';
@@ -7925,24 +7955,118 @@ function renderPayslip(full) {
     '<div class="ps-net-label">예상 실수령액' + payHelpBtn(PAY_HELP_UI.net) + '</div>' +
     '<div class="ps-net">' + won(r.net) + '<small>원</small></div>' +
     '<div class="ps-sum-row"><span>지급 합계<b class="ps-plus">' + won(r.gross) + '원</b></span><span>공제 합계<b class="ps-minus">' + won(r.dedSum) + '원</b></span></div>' +
+
     (warn ? '<button type="button" class="ps-warn" onclick="var d=$(\'ps-me-box\');d.open=true;d.scrollIntoView({behavior:\'smooth\',block:\'start\'})">' + esc(warn) + '</button>' : '');
   function lines(list) {
     if (!list.length) return '<div class="ps-empty">해당 항목이 없어요.</div>';
     return list.map(function (x) {
-      return '<div class="ps-line"><div class="ps-line-l"><span>' + esc(x.name) + payHelpBtn(x.help || payHelpFor(x.name)) + '</span>' + (x.detail ? '<small>' + esc(x.detail) + '</small>' : '') + '</div><b>' + won(x.amt) + '</b></div>';
+      var hp = [payPerText(x, payState.m, wm.m), x.help || payHelpFor(x.name) || ''].filter(function (t) { return t; }).join('\n');
+      return '<div class="ps-line"><div class="ps-line-l"><span>' + esc(x.name) + payHelpBtn(hp) + '</span>' + (x.detail ? '<small>' + esc(x.detail) + '</small>' : '') + '</div><b>' + won(x.amt) + '</b></div>';
     }).join('');
   }
   payBox.innerHTML = lines(r.pay);
+  var inl = $('ps-slip-inline');
+  if (inl) inl.innerHTML = (warn ? '<button type="button" class="ps-warn" onclick="var d=$(\'ps-me-box\');d.open=true;d.scrollIntoView({behavior:\'smooth\',block:\'start\'})">' + esc(warn) + '</button>' : '') + paySlipHtml(payState.last);
+  paySlipFit(inl);
   dedBox.innerHTML = lines(r.ded);
   $('ps-pay-total').textContent = won(r.gross) + '원';
   $('ps-ded-total').textContent = won(r.dedSum) + '원';
   var note = String(S['안내문구'] || '').trim();
   $('ps-foot').innerHTML =
-    (r.hourly ? '<div>통상임금 ' + won(r.ordinary) + '원 · 통상시급 ' + won(r.hourly) + '원' + (r.taxfree ? ' · 비과세 ' + won(r.taxfree) + '원' : '') + '</div>' : '') +
+    (r.hourly ? '<div>통상임금 ' + won(r.ordinary) + '원 · 통상시급 ' + won(r.hourly) + '원' + (r.legalHourly ? ' · 법정차액 시급 ' + won(r.legalHourly) + '원' : '') + (r.taxfree ? ' · 비과세 ' + won(r.taxfree) + '원' : '') + '</div>' : '') +
     '<div>※ 실제 지급액과 다를 수 있는 예상 금액입니다. 4대보험은 이번 달 과세급여로, 소득세는 간이세액표 방식으로 어림한 값이에요.</div>' +
     (note ? '<div class="ps-admin-note">' + esc(note) + '</div>' : '') +
     (T.loadedAt ? '<div class="ps-upd">보수표 ' + new Date(T.loadedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' 받음</div>' : '');
 }
+/* ===== 급여명세서 형식으로 보기: 실제 KORAIL 급여명세서처럼 (기본 사항 · 지급 · 공제 · 세금·3대보험 · 근태 내역) =====
+   모든 값은 이 폰에서 근무표로 계산한 예상치이며 서버에 저장하지 않음 */
+/* 지급 항목 도움말: 어느 달 돈인지 + 항목 설명 + 계산식 */
+function payPerText(x, payM, workM) {
+  if (x.per === 'prev') return '[' + (workM + 1) + '월 근무 실적분] ' + (workM + 1) + '월 근무표로 계산해서 ' + (payM + 1) + '월 25일에 받아요.';
+  if (x.per === 'cur') return '[' + (payM + 1) + '월분] ' + (payM + 1) + '월 1일~말일 한 달치를 ' + (payM + 1) + '월 25일에 받아요.';
+  return '';
+}
+function payItemHelp(x, payM, workM) {
+  return [payPerText(x, payM, workM), x.help || payHelpFor(x.name) || '', x.detail ? '계산: ' + x.detail : ''].filter(function (t) { return t; }).join('\n');
+}
+function paySlipHtml(L) {
+  var r = L.r, u = getCurrentUser() || {}, w = L.work;
+  function won(n) { return Math.round(n).toLocaleString('ko-KR'); }
+  /* 항목 이름 칸: 이름은 한 줄(넘치면 …), ? 는 늘 보이게 */
+  function nm(x) { return '<div class="sl-kk"><span class="sl-nm">' + esc(x.name) + '</span>' + payHelpBtn(payItemHelp(x, L.m, L.wm.m)) + '</div>'; }
+  /* 지급 사항: 실제 명세서처럼 2열 (왼쪽 열을 먼저 채움) */
+  function cells(list, cols) {
+    var rows = Math.max(4, Math.ceil(list.length / cols)), h = '';
+    for (var i = 0; i < rows; i++) {
+      h += '<tr>';
+      for (var c = 0; c < cols; c++) {
+        var x = list[c * rows + i];
+        h += x ? '<td class="k">' + nm(x) + '</td><td class="v">' + won(x.amt) + '</td>' : '<td class="k">&nbsp;</td><td class="v"></td>';
+      }
+      h += '</tr>';
+    }
+    return h;
+  }
+  var taxNames = { '소득세': '소득세', '지방소득세': '지방소득세', '국민연금': '당월국민연금', '고용보험': '당월고용' };
+  var tax = [], other = [], health = 0;
+  r.ded.forEach(function (x) {
+    if (x.name === '건강보험' || x.name === '장기요양보험') { health += x.amt; return; }
+    if (taxNames[x.name]) tax.push({ name: taxNames[x.name], amt: x.amt, detail: x.detail }); else other.push(x);
+  });
+  if (health) tax.push({ name: '당월건강보험료', amt: health, detail: '건강보험 + 장기요양보험' });
+  var order = ['소득세', '지방소득세', '당월건강보험료', '당월국민연금', '당월고용'];
+  tax.sort(function (a, b) { return order.indexOf(a.name) - order.indexOf(b.name); });
+  var n2 = Math.max(5, other.length, tax.length);
+  function col1(list) { var h = ''; for (var i = 0; i < n2; i++) { var x = list[i]; h += x ? '<tr><td class="k">' + nm(x) + '</td><td class="v">' + won(x.amt) + '</td></tr>' : '<tr><td class="k">&nbsp;</td><td class="v"></td></tr>'; } return h; }
+  var payDate = L.y + '년' + pad2(L.m + 1) + '월' + pad2(L.payDay || 25) + '일';
+  var C4 = '<colgroup><col style="width:35.5%"><col style="width:14.5%"><col style="width:35.5%"><col style="width:14.5%"></colgroup>';
+  var CI = '<colgroup><col style="width:19%"><col style="width:31%"><col style="width:19%"><col style="width:31%"></colgroup>';
+  var C2 = '<colgroup><col style="width:62%"><col style="width:38%"></colgroup>';
+  return '<div class="sl-paper sl2">' +
+    '<div class="sl-top"><b class="sl-logo">KORAIL</b><span>급여명세서(' + payDate + ')</span></div>' +
+    '<div class="sl-badge">예상 · 철도비서 근무표 기준</div>' +
+    '<div class="sl-sec">기본 사항</div>' +
+    '<table class="sl-t sl-info">' + CI + '<tr><td class="k">사번</td><td>' + esc(String(u.employeeId || '')) + '</td><td class="k">성명</td><td>' + esc(String(u.name || '')) + '</td></tr>' +
+    '<tr><td class="k">지급월</td><td>' + (L.m + 1) + '월분(' + (L.wm.m + 1) + '월실적)</td><td class="k">직급/호봉</td><td>' + (L.grade ? L.grade + '급' + pad2(+L.step || 0) + '호봉' : '-') + '</td></tr></table>' +
+    '<div class="sl-sec">지급 사항</div>' +
+    '<table class="sl-t sl-grid">' + C4 + '<tr><th>지급내역</th><th>금액</th><th>지급내역</th><th>금액</th></tr>' + cells(r.pay, 2) + '</table>' +
+    '<div class="sl-two"><div><div class="sl-sec">공제 사항</div><table class="sl-t sl-grid">' + C2 + '<tr><th>공제내역</th><th>금액</th></tr>' + col1(other) + '</table></div>' +
+    '<div><div class="sl-sec">세금 · 3대보험</div><table class="sl-t sl-grid">' + C2 + '<tr><th>내역</th><th>금액</th></tr>' + col1(tax) + '</table></div></div>' +
+    '<div class="sl-sec">근태 내역</div>' +
+    '<table class="sl-t sl-att">' + CI + '<tr><td class="k">통상임금</td><td>' + won(r.ordinary) + '</td><td class="k">초과근무</td><td>' + (+w.oh || 0).toFixed(2) + '</td></tr>' +
+    '<tr><td class="k">야간근무</td><td>' + (+w.nh || 0).toFixed(2) + '</td><td class="k">휴일근무</td><td>' + (+w.hh || 0).toFixed(2) + '</td></tr></table>' +
+    '<table class="sl-t sl-total"><tr><th>총지급액</th><th>총공제액</th><th>실지급액</th></tr><tr><td>' + won(r.gross) + '</td><td>' + won(r.dedSum) + '</td><td class="net">' + won(r.net) + '</td></tr></table>' +
+    '<div class="sl-note">※ 항목 옆 ? 를 누르면 몇 월분인지와 설명이 나와요. 철도비서 근무표로 어림한 예상 명세서라 실제 금액과 다를 수 있어요.</div>' +
+    '</div>';
+}
+/* 이름이 칸보다 길면 글자를 조금씩 줄여 한 줄에 다 보이게 (최소 8px) */
+function paySlipFit(root) {
+  if (!root) return;
+  requestAnimationFrame(function () {
+    root.querySelectorAll('.sl-nm').forEach(function (el) {
+      var fs = 10.5;
+      el.style.fontSize = '';
+      /* 글자 실제 폭(소수점까지)과 칸 폭을 비교 */
+      var td = el.closest('td'), kk = el.parentNode;
+      function over() {
+        var rg = document.createRange(); rg.selectNodeContents(el);
+        if (rg.getBoundingClientRect().width > el.getBoundingClientRect().width + 0.2) return true;
+        if (el.scrollWidth > el.clientWidth) return true;
+        var cs = td ? getComputedStyle(td) : null, room = td ? td.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) : 9999;
+        var need = rg.getBoundingClientRect().width; for (var c = el.nextSibling; c; c = c.nextSibling) if (c.getBoundingClientRect) need += c.getBoundingClientRect().width + 3;
+        return need > room;
+      }
+      while (over() && fs > 8) { fs -= 0.5; el.style.fontSize = fs + 'px'; }
+    });
+  });
+}
+function openPaySlipView() {
+  var L = payState.last; if (!L) return;
+  $('ps-slip-body').innerHTML = paySlipHtml(L);
+  paySlipFit($('ps-slip-body'));
+  $('ps-slip-panel').classList.add('active');
+}
+function closePaySlipView() { $('ps-slip-panel').classList.remove('active'); }
 function openNoticePanel() {
   switchSection('notice-panel');
   var list = $('notice-list');
@@ -13933,6 +14057,7 @@ min-height:76px;padding:10px 6px!important;border-radius:16px!important;text-ali
 .ps-help{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin:0 0 0 2px;padding:0;border:0;border-radius:50%;background:#e2ebfa;color:#3d6fc4;font:800 9.5px/1 inherit;vertical-align:super;cursor:pointer;-webkit-tap-highlight-color:transparent;flex:none}
 .ps-help:active{background:#c9daf6}
 .ps-net-label .ps-help{vertical-align:2px}
+.ps-help{width:11px!important;height:11px!important;font-size:7.5px!important;margin-left:2px!important;vertical-align:3px!important}
 .ps-tip{position:fixed;z-index:600;max-width:min(270px,82vw);padding:9px 11px;border-radius:12px;background:#1f2d47;color:#fff;font-size:12px;line-height:1.55;box-shadow:0 6px 20px rgba(15,30,60,.28);opacity:0;pointer-events:none;transform:translateY(-3px);transition:opacity .15s,transform .15s;word-break:keep-all;text-align:left}
 .ps-tip.show{opacity:1;pointer-events:auto;transform:none}
 .ps-tip::before{content:'';position:absolute;top:-5px;left:var(--ax,50%);margin-left:-5px;border:5px solid transparent;border-top:0;border-bottom-color:#1f2d47}
@@ -15139,6 +15264,58 @@ html body #main-section .menu-grid > .menu-btn > span{display:flex;align-items:f
 #wg-panel .wg-lab small{font-weight:600;color:#17a85a;margin-left:6px}
 </style>
 <style id="widget-panel-style-end"></style>
+<style id="ps-slip-inline-style">
+/* 미리보는 월급 = 급여명세서 화면 바로 보기 (예전 요약 · 지급/공제 카드는 숨김) */
+#payslip-section .ps-summary,#payslip-section .ps-card:not(.ps-fold){display:none!important}
+#payslip-section .ps-slip-inline{margin:0 4px 12px}
+#payslip-section .ps-slip-inline .ps-warn{display:block;width:100%;margin-bottom:8px}
+.ps-slip-inline .sl-paper{border:1px solid #e3e8f0;border-radius:16px;padding:10px 7px 8px;box-shadow:0 3px 12px rgba(20,50,100,.06)}
+/* 2열 명세서: 모든 칸 한 줄 */
+.sl2 .sl-t td,.sl2 .sl-t th{white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis;height:auto;padding:6px 3px;font-size:10.5px!important;letter-spacing:-.3px;line-height:1.3!important;vertical-align:middle}
+.sl2 .sl-t th{font-size:10.5px!important}
+.sl2 .sl-kk{display:flex;align-items:center;min-width:0}
+.sl2 .sl-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sl2 .sl-kk .ps-help{flex:none}
+.sl2 .sl-t td.v{text-align:right;font-variant-numeric:tabular-nums;letter-spacing:-.2px}
+.sl2 .sl-info td.k,.sl2 .sl-att td.k{font-weight:800;width:auto}
+.sl2 .sl-top span{font-size:13.5px}
+.sl2 .sl-total td{font-size:12.5px!important;text-align:center}
+.sl2 .sl-total td.net{font-size:14px!important}
+.sl2 .sl-note{font-size:9.5px}
+</style>
+
+
+<style id="ps-slip-style">
+.ps-slip-btn{margin-top:10px;width:100%;border:1.5px solid #c9dbf7;border-radius:12px;background:#fff;color:#2f6fd6;font-size:13.5px;font-weight:800;padding:9px 0}
+.ps-per{font-style:normal;display:inline-block;margin-left:5px;padding:1px 6px;border-radius:999px;font-size:10px;font-weight:800;vertical-align:1px}
+.ps-per.cur{background:#eaf2ff;color:#2f6fd6}.ps-per.prev{background:#fff1e6;color:#d9480f}
+#ps-slip-panel .ps-slip-dialog{max-width:560px;width:calc(100vw - 20px);max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 10px}
+.sl-paper{background:#fff;color:#222;font-size:11px;padding:6px 4px}
+.sl-top{display:flex;align-items:center;justify-content:space-between;border-top:1px solid #bbb;border-bottom:1px solid #ddd;padding:10px 4px;margin-bottom:6px}
+.sl-logo{font-size:16px;font-weight:900;color:#0b5aa8;letter-spacing:.5px;font-style:italic}
+.sl-top span{font-size:14px;font-weight:800}
+.sl-badge{display:inline-block;margin:0 0 4px 2px;padding:2px 8px;border-radius:999px;background:#fff4e5;color:#b35c00;font-size:10px;font-weight:800}
+.sl-sec{font-weight:800;font-size:11.5px;margin:10px 2px 4px;padding:5px 6px;background:#f4f6f9;border-left:3px solid #1d3c78}
+.sl-t{width:100%;border-collapse:collapse;table-layout:fixed}
+.sl-t td,.sl-t th{border-bottom:1px solid #e5e8ee;padding:5px 4px;height:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sl-t th{background:#fafbfc;font-weight:800;border-top:1.5px solid #333;font-size:10.5px}
+.sl-t td.k{color:#333;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;line-height:1.25;font-size:10.5px}
+.sl-grid th:nth-child(odd){width:58%}.sl-grid th:nth-child(even){width:42%}
+.sl-grid4 th:nth-child(odd){width:31%}.sl-grid4 th:nth-child(even){width:19%}
+.sl-t td.v{text-align:right;font-variant-numeric:tabular-nums}
+.sl-grid td.v{border-right:1px solid #e5e8ee}
+.sl-info td.k,.sl-att td.k{font-weight:800;width:22%}
+.sl-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sl-per{display:inline-block;width:6px;height:6px;border-radius:50%;margin-left:4px;vertical-align:1px}
+.sl-per.cur{background:#2f6fd6}.sl-per.prev{background:#e8590c}
+.sl-legend{font-size:9.5px;color:#666;margin:4px 2px 0}
+.sl-legend .sl-per{margin:0 3px 0 8px}
+.sl-total{margin-top:10px}
+.sl-total td{text-align:center;font-weight:800;font-size:12.5px;font-variant-numeric:tabular-nums}
+.sl-total td.net{color:#1d3c78;font-size:14px}
+.sl-note{margin-top:8px;font-size:9.5px;color:#888;line-height:1.5}
+</style>
+
 <style id="wg-tabs-style">
 #wg-panel .wg-dialog{max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow-y:auto;-webkit-overflow-scrolling:touch}
 #wg-panel .wg-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:14px 0 4px;padding:4px;border-radius:12px;background:#eef2f8}
