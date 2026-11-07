@@ -10177,9 +10177,9 @@ function passFreightLoco(no) {
   for (var i = 0; i < n.length; i++) sum += +n.charAt(i);
   return sum % 2 ? 'eloco' : 'dloco';
 }
-/* 열차번호로 그림 고정 (화물 (2) = 전기기관차 8501 + 화차, 무궁화호 (1) = 전기기관차 8501 + 객차) */
+/* 열차번호로 그림 고정 (화물 (2) = 전기기관차 8501 + 화차, 1208·1279 = 디젤기관차 7351 + 객차) */
 var PASS_FIXED_ART = { '3223': 'run_freight_e', '3224': 'run_freight_e', '3226': 'run_freight_e', '3227': 'run_freight_e',
-  '1208': 'run_mugunghwa', '1279': 'run_mugunghwa' };
+  '1208': 'run_mug_d', '1279': 'run_mug_d' };
 function passTrainNo(no) { return String(parseInt(String(no || '').replace(/\D/g, ''), 10) || ''); }
 function passTrainType(kind, no) {
   /* 종류: freight(화물) · mugunghwa(무궁화) · saemaul(ITX-새마을) · ktx · itx(ITX-청춘·마음) · srt */
@@ -10197,6 +10197,7 @@ function passTrainType(kind, no) {
   return 'mugunghwa';
 }
 /* 달리는 열차 그림을 종류에 맞게 */
+var PASS_RANDOM_ART = {};
 function passArtKey(tt, no, kind) {
   var fx = PASS_FIXED_ART[passTrainNo(no)];
   if (fx) return fx;
@@ -10206,9 +10207,11 @@ function passArtKey(tt, no, kind) {
   if (tt === 'ktx') return /청룡/.test(k) ? 'run_ktx_cr' : /이음/.test(k) ? 'run_ktx_eum' : /산천/.test(k) ? 'run_ktx_sc' : 'run_ktx';
   if (tt === 'itx') return 'run_itx_cc';
   if (tt === 'itxsm') return 'run_saemaul';
-  if (tt === 'saemaul') return 'run_mug_d';
-  /* 무궁화: 전기(8501) · 디젤(7351) 중 열차번호로 정함 (같은 열차는 늘 같은 그림) */
-  return passFreightLoco(no) === 'eloco' ? 'run_mugunghwa' : 'run_mug_d';
+  /* 무궁화 · 새마을(ITX-새마을 제외): 그림 1(전기 8501) · 그림 2(디젤 7351) 중 랜덤.
+     한 번 정해지면 앱을 다시 열 때까지 같은 열차는 같은 그림(새로고침해도 바뀌지 않게) */
+  var rk = (tt === 'saemaul' ? 'S' : 'M') + passTrainNo(no);
+  if (!PASS_RANDOM_ART[rk]) PASS_RANDOM_ART[rk] = Math.random() < 0.5 ? 'run_mugunghwa' : 'run_mug_d';
+  return PASS_RANDOM_ART[rk];
 }
 /* 기관차가 끄는 열차인지 (조성대기 장면은 이 열차들만) */
 function passArtHasLoco(key) { return /^run_(mugunghwa|mug_d|freight_e|freight_d)$/.test(key); }
