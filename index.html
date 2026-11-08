@@ -191,6 +191,11 @@ padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-appl
 <style id="rs-precise-leave-calendar">
 #calendar-grid .cell-lbl.rs-leave-long{font-size:clamp(8px,2.2vw,12px)!important;letter-spacing:-.55px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:clip}
 </style>
+<style id="rs-group-shared-details-20261108">
+#group-section .g-mini-note{display:block;font-size:8px;line-height:1.3;font-weight:800;white-space:nowrap;margin-top:2px;color:#c03942}
+#group-section .g-mini-note.g-swap{color:#1769d2}
+#group-info-body .rs-credit-row b{color:#d63040}
+</style>
 </head>
 <body>
 <!-- 다크 모드 되돌림 필터: html의 invert(.92)+hue-rotate(180)를 정확히 거꾸로 (사진 · 열차 애니메이션 · 프로필 원래 색) -->
@@ -5826,6 +5831,7 @@ function goGroupThisWeek() {
 }
 function loadGroupSchedule(silent) {
   var user = getCurrentUser();
+  if (user && user.token && typeof rsShareFetch === 'function') rsShareFetch();
   var status = $('group-status');
   if (!user.token) {
     renderGroupTable();
@@ -5986,7 +5992,12 @@ function renderGroupTable() {
       if (days[j].key === selKey) cls += ' g-sel';
       if (info && (info.swapPartnerName || info.swapPartnerId)) cls += ' g-swapped';
       cls = cls.replace(/^\s+/, '');
-      html += '<td' + (cls ? ' class="' + cls + '"' : '') + ' onclick="openGroupInfo(' + k + ',\'' + days[j].key + '\')">' + esc(text) + '</td>';
+      /* 서버에 백업된 교환 상대·충당 종류를 근무그룹 칸에서도 식별할 수 있도록 표시 */
+      var gpCredit = info ? String(info.creditStatus || (/^(대기충당|휴무충당|기타)$/.test(String(info.status || '')) ? info.status : '') || '') : '';
+      var gpSwap = info ? String(info.swapPartnerName || info.swapPartnerId || '').trim() : '';
+      var smallNote = gpSwap ? '<small class="g-mini-note g-swap">⇄ ' + esc(gpSwap) + '</small>' :
+                      gpCredit ? '<small class="g-mini-note">' + esc(gpCredit) + '</small>' : '';
+      html += '<td' + (cls ? ' class="' + cls + '"' : '') + ' onclick="openGroupInfo(' + k + ',\'' + days[j].key + '\')">' + esc(text) + smallNote + '</td>';
     }
     html += '</tr>';
   }
@@ -6877,6 +6888,8 @@ function openGroupInfo(k, key) {
     if (info.swapPartnerName || info.swapPartnerId) {
       html += piRow('근무 교환', String(info.swapPartnerName || info.swapPartnerId) + '님과 교환');
     }
+    var creditStatus = String(info.creditStatus || (/^(대기충당|휴무충당|기타)$/.test(String(info.status || '')) ? info.status : '') || '');
+    if (creditStatus) html += piRow('충당 구분', creditStatus);
     html += '<div class="pi-none">' + (info.auto ? '야간 근무 변경에 따라 비번도 자동 변경되었습니다. (*)' : (info.manual ? '직접 변경한 근무입니다.' : '')) + '</div>';
   } else {
     var diaNo = String(info.dia || '').trim();
@@ -6899,6 +6912,8 @@ function openGroupInfo(k, key) {
     if (info.swapPartnerName || info.swapPartnerId) {
       html += piRow('근무 교환', String(info.swapPartnerName || info.swapPartnerId) + '님과 교환');
     }
+    var groupCredit = String(info.creditStatus || (/^(대기충당|휴무충당|기타)$/.test(String(info.status || '')) ? info.status : '') || '');
+    if (groupCredit) html += piRow('충당 구분', groupCredit);
     html += piRow('출근 시간', start ? start + (groupStartEstimated ? ' (예상)' : '') : '-');
     html += piRow('퇴근 시간', end ? end + (groupEndEstimated ? ' (예상)' : '') : '-');
     html += piRow('근무 시간', workDurationText(start, end));
@@ -16433,7 +16448,7 @@ var RP_MOVE = { '운전': 1, '편승': 1, '출고운전': 0, '입고운전': 0 }
 var rpRows = [], rpDia = '';
 function rpStoreKey() { var u = (typeof getCurrentUser === 'function' && getCurrentUser()) || {}; return 'rs_myroutes_' + (u.employeeId || 'guest'); }
 function rpAll() { try { return JSON.parse(localStorage.getItem(rpStoreKey()) || '{}') || {}; } catch (e) { return {}; } }
-function rpSaveAll(o) { try { localStorage.setItem(rpStoreKey(), JSON.stringify(o)); } catch (e) {} }
+function rpSaveAll(o) { try { localStorage.setItem(rpStoreKey(), JSON.stringify(o)); } catch (e) {} try { rsShareQueue(); } catch (e) {} }
 function rpGet(dia) { var a = rpAll(); return a[String(dia || '').toUpperCase()] || null; }
 function rpEsc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 function rpTime(t) { var m = String(t || '').match(/(\d{1,2})\s*:?\s*(\d{2})/); return m ? ('0' + m[1]).slice(-2) + ':' + m[2] : ''; }
@@ -16470,6 +16485,70 @@ function rpParseFree(text) {
   });
   return out;
 }
+/* ========== 예상 행로표의 서버 공유(별도 SQL 설치 후 동작) ==========
+   서버 RPC app_saveroute / app_getroutes를 사용할 수 없으면 로컬 저장은 그대로 유지.
+   호출자는 서버의 SQL 설치 여부를 확인해야 합니다. 공유에 실패했다고 성공으로 표시하지 않습니다. */
+var rsSharedRouteCache = {};
+var rsRoutePushTimer = null;
+var rsRouteShareAvailable = null;
+var rsRouteShareSyncing = false;
+var rsRouteFetchAt = 0;
+var rsRouteFetching = false;
+function rsShareStoreOwn() {
+  var u = getCurrentUser();
+  if (!u || !u.token || !u.employeeId || typeof rpAll !== 'function') return;
+  var routes = rpAll(), dates = rpDates();
+  /* 로컬 저장을 우선 완료한 뒤 비동기로 송신합니다. 용량 제한은 서버에서 재검증됩니다. */
+  rsRouteShareSyncing = true;
+  api({ action: 'saveRoute', employeeId: u.employeeId, token: u.token,
+        routes: routes, dates: dates }, function (r) {
+    rsRouteShareSyncing = false;
+    rsRouteShareAvailable = !!(r && r.success);
+    if (r && r.success) {
+      rsSharedRouteCache[String(u.employeeId)] = { routes: routes, dates: dates };
+    } else if (!window.__rsShareWarned) {
+      window.__rsShareWarned = true;
+      console.warn('예상 행로표 서버 공유 미완료: 서버 SQL 설치 또는 인증 확인 필요', r && r.message);
+    }
+  });
+}
+function rsShareQueue() {
+  if (rsRoutePushTimer) clearTimeout(rsRoutePushTimer);
+  rsRoutePushTimer = setTimeout(function () {
+    rsRoutePushTimer = null;
+    if (rsRouteShareSyncing) { rsShareQueue(); return; }
+    rsShareStoreOwn();
+  }, 1000);
+}
+function rsShareFetch(cb) {
+  if (rsRouteFetching || (rsRouteFetchAt && Date.now() - rsRouteFetchAt < 30000)) { if (cb) cb(rsRouteShareAvailable === true); return; }
+  var u = getCurrentUser();
+  if (!u || !u.token) { if (cb) cb(false); return; }
+  rsRouteFetching = true;
+  rsRouteFetchAt = Date.now();
+  api({ action: 'getRoutes', employeeId: u.employeeId, token: u.token }, function (r) {
+    rsRouteFetching = false;
+    if (r && r.success && r.members && typeof r.members === 'object') {
+      rsRouteShareAvailable = true;
+      rsSharedRouteCache = r.members;
+      /* 다른 기기에서 가져온 내 예상 행로표는 기존 로컬 자료를 덮어쓰지 않고 병합 */
+      var mine = r.members[String(u.employeeId)];
+      if (mine && mine.routes && typeof rpAll === 'function') {
+        var own = rpAll(), changed = false;
+        Object.keys(mine.routes).forEach(function (dia) {
+          if (!own[dia] && mine.routes[dia] && Array.isArray(mine.routes[dia].rows)) {
+            own[dia] = mine.routes[dia]; changed = true;
+          }
+        });
+        if (changed) { try { localStorage.setItem(rpStoreKey(), JSON.stringify(own)); } catch (e) {} }
+      }
+      if (cb) cb(true);
+    } else {
+      rsRouteShareAvailable = false;
+      if (cb) cb(false);
+    }
+  });
+}
 /* 임시 DIA 표시용: 공식 시간은 우선하며 행로표가 있을 때만 예상값을 보조 표시합니다. */
 function rsEstimatedPlan(diaNo, dateKey, employeeId) {
   var dia = String(diaNo || '').trim().toUpperCase();
@@ -16480,6 +16559,9 @@ function rsEstimatedPlan(diaNo, dateKey, employeeId) {
     var all = JSON.parse(localStorage.getItem('rs_myroutes_' + owner) || '{}') || {};
     saved = all[dia];
   } catch (e) { return null; }
+  if ((!saved || !Array.isArray(saved.rows) || !saved.rows.length) && rsSharedRouteCache[owner] && rsSharedRouteCache[owner].routes) {
+    saved = rsSharedRouteCache[owner].routes[dia] || null;
+  }
   if (!saved || !Array.isArray(saved.rows) || !saved.rows.length) return null;
   /* 날짜가 명시적으로 다른 DIA에 묶여 있으면 가져오지 않습니다.
      DIA 번호가 같으면 근무표 변경 → 행로표 만들기 순서와 관계없이 사용할 수 있습니다. */
@@ -16487,6 +16569,8 @@ function rsEstimatedPlan(diaNo, dateKey, employeeId) {
     var linked = JSON.parse(localStorage.getItem('rs_myroute_dates_' + owner) || '{}') || {};
     if (dateKey && linked[dateKey] && String(linked[dateKey]).toUpperCase() !== dia) return null;
   } catch (e) {}
+  var remoteDates = rsSharedRouteCache[owner] && rsSharedRouteCache[owner].dates;
+  if (dateKey && remoteDates && remoteDates[dateKey] && String(remoteDates[dateKey]).toUpperCase() !== dia) return null;
   var t = rpTempTimes(saved.rows);
   return { dia: dia, rows: saved.rows, start: t.start || saved.tempStart || '', end: t.end || saved.tempEnd || '', basis: t.basis || saved.tempBasis || '' };
 }
@@ -16788,7 +16872,7 @@ function rpReadPaste() {
 }
 function rpDKey() { var u = (typeof getCurrentUser === 'function' && getCurrentUser()) || {}; return 'rs_myroute_dates_' + (u.employeeId || 'guest'); }
 function rpDates() { try { return JSON.parse(localStorage.getItem(rpDKey()) || '{}') || {}; } catch (e) { return {}; } }
-function rpSetDate(dateKey, dia) { var a = rpDates(); if (dia) a[dateKey] = dia; else delete a[dateKey]; try { localStorage.setItem(rpDKey(), JSON.stringify(a)); } catch (e) {} }
+function rpSetDate(dateKey, dia) { var a = rpDates(); if (dia) a[dateKey] = dia; else delete a[dateKey]; try { localStorage.setItem(rpDKey(), JSON.stringify(a)); } catch (e) {} try { rsShareQueue(); } catch (e) {} }
 /* 근무표 '원래 근무로 되돌리기'와 연동: 해당 날짜의 행로표와 DIA 연결을 함께 해제.
    같은 DIA를 다른 날짜에서 사용 중이라면 그 날짜의 행로표까지 삭제하지 않습니다. */
 function rpClearRestoredDate(dateKey) {
