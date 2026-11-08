@@ -174,6 +174,19 @@ padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-appl
 .dd-main .dd-dia{display:inline-flex;align-items:center;flex-wrap:wrap;column-gap:3px;row-gap:2px;min-width:0;white-space:normal}
 .dd-dia-credit-inline{display:inline-flex!important;align-items:center!important;margin-left:2px!important;padding:2px 5px!important;border-radius:6px!important;background:#fff0f1!important;color:#c92e49!important;font-size:10px!important;font-weight:800!important;line-height:1.35!important;white-space:nowrap!important;vertical-align:middle!important}
 </style>
+<style id="rs-calendar-credit-pill-final">
+/* 근무표 월간 달력: 근무구분 아래에는 빨간 충당 배지(교환 상대 배지와 같은 형태)만 표시 */
+#calendar-grid .cell-credit.rs-credit-pill{display:inline-block;align-self:center;flex-shrink:0;max-width:100%;box-sizing:border-box;margin:2px 0 0;padding:2px 4px;border:1.5px solid #e53935;border-radius:999px;background:#e53935;color:#fff;font-size:9px;font-weight:800;line-height:1.2;letter-spacing:-.4px;white-space:nowrap;transform-origin:center top}
+#calendar-grid .cell-lbl{font-size:17px!important;white-space:nowrap;text-align:center}
+</style>
+<style id="rs-dia-duty-inline-small">
+/* 근무 변경: DIA 번호 입력 오른쪽에서 주간/야간을 작은 칸으로 바로 선택 */
+#schedule-edit-panel .rs-dia-duty-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:stretch;gap:6px;width:100%}
+#schedule-edit-panel .rs-dia-duty-row #schedule-edit-dia{width:100%;min-width:0;height:42px}
+#schedule-edit-panel .rs-dia-duty-small{display:grid;grid-template-columns:repeat(2,auto);gap:3px;align-items:stretch}
+#schedule-edit-panel .rs-dia-duty-small .schedule-edit-credit-btn{min-width:40px!important;width:40px;min-height:42px!important;height:42px;padding:0 2px!important;border-radius:8px;font-size:11px!important;white-space:nowrap}
+@media(max-width:350px){#schedule-edit-panel .rs-dia-duty-row{gap:4px}#schedule-edit-panel .rs-dia-duty-small .schedule-edit-credit-btn{min-width:35px!important;width:35px;font-size:10px!important}}
+</style>
 </head>
 <body>
 <!-- 다크 모드 되돌림 필터: html의 invert(.92)+hue-rotate(180)를 정확히 거꾸로 (사진 · 열차 애니메이션 · 프로필 원래 색) -->
@@ -1900,7 +1913,13 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div id="schedule-edit-date" class="schedule-edit-date"></div>
     <div class="schedule-edit-input-group">
       <label class="schedule-edit-label" for="schedule-edit-dia">DIA 번호 입력</label>
-      <input id="schedule-edit-dia" class="schedule-edit-input" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="20" placeholder="예: 12602 / 12B07">
+      <div class="rs-dia-duty-row">
+        <input id="schedule-edit-dia" class="schedule-edit-input" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="20" placeholder="예: 12B07">
+        <div class="schedule-edit-double rs-dia-duty-small" id="schedule-edit-duty-choice" role="group" aria-label="근무 구분">
+          <button type="button" class="schedule-edit-credit-btn" data-duty="주" onclick="selectScheduleDuty('주')">주간</button>
+          <button type="button" class="schedule-edit-credit-btn" data-duty="야" onclick="selectScheduleDuty('야')">야간</button>
+        </div>
+      </div>
     </div>
     <div class="schedule-edit-input-group">
       <div class="schedule-edit-label">충당 구분</div>
@@ -1908,13 +1927,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <button type="button" id="schedule-edit-wait-credit" class="schedule-edit-credit-btn" onclick="selectScheduleCredit('대기충당')">대기충당</button>
         <button type="button" id="schedule-edit-off-credit" class="schedule-edit-credit-btn" onclick="selectScheduleCredit('휴무충당')">휴무충당</button>
         <button type="button" id="schedule-edit-other-credit" class="schedule-edit-credit-btn" onclick="selectScheduleCredit('기타')">기타</button>
-      </div>
-    </div>
-    <div class="schedule-edit-input-group">
-      <div class="schedule-edit-label">근무 구분</div>
-      <div class="schedule-edit-double" id="schedule-edit-duty-choice">
-        <button type="button" class="schedule-edit-credit-btn" data-duty="주" onclick="selectScheduleDuty('주')">주간</button>
-        <button type="button" class="schedule-edit-credit-btn" data-duty="야" onclick="selectScheduleDuty('야')">야간</button>
       </div>
     </div>
     <div class="schedule-edit-input-group">
@@ -3539,26 +3551,43 @@ function renderCalendar() {
     var sideText = hName;
     if (!hName && cell.classList.contains('today')) sideText = '오늘';
     var creditStatus = rsCreditForDate(getDateKey(calendarYear, calendarMonth, d), info);
-    if (info && info.label && info.label !== creditStatus) {
-      var isStatus = info.overrideType === 'status';
-      var tone = isStatus ? 'status' : toneOf(info.label);
-      var cls = tone === 'day' ? ' t-day' : tone === 'bi' ? ' t-bi' : tone === 'off' ? ' t-off' : tone === 'status' ? ' t-status' : '';
-      var small = isStatus && info.label.length > 3 ? ' style="font-size:11px"' : '';
-      labelHtml = '<div class="cell-lbl' + cls + '"' + small + '>' + (info.manual ? '*' : '') + esc(info.label) + '</div>';
+    if (info && (info.label || info.type || info.status)) {
+      /* 달력에는 DIA 번호를 표시하지 않고 근무 구분만 표시합니다. */
+      var rawDuty = String(info.overrideType === 'status' ? (info.status || info.type || info.label || '')
+        : (info.dutyStatus || info.type || info.label || '')).trim();
+      var calendarDuty = '';
+      /* X는 DIA 이름이 아니라 기존 근무 구분이므로 주·야·비·휴와 함께 그대로 표시. */
+      if (/^X$/i.test(rawDuty)) calendarDuty = 'X';
+      else if (/^(주|주간|day)$/i.test(rawDuty)) calendarDuty = '주';
+      else if (/^(야|야간|night)$/i.test(rawDuty)) calendarDuty = '야';
+      else if (/^(비|비번)$/i.test(rawDuty)) calendarDuty = '비';
+      else if (/^(휴|휴무|휴가|연차|병가|공가|출산휴가|육아휴직|돌봄휴가)$/i.test(rawDuty)) calendarDuty = '휴';
+      else if (info.label === '주' || info.label === '야' || info.label === '비' || info.label === '휴' || info.label === 'X') calendarDuty = info.label;
+      else if (info.overrideType === 'status') calendarDuty = '휴';
+      /* 비정상 DIA 문자열을 라벨로 출력하는 대신 해당 날짜의 기본 근무 구분을 사용합니다. */
+      if (!calendarDuty && typeof snapBaseDay === 'function') {
+        try {
+          var cu = getCurrentUser(), settings = cu && cu.settings;
+          var base = settings && settings.seq && settings.anchor
+            ? snapBaseDay(getDateKey(calendarYear, calendarMonth, d), settings.seq, settings.anchor, [], cu.name || '') : null;
+          var baseDuty = String((base && (base.type || base.label)) || '');
+          if (/^(주|야|비|휴|X)$/.test(baseDuty)) calendarDuty = baseDuty;
+        } catch (ignored) {}
+      }
+      if (calendarDuty) {
+        var tone = toneOf(calendarDuty);
+        var cls = tone === 'day' ? ' t-day' : tone === 'bi' ? ' t-bi' : tone === 'off' ? ' t-off' : '';
+        labelHtml = '<div class="cell-lbl' + cls + '">' + (info.manual ? '*' : '') + esc(calendarDuty) + '</div>';
+      }
       if (info.swapPartnerName || info.swapPartnerId) {
         var swapPn = String(info.swapPartnerName || info.swapPartnerId).trim();
         labelHtml += '<div class="cell-swap" title="' + esc(swapPn) + '님과 근무 교환">⇄ ' + esc(swapPn) + '</div>';
         cell.classList.add('swapped');
       }
     }
-    /* 이전 버전의 근무표 표시 복원: 주/야/비/휴 옆에 충당 구분을 작게 표시하고, 교환 상대 이름은 아래에 유지 */
+    /* 주·야·비·휴 아래: 교환 상대 이름표처럼 작은 빨간색 타원형 충당 배지만 표시. */
     if (creditStatus) {
-      if (info && info.dia && info.label && info.label !== creditStatus) {
-        labelHtml = labelHtml.replace(/(<div class="cell-lbl[^>]*>[^<]*<\/div>)/,
-          '<div class="cell-dia-credit-line">$1<span class="cell-credit-inline">' + esc(creditStatus) + '</span></div>');
-      } else {
-        labelHtml += '<div class="cell-credit">' + esc(creditStatus) + '</div>';
-      }
+      labelHtml += '<div class="cell-credit rs-credit-pill">' + esc(creditStatus) + '</div>';
     }
     cell.innerHTML =
       '<div class="cell-top"><span class="cell-num">' + d + '</span><span class="cell-side">' +
@@ -3603,7 +3632,7 @@ function renderCalendar() {
 /* 근무교환 이름표가 칸보다 넓으면 높이는 그대로 두고 가로만 살짝 줄여 이름 전체가 보이게 함 */
 function fitSwapBadges(root) {
   function run() {
-    var list = (root || document).querySelectorAll('.cell-swap');
+    var list = (root || document).querySelectorAll('.cell-swap, .rs-credit-pill');
     for (var i = 0; i < list.length; i++) {
       var el = list[i];
       el.style.transform = '';
@@ -4567,7 +4596,6 @@ function schSavePng() {
       var sub = '';
       if (info.swapPartnerName || info.swapPartnerId) sub = '⇄ ' + String(info.swapPartnerName || info.swapPartnerId).trim();
       else if (credit) sub = credit;
-      else if (info.dia) sub = String(info.dia);
       if (sub) {
         c.font = '600 ' + (8 * S) + 'px ' + F; c.fillStyle = sub.charAt(0) === '⇄' ? '#8a6bd1' : '#8a96a8'; c.textAlign = 'center';
         while (c.measureText(sub).width > cw - 8 * S && sub.length > 2) sub = sub.slice(0, -1);
