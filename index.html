@@ -1541,7 +1541,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <div class="tq-cal-foot"><button type="button" onclick="tqCalPickToday()">오늘</button></div>
       </div>
       <label class="tq-lab" for="tq-in">열차번호</label>
-      <input id="tq-in" class="tq-field" inputmode="numeric" maxlength="6" placeholder="예: 3224" autocomplete="off" onkeydown="if(event.key==='Enter')trainQueryInput()">
+      <input id="tq-in" class="tq-field" inputmode="numeric" maxlength="6" placeholder="예: 3224" autocomplete="off" oninput="tqPrefetch()" onkeydown="if(event.key==='Enter')trainQueryInput()">
       <div id="tq-msg" class="tq-msg"></div>
       <button type="button" class="tq-main" onclick="trainQueryInput()">조회</button>
     </div>
@@ -9990,26 +9990,85 @@ function passWarmUp() {
     fetch(SUPABASE_URL + '/functions/v1/' + PASS_FN, { method: 'POST', headers: headers, body: JSON.stringify({ mode: 'route', train: '', date: '' }) }).catch(function () {});
   } catch (e) {}
 }
+/* 조회를 빠르고 덜 실패하게:
+   ① 같은 열차를 동시에 여러 번 물으면 한 번만 요청(입력 중 미리 받아 둔 요청에 그대로 합류)
+   ② 5초 안에 답이 없으면 같은 요청을 하나 더 보내 먼저 온 답을 씀(서버 · NXLogis가 잠깐 멈출 때)
+   ③ 서버 연결 실패 · 오류면 자동으로 다시 시도(최대 3번)
+   ④ 그래도 실패하면 30분 안에 성공했던 정보를 '○분 전 정보'로 보여줌 */
+var passRouteInflight = {};
+function passRouteStaleKey(k) { return 'rs_route_' + k; }
+function passRouteStaleGet(k) { try { var o = JSON.parse(localStorage.getItem(passRouteStaleKey(k)) || 'null'); return o && Date.now() - o.at < 30 * 60000 ? o : null; } catch (e) { return null; } }
+function passRouteStaleSet(k, j) { try { localStorage.setItem(passRouteStaleKey(k), JSON.stringify({ at: Date.now(), j: j })); } catch (e) {} }
+function passRouteOnce(train, dateKey, raw, ms, cb) {
+  var headers = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY };
+  if (/^eyJ/.test(SUPABASE_KEY)) headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
+  var ctl = null, timer = null, done = false;
+  function fin(j, transient) { if (done) return; done = true; if (timer) clearTimeout(timer); cb(j, transient); }
+  try { ctl = new AbortController(); } catch (e) {}
+  timer = setTimeout(function () { try { if (ctl) ctl.abort(); } catch (e) {} fin({ success: false, message: '서버 응답이 늦어요.' }, true); }, ms);
+  fetch(SUPABASE_URL + '/functions/v1/' + PASS_FN, {
+    method: 'POST', headers: headers, signal: ctl ? ctl.signal : undefined, cache: 'no-store',
+    body: JSON.stringify({ mode: 'route', train: train, date: String(dateKey).replace(/-/g, ''), raw: !!raw })
+  }).then(function (r) {
+    if (!r.ok && r.status >= 500) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }).then(function (j) {
+    if (j && !j.stations && !j.message && j.error) j.message = String(j.error);
+    /* NXLogis 쪽 일시 오류(HTTP 오류 · JSON 아님 · 연결 끊김)는 다시 시도할 대상 */
+    var msg = String((j && (j.message || j.error)) || '');
+    var transient = !j || (!j.success && /HTTP|JSON|timeout|Timeout|abort|network|연결|시간|fetch|error sending/i.test(msg));
+    fin(j || { success: false, message: '응답이 없습니다.' }, transient);
+  }).catch(function () { fin({ success: false, message: '서버에 연결하지 못했습니다.' }, true); });
+}
 function passRoute(train, dateKey, raw, cb) {
   var cacheKey = String(train).toUpperCase() + '|' + String(dateKey).replace(/-/g, '');
   var hit = !raw && passRouteCache[cacheKey];
   if (hit && !passForceFresh && Date.now() - hit.at < 20000) { cb(hit.j); return; }
-  var headers = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY };
-  if (/^eyJ/.test(SUPABASE_KEY)) headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
-  var ctl = null, timer = null;
-  try { ctl = new AbortController(); timer = setTimeout(function () { ctl.abort(); }, 30000); } catch (e) {}
-  fetch(SUPABASE_URL + '/functions/v1/' + PASS_FN, {
-    method: 'POST', headers: headers, signal: ctl ? ctl.signal : undefined,
-    body: JSON.stringify({ mode: 'route', train: train, date: String(dateKey).replace(/-/g, ''), raw: !!raw })
-  }).then(function (r) { return r.json(); }).then(function (j) {
-    if (timer) clearTimeout(timer);
-    if (j && !j.stations && !j.message && j.error) j.message = String(j.error);
-    if (!raw && j && j.success) passRouteCache[cacheKey] = { at: Date.now(), j: j };
-    cb(j || { success: false, message: '응답이 없습니다.' });
-  }).catch(function () {
-    if (timer) clearTimeout(timer);
-    cb({ success: false, message: '서버에 연결하지 못했습니다. (nx-check 함수 배포 확인)' });
-  });
+  /* ① 같은 요청이 이미 가는 중이면 합류 */
+  var fk = cacheKey + (raw ? '|raw' : '');
+  if (passRouteInflight[fk]) { passRouteInflight[fk].push(cb); return; }
+  var waiters = passRouteInflight[fk] = [cb];
+  var finished = false, attempt = 0, running = 0, lastFail = null, hedgeTimer = null;
+  function deliver(j) {
+    if (finished) return; finished = true;
+    if (hedgeTimer) clearTimeout(hedgeTimer);
+    delete passRouteInflight[fk];
+    if (!raw && j && j.success) { passRouteCache[cacheKey] = { at: Date.now(), j: j }; passRouteStaleSet(cacheKey, j); }
+    waiters.forEach(function (w) { try { w(j); } catch (e) {} });
+  }
+  function giveUp() {
+    /* ④ 마지막으로 성공했던 정보(30분 이내)를 대신 보여줌 */
+    var st = !raw && passRouteStaleGet(cacheKey);
+    if (st) { var j = Object.assign({}, st.j, { _staleMin: Math.max(1, Math.round((Date.now() - st.at) / 60000)) }); deliver(j); return; }
+    deliver(lastFail || { success: false, message: '서버에 연결하지 못했습니다.' });
+  }
+  function launch() {
+    attempt++; running++;
+    passRouteOnce(train, dateKey, raw, 12000, function (j, transient) {
+      running--;
+      if (finished) return;
+      if (j && (j.success || !transient)) { deliver(j); return; }   /* 성공, 또는 '열차 정보 없음'처럼 다시 물어도 같은 답 */
+      lastFail = j;
+      if (running > 0) return;                                       /* 다른 요청이 아직 가는 중 */
+      if (attempt < 3) setTimeout(launch, attempt === 1 ? 600 : 1500); /* ③ 다시 시도 */
+      else giveUp();
+    });
+  }
+  launch();
+  /* ② 5초 동안 답이 없으면 하나 더 */
+  hedgeTimer = setTimeout(function () { if (!finished && running > 0 && attempt < 3) launch(); }, 5000);
+}
+/* 열차번호를 입력하는 동안 미리 불러오기 → [조회]를 누르면 거의 바로 나옴 */
+var tqPrefetchTimer = null;
+function tqPrefetch() {
+  if (tqPrefetchTimer) clearTimeout(tqPrefetchTimer);
+  tqPrefetchTimer = setTimeout(function () {
+    var el = $('tq-in'); if (!el) return;
+    var v = String(el.value || '').replace(/\D/g, '');
+    if (v.length < 3) return;
+    var day = ($('tq-day') && $('tq-day').value) || trainQueryToday();
+    try { passRoute(v, day, false, function () {}); } catch (e) {}
+  }, 450);
 }
 /* 곧 도착 / 통과 판단 (서버 push-alarm의 passEval과 같은 규칙) */
 function passEval(route, w, now) {
@@ -11008,6 +11067,7 @@ function passRunCheck(list, c, overviewOnly, opts) {
         };
       }
 
+      if (page && j && j._staleMin && page.kind !== 'err') page.note = '⚠ 서버 응답이 늦어 ' + j._staleMin + '분 전 정보를 보여줘요. 열차를 누르면 다시 불러와요.' + (page.note ? ' ' + page.note : '');
       if (page) { page.trainKind = String((j && (j.kind || j.trnKind || j.trn_kind)) || ''); page.trainType = passTrainType(page.trainKind, it.train); pages[n] = page; }
       if (--left === 0) {
         pages = pages.filter(Boolean);
