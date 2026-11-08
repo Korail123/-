@@ -3551,13 +3551,11 @@ function renderCalendar() {
         cell.classList.add('swapped');
       }
     }
-    /* 날짜별 달력: 근무구분(주/야)은 유지하고, 변경 DIA 오른쪽에 충당 구분 표시 */
+    /* 이전 버전의 근무표 표시 복원: 주/야/비/휴 옆에 충당 구분을 작게 표시하고, 교환 상대 이름은 아래에 유지 */
     if (creditStatus) {
-      var changedDia = info && info.manual && info.dia ? String(info.dia).trim() : '';
-      if (changedDia) {
-        labelHtml += '<div class="rs-credit-dia-row" title="' + esc(changedDia + ' ' + creditStatus) + '">' +
-          '<span class="rs-credit-dia-no">' + esc(changedDia) + '</span>' +
-          '<span class="rs-credit-type">' + esc(creditStatus) + '</span></div>';
+      if (info && info.dia && info.label && info.label !== creditStatus) {
+        labelHtml = labelHtml.replace(/(<div class="cell-lbl[^>]*>[^<]*<\/div>)/,
+          '<div class="cell-dia-credit-line">$1<span class="cell-credit-inline">' + esc(creditStatus) + '</span></div>');
       } else {
         labelHtml += '<div class="cell-credit">' + esc(creditStatus) + '</div>';
       }
@@ -16975,6 +16973,28 @@ function rpCalOpen(dateKey) {
 }
 function rpCalMove(n) { var m = rpCal.m + n, y = rpCal.y; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } rpCal = { y: y, m: m }; rpCalRender(); }
 function rpCalPick(k) { var el = $('rp-date'); el.value = el.value === k ? '' : k; rpCalRender(); }
+/* 행로표 날짜 달력에는 DIA 이름 대신 근무구분만 표시. 기존 근무표의 구분이 최우선. */
+function rpCalendarDutyLabel(info) {
+  if (!info) return '';
+  var label = String(info.label || '').trim();
+  if (label === '주' || label === '야' || label === '비' || label === '휴') return label;
+  if (label === '주간') return '주';
+  if (label === '야간') return '야';
+  if (label === '비번') return '비';
+  if (label === '휴무' || label === '휴일') return '휴';
+  var status = String(info.dutyStatus || info.type || info.status || '').trim();
+  if (status === '주' || /주간/.test(status)) return '주';
+  if (status === '야' || /야간/.test(status)) return '야';
+  if (status === '비' || /비번/.test(status) || info.nightCarryover) return '비';
+  if (status === '휴' || /휴무|휴가|연차|병가|공가/.test(status)) return '휴';
+  if (info.dia && typeof diaByNumber === 'function') {
+    var def = diaByNumber(info.dia);
+    var typ = String((def && def.type) || '').trim();
+    if (/주간/.test(typ)) return '주';
+    if (/야간/.test(typ)) return '야';
+  }
+  return '';
+}
 function rpCalRender() {
   var box = $('rp-cal'); if (!box || !rpCal) return;
   var y = rpCal.y, m = rpCal.m, sel = $('rp-date').value;
@@ -16984,15 +17004,15 @@ function rpCalRender() {
       '<div class="rp-cal-grid">' + ['일', '월', '화', '수', '목', '금', '토'].map(function (w, i) { return '<span class="rp-cal-w' + (i === 0 ? ' sun' : i === 6 ? ' sat' : '') + '">' + w + '</span>'; }).join('');
     for (var i = 0; i < first; i++) h += '<span></span>';
     for (var d = 1; d <= last; d++) {
-      var k = getDateKey(y, m, d), info = days[k] || null, lab = info ? (info.dia || info.label || '') : '';
-      var tone = info && info.label ? toneOf(info.label) : '';
+      var k = getDateKey(y, m, d), info = days[k] || null, lab = rpCalendarDutyLabel(info);
+      var tone = lab ? toneOf(lab) : '';
       var dow = (first + d - 1) % 7, isT = t && t.y === y && t.m === m && t.d === d;
       h += '<button type="button" class="rp-cal-d' + (k === sel ? ' on' : '') + (isT ? ' today' : '') + (dow === 0 ? ' sun' : dow === 6 ? ' sat' : '') + '" onclick="rpCalPick(\'' + k + '\')"><i>' + d + '</i>' +
         (lab ? '<em class="t-' + tone + '">' + rpEsc(lab) + '</em>' : '<em></em>') + '</button>';
     }
     box.innerHTML = h + '</div>';
     var sv = $('rp-cal-sel');
-    if (sv) { if (sel) { var p = sel.split('-'), inf = days[sel]; sv.innerHTML = '<b>' + (+p[1]) + '월 ' + (+p[2]) + '일</b>에 넣어요' + (inf && (inf.dia || inf.label) ? ' <small>(지금 근무: ' + rpEsc(inf.dia || inf.label) + ')</small>' : ''); } else sv.textContent = '날짜를 누르면 그 날에 행로표를 넣어요. (선택 안 하면 DIA에만 저장)'; }
+    if (sv) { if (sel) { var p = sel.split('-'), inf = days[sel]; sv.innerHTML = '<b>' + (+p[1]) + '월 ' + (+p[2]) + '일</b>에 넣어요' + (inf && rpCalendarDutyLabel(inf) ? ' <small>(지금 근무: ' + rpEsc(rpCalendarDutyLabel(inf)) + ')</small>' : ''); } else sv.textContent = '날짜를 누르면 그 날에 행로표를 넣어요. (선택 안 하면 DIA에만 저장)'; }
   };
   /* 내 근무표 그 달 불러오기 (화면에 열려 있는 달이면 바로) */
   if (typeof myMonth !== 'undefined' && myMonth && myMonth.y === y && myMonth.m === m) { draw(myMonth.days || {}); return; }
