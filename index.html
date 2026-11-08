@@ -187,6 +187,10 @@ padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-appl
 #schedule-edit-panel .rs-dia-duty-small .schedule-edit-credit-btn{min-width:40px!important;width:40px;min-height:42px!important;height:42px;padding:0 2px!important;border-radius:8px;font-size:11px!important;white-space:nowrap}
 @media(max-width:350px){#schedule-edit-panel .rs-dia-duty-row{gap:4px}#schedule-edit-panel .rs-dia-duty-small .schedule-edit-credit-btn{min-width:35px!important;width:35px;font-size:10px!important}}
 </style>
+<style id="rp-temp-times-style">#rp-panel .rp-temp-time{margin:8px 2px 1px;padding:9px 10px;background:#edf5ff;border:1px solid #d3e6ff;border-radius:10px;color:#215a99;font-size:12px;line-height:1.7;overflow-wrap:anywhere}#rp-panel .rp-temp-time b{font-weight:800}#rp-panel .rp-temp-time small{display:block;color:#6a7d94;font-size:10px}</style>
+<style id="rs-precise-leave-calendar">
+#calendar-grid .cell-lbl.rs-leave-long{font-size:clamp(8px,2.2vw,12px)!important;letter-spacing:-.55px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:clip}
+</style>
 </head>
 <body>
 <!-- 다크 모드 되돌림 필터: html의 invert(.92)+hue-rotate(180)를 정확히 거꾸로 (사진 · 열차 애니메이션 · 프로필 원래 색) -->
@@ -3561,7 +3565,9 @@ function renderCalendar() {
       else if (/^(주|주간|day)$/i.test(rawDuty)) calendarDuty = '주';
       else if (/^(야|야간|night)$/i.test(rawDuty)) calendarDuty = '야';
       else if (/^(비|비번)$/i.test(rawDuty)) calendarDuty = '비';
-      else if (/^(휴|휴무|휴가|연차|병가|공가|출산휴가|육아휴직|돌봄휴가)$/i.test(rawDuty)) calendarDuty = '휴';
+      else if (info.overrideType === 'status' && rawDuty && !/^(대기충당|휴무충당)$/i.test(rawDuty)) calendarDuty = /^(휴|휴무|휴일)$/i.test(rawDuty) ? '휴' : rawDuty;
+      else if (/^(휴|휴무|휴일)$/i.test(rawDuty)) calendarDuty = '휴';
+      else if (/^(휴가|연차|반차|병가|공가|특별휴가|출산휴가|육아휴직|돌봄|돌봄휴가|휴직|경조휴가|대체휴무|보상휴가)$/i.test(rawDuty)) calendarDuty = rawDuty;
       else if (info.label === '주' || info.label === '야' || info.label === '비' || info.label === '휴' || info.label === 'X') calendarDuty = info.label;
       else if (info.overrideType === 'status') calendarDuty = '휴';
       /* 비정상 DIA 문자열을 라벨로 출력하는 대신 해당 날짜의 기본 근무 구분을 사용합니다. */
@@ -3576,8 +3582,8 @@ function renderCalendar() {
       }
       if (calendarDuty) {
         var tone = toneOf(calendarDuty);
-        var cls = tone === 'day' ? ' t-day' : tone === 'bi' ? ' t-bi' : tone === 'off' ? ' t-off' : '';
-        labelHtml = '<div class="cell-lbl' + cls + '">' + (info.manual ? '*' : '') + esc(calendarDuty) + '</div>';
+        var cls = tone === 'day' ? ' t-day' : tone === 'bi' ? ' t-bi' : tone === 'off' || (info.overrideType === 'status' && !/^(주|야|비|X)$/.test(calendarDuty)) ? ' t-off' : '';
+        labelHtml = '<div class="cell-lbl' + cls + (calendarDuty.length > 2 ? ' rs-leave-long' : '') + '">' + (info.manual ? '*' : '') + esc(calendarDuty) + '</div>';
       }
       if (info.swapPartnerName || info.swapPartnerId) {
         var swapPn = String(info.swapPartnerName || info.swapPartnerId).trim();
@@ -5450,6 +5456,13 @@ function renderDayDetail() {
   var diaMeta = diaNo ? diaByNumber(diaNo) : null;
   var startTime = info.start || (diaMeta && diaMeta.start) || '';
   var endTime = info.end || (diaMeta && diaMeta.end) || '';
+  /* 공식 시간이 없는 항목만 연결된 DIA 번호의 예상 행로표로 보완. */
+  var rsPlan = !isStatus ? rsEstimatedPlan(diaNo, dateKeyForSelectedDay()) : null;
+  var rsStartEstimated = false, rsEndEstimated = false;
+  if (rsPlan) {
+    if (!startTime && rsPlan.start) { startTime = rsPlan.start; rsStartEstimated = true; }
+    if (!endTime && rsPlan.end) { endTime = rsPlan.end; rsEndEstimated = true; }
+  }
   var train1 = info.train1 || (diaMeta && diaMeta.train1) || '';
   var train2 = info.train2 || (diaMeta && diaMeta.train2) || '';
   var train3 = info.train3 || (diaMeta && diaMeta.train3) || '';
@@ -5477,8 +5490,8 @@ function renderDayDetail() {
   /* 출근 알람(출근 OO전)을 켜 두면 오늘 이후 근무일에 '설정 출근시간' = 출근 시간 − 설정 시간 */
   var userStart = userStartTimeText(dateKeyForSelectedDay(), startTime, isStatus, info, workType);
   if (userStart) html += '<div class="dd-row dd-icon-row dd-user-start"><img class="detail-art" src="' + appIcon('사용자출근시간') + '" alt="" aria-hidden="true" decoding="async"><span>설정 출근시간 : <b>' + esc(userStart.time) + '</b> <small>(' + esc(userStart.note) + ')</small></span></div>';
-  if (startTime) html += '<div class="dd-row dd-icon-row"><img class="detail-art" src="' + appIcon('출근시간') + '" alt="" aria-hidden="true" decoding="async" loading="lazy"><span>출근 시간 : ' + esc(startTime) + '</span></div>';
-  if (endTime) html += '<div class="dd-row dd-icon-row"><img class="detail-art" src="' + appIcon('퇴근시간') + '" alt="" aria-hidden="true" decoding="async" loading="lazy"><span>퇴근 시간 : ' + esc(endTime) + '</span></div>';
+  if (startTime) html += '<div class="dd-row dd-icon-row"><img class="detail-art" src="' + appIcon('출근시간') + '" alt="" aria-hidden="true" decoding="async" loading="lazy"><span>출근 시간 : ' + esc(startTime) + (rsStartEstimated ? ' (예상)' : '') + '</span></div>';
+  if (endTime) html += '<div class="dd-row dd-icon-row"><img class="detail-art" src="' + appIcon('퇴근시간') + '" alt="" aria-hidden="true" decoding="async" loading="lazy"><span>퇴근 시간 : ' + esc(endTime) + (rsEndEstimated ? ' (예상)' : '') + '</span></div>';
   var workDur = (startTime && endTime) ? workDurationText(startTime, endTime) : '';
   if (workDur) html += '<div class="dd-row dd-icon-row"><img class="detail-art" src="' + appIcon('근무시간') + '" alt="" aria-hidden="true" decoding="async"><span>근무 시간 : ' + esc(workDur) + '</span></div>';
   if (train1 || train2 || train3) {
@@ -5506,6 +5519,8 @@ function renderDayDetail() {
   if ((!isStatus && diaNo) || (typeof rpForDate === 'function' && rpForDate(dateKeyForSelectedDay()))) {
     html += '<div class="dd-route">';
     var ddKey = dateKeyForSelectedDay(), ddPlan = (typeof rpForDate === 'function') ? rpForDate(ddKey) : null;
+    if (ddPlan && diaNo && String(ddPlan.dia).toUpperCase() !== diaNo.toUpperCase()) ddPlan = null;
+    if (!ddPlan && rsPlan && typeof rpSavedUrl === 'function') ddPlan = { dia: diaNo, url: rpSavedUrl(diaNo) };
     var ddTemp = (typeof tdGet === 'function') ? tdGet(ddKey) : '';
     var diaImageSrc = diaImageUrl(diaNo);
     if (ddPlan) {
@@ -6869,6 +6884,12 @@ function openGroupInfo(k, key) {
     var type = String(info.type || (meta && meta.type) || '').trim();
     var start = String(info.start || (meta && meta.start) || '').trim();
     var end = String(info.end || (meta && meta.end) || '').trim();
+    var groupPlan = !infoFromNight ? rsEstimatedPlan(diaNo, key, mem.employeeId) : null;
+    var groupStartEstimated = false, groupEndEstimated = false;
+    if (groupPlan) {
+      if (!start && groupPlan.start) { start = groupPlan.start; groupStartEstimated = true; }
+      if (!end && groupPlan.end) { end = groupPlan.end; groupEndEstimated = true; }
+    }
     var kind = { '주': '주간', '야': '야간', '비': '비번', '휴': '휴무' }[type] || type || '-';
     var tone = toneOf(type);
     var color = tone === 'day' ? '#e5a800' : tone === 'off' ? '#e53935' : '#1a73e8';
@@ -6878,8 +6899,8 @@ function openGroupInfo(k, key) {
     if (info.swapPartnerName || info.swapPartnerId) {
       html += piRow('근무 교환', String(info.swapPartnerName || info.swapPartnerId) + '님과 교환');
     }
-    html += piRow('출근 시간', start);
-    html += piRow('퇴근 시간', end);
+    html += piRow('출근 시간', start ? start + (groupStartEstimated ? ' (예상)' : '') : '-');
+    html += piRow('퇴근 시간', end ? end + (groupEndEstimated ? ' (예상)' : '') : '-');
     html += piRow('근무 시간', workDurationText(start, end));
     /* 근무표 상세정보와 동일하게 다이아의 열차번호를 표시하고 NXLogis 조회로 연결 */
     var train1 = String(info.train1 || (meta && meta.train1) || '').trim();
@@ -6903,12 +6924,12 @@ function openGroupInfo(k, key) {
     var crewMe = getCurrentUser(), crewIsMe = crewMe && String(mem.employeeId || '') === String(crewMe.employeeId || '');
     if (crewIsMe && diaNo && !infoFromNight && !crewSkipDay(diaNo, type, info.status, info.label)) html += crewMatesPiRow(key, diaNo, [train1, train2, train3], mem.name);
     if (diaNo) {
-      var url = diaImageUrl(diaNo);
+      var url = (groupPlan && typeof rpUrl === 'function') ? rpUrl(diaNo, groupPlan.rows) : diaImageUrl(diaNo);
       if (url) {
         html += '<div class="pi-route">' +
-          '<div class="pi-route-cap">행로표</div>' +
+          '<div class="pi-route-cap">' + (groupPlan ? '예상 행로표' : '행로표') + '</div>' +
           '<img src="' + url + '" alt="DIA ' + esc(diaNo) + ' 행로표" data-dia="' + esc(String(diaNo).toUpperCase()) + '" data-try="0" loading="eager" decoding="async" fetchpriority="high" ' +
-          'onclick="openRouteViewer(this.getAttribute(\'data-dia\'))" ' +
+          'onclick="openRouteViewer(this.getAttribute(\'data-dia\'), this.src)" ' +
           'onerror="diaImgFallback(this)">' +
           '<div class="pi-none" style="display:none">행로표 이미지가 없습니다.</div></div>';
       } else {
@@ -16449,6 +16470,41 @@ function rpParseFree(text) {
   });
   return out;
 }
+/* 임시 DIA 표시용: 공식 시간은 우선하며 행로표가 있을 때만 예상값을 보조 표시합니다. */
+function rsEstimatedPlan(diaNo, dateKey, employeeId) {
+  var dia = String(diaNo || '').trim().toUpperCase();
+  if (!dia || typeof rpTempTimes !== 'function') return null;
+  var owner = String(employeeId || ((typeof getCurrentUser === 'function' && getCurrentUser()) || {}).employeeId || 'guest');
+  var saved = null;
+  try {
+    var all = JSON.parse(localStorage.getItem('rs_myroutes_' + owner) || '{}') || {};
+    saved = all[dia];
+  } catch (e) { return null; }
+  if (!saved || !Array.isArray(saved.rows) || !saved.rows.length) return null;
+  /* 날짜가 명시적으로 다른 DIA에 묶여 있으면 가져오지 않습니다.
+     DIA 번호가 같으면 근무표 변경 → 행로표 만들기 순서와 관계없이 사용할 수 있습니다. */
+  try {
+    var linked = JSON.parse(localStorage.getItem('rs_myroute_dates_' + owner) || '{}') || {};
+    if (dateKey && linked[dateKey] && String(linked[dateKey]).toUpperCase() !== dia) return null;
+  } catch (e) {}
+  var t = rpTempTimes(saved.rows);
+  return { dia: dia, rows: saved.rows, start: t.start || saved.tempStart || '', end: t.end || saved.tempEnd || '', basis: t.basis || saved.tempBasis || '' };
+}
+/* 임시 행로표 예상시간: 출고가 있으면 출고운전 시작 70분 전, 없으면 첫 편승·승계·운전 시작 40분 전.
+   퇴근은 마지막 최종 정리(정리·편승정리·입고정리)의 종료시각만 사용.
+   정리 종료시각이 없을 땐 임의의 퇴근시간을 만들지 않습니다. 정식 DIA 자료는 변경하지 않음. */
+function rpTempTimes(rows) {
+  var rr = (rows || []).filter(function (r) { return r && rpMin(r.dep) != null; });
+  if (!rr.length) return { start: '', end: '', basis: '' };
+  var hasOut = rr.some(function (r) { return r.kind === '출고운전' || r.kind === '출고준비'; });
+  var first = hasOut
+    ? (rr.find(function (r) { return r.kind === '출고운전'; }) || rr.find(function (r) { return r.kind === '출고준비'; }))
+    : (rr.find(function (r) { return r.kind === '편승' || r.kind === '승계'; }) || rr.find(function (r) { return r.kind === '운전'; }) || rr[0]);
+  var start = first ? rpHM(rpMin(first.dep) - (hasOut ? 70 : 40)) : '';
+  var finals = (rows || []).filter(function (r) { return /^(정리|편승정리|입고정리|최종정리)$/.test(String(r.kind || '')) && rpMin(r.arr) != null; });
+  var last = finals.length ? finals[finals.length - 1] : null;
+  return { start: start, end: last ? rpTime(last.arr) : '', basis: hasOut ? '출고 70분 전' : '편승·승계 등 40분 전' };
+}
 /* 운전·편승만 주면 나머지(준비·감시·정리·승계 등)를 행로표 규칙으로 채움 — 임시다이아 예상용 */
 function rpMin(t) { var m = String(t || '').match(/(\d{1,2}):(\d{2})/); return m ? (+m[1]) * 60 + (+m[2]) : null; }
 function rpHM(n) { n = ((n % 1440) + 1440) % 1440; return ('0' + Math.floor(n / 60)).slice(-2) + ':' + ('0' + (n % 60)).slice(-2); }
@@ -16690,7 +16746,11 @@ function rpRowHtml(r, i) {
 function rpRender(full) {
   if (full !== false) $('rp-rows').innerHTML = rpRows.map(rpRowHtml).join('') || '<div class="rp-empty">위에 표를 붙여넣거나 [구간 추가]로 입력하세요.</div>';
   var rows = rpRows.map(function (r) { return { kind: r.kind, train: r.train, from: r.from, to: r.to, dep: rpTime(r.dep), arr: rpTime(r.arr) }; });
-  $('rp-preview').innerHTML = rows.length ? '<img alt="예상 행로표 미리보기" src="' + rpUrl(rpDia || ($('rp-dia').value || '').toUpperCase(), rows) + '">' : '';
+  var tm = rpTempTimes(rows);
+  $('rp-preview').innerHTML = rows.length ? '<img alt="예상 행로표 미리보기" src="' + rpUrl(rpDia || ($('rp-dia').value || '').toUpperCase(), rows) + '">' +
+    '<div class="rp-temp-time"><b>임시 다이아 예상 출근</b> ' + (tm.start || '미산정') +
+    ' <b>· 퇴근</b> ' + (tm.end || '최종 정리시간 필요') +
+    ' <small>(' + rpEsc(tm.basis) + ' / 실제 근무시각 확인 필요)</small></div>' : '';
 }
 function rpEdit(i, k, v) { if (!rpRows[i]) return; rpRows[i][k] = v; delete rpRows[i].auto; rpRender(false); }
 function rpDel(i) { rpRows.splice(i, 1); rpRender(); }
@@ -16928,7 +16988,8 @@ function rpSave(auto) {
   if (!/^[0-9A-Z]{3,8}$/.test(dia)) { showToast('DIA 번호를 입력하세요.'); $('rp-dia').focus(); return; }
   if (!rpRows.length) { showToast('구간을 먼저 입력하세요.'); return; }
   var a = rpAll();
-  a[dia] = { rows: rpRows.map(function (r) { return { kind: r.kind, train: r.train, from: r.from, to: r.to, dep: rpTime(r.dep), arr: rpTime(r.arr) }; }), at: Date.now(), type: rpType || rpGuessType(rpRows) };
+  var rpEstimate = rpTempTimes(rpRows);
+  a[dia] = { rows: rpRows.map(function (r) { return { kind: r.kind, train: r.train, from: r.from, to: r.to, dep: rpTime(r.dep), arr: rpTime(r.arr) }; }), at: Date.now(), type: rpType || rpGuessType(rpRows), tempStart: rpEstimate.start, tempEnd: rpEstimate.end, tempBasis: rpEstimate.basis };
   rpSaveAll(a); rpDia = dia; rpListRender();
   var dk = ($('rp-date') && $('rp-date').value) || '', msg = 'DIA ' + dia + ' 행로표를 저장했어요.';
   if (dk) {
@@ -17270,21 +17331,23 @@ function closeRpGuide() { clearInterval(rpgTimer); $('rp-guide').classList.remov
 <style id="weekly-wx-style">
 #weekly-wx-panel{display:none;position:fixed;inset:0;z-index:11000;align-items:center;justify-content:center;padding:16px;background:rgba(15,29,50,.48);backdrop-filter:blur(5px)}
 #weekly-wx-panel.active{display:flex}
-#weekly-wx-panel .ww-card{width:min(410px,100%);max-height:min(80vh,680px);overflow-y:auto;background:#fff;border:1px solid #d9e7f9;border-radius:24px;padding:20px 16px 16px;box-shadow:0 18px 55px rgba(19,53,91,.22);color:#1d3556;text-align:left}
+#weekly-wx-panel .ww-card{width:min(560px,100%);max-height:min(80vh,680px);overflow-y:auto;background:#fff;border:1px solid #d9e7f9;border-radius:24px;padding:20px 16px 16px;box-shadow:0 18px 55px rgba(19,53,91,.22);color:#1d3556;text-align:left}
 #weekly-wx-panel .ww-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 #weekly-wx-panel .ww-head strong{font-size:18px;font-weight:900}
 #weekly-wx-panel .ww-close{border:0;border-radius:50%;width:34px;height:34px;background:#edf5ff;color:#285a8f;font-size:22px;cursor:pointer}
 #weekly-wx-panel .ww-place{color:#6c819d;font-size:12px;margin:5px 0 14px;line-height:1.5}
-#weekly-wx-panel .ww-list{display:grid;gap:7px}
-#weekly-wx-panel .ww-item{display:grid;grid-template-columns:minmax(65px,1fr) 34px minmax(65px,1.2fr) auto;align-items:center;gap:5px;padding:10px 9px;border-radius:12px;background:#f2f8ff;font-size:12px}
+/* 7일 예보를 한 줄에 표시: 요일 / 아이콘 / 날씨 / 최고 / 최저 / 강수 */
+#weekly-wx-panel .ww-list{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;width:100%}
+#weekly-wx-panel .ww-item{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;min-width:0;padding:9px 2px 8px;border-radius:12px;background:#f2f8ff;font-size:11px;text-align:center}
 #weekly-wx-panel .ww-item.today{border:1px solid #a5cef9;background:#e8f4ff}
-#weekly-wx-panel .ww-day{font-weight:800;white-space:nowrap}
-#weekly-wx-panel .ww-ico{width:30px;height:30px;object-fit:contain}
-#weekly-wx-panel .ww-desc{font-weight:700;color:#526986;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#weekly-wx-panel .ww-temps{font-size:13px;font-weight:900;white-space:nowrap}
+#weekly-wx-panel .ww-day{font-size:10px;font-weight:800;white-space:nowrap;letter-spacing:-.4px}
+#weekly-wx-panel .ww-ico{display:block;width:29px;height:29px;object-fit:contain;flex:none}
+#weekly-wx-panel .ww-desc{width:100%;font-size:10px;font-weight:700;color:#526986;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#weekly-wx-panel .ww-temps{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:12px;font-weight:900;white-space:nowrap;line-height:1.2}
 #weekly-wx-panel .ww-temps em{font-style:normal;color:#e46853}
-#weekly-wx-panel .ww-temps small{color:#3c83d7;font-size:12px}
-#weekly-wx-panel .ww-rain{grid-column:3 / 5;color:#5186b9;font-size:11px;text-align:right}
+#weekly-wx-panel .ww-temps small{color:#3c83d7;font-size:11px}
+#weekly-wx-panel .ww-rain{color:#5186b9;font-size:10px;white-space:nowrap}
+@media(max-width:430px){#weekly-wx-panel{padding:7px}#weekly-wx-panel .ww-card{padding:16px 8px 13px;border-radius:18px}#weekly-wx-panel .ww-list{gap:2px}#weekly-wx-panel .ww-item{padding:7px 1px;gap:4px;border-radius:9px}#weekly-wx-panel .ww-day{font-size:9px}#weekly-wx-panel .ww-ico{width:25px;height:25px}#weekly-wx-panel .ww-desc{font-size:9px}#weekly-wx-panel .ww-temps{font-size:11px}#weekly-wx-panel .ww-temps small{font-size:10px}#weekly-wx-panel .ww-rain{font-size:9px}}
 #weekly-wx-panel .ww-foot{font-size:11px;color:#8091a5;margin-top:12px;line-height:1.6}
 #weekly-wx-panel .ww-retry{border:1px solid #c4dffd;background:#e8f4ff;color:#2562a2;border-radius:10px;padding:9px 13px;margin-top:10px;font-weight:800;cursor:pointer}
 html.ui-dark #weekly-wx-panel .ww-card{background:#202b3d;color:#eff6ff;border-color:#405877}
@@ -17298,7 +17361,7 @@ html.ui-dark #weekly-wx-panel .ww-close{background:#354f70;color:#e2f2ff}
     <div class="ww-head"><strong>☀️ 일주일 날씨</strong><button class="ww-close" type="button" aria-label="닫기" onclick="closeWeeklyWeather()">×</button></div>
     <div id="weekly-wx-place" class="ww-place">날씨를 불러오는 중...</div>
     <div class="ww-list" id="weekly-wx-list" aria-live="polite">7일 예보를 조회 중입니다.</div>
-    <div class="ww-foot">기온은 최고/최저 기온, 강수는 하루 중 최대 강수확률입니다. 출처: Open-Meteo · 예보는 변경될 수 있습니다.</div>
+    <div class="ww-foot">빨강은 최고기온, 파랑은 최저기온, ☂는 최대 강수확률입니다. 출처: Open-Meteo · 예보는 변경될 수 있습니다.</div>
   </div>
 </div>
 <script id="weekly-wx-script">
@@ -17313,10 +17376,10 @@ html.ui-dark #weekly-wx-panel .ww-close{background:#354f70;color:#e2f2ff}
     var today=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Seoul'});
     target.innerHTML=WX.days.map(function(d){
       var dt=new Date(d.day+'T12:00:00+09:00');
-      var ds=(dt.getMonth()+1)+'/'+dt.getDate()+' ('+['일','월','화','수','목','금','토'][dt.getDay()]+')';
+      var ds=(dt.getMonth()+1)+'/'+dt.getDate()+' '+['일','월','화','수','목','금','토'][dt.getDay()];
       var w=typeof briefWeatherText==='function'?briefWeatherText(d.code):['흐림','흐림'];
       var ico=typeof appIcon==='function'?appIcon('날씨_'+w[0]):'';
-      return '<div class="ww-item'+(d.day===today?' today':'')+'"><span class="ww-day">'+esc(ds)+(d.day===today?' · 오늘':'')+'</span>'+(ico?'<img class="ww-ico" src="'+esc(ico)+'" alt="">':'<span>🌤️</span>')+'<span class="ww-desc">'+esc(w[1])+'</span><span class="ww-temps"><em>'+Math.round(d.max)+'°</em> / <small>'+Math.round(d.min)+'°</small></span><span class="ww-rain">☂ '+(d.rain==null?'—':Math.round(d.rain)+'%')+'</span></div>';
+      return '<div class="ww-item'+(d.day===today?' today':'')+'"><span class="ww-day">'+esc(d.day===today?'오늘':ds)+'</span>'+(ico?'<img class="ww-ico" src="'+esc(ico)+'" alt="">':'<span>🌤️</span>')+'<span class="ww-desc">'+esc(w[1])+'</span><span class="ww-temps"><em>'+Math.round(d.max)+'°</em><small>'+Math.round(d.min)+'°</small></span><span class="ww-rain">☂ '+(d.rain==null?'—':Math.round(d.rain)+'%')+'</span></div>';
     }).join('');
   }
   function fetchForecast(force){
