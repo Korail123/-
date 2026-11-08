@@ -1378,15 +1378,11 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <div id="rp-panel" class="dia-modal" onclick="if(event.target===this)closeRoutePlan()">
   <div class="dia-dialog ns-dialog rp-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="예상행로표" alt="" aria-hidden="true">다이아 행로표 만들기</div>
-    <div class="rp-step"><div class="rp-h"><b>1</b> 사업 내역 사진 넣기</div>
-      <div class="rp-note">승무 시스템의 <b>검색결과 표</b>(구분 · 열차번호 · 출발역 · 시각…)를 캡처한 사진을 넣으면 철도비서가 글자를 읽어 행로표를 그려요. 사진은 폰 안에서만 읽고 어디로도 보내지 않아요.</div>
-      <label class="rp-photo-btn">사진 선택<input type="file" accept="image/*" onchange="rpPhoto(this)" hidden></label>
-      <img id="rp-photo-prev" class="rp-photo-prev" alt="" hidden>
+    <div class="rp-step"><div class="rp-h"><b>1</b> 사업 내역 텍스트 넣기</div>
+      <div class="rp-note">승무 시스템 <b>검색결과 표</b>를 길게 눌러 전체 선택 → 복사한 뒤 아래에 붙여넣으세요. 번호·구분·열차번호·출발역·출발시각·도착역·도착시각 순서면 돼요.</div>
+      <textarea id="rp-paste" class="rp-text" rows="6" placeholder="예)&#10;1  준비  -  -  10:05  -  10:45&#10;2  운전  4655  청량리  10:45  동두천  11:37&#10;3  입환  9999  동두천  11:37  동두천  12:07"></textarea>
+      <button type="button" class="rp-btn rp-primary rp-read" onclick="rpReadPaste()">텍스트 읽어서 행로표 그리기</button>
       <div id="rp-ocr-msg" class="rp-msg"></div>
-      <details class="rp-paste-box"><summary>사진 대신 글로 붙여넣기</summary>
-        <textarea id="rp-paste" rows="4" placeholder="표를 그대로 복사해서 붙여넣으세요"></textarea>
-        <button type="button" class="rp-btn" onclick="rpReadPaste()">붙여넣은 표 읽기</button>
-      </details>
     </div>
     <div class="rp-step rp-editor"><div class="rp-h"><b>2</b> 구간 확인 · 고치기</div>
       <label class="rp-dia-row">DIA 번호 <input id="rp-dia" class="rp-in" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="예: 12H88" oninput="rpDia=this.value.toUpperCase();rpRender(false)"></label>
@@ -1396,7 +1392,9 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
     <div class="rp-step"><div class="rp-h"><b>3</b> 행로표</div><div id="rp-preview" class="rp-preview"></div></div>
     <div class="rp-step"><div class="rp-h"><b>4</b> 날짜에 넣기 <small>(선택)</small></div>
-      <input id="rp-date" class="rp-in rp-date" type="date">
+      <input id="rp-date" type="hidden">
+      <div id="rp-cal" class="rp-cal"></div>
+      <div id="rp-cal-sel" class="rp-cal-sel"></div>
       <label class="rp-check"><input type="checkbox" id="rp-setdia" checked> 그 날 근무도 이 DIA로 바꾸기</label>
     </div>
     <div class="rp-actions"><button type="button" class="rp-btn" onclick="rpDownload()">이미지로 저장</button><button type="button" class="rp-btn rp-primary" onclick="rpSave()">저장</button></div>
@@ -16297,7 +16295,8 @@ function rpSvg(dia, rows, opt) {
         if (r.train) T(x + d * 2.2, yy + 10, r.train, sd > 0 ? 'end' : '', ' font-size="6.4"');
         label(x, yy + 6, r.dep, sd); label(x, yy + 14, r.arr, sd); yy += 18; used += 18;
       } else if (r.kind === '승계' || r.kind === '휴게') {
-        label(x, yy + 6, r.dep, sd); label(x, yy + 14, r.arr, sd); yy += 17; used += 17;
+        /* PDF 행로표처럼 승계·휴게는 시각을 따로 적지 않음 (세로선만) */
+        yy += 4; used += 4;
       } else {
         foot.push(r.kind + ' ' + r.dep + '~' + r.arr);
       }
@@ -16306,8 +16305,16 @@ function rpSvg(dia, rows, opt) {
   };
   var gapBefore = 0;
   var leadStops = lead.filter(function (r) { return r.kind === '비상' || r.kind === '대기'; });
-  lead.forEach(function (r) { if (!(r.kind === '비상' || r.kind === '대기')) foot.push(r.kind + ' ' + r.dep + '~' + r.arr); });
+  var leadOut = lead.filter(function (r) { return r.kind === '출고운전'; })[0];
+  lead.forEach(function (r) { if (!(r.kind === '비상' || r.kind === '대기' || r.kind === '출고운전')) foot.push(r.kind + ' ' + r.dep + '~' + r.arr); });
   if (leadStops.length) { var xl = xs[startSt] != null ? xs[startSt] : X0; o.push('<g transform="translate(-10 0)">'); var u = drawStop(leadStops, startSt, y - 16, 1); o.push('</g>'); y += u; }
+  /* 출고운전: 첫 출발역 위쪽에서 꺾인 선으로 내려와 첫 줄에 붙음 (PDF 행로표 모양) */
+  if (leadOut && mi.length) {
+    var xo = xs[rows[mi[0]].from], so = side(xo), dz = so > 0 ? -5 : 5;
+    y += 26;
+    o.push('<polyline points="' + xo + ',' + (y - 26) + ' ' + xo + ',' + (y - 18) + ' ' + (xo + dz) + ',' + (y - 12) + ' ' + xo + ',' + (y - 6) + ' ' + xo + ',' + y + '" fill="none"/>');
+    label(xo, y - 16, leadOut.dep, so); label(xo, y - 8, leadOut.arr, so);
+  }
   for (var k = 0; k < mi.length; k++) {
     var r = rows[mi[k]], xa = xs[r.from], xb = xs[r.to], dbl = r.kind === '편승';
     Lh(Math.min(xa, xb), Math.max(xa, xb), y, dbl);
@@ -16332,7 +16339,15 @@ function rpSvg(dia, rows, opt) {
     } else {
       /* 마지막 이동 뒤 */
       var tail = between.filter(function (q) { return q.kind === '비상' || q.kind === '대기' || q.kind === '감시' || q.kind === '승계'; });
-      between.forEach(function (q) { if (tail.indexOf(q) < 0) foot.push(q.kind + ' ' + q.dep + '~' + q.arr); });
+      var inOut = between.filter(function (q) { return q.kind === '입고운전'; })[0];
+      between.forEach(function (q) { if (tail.indexOf(q) < 0 && q !== inOut) foot.push(q.kind + ' ' + q.dep + '~' + q.arr); });
+      if (inOut) {
+        /* 입고운전: 마지막 도착역에서 꺾인 선으로 내려감 + 입고운전 시작·끝 시각 (PDF 행로표 모양) */
+        var xi = xs[stn], si = side(xi), di = si > 0 ? -5 : 5;
+        o.push('<polyline points="' + xi + ',' + y + ' ' + xi + ',' + (y + 12) + ' ' + (xi + di) + ',' + (y + 20) + ' ' + xi + ',' + (y + 30) + ' ' + xi + ',' + (y + 38) + '" fill="none"/>');
+        label(xi, y + 15, inOut.dep, si); label(xi, y + 24, inOut.arr, si);
+        y += 40;
+      }
       if (tail.length) { y += 6 + drawStop(tail, stn, y + 2, side(xs[stn]) > 0 ? 1 : 1); }
       y += 12;
     }
@@ -16376,12 +16391,12 @@ function rpAdd() {
 }
 function rpReadPaste() {
   var t = $('rp-paste').value, rows = rpParse(t);
-  if (!rows.length) { showToast('표를 읽지 못했어요. 승무 시스템 표를 그대로 복사해 붙여넣어 주세요.'); return; }
+  if (!rows.length) { rpOcrMsg('표를 읽지 못했어요. 구분(운전·편승 등)과 시각이 들어간 줄을 그대로 붙여넣어 주세요.', true); return; }
   var m = String(t).match(/대상\s*다이아\s*[\t ]*([0-9A-Z]{4,6})/i) || String(t).match(/\b(12[0-9A-Z]{3})\b/);
   if (m && !$('rp-dia').value) $('rp-dia').value = m[1].toUpperCase();
   rpDia = ($('rp-dia').value || '').toUpperCase();
-  rpRows = rows; $('rp-paste').value = '';
-  rpRender(); showToast(rows.length + '개 구간을 읽었어요.');
+  rpRows = rows;
+  rpRender(); rpOcrMsg(rows.length + '개 구간을 읽었어요. 아래에서 확인하고 고칠 수 있어요.');
 }
 function rpDKey() { var u = (typeof getCurrentUser === 'function' && getCurrentUser()) || {}; return 'rs_myroute_dates_' + (u.employeeId || 'guest'); }
 function rpDates() { try { return JSON.parse(localStorage.getItem(rpDKey()) || '{}') || {}; } catch (e) { return {}; } }
@@ -16540,6 +16555,7 @@ function rpSave() {
       } catch (e) {}
     }
     var p = dk.split('-'); msg = (+p[1]) + '월 ' + (+p[2]) + '일에 DIA ' + dia + ' 행로표를 넣었어요.';
+    rpCalRender();
   }
   showToast(msg);
   try { if (typeof renderDayDetail === 'function') renderDayDetail(); } catch (e) {}
@@ -16574,11 +16590,52 @@ function rpDownload() {
   };
   img.src = rpUrl(dia, rpRows.map(function (r) { return { kind: r.kind, train: r.train, from: r.from, to: r.to, dep: rpTime(r.dep), arr: rpTime(r.arr) }; }));
 }
+/* ---------- 날짜 고르기: 내 근무표 달력 ---------- */
+var rpCal = null;
+function rpCalOpen(dateKey) {
+  var t = (typeof todayKST === 'function') ? todayKST() : { y: new Date().getFullYear(), m: new Date().getMonth(), d: new Date().getDate() };
+  if (dateKey) { var p = dateKey.split('-'); rpCal = { y: +p[0], m: +p[1] - 1 }; } else rpCal = { y: t.y, m: t.m };
+  rpCalRender();
+}
+function rpCalMove(n) { var m = rpCal.m + n, y = rpCal.y; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } rpCal = { y: y, m: m }; rpCalRender(); }
+function rpCalPick(k) { var el = $('rp-date'); el.value = el.value === k ? '' : k; rpCalRender(); }
+function rpCalRender() {
+  var box = $('rp-cal'); if (!box || !rpCal) return;
+  var y = rpCal.y, m = rpCal.m, sel = $('rp-date').value;
+  var draw = function (days) {
+    var first = new Date(y, m, 1).getDay(), last = new Date(y, m + 1, 0).getDate(), t = (typeof todayKST === 'function') ? todayKST() : null;
+    var h = '<div class="rp-cal-top"><button type="button" onclick="rpCalMove(-1)" aria-label="이전 달">‹</button><b>' + y + '년 ' + (m + 1) + '월</b><button type="button" onclick="rpCalMove(1)" aria-label="다음 달">›</button></div>' +
+      '<div class="rp-cal-grid">' + ['일', '월', '화', '수', '목', '금', '토'].map(function (w, i) { return '<span class="rp-cal-w' + (i === 0 ? ' sun' : i === 6 ? ' sat' : '') + '">' + w + '</span>'; }).join('');
+    for (var i = 0; i < first; i++) h += '<span></span>';
+    for (var d = 1; d <= last; d++) {
+      var k = getDateKey(y, m, d), info = days[k] || null, lab = info ? (info.dia || info.label || '') : '';
+      var tone = info && info.label ? toneOf(info.label) : '';
+      var dow = (first + d - 1) % 7, isT = t && t.y === y && t.m === m && t.d === d;
+      h += '<button type="button" class="rp-cal-d' + (k === sel ? ' on' : '') + (isT ? ' today' : '') + (dow === 0 ? ' sun' : dow === 6 ? ' sat' : '') + '" onclick="rpCalPick(\'' + k + '\')"><i>' + d + '</i>' +
+        (lab ? '<em class="t-' + tone + '">' + rpEsc(lab) + '</em>' : '<em></em>') + '</button>';
+    }
+    box.innerHTML = h + '</div>';
+    var sv = $('rp-cal-sel');
+    if (sv) { if (sel) { var p = sel.split('-'), inf = days[sel]; sv.innerHTML = '<b>' + (+p[1]) + '월 ' + (+p[2]) + '일</b>에 넣어요' + (inf && (inf.dia || inf.label) ? ' <small>(지금 근무: ' + rpEsc(inf.dia || inf.label) + ')</small>' : ''); } else sv.textContent = '날짜를 누르면 그 날에 행로표를 넣어요. (선택 안 하면 DIA에만 저장)'; }
+  };
+  /* 내 근무표 그 달 불러오기 (화면에 열려 있는 달이면 바로) */
+  if (typeof myMonth !== 'undefined' && myMonth && myMonth.y === y && myMonth.m === m) { draw(myMonth.days || {}); return; }
+  draw({});
+  try {
+    var u = getCurrentUser();
+    fetchMonth(y, m, false, function (r) {
+      if (!rpCal || rpCal.y !== y || rpCal.m !== m || !r || !r.success) return;
+      var me = (r.members || []).filter(function (x) { return x.employeeId === u.employeeId; })[0];
+      draw((me && me.days) || {});
+    });
+  } catch (e) {}
+}
 function openRoutePlan(dia, dateKey) {
   rpDia = String(dia || '').toUpperCase();
   $('rp-dia').value = rpDia; $('rp-paste').value = '';
   if ($('rp-date')) $('rp-date').value = dateKey || '';
-  rpOcrMsg(''); if ($('rp-photo-prev')) $('rp-photo-prev').hidden = true;
+  rpCalOpen(dateKey);
+  rpOcrMsg('');
   var s = rpDia ? rpGet(rpDia) : null;
   rpRows = s ? s.rows.map(function (r) { return Object.assign({}, r); }) : [];
   rpRender(); rpListRender();
@@ -16633,6 +16690,26 @@ function tdSet(dateKey, dia) { var a = tdAll(); if (dia) a[dateKey] = dia; else 
 .schedule-edit-temp b{color:#c2410c}
 .schedule-edit-temp small{flex-basis:100%;font-size:11px;color:#8a96a8;padding-left:23px}
 .dd-plan-tag{font-size:11px;color:#c2410c;font-weight:800;margin-left:4px}
+</style>
+<style id="route-plan-css2">
+#rp-panel .rp-text{width:100%;box-sizing:border-box;border:1px solid #d6dde6;border-radius:10px;padding:9px;font:inherit;font-size:12.5px;line-height:1.5;resize:vertical;background:#fff}
+#rp-panel .rp-read{width:100%;margin-top:8px}
+#rp-panel .rp-cal{border:1px solid #e1e7ef;border-radius:12px;background:#fff;padding:6px}
+#rp-panel .rp-cal-top{display:flex;align-items:center;justify-content:space-between;padding:2px 4px 6px}
+#rp-panel .rp-cal-top b{font-size:14px;color:#1b2b45}
+#rp-panel .rp-cal-top button{width:30px;height:30px;border:1px solid #e1e7ef;border-radius:8px;background:#f8fafc;font-size:18px;line-height:1;color:#344054;cursor:pointer}
+#rp-panel .rp-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+#rp-panel .rp-cal-w{text-align:center;font-size:11px;font-weight:800;color:#8a96a8;padding:2px 0}
+#rp-panel .rp-cal-w.sun,#rp-panel .rp-cal-d.sun i{color:#e5533d}#rp-panel .rp-cal-w.sat,#rp-panel .rp-cal-d.sat i{color:#2f6fd6}
+#rp-panel .rp-cal-d{display:flex;flex-direction:column;align-items:center;gap:1px;min-height:44px;padding:3px 0;border:1px solid transparent;border-radius:9px;background:transparent;font:inherit;cursor:pointer}
+#rp-panel .rp-cal-d i{font-style:normal;font-size:12.5px;font-weight:800;color:#1b2b45}
+#rp-panel .rp-cal-d em{font-style:normal;font-size:10px;font-weight:800;color:#475467;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-height:13px}
+#rp-panel .rp-cal-d em.t-day{color:#1d4ed8}#rp-panel .rp-cal-d em.t-night{color:#7c3aed}#rp-panel .rp-cal-d em.t-off{color:#e5533d}
+#rp-panel .rp-cal-d.today{background:#f2f7ff}
+#rp-panel .rp-cal-d.on{border-color:#2f6fd6;background:#2f6fd6}
+#rp-panel .rp-cal-d.on i,#rp-panel .rp-cal-d.on em{color:#fff!important}
+#rp-panel .rp-cal-sel{font-size:12.5px;color:#344054;margin:8px 2px 0}
+#rp-panel .rp-cal-sel small{color:#8a96a8}
 </style>
 </body>
 </html>
