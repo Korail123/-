@@ -1326,9 +1326,18 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       </div>
       <ul class="ns-points">
         <li><b>근무</b> 다이아 · 출퇴근 시간 · 열차번호</li>
-        <li><b>날씨</b> 지금 있는 곳 기온 · 최고/최저 · 강수확률</li>
+        <li><b>같이 출퇴근</b> 내 출근 · 퇴근 시간 앞뒤 30분에 함께 출퇴근하는 동료</li>
+        <li><b>날씨</b> 기온 · 최고/최저 · 강수확률</li>
         <li class="ns-dim"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="날씨_위치" alt="" aria-hidden="true" style="width:14px;height:14px;vertical-align:-2px;margin-right:3px"><span id="brief-loc-now"></span></li>
       </ul>
+    </div>
+    <div class="ns-card">
+      <div class="brief-wx-lab">날씨 기준</div>
+      <div class="brief-wx-seg" id="brief-wx-seg">
+        <button type="button" data-v="cr" onclick="briefWxSet('cr')">청량리역</button>
+        <button type="button" data-v="gps" onclick="briefWxSet('gps')">내 위치</button>
+      </div>
+      <div class="ns-note" id="brief-wx-note"></div>
     </div>
     <div class="ns-card ns-test-card">
       <div class="ns-tests" style="grid-template-columns:1fr">
@@ -5793,10 +5802,25 @@ function openBriefingSettings() {
   $('brief-set-panel').classList.add('active');
 }
 function closeBriefingSettings() { $('brief-set-panel').classList.remove('active'); }
+/* 날씨 기준: 'cr' 청량리역(기본) · 'gps' 내 위치. 고르지 않았으면 청량리역 고정 */
+var BRIEF_CR_LOC = { lat: 37.5804, lon: 127.0469, name: '청량리역' };
+function briefWxSrc() { var v = ''; try { v = LS.getItem(briefKey('Wx')) || ''; } catch (e) {} return v === 'gps' ? 'gps' : 'cr'; }
+function briefWxSet(v) {
+  try { LS.setItem(briefKey('Wx'), v); } catch (e) {}
+  briefRenderSetSub();
+  if (v === 'gps') {
+    /* 내 위치를 고르는 순간 위치 권한을 받아 둠 */
+    briefGetLocation(function (loc, how) { briefRenderSetSub(); if (how !== 'gps') showToast('위치를 확인하지 못했어요. 위치 권한을 허용해 주세요. (그동안은 ' + (how === 'last' ? '마지막 위치' : '청량리') + ' 날씨)'); });
+  } else showToast('브리핑 날씨를 청량리역 기준으로 보여줄게요.');
+}
 function briefRenderSetSub() {
+  var src = briefWxSrc();
+  document.querySelectorAll('#brief-wx-seg button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === src); });
+  var note = $('brief-wx-note');
+  if (note) note.textContent = src === 'gps' ? '휴대폰 위치(GPS)로 지금 있는 곳 날씨를 보여줘요. 위치를 못 받으면 마지막 위치, 없으면 청량리 날씨예요.' : '항상 청량리역 날씨를 보여줘요. 위치 권한이 필요 없어요.';
   var loc = briefLastLoc();
   var el = $('brief-loc-now');
-  if (el) el.textContent = loc ? (loc.name || '저장된 위치') : '아직 위치를 확인하지 않았어요';
+  if (el) el.textContent = src === 'cr' ? '청량리역' : (loc ? (loc.name || '저장된 위치') : '아직 위치를 확인하지 않았어요');
 }
 function briefToggleChanged() {
   var on = $('brief-on').checked;
@@ -6013,9 +6037,12 @@ function showBriefing(fromSettings) {
   briefRenderMates();
   /* 날씨 */
   var wbox = $('brief-weather');
-  wbox.innerHTML = '<div class="brief-w-loading">현재 위치 날씨를 불러오는 중...</div>';
+  var wxSrc = briefWxSrc();
+  wbox.innerHTML = '<div class="brief-w-loading">' + (wxSrc === 'gps' ? '현재 위치' : '청량리역') + ' 날씨를 불러오는 중...</div>';
   $('brief-panel').classList.add('active');
-  briefGetLocation(function (loc, how) {
+  /* 날씨 기준: 청량리역(기본)이면 위치를 묻지 않고 바로, 내 위치면 GPS */
+  var getLoc = wxSrc === 'gps' ? briefGetLocation : function (cb) { cb(BRIEF_CR_LOC, 'fixed'); };
+  getLoc(function (loc, how) {
     briefRenderSetSub();
     briefFetchWeather(loc, function (w) {
       if (!$('brief-panel').classList.contains('active')) return;
@@ -15405,6 +15432,13 @@ html body #main-section .menu-grid > .menu-btn > span{display:flex;align-items:f
 #wg-panel .wg-lab small{font-weight:600;color:#17a85a;margin-left:6px}
 </style>
 <style id="widget-panel-style-end"></style>
+<style id="brief-wx-style">
+#brief-set-panel .brief-wx-lab{font-weight:800;font-size:13.5px;color:#22324d;margin:0 2px 8px}
+#brief-set-panel .brief-wx-seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px;border-radius:12px;background:#eef2f8}
+#brief-set-panel .brief-wx-seg button{border:0;border-radius:9px;padding:9px 0;background:transparent;color:#5f6b7f;font-weight:800;font-size:13px}
+#brief-set-panel .brief-wx-seg button.on{background:#fff;color:#0b376d;box-shadow:0 1px 4px rgba(20,50,100,.14)}
+</style>
+
 <style id="ui-panel-style">
 #ui-panel .ui-dialog{max-height:calc(100vh - 30px);max-height:calc(100dvh - 30px);overflow-y:auto}
 #ui-panel .ui-lab{font-weight:800;font-size:13.5px;color:#22324d;margin:0 2px 8px}
