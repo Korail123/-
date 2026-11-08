@@ -16242,8 +16242,8 @@ function rpParse(text) {
     var c = line.split(/\t|\s{2,}/).map(function (x) { return x.trim(); }).filter(function (x) { return x !== ''; });
     if (c.length < 3) { c = line.trim().split(/\s+/); }
     if (/^\d+$/.test(c[0] || '')) c.shift();               /* 번호 칸 */
-    var kind = c[0];
-    if (RP_KINDS.indexOf(kind) < 0) return;
+    var kind = RP_KINDS.indexOf(c[0]) >= 0 ? c[0] : (typeof rpKindOf === 'function' ? rpKindOf(c[0]) : '');
+    if (!kind) return;
     var times = [], idx = [];
     c.forEach(function (x, i) { if (/^\d{1,2}:\d{2}$/.test(x)) { times.push(x); idx.push(i); } });
     if (times.length < 2) return;
@@ -16416,23 +16416,100 @@ function rpPhoto(inp) {
     } catch (e) {}
     rpLoadOcr(function (err) {
       if (err || !window.Tesseract) { rpOcrMsg('글자 인식 기능을 불러오지 못했어요. 인터넷 연결을 확인하거나, 아래 [글로 붙여넣기]를 써주세요.', true); return; }
-      window.Tesseract.recognize(c, 'kor+eng', {
-        logger: function (m) { if (m && m.status === 'recognizing text') rpOcrMsg('사진 속 글자를 읽는 중… ' + Math.round((m.progress || 0) * 100) + '%'); }
+      var T = window.Tesseract, worker = null;
+      T.createWorker('kor+eng', 1, {
+        logger: function (m) { if (m && m.status === 'recognizing text') rpOcrMsg('사진 속 글자를 읽는 중… ' + Math.round((m.progress || 0) * 100) + '%'); else if (m && m.status) rpOcrMsg('글자 인식 준비 중… (' + m.status + ')'); }
+      }).then(function (w) {
+        worker = w;
+        /* 표는 한 덩어리로 읽어야 줄이 안 섞임 */
+        return w.setParameters({ tessedit_pageseg_mode: (T.PSM && T.PSM.SINGLE_BLOCK) || '6', preserve_interword_spaces: '1' }).then(function () { return w.recognize(c); });
       }).then(function (res) {
-        var text = (res && res.data && res.data.text) || '';
-        var rows = rpParse(rpOcrFix(text));
-        var m2 = text.match(/(1[0-9][0-9A-Z]{3})/);
+        var data = (res && res.data) || {}, text = data.text || '';
+        var rows = rpRowsFromWords(data.words || []);
+        if (!rows.length) rows = rpParse(rpOcrFix(text));
+        var m2 = rpOcrFix(text).replace(/\s+/g, '').match(/다이아(1[0-9][0-9A-Z]{3})/) || text.match(/(1[0-9][0-9A-Z]{3})/);
         if (m2 && !$('rp-dia').value) $('rp-dia').value = m2[1].toUpperCase();
-        if (!rows.length) { rpOcrMsg('표를 찾지 못했어요. 표 부분이 잘 보이게 다시 찍거나, [글로 붙여넣기]를 써주세요.', true); return; }
+        if (worker) worker.terminate();
+        if (!rows.length) { rpOcrMsg('표를 찾지 못했어요. 표 부분이 잘 보이게 다시 캡처하거나, [글로 붙여넣기]를 써주세요.', true); return; }
         rpDia = ($('rp-dia').value || '').toUpperCase();
         rpRows = rows; rpRender();
         rpOcrMsg(rows.length + '개 구간을 읽었어요. 역 이름·시각이 맞는지 아래에서 확인하고 고쳐주세요.');
         URL.revokeObjectURL(url);
-      }).catch(function () { rpOcrMsg('사진을 읽다가 문제가 생겼어요. 다시 시도해 주세요.', true); });
+      }).catch(function () { if (worker) worker.terminate(); rpOcrMsg('사진을 읽다가 문제가 생겼어요. 다시 시도해 주세요.', true); });
     });
   };
   img.onerror = function () { rpOcrMsg('사진을 열지 못했어요.', true); };
   img.src = url;
+}
+/* ---------- 글자 인식 결과(단어 + 위치)로 표 다시 만들기 ----------
+   같은 높이의 단어끼리 한 줄로 묶고, 머리글(구분·열차번호·출발역·출발시각·도착역·도착시각) 위치로 칸을 나눔 */
+function rpEd(a, b) {
+  var m = a.length, n = b.length, d = []; for (var i = 0; i <= m; i++) { d[i] = [i]; } for (var j = 0; j <= n; j++) d[0][j] = j;
+  for (i = 1; i <= m; i++) for (j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[m][n];
+}
+function rpKindOf(t) {
+  t = String(t || '').replace(/[^가-힣]/g, '');
+  if (!t) return '';
+  if (RP_KINDS.indexOf(t) >= 0) return t;
+  var best = '', bd = 9;
+  RP_KINDS.forEach(function (k) { var e = rpEd(t, k); if (e < bd) { bd = e; best = k; } });
+  return bd <= (best.length >= 4 ? 2 : 1) ? best : '';
+}
+function rpTimeFix(t) {
+  t = String(t || '').replace(/[Oo]/g, '0').replace(/[lI|]/g, '1').replace(/[;.,]/g, ':').replace(/\s/g, '');
+  var m = t.match(/(\d{1,2}):?(\d{2})/); return m ? ('0' + m[1]).slice(-2) + ':' + m[2] : '';
+}
+function rpRowsFromWords(words) {
+  var ws = (words || []).filter(function (w) { return w && w.text && w.text.trim() && w.bbox; }).map(function (w) {
+    var b = w.bbox; return { t: w.text.trim(), x: (b.x0 + b.x1) / 2, x0: b.x0, x1: b.x1, y: (b.y0 + b.y1) / 2, h: b.y1 - b.y0 };
+  });
+  if (!ws.length) return [];
+  var hs = ws.map(function (w) { return w.h; }).sort(function (a, b) { return a - b; }), mh = hs[Math.floor(hs.length / 2)] || 20;
+  ws.sort(function (a, b) { return a.y - b.y; });
+  var lines = [];
+  ws.forEach(function (w) { var L = lines[lines.length - 1]; if (L && Math.abs(L.y - w.y) < mh * 0.6) { L.w.push(w); L.y = (L.y * (L.w.length - 1) + w.y) / L.w.length; } else lines.push({ y: w.y, w: [w] }); });
+  lines.forEach(function (L) { L.w.sort(function (a, b) { return a.x - b.x; }); L.s = L.w.map(function (w) { return w.t; }).join(' '); L.ns = L.s.replace(/\s+/g, ''); });
+  /* 머리글 줄 찾기 */
+  var hi = -1;
+  for (var i = 0; i < lines.length; i++) { var n = lines[i].ns; if (/구분/.test(n) && /(출발|도착)/.test(n)) { hi = i; break; } }
+  var cols = null;
+  if (hi >= 0) {
+    var H = lines[hi].w, pos = {};
+    /* 머리글 단어가 쪼개져 읽혀도 붙여서 찾기 */
+    var merged = [];
+    H.forEach(function (w) { var p = merged[merged.length - 1]; if (p && w.x0 - p.x1 < mh * 0.8 && !/(구분|번호|역|시각|시간|거리)$/.test(p.t)) { p.t += w.t; p.x1 = w.x1; p.x = (p.x0 + p.x1) / 2; } else merged.push({ t: w.t, x0: w.x0, x1: w.x1, x: w.x }); });
+    merged.forEach(function (w) {
+      var t = w.t.replace(/\s/g, '');
+      if (/구분/.test(t)) pos.kind = w.x;
+      else if (/열차/.test(t)) pos.train = w.x;
+      else if (/출발역/.test(t) || (/출발/.test(t) && pos.from == null && !/시/.test(t))) pos.from = w.x;
+      else if (/출발시/.test(t) || (/출발/.test(t) && pos.from != null)) pos.dep = w.x;
+      else if (/도착역/.test(t) || (/도착/.test(t) && pos.to == null && !/시/.test(t))) pos.to = w.x;
+      else if (/도착시/.test(t) || (/도착/.test(t) && pos.to != null)) pos.arr = w.x;
+      else if (/사업시/.test(t)) pos.work = w.x;
+      else if (/거리/.test(t)) pos.dist = w.x;
+      else if (/번호/.test(t) && pos.kind == null) pos.no = w.x;
+    });
+    if (pos.kind != null && (pos.dep != null || pos.arr != null)) cols = pos;
+  }
+  var out = [];
+  for (var k = (hi >= 0 ? hi + 1 : 0); k < lines.length; k++) {
+    var L = lines[k], r = null;
+    if (cols) {
+      var keys = Object.keys(cols), cell = {};
+      L.w.forEach(function (w) { var bk = '', bd = 1e9; keys.forEach(function (c) { var d = Math.abs(cols[c] - w.x); if (d < bd) { bd = d; bk = c; } }); cell[bk] = (cell[bk] ? cell[bk] + ' ' : '') + w.t; });
+      var kind = rpKindOf(cell.kind);
+      if (!kind) continue;
+      var clean = function (v) { v = String(v || '').trim(); return /^[-—–_~.·]+$/.test(v) ? '' : v.replace(/\s+/g, ''); };
+      r = { kind: kind, train: clean(cell.train).replace(/[()]/g, ''), from: clean(cell.from).replace(/[^가-힣A-Za-z0-9]/g, ''), dep: rpTimeFix(cell.dep), to: clean(cell.to).replace(/[^가-힣A-Za-z0-9]/g, ''), arr: rpTimeFix(cell.arr) };
+    } else {
+      var one = rpParse(rpOcrFix(L.s.replace(/^(\d+)\s*/, '$1 ').replace(/([가-힣])\s+(?=[가-힣])/g, '$1')));
+      if (one.length) r = one[0];
+    }
+    if (r && (r.dep || r.arr)) out.push(r);
+  }
+  return out;
 }
 /* 글자 인식에서 자주 틀리는 것 바로잡기 */
 function rpOcrFix(t) {
