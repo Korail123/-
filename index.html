@@ -4427,7 +4427,8 @@ function histDraw(box) {
   var list = histCache || [];
   if (!list.length) { box.innerHTML = '<div class="mp-empty">아직 근무 변경 기록이 없어요.</div>'; return; }
   var wd = '일월화수목금토';
-  var html = list.map(function (it) {
+  var total = list.length;
+  var html = (histAll ? list : list.slice(0, MP_PREVIEW_N)).map(function (it) {
     var date = it[0], act = it[1];
     var dt = new Date(date + 'T00:00:00');
     var dLab = (dt.getMonth() + 1) + '/' + dt.getDate() + ' (' + wd.charAt(dt.getDay()) + ')';
@@ -4442,8 +4443,9 @@ function histDraw(box) {
     return '<div class="hi-row"><div class="hi-top"><b class="hi-date">' + dLab + '</b><small class="hi-when">' + esc(when) + '</small></div>' +
       '<div class="hi-change">' + change + (partner ? '<span class="hi-swap">⇄ ' + esc(partner) + '</span>' : '') + '</div></div>';
   }).join('');
-  if (list.length >= histLimit) html += '<button type="button" class="hi-more" onclick="histLimit+=200;renderMyHistory(true)">더 보기</button>';
-  box.innerHTML = '<div class="hi-list">' + html + '</div>';
+  if (histAll && list.length >= histLimit) html += '<button type="button" class="hi-more" onclick="histLimit+=200;renderMyHistory(true)">이전 기록 더 불러오기</button>';
+  box.innerHTML = '<div class="hi-list">' + html + '</div>' +
+    mpAllBtn(total, histAll, 'histAll=!histAll;histDraw(document.getElementById(\'mypage-history\'))').replace('(' + total + '건)', '(' + (total >= histLimit ? total + '+' : total) + '건)');
 }
 /* ============ 애니메이션 효과 (메인화면 열차 장면) · 이 폰에만 저장 ============
    on: 켜기/끄기, times/stations/signs/trains: 고른 것 중 랜덤 (비어 있으면 전체 랜덤) */
@@ -6857,6 +6859,13 @@ function renderMyStats() {
     (leaveTxt ? '<div class="mp-row"><span>휴가 내역</span><b>' + esc(leaveTxt) + '</b></div>' : '');
 }
 /* ============ 마이페이지: 근무교환 내역 (최근 순) ============ */
+/* 근무교환 내역 · 근무 변경 기록: 처음엔 최근 5건만, '전체보기'로 펼치기 */
+var MP_PREVIEW_N = 5, swapsAll = false, histAll = false;
+function mpAllBtn(total, open, js) {
+  if (total <= MP_PREVIEW_N) return '';
+  return '<button type="button" class="mp-allbtn" onclick="' + js + '">' +
+    (open ? '접기 ▲' : '전체보기 (' + total + '건) ▼') + '</button>';
+}
 function renderMySwaps() {
   var box = $('mypage-swaps');
   if (!box) return;
@@ -6875,7 +6884,8 @@ function renderMySwaps() {
   list.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
   if (!list.length) { box.innerHTML = '<div class="mp-empty">아직 근무교환 내역이 없습니다.</div>'; return; }
   var todayKey = todayKeyKST();
-  box.innerHTML = list.slice(0, 15).map(function (it) {
+  var total = list.length, shown = swapsAll ? list : list.slice(0, MP_PREVIEW_N);
+  box.innerHTML = shown.map(function (it) {
     var p = it.date.split('-');
     var w = ['일', '월', '화', '수', '목', '금', '토'][new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])).getUTCDay()];
     var lab = it.info ? String(it.info.label || '') : '';
@@ -6884,7 +6894,7 @@ function renderMySwaps() {
       '<span class="mp-swap-date">' + (+p[1]) + '/' + (+p[2]) + '(' + w + ')</span>' +
       '<span class="mp-swap-who"><i class="swap-ico"></i>' + esc(it.partner) + '님</span>' +
       '<span class="mp-swap-duty">' + esc(lab + dia) + '</span></div>';
-  }).join('') + (list.length > 15 ? '<div class="mp-empty">최근 15건만 표시합니다.</div>' : '');
+  }).join('') + mpAllBtn(total, swapsAll, 'swapsAll=!swapsAll;renderMySwaps()');
 }
 /* 마이페이지 섹션 접기/펼치기 (내 정보 카드 제외, 기본 접힘), 상태는 이 폰에 기억 */
 function mySecState() {
@@ -15920,6 +15930,10 @@ html body #main-section .menu-grid>.menu-btn>span{margin-top:0!important;padding
 html body #main-section .menu-btn.menu-dev>span{justify-content:flex-start!important;gap:0!important}
 html body #main-section .menu-btn.menu-dev>span b{margin:0!important;line-height:1.18!important}
 html body #settings-section .set-art{margin-bottom:-3px!important}
+</style>
+<style id="mp-allbtn-css">
+.mp-allbtn{display:block;width:100%;margin-top:8px;padding:9px 0;border:1px solid #d6dde6;border-radius:10px;background:#f8fafc;color:#1d4ed8;font-weight:700;font-size:13px;cursor:pointer}
+.mp-allbtn:active{background:#eef2ff}
 </style>
 </body>
 </html>
