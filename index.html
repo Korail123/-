@@ -5868,6 +5868,33 @@ function groupCellClass(label, isStatus) {
   if (label === '야' || label === '비' || label === 'X') return 'g-night';
   return '';
 }
+/* 근무그룹 표는 근무표 달력의 근무구분만 동일하게 표시합니다.
+   교환 상대·휴무충당·대기충당 등 상세 정보는 칸 클릭 팝업에서만 표시합니다. */
+function rsGroupCalendarDuty(info) {
+  if (!info || !(info.label || info.type || info.status)) return '';
+  var rawDuty = String(info.overrideType === 'status'
+    ? (info.status || info.type || info.label || '')
+    : (info.dutyStatus || info.type || info.label || '')).trim().replace(/^\*/, '');
+  var label = '';
+  if (/^X$/i.test(rawDuty)) label = 'X';
+  else if (/^(주|주간|day)$/i.test(rawDuty)) label = '주';
+  else if (/^(야|야간|night)$/i.test(rawDuty)) label = '야';
+  else if (/^(비|비번)$/i.test(rawDuty)) label = '비';
+  else if (info.overrideType === 'status' && rawDuty && !/^(대기충당|휴무충당)$/i.test(rawDuty))
+    label = /^(휴|휴무|휴일)$/i.test(rawDuty) ? '휴' : rawDuty;
+  else if (/^(휴|휴무|휴일)$/i.test(rawDuty)) label = '휴';
+  else if (/^(휴가|연차|반차|병가|공가|특별휴가|출산휴가|육아휴직|돌봄|돌봄휴가|휴직|경조휴가|대체휴무|보상휴가)$/i.test(rawDuty)) label = rawDuty;
+  else if (/^(주|야|비|휴|X)$/.test(String(info.label || '').trim())) label = String(info.label).trim();
+  else if (info.overrideType === 'status') label = '휴';
+  /* 서버 레코드에서 상세 status만 남은 경우 근무표와 같은 방식으로 표시 */
+  if (!label && info.label) {
+    var fallback = String(info.label).trim().replace(/^\*/, '');
+    if (/^(주|야|비|휴|X|주간|야간|비번|휴무)$/.test(fallback)) {
+      label = ({'주간':'주','야간':'야','비번':'비','휴무':'휴'})[fallback] || fallback;
+    }
+  }
+  return label ? (info.manual ? '*' : '') + label : '-';
+}
 function isLeaveInfo(info) {
   return !!(info && info.label && (info.overrideType === 'status' || info.label === '휴' || info.label === 'X'));
 }
@@ -5980,9 +6007,13 @@ function renderGroupTable() {
       var info = mem.days ? mem.days[days[j].key] : null;
       var text = '-';
       var cls = '';
-      if (info && info.label) {
-        text = (info.manual ? '*' : '') + info.label;
-        cls = groupCellClass(info.label, info.overrideType === 'status');
+      if (info && (info.label || info.type || info.status)) {
+        /* 근무표와 동일: 주·야·비·휴·X 및 *연차·*육아휴직 등 실제 휴가 명칭 */
+        text = rsGroupCalendarDuty(info);
+        var groupDuty = text.replace(/^\*/, '');
+        var groupOff = info.overrideType === 'status' && !/^(주|야|비|X)$/.test(groupDuty);
+        cls = groupCellClass(groupDuty, groupOff);
+        if (!cls && groupDuty !== '-') cls = 'g-status';
       }
       if (isLeaveInfo(info)) {
         counts[j]++;
@@ -5990,14 +6021,9 @@ function renderGroupTable() {
       }
       if (days[j].key === todayKey) cls += ' g-today';
       if (days[j].key === selKey) cls += ' g-sel';
-      if (info && (info.swapPartnerName || info.swapPartnerId)) cls += ' g-swapped';
       cls = cls.replace(/^\s+/, '');
-      /* 서버에 백업된 교환 상대·충당 종류를 근무그룹 칸에서도 식별할 수 있도록 표시 */
-      var gpCredit = info ? String(info.creditStatus || (/^(대기충당|휴무충당|기타)$/.test(String(info.status || '')) ? info.status : '') || '') : '';
-      var gpSwap = info ? String(info.swapPartnerName || info.swapPartnerId || '').trim() : '';
-      var smallNote = gpSwap ? '<small class="g-mini-note g-swap">⇄ ' + esc(gpSwap) + '</small>' :
-                      gpCredit ? '<small class="g-mini-note">' + esc(gpCredit) + '</small>' : '';
-      html += '<td' + (cls ? ' class="' + cls + '"' : '') + ' onclick="openGroupInfo(' + k + ',\'' + days[j].key + '\')">' + esc(text) + smallNote + '</td>';
+      /* 교환 상대·충당 구분은 표에 표시하지 않고 날짜 칸 클릭 팝업에서만 표시 */
+      html += '<td' + (cls ? ' class="' + cls + '"' : '') + ' onclick="openGroupInfo(' + k + ',\'' + days[j].key + '\')">' + esc(text) + '</td>';
     }
     html += '</tr>';
   }
@@ -6838,7 +6864,7 @@ function piRow(k, v) {
 /* 정보 팝업 항목명 앞에 아이콘 */
 function piKeyHtml(k) {
   var map = { '출근 시간': '출근시간', '퇴근 시간': '퇴근시간', '근무 시간': '근무시간', '열차 번호': '열차번호', '열차번호': '열차번호',
-              '다이아 번호': '다이아이름', '다이아 이름': '다이아이름', '근무 구분': '근무구분', '근무 교환': '근무교환', '승무원': '승무원' };
+              '다이아 번호': '다이아이름', '다이아 이름': '다이아이름', '근무 구분': '근무구분', '근무구분': '근무구분', '근무 교환': '근무교환', '승무원': '승무원' };
   var nm = map[String(k)];
   return nm ? '<img class="pi-ico" src="' + appIcon(nm) + '" alt="" aria-hidden="true" decoding="async">' + k : k;
 }
@@ -6884,12 +6910,13 @@ function openGroupInfo(k, key) {
   if (!info || !info.label) {
     html = '<div class="pi-none">근무 정보가 없습니다.</div>';
   } else if (info.overrideType === 'status') {
-    html += piRow('근무 구분', info.status || info.label);
+    var creditStatus = String(info.creditStatus || (/^(대기충당|휴무충당|기타)$/.test(String(info.status || '')) ? info.status : '') || '');
+    var statusDuty = String(info.status || info.label || '').trim();
+    /* 충당은 별도 행이 아닌 근무구분 안에 통합 */
+    html += piRow('근무구분', creditStatus ? (statusDuty && statusDuty !== creditStatus ? statusDuty + ' (' + creditStatus + ')' : creditStatus) : statusDuty);
     if (info.swapPartnerName || info.swapPartnerId) {
       html += piRow('근무 교환', String(info.swapPartnerName || info.swapPartnerId) + '님과 교환');
     }
-    var creditStatus = String(info.creditStatus || (/^(대기충당|휴무충당|기타)$/.test(String(info.status || '')) ? info.status : '') || '');
-    if (creditStatus) html += piRow('충당 구분', creditStatus);
     html += '<div class="pi-none">' + (info.auto ? '야간 근무 변경에 따라 비번도 자동 변경되었습니다. (*)' : (info.manual ? '직접 변경한 근무입니다.' : '')) + '</div>';
   } else {
     var diaNo = String(info.dia || '').trim();
@@ -6908,12 +6935,13 @@ function openGroupInfo(k, key) {
     var color = tone === 'day' ? '#e5a800' : tone === 'off' ? '#e53935' : '#1a73e8';
     html += '<div class="pi-row"><span class="pi-k">' + piKeyHtml('다이아 이름') + '</span><b style="color:' + color + '">' +
             esc(diaNo || kind) + (info.manual ? ' *' : '') + '</b></div>';
-    html += piRow('근무 구분', infoFromNight ? '비번' : kind);
+    var groupCredit = String(info.creditStatus || (/^(대기충당|휴무충당|기타)$/.test(String(info.status || '')) ? info.status : '') || '');
+    var groupDutyDetail = infoFromNight ? '비번' : kind;
+    /* 대기충당·휴무충당은 근무구분 오른쪽에 함께 표시 */
+    html += piRow('근무구분', groupCredit ? groupDutyDetail + ' (' + groupCredit + ')' : groupDutyDetail);
     if (info.swapPartnerName || info.swapPartnerId) {
       html += piRow('근무 교환', String(info.swapPartnerName || info.swapPartnerId) + '님과 교환');
     }
-    var groupCredit = String(info.creditStatus || (/^(대기충당|휴무충당|기타)$/.test(String(info.status || '')) ? info.status : '') || '');
-    if (groupCredit) html += piRow('충당 구분', groupCredit);
     html += piRow('출근 시간', start ? start + (groupStartEstimated ? ' (예상)' : '') : '-');
     html += piRow('퇴근 시간', end ? end + (groupEndEstimated ? ' (예상)' : '') : '-');
     html += piRow('근무 시간', workDurationText(start, end));
