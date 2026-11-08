@@ -159,6 +159,21 @@ padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-appl
 #schedule-edit-panel #schedule-edit-duty-choice [data-duty="주"].selected{background:#fff1bd;color:#956c00;border-color:#e7bd3f}
 #schedule-edit-panel #schedule-edit-duty-choice [data-duty="야"].selected{background:#deebff;color:#165cba;border-color:#69a6ee}
 </style>
+<style id="rs-credit-inline-badge">
+/* 근무변경 DIA 바로 오른쪽 충당 구분: 작은 글씨로 같은 줄 */
+.cell-dia-credit-line{display:flex;align-items:center;justify-content:center;gap:2px;min-width:0;max-width:100%;white-space:nowrap}
+.cell-dia-credit-line .cell-lbl{margin-top:6px;min-width:0;flex:0 1 auto;font-size:clamp(10px,2.65vw,16px);white-space:nowrap}
+.cell-credit-inline{display:inline-block;flex:0 0 auto;margin-top:6px;color:#dc3545;font-size:clamp(6px,1.5vw,9px);font-weight:700;letter-spacing:-.45px;white-space:nowrap;line-height:1.1}
+.dd-dia-credit-inline{display:inline-block;margin-left:5px;padding:2px 5px;border-radius:7px;background:#fff0f1;color:#d3364c;font-size:10px;font-weight:700;vertical-align:middle;white-space:nowrap}
+</style>
+<style id="rs-credit-visible-fix">
+/* 근무표 7칸에서도 DIA와 충당명이 서로 겹치지 않고 보이도록 최대폭 사용 */
+.rs-credit-dia-row{display:flex;align-items:center;justify-content:center;gap:2px;width:100%;max-width:100%;min-width:0;overflow:visible;white-space:nowrap;margin:2px auto 0;line-height:1.2;letter-spacing:-.45px}
+.rs-credit-dia-no{font-weight:800;color:#1769d2;font-size:clamp(6px,1.55vw,9px);white-space:nowrap}
+.rs-credit-type{font-weight:800;color:#db4056;font-size:clamp(5.5px,1.3vw,8px);white-space:nowrap}
+.dd-main .dd-dia{display:inline-flex;align-items:center;flex-wrap:wrap;column-gap:3px;row-gap:2px;min-width:0;white-space:normal}
+.dd-dia-credit-inline{display:inline-flex!important;align-items:center!important;margin-left:2px!important;padding:2px 5px!important;border-radius:6px!important;background:#fff0f1!important;color:#c92e49!important;font-size:10px!important;font-weight:800!important;line-height:1.35!important;white-space:nowrap!important;vertical-align:middle!important}
+</style>
 </head>
 <body>
 <!-- 다크 모드 되돌림 필터: html의 invert(.92)+hue-rotate(180)를 정확히 거꾸로 (사진 · 열차 애니메이션 · 프로필 원래 색) -->
@@ -1405,7 +1420,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <input id="rp-date" type="hidden">
       <div id="rp-cal" class="rp-cal"></div>
       <div id="rp-cal-sel" class="rp-cal-sel"></div>
-      <label class="rp-check"><input type="checkbox" id="rp-setdia" checked> 그 날 근무도 이 DIA로 바꾸기</label>
+      <label class="rp-check"><input type="checkbox" id="rp-setdia" checked> 근무정보가 없는 날짜에만 근무 자동 입력 (기존 근무는 변경하지 않음)</label>
     </div>
     <div class="rp-actions"><button type="button" class="rp-btn" onclick="rpDownload()">이미지로 저장</button><button type="button" class="rp-btn rp-primary" onclick="rpSave()">저장</button></div>
     <div class="rp-step"><div class="rp-h">저장한 행로표</div><div id="rp-list"></div></div>
@@ -3369,6 +3384,22 @@ var calendarYear = Math.max(now0.y, CAL_MIN_Y);
 var calendarMonth = now0.y < CAL_MIN_Y ? 0 : now0.m;
 var selDate = { y: calendarYear, m: calendarMonth, d: (now0.y < CAL_MIN_Y ? 1 : now0.d) };
 var myMonth = null;
+/* 충당 구분은 월간 화면의 가공 결과뿐 아니라 실제 저장된 근무변경 기록에서 직접 확인합니다. */
+function rsCreditForDate(dateKey, info) {
+  try {
+    var user = getCurrentUser();
+    var loc = user && user.employeeId ? readLocal(user.employeeId) : null;
+    var overrides = loc && Array.isArray(loc.overrides) ? loc.overrides : [];
+    for (var ci = overrides.length - 1; ci >= 0; ci--) {
+      var r = overrides[ci];
+      if (!r || r[0] !== dateKey) continue;
+      var value = String(r[3] || '').trim();
+      return value === '대기충당' || value === '휴무충당' ? value : '';
+    }
+  } catch (e) {}
+  var value = String((info && (info.creditStatus || info.status)) || '').trim();
+  return value === '대기충당' || value === '휴무충당' ? value : '';
+}
 function getInfo(y, m, d) {
   if (myMonth && myMonth.y === y && myMonth.m === m) {
     return myMonth.days[getDateKey(y, m, d)] || null;
@@ -3507,11 +3538,7 @@ function renderCalendar() {
     var labelHtml = '';
     var sideText = hName;
     if (!hName && cell.classList.contains('today')) sideText = '오늘';
-    var creditStatus = info && (info.creditStatus === '대기충당' || info.creditStatus === '휴무충당')
-      ? info.creditStatus
-      : (info && (info.status === '대기충당' || info.status === '휴무충당')
-        ? info.status
-        : (info && (info.label === '대기충당' || info.label === '휴무충당') ? info.label : ''));
+    var creditStatus = rsCreditForDate(getDateKey(calendarYear, calendarMonth, d), info);
     if (info && info.label && info.label !== creditStatus) {
       var isStatus = info.overrideType === 'status';
       var tone = isStatus ? 'status' : toneOf(info.label);
@@ -3524,9 +3551,16 @@ function renderCalendar() {
         cell.classList.add('swapped');
       }
     }
-    /* 충당 표시는 기본 근무명 유무와 무관하게 날짜 아래에 독립적으로 표시 */
+    /* 날짜별 달력: 근무구분(주/야)은 유지하고, 변경 DIA 오른쪽에 충당 구분 표시 */
     if (creditStatus) {
-      labelHtml += '<div class="cell-credit">' + esc(creditStatus) + '</div>';
+      var changedDia = info && info.manual && info.dia ? String(info.dia).trim() : '';
+      if (changedDia) {
+        labelHtml += '<div class="rs-credit-dia-row" title="' + esc(changedDia + ' ' + creditStatus) + '">' +
+          '<span class="rs-credit-dia-no">' + esc(changedDia) + '</span>' +
+          '<span class="rs-credit-type">' + esc(creditStatus) + '</span></div>';
+      } else {
+        labelHtml += '<div class="cell-credit">' + esc(creditStatus) + '</div>';
+      }
     }
     cell.innerHTML =
       '<div class="cell-top"><span class="cell-num">' + d + '</span><span class="cell-side">' +
@@ -5379,7 +5413,8 @@ function renderDayDetail() {
   var dateText = (selDate.m + 1) + '월 ' + selDate.d + '일';
   var info = getInfo(selDate.y, selDate.m, selDate.d);
   if (!info || !info.label) {
-    detail.innerHTML = dayDetailHead(dateText) + '<div class="dd-empty">근무 정보가 없습니다.</div>';
+    var emptyPlan = (typeof rpForDate === 'function') ? rpForDate(getDateKey(selDate.y, selDate.m, selDate.d)) : null;
+    detail.innerHTML = dayDetailHead(dateText) + '<div class="dd-empty">근무 정보가 없습니다.</div>' + (emptyPlan ? '<div class="dd-dia-image-wrap"><div class="dd-dia-image-title">내가 만든 행로표</div><img class="dd-dia-image" alt="행로표" src="' + emptyPlan.url + '"></div>' : '');
     return;
   }
   var isStatus = info.overrideType === 'status' && !info.nightCarryover;
@@ -5403,7 +5438,9 @@ function renderDayDetail() {
   else if (info.label === '비' || info.label === '비번' || info.nightCarryover) tag = '비번';
   else if (info.label === 'X') tag = '-';
   var html = dayDetailHead(dateText);
+  var creditDetail = rsCreditForDate(getDateKey(selDate.y, selDate.m, selDate.d), info);
   html += '<div class="dd-main"><span class="dd-dia' + cls + '"><img class="dd-main-ico" src="' + appIcon((!isStatus && diaNo) ? '다이아정보' : '근무구분') + '" alt="" aria-hidden="true">' + main + (info.manual ? ' *' : '') +
+          ((diaNo && creditDetail) ? '<small class="dd-dia-credit-inline">' + esc(creditDetail) + '</small>' : '') +
           '</span><span class="dd-tag">[ ' + tag + ' ]</span></div>';
   if (info.swapPartnerName || info.swapPartnerId) {
     var partnerLabel = String(info.swapPartnerName || info.swapPartnerId).trim();
@@ -5440,7 +5477,7 @@ function renderDayDetail() {
                  crewSkipDay(diaNo, info.type || diaTypeForCrew, info.status, info.label);
   if (!isStatus && diaNo && !isOffDay) html += crewMatesHtml(dateKeyForSelectedDay(), diaNo, [train1, train2, train3]);
   /* 선택한 날짜의 DIA와 행로표 정보를 한눈에 확인할 수 있도록 하단에 별도 표시 */
-  if (!isStatus && diaNo) {
+  if ((!isStatus && diaNo) || (typeof rpForDate === 'function' && rpForDate(dateKeyForSelectedDay()))) {
     html += '<div class="dd-route">';
     var ddKey = dateKeyForSelectedDay(), ddPlan = (typeof rpForDate === 'function') ? rpForDate(ddKey) : null;
     var ddTemp = (typeof tdGet === 'function') ? tdGet(ddKey) : '';
@@ -16511,6 +16548,23 @@ function rpSvg(dia, rows, opt) {
     });
     return used;
   };
+  /* 입환(꺾인 표시) 구간은 수직 연결선이 덮지 않도록 그 부분만 비워 둔다. */
+  var rpVerticalWithoutShunt = function (x, top, bottom, stopRows, stopTop) {
+    var yy = stopTop, gaps = [];
+    (stopRows || []).forEach(function (r) {
+      if (r.kind === '입환') gaps.push([yy + 2, yy + 14]);
+      if (r.kind === '비상' || r.kind === '대기') yy += 22;
+      else if (r.kind === '감시' || r.kind === '출발감시' || r.kind === '입환') yy += 18;
+      else if (r.kind === '승계' || r.kind === '휴게') yy += 4;
+    });
+    var pos = top;
+    gaps.forEach(function (g) {
+      var a = Math.max(top, g[0]), b = Math.min(bottom, g[1]);
+      if (a > pos) o.push('<line x1="' + x + '" y1="' + pos + '" x2="' + x + '" y2="' + a + '"/>');
+      if (b > pos) pos = b;
+    });
+    if (bottom > pos) o.push('<line x1="' + x + '" y1="' + pos + '" x2="' + x + '" y2="' + bottom + '"/>');
+  };
   var gapBefore = 0;
   /* 첫 이동 전: 비상·대기·입환·감시는 출발역 위에 그림 (PDF처럼), 나머지(준비·출고운전 등)는 아래 시간 줄 */
   var LEAD_DRAW = ['비상', '대기', '입환', '감시'];
@@ -16521,7 +16575,7 @@ function rpSvg(dia, rows, opt) {
     var hasLine = leadStops.some(function (r) { return r.kind === '입환' || r.kind === '감시'; });
     o.push('<g transform="translate(' + (hasLine ? 0 : -10) + ' 0)">');
     var u = drawStop(leadStops, startSt, y - 16, 1);
-    if (hasLine) { var xL = xs[startSt] != null ? xs[startSt] : X0; o.push('<line x1="' + xL + '" y1="' + (y - 16 + u) + '" x2="' + xL + '" y2="' + (y + u) + '"/>'); }
+    if (hasLine) { var xL = xs[startSt] != null ? xs[startSt] : X0; rpVerticalWithoutShunt(xL, y - 16 + u, y + u, leadStops, y - 16); }
     o.push('</g>'); y += u;
   }
   /* 출고운전: 첫 출발역 위쪽에서 꺾인 선으로 내려와 첫 줄에 붙음 (PDF 행로표 모양) */
@@ -16548,8 +16602,11 @@ function rpSvg(dia, rows, opt) {
       var need = Math.max(28, 12 + stops.length * 18);
       var y2 = y + need;
       var xn = xs[rows[next].from];
-      if (xn === xs[stn]) o.push('<line x1="' + xs[stn] + '" y1="' + y + '" x2="' + xs[stn] + '" y2="' + y2 + '"/>');
-      else { o.push('<line x1="' + xs[stn] + '" y1="' + y + '" x2="' + xs[stn] + '" y2="' + (y + need / 2) + '"/><line x1="' + xs[stn] + '" y1="' + (y + need / 2) + '" x2="' + xn + '" y2="' + (y + need / 2) + '" stroke-dasharray="1.5 2"/><line x1="' + xn + '" y1="' + (y + need / 2) + '" x2="' + xn + '" y2="' + y2 + '"/>'); }
+      if (xn === xs[stn]) rpVerticalWithoutShunt(xs[stn], y, y2, stops, y + 4);
+      else {
+        rpVerticalWithoutShunt(xs[stn], y, y + need / 2, stops, y + 4);
+        o.push('<line x1="' + xs[stn] + '" y1="' + (y + need / 2) + '" x2="' + xn + '" y2="' + (y + need / 2) + '" stroke-dasharray="1.5 2"/><line x1="' + xn + '" y1="' + (y + need / 2) + '" x2="' + xn + '" y2="' + y2 + '"/>');
+      }
       drawStop(stops, stn, y + 4, sd);
       y = y2;
     } else {
@@ -16565,7 +16622,7 @@ function rpSvg(dia, rows, opt) {
       var xT = xs[stn], sT = side(xT);
       if (preIn.length) {
         var uu = drawStop(preIn, stn, y + 4, sT);
-        o.push('<line x1="' + xT + '" y1="' + y + '" x2="' + xT + '" y2="' + (y + 4 + uu) + '"/>');
+        rpVerticalWithoutShunt(xT, y, y + 4 + uu, preIn, y + 4);
         y += 4 + uu;
       }
       if (inOut) {
@@ -16809,6 +16866,37 @@ function rpOcrFix(t) {
     .replace(/출\s*고\s*준\s*비/g, '출고준비').replace(/출\s*고\s*운\s*전/g, '출고운전').replace(/출\s*발\s*감\s*시/g, '출발감시')
     .replace(/입\s*고\s*운\s*전/g, '입고운전').replace(/입\s*고\s*정\s*리/g, '입고정리');
 }
+/* 저장 우선순위: 근무표변경 > 행로표 만들기.
+   행로표는 언제나 날짜에 연결하지만, 기존 근무(수동변경·기본근무)는 건드리지 않습니다. */
+function rpDateHasWork(dateKey, employeeId) {
+  try {
+    var local = ensureLocal(employeeId);
+    if ((local.overrides || []).some(function (r) { return r && r[0] === dateKey; })) return true;
+    var parts = dateKey.split('-').map(Number);
+    var year = parts[0], month = parts[1] - 1, day = parts[2];
+    /* 현재 표시 중인 달의 기존 근무 정보 */
+    if (myMonth && myMonth.y === year && myMonth.m === month) {
+      var existing = myMonth.days && myMonth.days[dateKey];
+      if (existing && String(existing.label || existing.dia || existing.status || '').trim()) return true;
+    }
+    /* 다른 달을 선택했어도 원래 근무패턴을 확인하여 덮어쓰지 않습니다. */
+    var settings = (typeof mySettings !== 'undefined' && mySettings) || {};
+    var seq = (local && local.seq) || settings.seq || '';
+    var anchor = (local && local.anchor) || settings.anchor || '';
+    if (seq && anchor && typeof snapBaseDay === 'function') {
+      var base = snapBaseDay(dateKey, seq, anchor, diaList || [], '');
+      if (base && String(base.label || base.dia || base.status || '').trim()) return true;
+    }
+    /* 스냅샷에 명시된 날짜별 근무 정보가 있으면 그대로 둡니다. */
+    if (typeof snapshotUsable === 'function' && snapshotUsable() && snapshot.raw) {
+      var member = (snapshot.raw.members || []).find(function (m) { return m.employeeId === employeeId; });
+      var sd = member && member.days && member.days[dateKey];
+      if (sd && String(sd.label || sd.dia || sd.status || '').trim()) return true;
+      if (snapshot.ovMap && snapshot.ovMap[employeeId + '|' + dateKey]) return true;
+    }
+  } catch (e) { console.warn('기존 근무 확인 실패: 덮어쓰기 방지', e); return true; }
+  return false;
+}
 function rpSave(auto) {
   var dia = ($('rp-dia').value || '').trim().toUpperCase();
   if (!/^[0-9A-Z]{3,8}$/.test(dia)) { showToast('DIA 번호를 입력하세요.'); $('rp-dia').focus(); return; }
@@ -16818,30 +16906,36 @@ function rpSave(auto) {
   rpSaveAll(a); rpDia = dia; rpListRender();
   var dk = ($('rp-date') && $('rp-date').value) || '', msg = 'DIA ' + dia + ' 행로표를 저장했어요.';
   if (dk) {
+    /* 1) 행로표는 선택 날짜에 반드시 연결. 이 단계에서는 근무 데이터를 절대 수정하지 않음. */
     rpSetDate(dk, dia);
+    /* 2) 근무정보를 새로 생성하는 기능은 빈 날짜에만 수행. 기존 근무는 최우선 유지. */
     if ($('rp-setdia') && $('rp-setdia').checked) {
       try {
         var u = getCurrentUser();
-        /* 행로표 팝업의 주간/야간 선택값을 근무표 변경 기록에도 함께 저장합니다.
-           원본 DIA 데이터가 없는 임시다이아도 dutyStatus로 주/야가 정확히 표시됩니다. */
-        var selectedRouteDuty = (rpType === '야' || rpType === '주') ? rpType : (a[dia].type === '야' ? '야' : '주');
-        var nextRouteDate = (typeof snapShiftKey === 'function') ? snapShiftKey(dk, 1) : '';
-        /* 이전에 이 행로표로 자동 설정한 비번은 주간으로 바꿀 때 제거합니다.
-           다음 날 직접 수정한 근무기록은 지우지 않습니다. */
-        if (nextRouteDate && typeof removeAutoNextDayOff === 'function') removeAutoNextDayOff(u.employeeId, nextRouteDate);
-        snapUpsertOverride(u.employeeId, dk, 'dia', dia, '', '', '', selectedRouteDuty);
-        tdSet(dk, dia);
-        /* 야간 선택이면 다음 날 비번을 자동으로 기록합니다. */
-        if (selectedRouteDuty === '야' && nextRouteDate) snapUpsertOverride(u.employeeId, nextRouteDate, 'auto-status', '', '비');
+        if (!rpDateHasWork(dk, u.employeeId)) {
+          var duty = rpType === '야' ? '야' : '주';
+          snapUpsertOverride(u.employeeId, dk, 'dia', dia, '', '', '', duty);
+          tdSet(dk, dia);
+          /* 다음 날에도 기록이 없다면 야간의 비번을 자동 생성. 기존 근무변경은 보존. */
+          var next = typeof snapShiftKey === 'function' ? snapShiftKey(dk, 1) : '';
+          if (duty === '야' && next && !rpDateHasWork(next, u.employeeId)) {
+            snapUpsertOverride(u.employeeId, next, 'auto-status', '', '비');
+          }
+          msg = '근무정보가 없어 ' + (duty === '야' ? '야간' : '주간') + ' 근무와 행로표를 함께 넣었어요.';
+        } else {
+          msg = '기존 근무정보는 유지하고 행로표만 추가했어요.';
+        }
         if (typeof loadMyMonth === 'function') loadMyMonth();
-      } catch (e) {}
+      } catch (e) { console.warn('행로표 저장 후 근무 확인 실패', e); msg = '행로표를 저장했어요. 기존 근무정보는 유지됩니다.'; }
+    } else {
+      msg = '선택한 날짜에 행로표만 넣었어요.';
     }
-    var p = dk.split('-'); msg = (+p[1]) + '월 ' + (+p[2]) + '일에 DIA ' + dia + ' 행로표를 넣었어요.';
     rpCalRender();
   }
   if (!auto) showToast(msg);
   try { if (typeof renderDayDetail === 'function') renderDayDetail(); } catch (e) {}
 }
+
 function rpLoad(dia) {
   var s = rpGet(dia); if (!s) return;
   rpDia = dia; $('rp-dia').value = dia; rpRows = s.rows.map(function (r) { return Object.assign({}, r); }); rpSetType(s.type || rpGuessType(rpRows)); rpRender();
