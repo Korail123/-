@@ -1379,7 +1379,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="dia-dialog ns-dialog rp-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="예상행로표" alt="" aria-hidden="true">다이아 행로표 만들기</div>
     <div class="rp-step"><div class="rp-h"><b>1</b> 사업 내역 텍스트 넣기</div>
-      <div class="rp-note">승무 시스템 <b>검색결과 표</b>를 길게 눌러 전체 선택 → 복사한 뒤 아래에 붙여넣으세요. 번호·구분·열차번호·출발역·출발시각·도착역·도착시각 순서면 돼요.</div>
+      <div class="rp-note">승무 시스템 <b>검색결과 표</b>를 복사해 붙여넣으세요. 임시다이아처럼 표가 없으면 <b>운전·편승만</b> 한 줄씩 적어도 돼요(예: <b>4655 청량리 10:45 동두천 11:37</b> / 편승은 <b>K</b>). 준비·감시·정리·승계는 철도비서가 규칙으로 채워요.</div>
       <textarea id="rp-paste" class="rp-text" rows="6" placeholder="예)&#10;1  준비  -  -  10:05  -  10:45&#10;2  운전  4655  청량리  10:45  동두천  11:37&#10;3  입환  9999  동두천  11:37  동두천  12:07"></textarea>
       <button type="button" class="rp-btn rp-primary rp-read" onclick="rpReadPaste()">텍스트 읽어서 행로표 그리기</button>
       <div id="rp-ocr-msg" class="rp-msg"></div>
@@ -4798,6 +4798,9 @@ function openNxLogisDirect(trainNo, selectedDateKey) {
 }
 /* ============ 행로표 확대/축소 팝업 ============ */
 function diaImageUrl(diaNo) {
+  /* 공식 행로표 그림이 목록에 없고, 내가 만든 예상 행로표가 있으면 그걸 바로 보여줌 */
+  var d = String(diaNo || '').trim().toUpperCase();
+  if (d && !DIA_IMAGE_FILES[d] && typeof rpSavedUrl === 'function') { var mine = rpSavedUrl(d); if (mine) return mine; }
   return diaImageCands(diaNo)[0] || '';
 }
 var rvZoom = 1;
@@ -6724,10 +6727,10 @@ function openGroupInfo(k, key) {
       if (url) {
         html += '<div class="pi-route">' +
           '<div class="pi-route-cap">행로표</div>' +
-          '<img src="' + url + '" alt="DIA ' + esc(diaNo) + ' 행로표" data-dia="' + esc(diaNo) + '" loading="eager" decoding="async" fetchpriority="high" ' +
+          '<img src="' + url + '" alt="DIA ' + esc(diaNo) + ' 행로표" data-dia="' + esc(String(diaNo).toUpperCase()) + '" data-try="0" loading="eager" decoding="async" fetchpriority="high" ' +
           'onclick="openRouteViewer(this.getAttribute(\'data-dia\'))" ' +
-          'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
-          '<div class="pi-none" style="display:none">이미지를 불러오지 못했습니다.</div></div>';
+          'onerror="diaImgFallback(this)">' +
+          '<div class="pi-none" style="display:none">행로표 이미지가 없습니다.</div></div>';
       } else {
         html += '<div class="pi-route"><div class="pi-none">행로표 이미지가 없습니다.</div></div>';
       }
@@ -7535,10 +7538,10 @@ function openPatternInfo(i) {
     if (url) {
       html += '<div class="pi-route">' +
         '<div class="pi-route-cap">행로표</div>' +
-        '<img src="' + url + '" alt="DIA ' + esc(diaNo) + ' 행로표" data-dia="' + esc(diaNo) + '" ' +
+        '<img src="' + url + '" alt="DIA ' + esc(diaNo) + ' 행로표" data-dia="' + esc(String(diaNo).toUpperCase()) + '" data-try="0" ' +
         'onclick="openRouteViewer(this.getAttribute(\'data-dia\'))" ' +
-        'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'" decoding="async">' +
-        '<div class="pi-none" style="display:none">이미지를 불러오지 못했습니다.</div></div>';
+        'onerror="diaImgFallback(this)" decoding="async">' +
+        '<div class="pi-none" style="display:none">행로표 이미지가 없습니다.</div></div>';
     } else {
       html += '<div class="pi-route"><div class="pi-none">행로표 이미지가 없습니다.</div></div>';
     }
@@ -16235,9 +16238,58 @@ function rpTime(t) { var m = String(t || '').match(/(\d{1,2})\s*:?\s*(\d{2})/); 
 function rpIsMove(r) { return (r.kind === '운전' || r.kind === '편승' || r.kind === '출고운전' || r.kind === '입고운전') && r.from && r.to && r.from !== r.to; }
 /* 승무 시스템 표를 복사해 붙여넣은 글을 구간으로 바꿈 (탭/여러 칸 띄어쓰기 모두 처리) */
 function rpParse(text) {
+  /* 한 줄에 시각이 2개 이상인 줄이 여러 개면 줄 단위로 읽음(구분이 없는 줄은 운전·편승으로 추정) */
+  var lines = String(text || '').split(/\r?\n/), timed = lines.filter(function (l) { return (l.match(/\d{1,2}[:;.]\d{2}/g) || []).length >= 2; });
+  if (timed.length >= 2) {
+    var acc = [];
+    timed.forEach(function (l) { var a = rpParseStream(l); if (!a.length) a = rpParseFree(l); acc = acc.concat(a); });
+    if (acc.length) return acc;
+  }
   var st = rpParseStream(text);
   if (st.length) return st;
-  return rpParseLines(text);
+  var ln = rpParseLines(text);
+  if (ln.length) return ln;
+  return rpParseFree(text);
+}
+/* 구분 없이 '열차 출발역 시각 도착역 시각'만 적어도 읽기 (K·괄호 번호는 편승, 나머지는 운전) */
+function rpParseFree(text) {
+  var out = [], isT = function (x) { return /^\d{1,2}:\d{2}$/.test(x); }, isTrain = function (x) { return /^[A-Z]{0,2}\d{2,5}$/i.test(x) || /^\(?K\)?$/i.test(x) || /^\(\d+\)$/.test(x); };
+  String(text || '').split(/\r?\n/).forEach(function (line) {
+    var c = line.replace(/[→~>]/g, ' ').replace(/(\d{1,2})[;.](\d{2})/g, '$1:$2').trim().split(/\s+/).filter(function (x) { return x && x !== '-'; });
+    var ti = []; c.forEach(function (x, i) { if (isT(x)) ti.push(i); });
+    if (ti.length < 2) return;
+    var pre = c.slice(0, ti[0]), mid = c.slice(ti[0] + 1, ti[1]), post = c.slice(ti[1] + 1);
+    var train = '', from = '', to = '', pyeon = /편승/.test(line);
+    pre.concat(post).forEach(function (x) { if (isTrain(x) && !train) train = x.replace(/[()]/g, '').toUpperCase(); else if (/[가-힣]/.test(x) && !from && pre.indexOf(x) >= 0 && x !== '편승' && x !== '운전') from = x; });
+    mid.forEach(function (x) { if (/[가-힣]/.test(x) && !to) to = x; });
+    if (!from || !to) return;
+    if (/^K$/.test(train) || /^\(/.test(pre.join('') + post.join(''))) pyeon = true;
+    out.push({ kind: pyeon ? '편승' : '운전', train: train || (pyeon ? 'K' : ''), from: from, dep: rpTime(c[ti[0]]), to: to, arr: rpTime(c[ti[1]]) });
+  });
+  return out;
+}
+/* 운전·편승만 주면 나머지(준비·감시·정리·승계 등)를 행로표 규칙으로 채움 — 임시다이아 예상용 */
+function rpMin(t) { var m = String(t || '').match(/(\d{1,2}):(\d{2})/); return m ? (+m[1]) * 60 + (+m[2]) : null; }
+function rpHM(n) { n = ((n % 1440) + 1440) % 1440; return ('0' + Math.floor(n / 60)).slice(-2) + ':' + ('0' + (n % 60)).slice(-2); }
+function rpAutoFill(moves) {
+  var out = [], A = function (kind, a, b) { if (b > a) out.push({ kind: kind, train: '', from: '', to: '', dep: rpHM(a), arr: rpHM(b), auto: 1 }); };
+  moves.forEach(function (r, i) {
+    var d = rpMin(r.dep), a = rpMin(r.arr);
+    if (d == null || a == null) { out.push(r); return; }
+    if (a < d) a += 1440;
+    if (i === 0) A(r.kind === '편승' ? '편승준비' : '준비', d - 40, d);
+    out.push(r);
+    var nx = moves[i + 1];
+    if (!nx) { A(r.kind === '편승' ? '편승정리' : '정리', a, a + (r.kind === '편승' ? 20 : 10)); return; }
+    var nd = rpMin(nx.dep); if (nd == null) return;
+    while (nd < a) nd += 1440;
+    var gap = nd - a;
+    if (r.kind === '운전' && nx.kind === '운전' && gap <= 30) { A('감시', a, nd); return; }
+    var head = r.kind === '편승' ? '편승정리' : '정리', tailK = nx.kind === '운전' ? '준비' : '';
+    var h = Math.min(10, gap), t = tailK ? Math.min(10, Math.max(0, gap - h)) : 0;
+    A(head, a, a + h); A('승계', a + h, nd - t); if (t) A(tailK, nd - t, nd);
+  });
+  return out;
 }
 /* 칸이 줄바꿈·탭·띄어쓰기 어느 것으로 나뉘어 붙여넣어져도 읽기 (폰에서 표를 복사하면 칸마다 줄이 바뀌기도 함) */
 function rpParseStream(text) {
@@ -16424,7 +16476,7 @@ function rpSavedUrl(dia) { var s = rpGet(dia); return s && s.rows && s.rows.leng
 function rpRowHtml(r, i) {
   var opts = RP_KINDS.map(function (k) { return '<option' + (k === r.kind ? ' selected' : '') + '>' + k + '</option>'; }).join('');
   var f = function (key, ph, cls, mode) { return '<input class="rp-in ' + cls + '" value="' + rpEsc(r[key]) + '" placeholder="' + ph + '"' + (mode ? ' inputmode="' + mode + '"' : '') + ' oninput="rpEdit(' + i + ',\'' + key + '\',this.value)">'; };
-  return '<div class="rp-row"><select class="rp-in rp-kind" onchange="rpEdit(' + i + ',\'kind\',this.value)">' + opts + '</select>' +
+  return '<div class="rp-row' + (r.auto ? ' auto' : '') + '"><select class="rp-in rp-kind" onchange="rpEdit(' + i + ',\'kind\',this.value)">' + opts + '</select>' +
     f('train', '-', 'rp-train') + f('from', '-', 'rp-st') + f('dep', '00:00', 'rp-tm', 'numeric') +
     f('to', '-', 'rp-st') + f('arr', '00:00', 'rp-tm', 'numeric') +
     '<button type="button" class="rp-del" onclick="rpDel(' + i + ')" aria-label="구간 삭제">✕</button></div>';
@@ -16434,7 +16486,7 @@ function rpRender(full) {
   var rows = rpRows.map(function (r) { return { kind: r.kind, train: r.train, from: r.from, to: r.to, dep: rpTime(r.dep), arr: rpTime(r.arr) }; });
   $('rp-preview').innerHTML = rows.length ? '<img alt="예상 행로표 미리보기" src="' + rpUrl(rpDia || ($('rp-dia').value || '').toUpperCase(), rows) + '">' : '';
 }
-function rpEdit(i, k, v) { if (!rpRows[i]) return; rpRows[i][k] = v; rpRender(false); }
+function rpEdit(i, k, v) { if (!rpRows[i]) return; rpRows[i][k] = v; delete rpRows[i].auto; rpRender(false); }
 function rpDel(i) { rpRows.splice(i, 1); rpRender(); }
 function rpAdd() {
   var last = rpRows[rpRows.length - 1];
@@ -16447,8 +16499,13 @@ function rpReadPaste() {
   var m = String(t).match(/대상\s*다이아\s*[\t ]*([0-9A-Z]{4,6})/i) || String(t).match(/\b(12[0-9A-Z]{3})\b/);
   if (m && !$('rp-dia').value) $('rp-dia').value = m[1].toUpperCase();
   rpDia = ($('rp-dia').value || '').toUpperCase();
+  var onlyMoves = rows.every(function (r) { return r.kind === '운전' || r.kind === '편승'; });
+  if (onlyMoves) rows = rpAutoFill(rows);
   rpRows = rows;
-  rpRender(); rpOcrMsg(rows.length + '개 구간을 읽었어요. 아래에서 확인하고 고칠 수 있어요.');
+  rpRender();
+  rpOcrMsg(onlyMoves
+    ? '운전·편승 ' + rows.filter(function (r) { return !r.auto; }).length + '개를 읽고, 준비·감시·정리·승계는 규칙으로 채웠어요(연한 줄). 실제와 다르면 고쳐주세요.'
+    : rows.length + '개 구간을 읽었어요. 아래에서 확인하고 고칠 수 있어요.');
 }
 function rpDKey() { var u = (typeof getCurrentUser === 'function' && getCurrentUser()) || {}; return 'rs_myroute_dates_' + (u.employeeId || 'guest'); }
 function rpDates() { try { return JSON.parse(localStorage.getItem(rpDKey()) || '{}') || {}; } catch (e) { return {}; } }
@@ -16762,6 +16819,9 @@ function tdSet(dateKey, dia) { var a = tdAll(); if (dia) a[dateKey] = dia; else 
 #rp-panel .rp-cal-d.on i,#rp-panel .rp-cal-d.on em{color:#fff!important}
 #rp-panel .rp-cal-sel{font-size:12.5px;color:#344054;margin:8px 2px 0}
 #rp-panel .rp-cal-sel small{color:#8a96a8}
+</style>
+<style id="route-plan-css3">
+#rp-panel .rp-row.auto .rp-in{background:#f6f8fb;color:#6b7686;border-style:dashed}
 </style>
 </body>
 </html>
