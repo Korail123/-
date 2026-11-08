@@ -16235,6 +16235,39 @@ function rpTime(t) { var m = String(t || '').match(/(\d{1,2})\s*:?\s*(\d{2})/); 
 function rpIsMove(r) { return (r.kind === '운전' || r.kind === '편승' || r.kind === '출고운전' || r.kind === '입고운전') && r.from && r.to && r.from !== r.to; }
 /* 승무 시스템 표를 복사해 붙여넣은 글을 구간으로 바꿈 (탭/여러 칸 띄어쓰기 모두 처리) */
 function rpParse(text) {
+  var st = rpParseStream(text);
+  if (st.length) return st;
+  return rpParseLines(text);
+}
+/* 칸이 줄바꿈·탭·띄어쓰기 어느 것으로 나뉘어 붙여넣어져도 읽기 (폰에서 표를 복사하면 칸마다 줄이 바뀌기도 함) */
+function rpParseStream(text) {
+  var tk = String(text || '').replace(/\u00a0/g, ' ').split(/\s+/).filter(function (x) { return x !== ''; });
+  var isTime = function (x) { return /^\d{1,2}:\d{2}$/.test(x); };
+  var starts = [];
+  for (var i = 0; i < tk.length; i++) {
+    var t = tk[i], k = RP_KINDS.indexOf(t) >= 0 ? t : '';
+    if (!k && /^[가-힣]{2,5}$/.test(t) && i > 0 && /^\d{1,2}$/.test(tk[i - 1]) && typeof rpKindOf === 'function') k = rpKindOf(t);
+    if (k) starts.push({ i: i, kind: k });
+  }
+  var out = [];
+  starts.forEach(function (st, n) {
+    var seg = tk.slice(st.i + 1, n + 1 < starts.length ? starts[n + 1].i : tk.length);
+    var ti = [];
+    seg.forEach(function (x, j) { if (isTime(x)) ti.push(j); });
+    if (ti.length < 2) return;
+    var pre = seg.slice(0, ti[0]).filter(function (x) { return x !== '-'; });
+    var mid = seg.slice(ti[0] + 1, ti[1]).filter(function (x) { return x !== '-'; });
+    var r = { kind: st.kind, train: '', from: '', dep: rpTime(seg[ti[0]]), to: '', arr: rpTime(seg[ti[1]]) };
+    pre.forEach(function (x) {
+      if (/[가-힣]/.test(x) && !/^\(?K\)?$/.test(x)) { if (!r.from) r.from = x; }
+      else if (!r.train) r.train = x.replace(/[()]/g, '');
+    });
+    mid.forEach(function (x) { if (/[가-힣]/.test(x) && !r.to) r.to = x; });
+    out.push(r);
+  });
+  return out;
+}
+function rpParseLines(text) {
   var out = [];
   String(text || '').split(/\r?\n/).forEach(function (line) {
     var c = line.split(/\t|\s{2,}/).map(function (x) { return x.trim(); }).filter(function (x) { return x !== ''; });
@@ -16304,10 +16337,18 @@ function rpSvg(dia, rows, opt) {
     return used;
   };
   var gapBefore = 0;
-  var leadStops = lead.filter(function (r) { return r.kind === '비상' || r.kind === '대기'; });
-  var leadOut = lead.filter(function (r) { return r.kind === '출고운전'; })[0];
-  lead.forEach(function (r) { if (!(r.kind === '비상' || r.kind === '대기' || r.kind === '출고운전')) foot.push(r.kind + ' ' + r.dep + '~' + r.arr); });
-  if (leadStops.length) { var xl = xs[startSt] != null ? xs[startSt] : X0; o.push('<g transform="translate(-10 0)">'); var u = drawStop(leadStops, startSt, y - 16, 1); o.push('</g>'); y += u; }
+  /* 첫 이동 전: 비상·대기·입환·감시는 출발역 위에 그림 (PDF처럼), 나머지(준비·출고운전 등)는 아래 시간 줄 */
+  var LEAD_DRAW = ['비상', '대기', '입환', '감시'];
+  var leadStops = lead.filter(function (r) { return LEAD_DRAW.indexOf(r.kind) >= 0; });
+  var leadOut = null;
+  lead.forEach(function (r) { if (LEAD_DRAW.indexOf(r.kind) < 0) foot.push(r.kind + ' ' + r.dep + '~' + r.arr); });
+  if (leadStops.length) {
+    var hasLine = leadStops.some(function (r) { return r.kind === '입환' || r.kind === '감시'; });
+    o.push('<g transform="translate(' + (hasLine ? 0 : -10) + ' 0)">');
+    var u = drawStop(leadStops, startSt, y - 16, 1);
+    if (hasLine) { var xL = xs[startSt] != null ? xs[startSt] : X0; o.push('<line x1="' + xL + '" y1="' + (y - 16 + u) + '" x2="' + xL + '" y2="' + (y + u) + '"/>'); }
+    o.push('</g>'); y += u;
+  }
   /* 출고운전: 첫 출발역 위쪽에서 꺾인 선으로 내려와 첫 줄에 붙음 (PDF 행로표 모양) */
   if (leadOut && mi.length) {
     var xo = xs[rows[mi[0]].from], so = side(xo), dz = so > 0 ? -5 : 5;
@@ -16327,7 +16368,7 @@ function rpSvg(dia, rows, opt) {
     var between = rows.slice(mi[k] + 1, next == null ? rows.length : next);
     var stn = r.to, sd = side(xs[stn]);
     if (next != null) {
-      var stops = between.filter(function (q) { return q.kind !== '준비' && q.kind !== '정리' && q.kind !== '편승준비' && q.kind !== '편승정리' && q.kind !== '출고준비' && q.kind !== '입고정리'; });
+      var stops = between.filter(function (q) { return ['준비', '정리', '편승준비', '편승정리', '출고준비', '입고정리', '출고운전', '입고운전', '출발감시'].indexOf(q.kind) < 0; });
       between.forEach(function (q) { if (stops.indexOf(q) < 0) foot.push(q.kind + ' ' + q.dep + '~' + q.arr); });
       var need = Math.max(28, 12 + stops.length * 18);
       var y2 = y + need;
@@ -16338,17 +16379,28 @@ function rpSvg(dia, rows, opt) {
       y = y2;
     } else {
       /* 마지막 이동 뒤 */
-      var tail = between.filter(function (q) { return q.kind === '비상' || q.kind === '대기' || q.kind === '감시' || q.kind === '승계'; });
-      var inOut = between.filter(function (q) { return q.kind === '입고운전'; })[0];
-      between.forEach(function (q) { if (tail.indexOf(q) < 0 && q !== inOut) foot.push(q.kind + ' ' + q.dep + '~' + q.arr); });
+      /* 마지막 이동 뒤: 순서대로 감시·입환·승계 → 입고운전(꺾인 선) → 비상대기 */
+      var DRAW = ['비상', '대기', '감시', '입환', '승계', '휴게'];
+      var inIdx = -1;
+      between.forEach(function (q, qi) { if (q.kind === '입고운전' && inIdx < 0) inIdx = qi; });
+      var preIn = between.filter(function (q, qi) { return DRAW.indexOf(q.kind) >= 0 && (inIdx < 0 || qi < inIdx); });
+      var postIn = inIdx < 0 ? [] : between.filter(function (q, qi) { return DRAW.indexOf(q.kind) >= 0 && qi > inIdx; });
+      var inOut = inIdx >= 0 ? between[inIdx] : null;
+      between.forEach(function (q) { if (preIn.indexOf(q) < 0 && postIn.indexOf(q) < 0 && q !== inOut) foot.push(q.kind + ' ' + q.dep + '~' + q.arr); });
+      var xT = xs[stn], sT = side(xT);
+      if (preIn.length) {
+        var uu = drawStop(preIn, stn, y + 4, sT);
+        o.push('<line x1="' + xT + '" y1="' + y + '" x2="' + xT + '" y2="' + (y + 4 + uu) + '"/>');
+        y += 4 + uu;
+      }
       if (inOut) {
         /* 입고운전: 마지막 도착역에서 꺾인 선으로 내려감 + 입고운전 시작·끝 시각 (PDF 행로표 모양) */
-        var xi = xs[stn], si = side(xi), di = si > 0 ? -5 : 5;
-        o.push('<polyline points="' + xi + ',' + y + ' ' + xi + ',' + (y + 12) + ' ' + (xi + di) + ',' + (y + 20) + ' ' + xi + ',' + (y + 30) + ' ' + xi + ',' + (y + 38) + '" fill="none"/>');
-        label(xi, y + 15, inOut.dep, si); label(xi, y + 24, inOut.arr, si);
+        var di = sT > 0 ? -5 : 5;
+        o.push('<polyline points="' + xT + ',' + y + ' ' + xT + ',' + (y + 12) + ' ' + (xT + di) + ',' + (y + 20) + ' ' + xT + ',' + (y + 30) + ' ' + xT + ',' + (y + 38) + '" fill="none"/>');
+        label(xT, y + 15, inOut.dep, sT); label(xT, y + 24, inOut.arr, sT);
         y += 40;
       }
-      if (tail.length) { y += 6 + drawStop(tail, stn, y + 2, side(xs[stn]) > 0 ? 1 : 1); }
+      if (postIn.length) { y += 4 + drawStop(postIn, stn, y + 2, sT); }
       y += 12;
     }
   }
