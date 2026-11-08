@@ -3481,8 +3481,24 @@ var DIA_IMAGE_FILES = {
   '12551':'dia_12551.png', '12581':'dia_12581.png',
   '12601':'dia_12601.png', '12602':'dia_12602.png', '12702':'dia_12702.png',
   '12H01':'dia_12H01.png',
-  '12901':'dia_12901.png', '12902':'dia_12902.png', '12932':'dia_12932.png', '12B07':'dia_12B07.png', '12937':'dia_12937.png'
+  '12901':'dia_12901.png', '12902':'dia_12902.png', '12932':'dia_12932.png', '12B07':'dia_12B07.png', '12937':'dia_12937.png',
+  '12H87':'행로표_12H87.png', '12H88':'행로표_12H88.png'
 };
+/* 목록에 없는 DIA도 GitHub에 'dia_DIA번호.png' 또는 '행로표_DIA번호.png' 이름으로 올리면 자동으로 찾아서 보여줌 */
+function diaImageCands(diaNo) {
+  var d = String(diaNo || '').trim().toUpperCase();
+  if (!d) return [];
+  var names = [DIA_IMAGE_FILES[d], 'dia_' + d + '.png', '행로표_' + d + '.png', 'dia_' + d + '.jpg', '행로표_' + d + '.jpg'], out = [];
+  names.forEach(function (n) { if (n && out.indexOf(n) < 0) out.push(n); });
+  return out.map(function (n) { return DIA_IMAGE_BASE + encodeURIComponent(n); });
+}
+/* 그림을 못 찾으면 다음 이름으로 다시 시도, 다 없으면 onEnd 실행 */
+function diaImgFallback(img, onEnd) {
+  var c = diaImageCands(img.getAttribute('data-dia')), i = (+img.getAttribute('data-try') || 0) + 1;
+  if (i < c.length) { img.setAttribute('data-try', i); img.src = c[i]; return; }
+  img.style.display = 'none';
+  if (typeof onEnd === 'function') onEnd(); else if (img.nextElementSibling) img.nextElementSibling.style.display = 'block';
+}
 /* 다이어 정보 팝업에서 행로표가 늦게 뜨지 않도록 페이지 초기화 시 이미지들을 미리 캐시에 준비 */
 var DIA_IMAGE_PRELOAD_CACHE = {};
 (function preloadDiaImages() {
@@ -4750,8 +4766,7 @@ function openNxLogisDirect(trainNo, selectedDateKey) {
 }
 /* ============ 행로표 확대/축소 팝업 ============ */
 function diaImageUrl(diaNo) {
-  var f = DIA_IMAGE_FILES[String(diaNo || '').trim().toUpperCase()];
-  return f ? DIA_IMAGE_BASE + encodeURIComponent(f) : '';
+  return diaImageCands(diaNo)[0] || '';
 }
 var rvZoom = 1;
 var RV_MIN = 1;
@@ -4805,10 +4820,9 @@ function openRouteViewer(diaNo) {
   $('rv-title').textContent = 'DIA ' + diaNo + ' 행로표';
   msg.style.display = 'none';
   img.style.display = 'block';
-  img.onerror = function () {
-    img.style.display = 'none';
-    msg.style.display = 'block';
-  };
+  img.setAttribute('data-dia', String(diaNo || '').trim().toUpperCase());
+  img.setAttribute('data-try', '0');
+  img.onerror = function () { diaImgFallback(img, function () { msg.style.display = 'block'; }); };
   rvZoom = 1;
   img.style.width = '100%';
   img.src = url;
@@ -5301,14 +5315,14 @@ function renderDayDetail() {
   /* 선택한 날짜의 DIA와 행로표 정보를 한눈에 확인할 수 있도록 하단에 별도 표시 */
   if (!isStatus && diaNo) {
     html += '<div class="dd-route">';
-    var diaImageFile = DIA_IMAGE_FILES[diaNo.toUpperCase()];
-    if (diaImageFile) {
+    var diaImageSrc = diaImageUrl(diaNo);
+    if (diaImageSrc) {
       html += '<div class="dd-dia-image-wrap">' +
         '<div class="dd-dia-image-title">행로표</div>' +
-        '<img class="dd-dia-image" src="' + DIA_IMAGE_BASE + encodeURIComponent(diaImageFile) + '" alt="DIA ' + esc(diaNo) + ' 행로표" ' +
-        'data-dia="' + esc(diaNo) + '" onclick="openRouteViewer(this.getAttribute(\'data-dia\'))" ' +
-        'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'" decoding="async">' +
-        '<div class="dd-dia-image-missing" style="display:none">이미지를 불러오지 못했습니다.</div></div>';
+        '<img class="dd-dia-image" src="' + diaImageSrc + '" alt="DIA ' + esc(diaNo) + ' 행로표" ' +
+        'data-dia="' + esc(diaNo.toUpperCase()) + '" data-try="0" onclick="openRouteViewer(this.getAttribute(\'data-dia\'))" ' +
+        'onerror="diaImgFallback(this)" decoding="async">' +
+        '<div class="dd-dia-image-missing" style="display:none">행로표 이미지가 없습니다.</div></div>';
     } else {
       html += '<div class="dd-dia-image-wrap"><div class="dd-dia-image-missing">행로표 이미지가 없습니다.</div></div>';
     }
