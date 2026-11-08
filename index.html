@@ -1379,7 +1379,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="dia-dialog ns-dialog rp-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="예상행로표" alt="" aria-hidden="true">다이아 행로표 만들기</div>
     <div class="rp-step"><div class="rp-h"><b>1</b> 사업 내역 텍스트 넣기</div>
-      <div class="rp-note">승무 시스템 <b>검색결과 표</b>를 복사해 붙여넣으세요. 임시다이아처럼 표가 없으면 <b>운전·편승만</b> 한 줄씩 적어도 돼요(예: <b>4655 청량리 10:45 동두천 11:37</b> / 편승은 <b>K</b>). 준비·감시·정리·승계는 철도비서가 규칙으로 채워요.</div>
+      <div class="rp-note">승무 시스템 화면을 <b>위쪽(대상다이아·사업일자)부터 표 끝까지</b> 복사해 붙여넣으면 DIA·날짜까지 알아서 찾아 근무표에 바로 올려요. 임시다이아처럼 표가 없으면 <b>운전·편승만</b> 한 줄씩 적어도 돼요(예: <b>4655 청량리 10:45 동두천 11:37</b> / 편승은 <b>K</b>). 준비·감시·정리·승계는 철도비서가 규칙으로 채워요.</div>
       <textarea id="rp-paste" class="rp-text" rows="6" placeholder="예)&#10;1  준비  -  -  10:05  -  10:45&#10;2  운전  4655  청량리  10:45  동두천  11:37&#10;3  입환  9999  동두천  11:37  동두천  12:07"></textarea>
       <button type="button" class="rp-btn rp-primary rp-read" onclick="rpReadPaste()">텍스트 읽어서 행로표 그리기</button>
       <div id="rp-ocr-msg" class="rp-msg"></div>
@@ -3519,7 +3519,11 @@ function diaImageCands(diaNo) {
   if (!d) return [];
   var names = [DIA_IMAGE_FILES[d], 'dia_' + d + '.png', '행로표_' + d + '.png', 'dia_' + d + '.jpg', '행로표_' + d + '.jpg'], out = [];
   names.forEach(function (n) { if (n && out.indexOf(n) < 0) out.push(n); });
-  return out.map(function (n) { return DIA_IMAGE_BASE + encodeURIComponent(n); });
+  /* 같은 사이트(GitHub Pages)에 올린 그림을 먼저 → 안 되면 raw.githubusercontent 주소로 */
+  var sameSite = /github\.io$/i.test(location.hostname) || /^https?:/i.test(location.protocol) && location.hostname && !/^(localhost|127\.)/.test(location.hostname);
+  var urls = [];
+  out.forEach(function (n) { if (sameSite) urls.push(encodeURIComponent(n)); urls.push(DIA_IMAGE_BASE + encodeURIComponent(n)); });
+  return urls;
 }
 /* 그림을 못 찾으면 다음 이름으로 다시 시도, 다 없으면 onEnd 실행 */
 function diaImgFallback(img, onEnd) {
@@ -16350,7 +16354,12 @@ function rpSvg(dia, rows, opt) {
   var xs = {};
   st.forEach(function (s, i) { xs[s] = st.length === 1 ? X0 : X0 + (X1 - X0) * i / (st.length - 1); });
   var o = [], y = 52, foot = [];
-  var T = function (x, yy, s, anchor, extra) { o.push('<text x="' + x.toFixed(1) + '" y="' + yy.toFixed(1) + '" font-size="7.1"' + (anchor ? ' text-anchor="' + anchor + '"' : '') + (extra || '') + '>' + ex(s) + '</text>'); };
+  var T = function (x, yy, s, anchor, extra) {
+    extra = extra || '';
+    /* 글자 크기를 따로 줄 때는 기본 크기를 빼야 함 (같은 속성이 두 번 있으면 그림 전체가 안 뜸) */
+    var fs = /font-size=/.test(extra) ? '' : ' font-size="7.1"';
+    o.push('<text x="' + x.toFixed(1) + '" y="' + yy.toFixed(1) + '"' + fs + (anchor ? ' text-anchor="' + anchor + '"' : '') + extra + '>' + ex(s) + '</text>');
+  };
   var Lh = function (xa, xb, yy, dbl) {
     if (dbl) { o.push('<line x1="' + xa + '" y1="' + (yy - 1.4) + '" x2="' + xb + '" y2="' + (yy - 1.4) + '"/><line x1="' + xa + '" y1="' + (yy + 1.4) + '" x2="' + xb + '" y2="' + (yy + 1.4) + '"/>'); }
     else o.push('<line x1="' + xa + '" y1="' + yy + '" x2="' + xb + '" y2="' + yy + '"/>');
@@ -16503,9 +16512,21 @@ function rpReadPaste() {
   if (onlyMoves) rows = rpAutoFill(rows);
   rpRows = rows;
   rpRender();
-  rpOcrMsg(onlyMoves
-    ? '운전·편승 ' + rows.filter(function (r) { return !r.auto; }).length + '개를 읽고, 준비·감시·정리·승계는 규칙으로 채웠어요(연한 줄). 실제와 다르면 고쳐주세요.'
-    : rows.length + '개 구간을 읽었어요. 아래에서 확인하고 고칠 수 있어요.');
+  var head = onlyMoves
+    ? '운전·편승 ' + rows.filter(function (r) { return !r.auto; }).length + '개를 읽고 준비·감시·정리·승계는 규칙으로 채웠어요(연한 줄).'
+    : rows.length + '개 구간을 읽었어요.';
+  /* 붙여넣은 글에 사업일자가 있으면 그 날짜로 (승무 시스템 화면 위쪽: 사업일자 20261109) */
+  var dm = String(t).match(/사업\s*일자\s*[:\t ]*(\d{4})[.\-\/ ]?(\d{1,2})[.\-\/ ]?(\d{1,2})/);
+  if (dm) { var dk = dm[1] + '-' + ('0' + dm[2]).slice(-2) + '-' + ('0' + dm[3]).slice(-2); $('rp-date').value = dk; rpCalOpen(dk); }
+  /* DIA 번호를 알면 바로 저장해서 근무표에 올림 (따로 [저장] 안 눌러도 됨) */
+  if (rpDia) {
+    rpSave(true);
+    var dk2 = $('rp-date').value, p2 = dk2 ? dk2.split('-') : null;
+    rpOcrMsg(head + ' ' + (p2 ? (+p2[1]) + '월 ' + (+p2[2]) + '일 근무표에 DIA ' + rpDia + ' 행로표를 자동으로 올렸어요.' : 'DIA ' + rpDia + ' 행로표로 자동 저장했어요. 4번 달력에서 날짜를 누르고 [저장]하면 그 날 근무표에 올라가요.'));
+  } else {
+    rpOcrMsg(head + ' DIA 번호만 2번 칸에 적고 [저장]을 누르면 근무표에 올라가요.', true);
+    try { $('rp-dia').focus(); } catch (e) {}
+  }
 }
 function rpDKey() { var u = (typeof getCurrentUser === 'function' && getCurrentUser()) || {}; return 'rs_myroute_dates_' + (u.employeeId || 'guest'); }
 function rpDates() { try { return JSON.parse(localStorage.getItem(rpDKey()) || '{}') || {}; } catch (e) { return {}; } }
@@ -16645,7 +16666,7 @@ function rpOcrFix(t) {
     .replace(/출\s*고\s*준\s*비/g, '출고준비').replace(/출\s*고\s*운\s*전/g, '출고운전').replace(/출\s*발\s*감\s*시/g, '출발감시')
     .replace(/입\s*고\s*운\s*전/g, '입고운전').replace(/입\s*고\s*정\s*리/g, '입고정리');
 }
-function rpSave() {
+function rpSave(auto) {
   var dia = ($('rp-dia').value || '').trim().toUpperCase();
   if (!/^[0-9A-Z]{3,8}$/.test(dia)) { showToast('DIA 번호를 입력하세요.'); $('rp-dia').focus(); return; }
   if (!rpRows.length) { showToast('구간을 먼저 입력하세요.'); return; }
@@ -16666,7 +16687,7 @@ function rpSave() {
     var p = dk.split('-'); msg = (+p[1]) + '월 ' + (+p[2]) + '일에 DIA ' + dia + ' 행로표를 넣었어요.';
     rpCalRender();
   }
-  showToast(msg);
+  if (!auto) showToast(msg);
   try { if (typeof renderDayDetail === 'function') renderDayDetail(); } catch (e) {}
 }
 function rpLoad(dia) {
