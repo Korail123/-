@@ -17004,22 +17004,33 @@ function rpCalPick(k) { var el = $('rp-date'); el.value = el.value === k ? '' : 
 /* 행로표 날짜 달력에는 DIA 이름 대신 근무구분만 표시. 기존 근무표의 구분이 최우선. */
 function rpCalendarDutyLabel(info) {
   if (!info) return '';
+  /* 기존 근무표처럼 X와 휴가 상태를 빠짐없이 구분하여 표시합니다. */
+  var status = String(info.status || '').trim();
+  var type = String(info.dutyStatus || info.type || '').trim();
   var label = String(info.label || '').trim();
-  if (label === '주' || label === '야' || label === '비' || label === '휴') return label;
-  if (label === '주간') return '주';
-  if (label === '야간') return '야';
-  if (label === '비번') return '비';
-  if (label === '휴무' || label === '휴일') return '휴';
-  var status = String(info.dutyStatus || info.type || info.status || '').trim();
-  if (status === '주' || /주간/.test(status)) return '주';
-  if (status === '야' || /야간/.test(status)) return '야';
-  if (status === '비' || /비번/.test(status) || info.nightCarryover) return '비';
-  if (status === '휴' || /휴무|휴가|연차|병가|공가/.test(status)) return '휴';
+  var vacation = /^(연차|반차|병가|공가|특별휴가|출산휴가|육아휴직|돌봄|돌봄휴가|휴직|경조휴가|대체휴무|보상휴가|휴가)$/;
+  /* 근무 변경 창에서 설정한 휴가·휴무는 다른 근무 구분보다 우선합니다. */
+  if (info.overrideType === 'status' && status && !/^(주|주간|야|야간|비|비번|X|대기충당|휴무충당)$/.test(status)) {
+    return /^(휴|휴무|휴일)$/.test(status) ? '휴' : status;
+  }
+  var candidates = [type, label, status];
+  for (var i = 0; i < candidates.length; i++) {
+    var v = candidates[i];
+    if (v === 'X') return 'X';
+    if (/^(주|주간)$/.test(v)) return '주';
+    if (/^(야|야간)$/.test(v)) return '야';
+    if (/^(비|비번)$/.test(v)) return '비';
+    if (/^(휴|휴무|휴일)$/.test(v)) return '휴';
+    if (vacation.test(v)) return v;
+  }
+  if (info.nightCarryover) return '비';
   if (info.dia && typeof diaByNumber === 'function') {
-    var def = diaByNumber(info.dia);
-    var typ = String((def && def.type) || '').trim();
-    if (/주간/.test(typ)) return '주';
-    if (/야간/.test(typ)) return '야';
+    var def = diaByNumber(info.dia), typ = String((def && def.type) || '').trim();
+    if (/^(주|주간)$/.test(typ)) return '주';
+    if (/^(야|야간)$/.test(typ)) return '야';
+    if (/^(비|비번)$/.test(typ)) return '비';
+    if (typ === 'X') return 'X';
+    if (/^(휴|휴무)$/.test(typ)) return '휴';
   }
   return '';
 }
@@ -17033,7 +17044,7 @@ function rpCalRender() {
     for (var i = 0; i < first; i++) h += '<span></span>';
     for (var d = 1; d <= last; d++) {
       var k = getDateKey(y, m, d), info = days[k] || null, lab = rpCalendarDutyLabel(info);
-      var tone = lab ? toneOf(lab) : '';
+      var tone = lab === '주' ? 'day' : (lab === '야' || lab === '비' || lab === 'X') ? 'night' : lab ? 'off' : '';
       var dow = (first + d - 1) % 7, isT = t && t.y === y && t.m === m && t.d === d;
       h += '<button type="button" class="rp-cal-d' + (k === sel ? ' on' : '') + (isT ? ' today' : '') + (dow === 0 ? ' sun' : dow === 6 ? ' sat' : '') + '" onclick="rpCalPick(\'' + k + '\')"><i>' + d + '</i>' +
         (lab ? '<em class="t-' + tone + '">' + rpEsc(lab) + '</em>' : '<em></em>') + '</button>';
@@ -17129,7 +17140,7 @@ function tdSet(dateKey, dia) { var a = tdAll(); if (dia) a[dateKey] = dia; else 
 #rp-panel .rp-cal-d{display:flex;flex-direction:column;align-items:center;gap:1px;min-height:44px;padding:3px 0;border:1px solid transparent;border-radius:9px;background:transparent;font:inherit;cursor:pointer}
 #rp-panel .rp-cal-d i{font-style:normal;font-size:12.5px;font-weight:800;color:#1b2b45}
 #rp-panel .rp-cal-d em{font-style:normal;font-size:10px;font-weight:800;color:#475467;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-height:13px}
-#rp-panel .rp-cal-d em.t-day{color:#1d4ed8}#rp-panel .rp-cal-d em.t-night{color:#7c3aed}#rp-panel .rp-cal-d em.t-off{color:#e5533d}
+#rp-panel .rp-cal-d em.t-day{color:#e5a800}#rp-panel .rp-cal-d em.t-night{color:#1a73e8}#rp-panel .rp-cal-d em.t-off{color:#e53935}
 #rp-panel .rp-cal-d.today{background:#f2f7ff}
 #rp-panel .rp-cal-d.on{border-color:#2f6fd6;background:#2f6fd6}
 #rp-panel .rp-cal-d.on i,#rp-panel .rp-cal-d.on em{color:#fff!important}
