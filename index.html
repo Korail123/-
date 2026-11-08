@@ -50,12 +50,22 @@ if (uiMq) { var uiMqFn = function () { if (uiGet().mode === 'system') uiApply();
 /* 글씨 크기 */
 html.ui-zoomed body{zoom:var(--ui-zoom)}
 /* 다크 모드: 화면을 반전하고, 사진 · 그림 · 열차 애니메이션은 다시 반전해 원래 색 유지 */
-html.ui-dark{background:#e9e7e2;filter:invert(.92) hue-rotate(180deg)}
+/* 메인화면 열차 애니메이션 카드는 반전에서 아예 빼서 라이트 모드와 완전히 같게 (색 · 모양 그대로).
+   그래서 html 전체가 아니라 그 카드를 뺀 나머지 덩어리마다 반전을 적용 */
+html.ui-dark,html.ui-dark body,html.ui-dark #main-container{background:#141414!important}
+html.ui-dark body>*:not(#main-container):not(script):not(style):not(.dia-modal):not(.schedule-edit-modal):not(.route-viewer),
+html.ui-dark #main-container>*:not(#main-section):not(.dia-modal):not(.schedule-edit-modal):not(.route-viewer),
+html.ui-dark #main-section>*:not(#welcome-card),
+/* 팝업은 바깥 어두운 막(흐림 효과)은 그대로 두고 안의 창만 반전 → 뒤 화면이 하얗게 뜨지 않음 */
+html.ui-dark .dia-modal>*,html.ui-dark .schedule-edit-modal>*,html.ui-dark .route-viewer>*{filter:invert(.92) hue-rotate(180deg)}
+html.ui-dark .dia-modal>*{box-shadow:0 10px 30px rgba(255,255,255,.12)!important}
 /* 그림(열차 · 풍경 · 달력 미리보기 · 사진)만 다시 반전 — 선 아이콘과 글자는 반전된 밝은 색 그대로 */
-html.ui-dark .welcome-track,html.ui-dark .pp-track,html.ui-dark .cx-scene,html.ui-dark .wg-prev,html.ui-dark video,html.ui-dark canvas,
-html.ui-dark img.wt-img,html.ui-dark .board-content img,html.ui-dark .sl-logo-img{filter:invert(1) hue-rotate(180deg)}
+html.ui-dark .pp-track,html.ui-dark .cx-scene,html.ui-dark .wg-prev,html.ui-dark video,html.ui-dark canvas,
+html.ui-dark img.wt-img,html.ui-dark .board-content img,html.ui-dark .sl-logo-img{filter:url(#rs-undark)!important}
+/* 메인화면 열차 애니메이션은 다크 모드에서도 라이트 모드와 똑같은 색 (화면 반전을 정확히 되돌리는 필터) */
+
 /* 프로필 사진은 다크 모드에서도 라이트 모드 색 그대로 */
-html.ui-dark svg.rs-avatar,html.ui-dark .mp-avatar img,html.ui-dark .bp-avatar img,html.ui-dark .bc-avatar img,html.ui-dark .bp-c-avatar img{filter:invert(1) hue-rotate(180deg)!important}
+html.ui-dark svg.rs-avatar,html.ui-dark .mp-avatar img,html.ui-dark .bp-avatar img,html.ui-dark .bc-avatar img,html.ui-dark .bp-c-avatar img{filter:url(#rs-undark)!important}
 /* 아이콘: 다크 전용 아이콘이 있으면 그것을(applyAppIcons), 없으면 화면 반전된 밝은 선 아이콘 그대로 */
 /* 글씨를 키워도 팝업이 화면 밖으로 나가지 않게 */
 html.ui-zoomed .dia-dialog{max-width:calc((100vw - 20px) / var(--ui-zoom))!important}
@@ -137,6 +147,8 @@ padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-appl
 </style>
 </head>
 <body>
+<!-- 다크 모드 되돌림 필터: html의 invert(.92)+hue-rotate(180)를 정확히 거꾸로 (사진 · 열차 애니메이션 · 프로필 원래 색) -->
+<svg width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false"><filter id="rs-undark" color-interpolation-filters="sRGB" x="0" y="0" width="100%" height="100%"><feColorMatrix type="hueRotate" values="180"/><feComponentTransfer><feFuncR type="linear" slope="-1.1904762" intercept="1.0952381"/><feFuncG type="linear" slope="-1.1904762" intercept="1.0952381"/><feFuncB type="linear" slope="-1.1904762" intercept="1.0952381"/></feComponentTransfer></filter></svg>
 <div id="app-splash" data-sig="r" role="status" aria-live="polite" aria-label="철도비서 불러오는 중">
   <div class="sp-wrap">
     <div class="sp-head"><i class="r"></i><i class="y"></i><i class="g"></i></div>
@@ -1387,6 +1399,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <li class="ns-dim">아이폰은 홈 화면에 추가해야 알림 가능</li>
       </ul>
     </div>
+    <div class="ns-card nk-card" data-kind="nx"></div>
     <div class="ns-card ns-test-card">
     <div class="ns-card-title">조회 · 테스트</div>
     <div class="ns-tests ns-tests-3">
@@ -1425,6 +1438,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <div id="pass-lead" class="pv2-lead"></div>
       </div>
       <div id="pass-today" class="pv2-today"></div>
+      <div class="nk-card nk-in-pv2" data-kind="pass"></div>
       <details class="pv2-tools">
         <summary>테스트 도구</summary>
         <div class="pv2-links">
@@ -10187,6 +10201,7 @@ function passMyDays(cfg) {
 function openPassSettings() {
   if (!passAllowed()) { alert('로그인 후 이용할 수 있습니다.'); return; }
   passCardRender();
+  nkRender();
   $('pass-panel').classList.add('active');
 }
 function closePassSettings() { $('pass-panel').classList.remove('active'); }
@@ -11560,9 +11575,90 @@ function renderNxSub() {
     ? '※ 운휴가 생길 때만 팝업알림'
     : '※ 운휴가 생길 때만 팝업알림 (꺼짐)';
 }
+/* ============ 알림 종류별 설정 (운휴 · 통과/도착): 팝업 · 소리 · 진동 + 못 받았을 때 다시 알림 ============ */
+var NK_NAMES = { nx: '운휴 알림', pass: '통과/도착 알림', alarm: '출근 알림' };
+function nkGet(kind) {
+  var p = getNotiPrefs(), k = (p.kinds && p.kinds[kind]) || {}, r = (p.retry && p.retry[kind]) || {};
+  function b(v, dflt) { return typeof v === 'boolean' ? v : dflt; }
+  return { popup: b(k.popup, p.popup), sound: b(k.sound, p.sound), vib: b(k.vib, p.vib),
+           n: r.n >= 0 && r.n <= 5 ? +r.n : 3, every: [1, 2, 3, 5, 10].indexOf(+r.every) >= 0 ? +r.every : 2 };
+}
+function nkSet(kind, key, val) {
+  var p = getNotiPrefs();
+  p.kinds = p.kinds || {}; p.retry = p.retry || {};
+  if (key === 'n' || key === 'every') { p.retry[kind] = p.retry[kind] || { n: 3, every: 2 }; p.retry[kind][key] = +val; }
+  else { var cur = nkGet(kind); p.kinds[kind] = p.kinds[kind] || { popup: cur.popup, sound: cur.sound, vib: cur.vib }; p.kinds[kind][key] = !!val; }
+  saveNotiPrefs(p);
+  nkRender();
+  if (key === 'n' || key === 'every') nkSyncServer();
+}
+/* 다시 알림 횟수 · 간격은 서버가 알아야 하므로 이 기기 구독에 저장 */
+function nkEndpoint(cb) {
+  try {
+    if (!('serviceWorker' in navigator)) { cb(''); return; }
+    navigator.serviceWorker.ready.then(function (r) { return r.pushManager ? r.pushManager.getSubscription() : null; })
+      .then(function (sub) { cb(sub ? sub.endpoint : ''); }).catch(function () { cb(''); });
+  } catch (e) { cb(''); }
+}
+function nkSyncServer() {
+  var u = getCurrentUser(); if (!u || !u.employeeId) return;
+  var p = getNotiPrefs();
+  nkEndpoint(function (ep) {
+    api({ action: 'pushPrefs', employeeId: u.employeeId, token: u.token, endpoint: ep, prefs: { retry: p.retry || {} } }, function (r) {
+      if (r && r.success === false && r.errorCode !== 'AUTH' && !/function|exist|찾을 수/i.test(r.message || '')) showToast('다시 알림 설정을 서버에 저장하지 못했어요.');
+    });
+  });
+}
+function nkCardHtml(kind) {
+  var c = nkGet(kind);
+  function tog(key, label, sub, dis) {
+    return '<label class="nk-row' + (dis ? ' dis' : '') + '"><span><b>' + label + '</b><small>' + sub + '</small></span>' +
+      '<input type="checkbox" class="ns-switch"' + (c[key] ? ' checked' : '') + (dis ? ' disabled' : '') + ' onchange="nkSet(\'' + kind + '\',\'' + key + '\',this.checked)"></label>';
+  }
+  function sel(key, opts) {
+    return '<select onchange="nkSet(\'' + kind + '\',\'' + key + '\',this.value)">' + opts.map(function (o) {
+      return '<option value="' + o[0] + '"' + (+c[key] === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
+  }
+  return '<div class="nk-title">알림 방식 <small>' + NK_NAMES[kind] + '</small></div>' +
+    tog('popup', '팝업', '화면 위로 띄우기 (끄면 알림창에만 조용히)') +
+    tog('sound', '소리', '알림음', !c.popup) +
+    tog('vib', '진동', '진동 울리기', !c.popup) +
+    '<div class="nk-retry"><b>못 받았을 때 다시 알림</b>' +
+      '<div class="nk-retry-sel">' + sel('n', [[0, '안 함'], [1, '1번'], [2, '2번'], [3, '3번'], [4, '4번'], [5, '5번']]) +
+      (c.n > 0 ? '<span>·</span>' + sel('every', [[1, '1분마다'], [2, '2분마다'], [3, '3분마다'], [5, '5분마다'], [10, '10분마다']]) : '') + '</div>' +
+      '<small>휴대폰이 알림을 띄우면 서버에 \'받았음\'을 알려요. 그게 안 오면 정한 간격으로 다시 보내요.</small></div>' +
+    '<button type="button" class="nk-log-btn" onclick="nkShowLog(\'' + kind + '\')">최근 알림 기록 보기</button>' +
+    '<div class="nk-log" id="nk-log-' + kind + '" hidden></div>';
+}
+function nkRender() {
+  document.querySelectorAll('.nk-card[data-kind]').forEach(function (el) {
+    var k = el.getAttribute('data-kind'), lg = $('nk-log-' + k), keep = lg && !lg.hidden ? lg.innerHTML : '';
+    el.innerHTML = nkCardHtml(k);
+    if (keep) { var n = $('nk-log-' + k); n.innerHTML = keep; n.hidden = false; }
+  });
+}
+function nkShowLog(kind) {
+  var box = $('nk-log-' + kind), u = getCurrentUser(); if (!box || !u) return;
+  box.hidden = false; box.innerHTML = '<div class="nk-log-empty">불러오는 중…</div>';
+  nkEndpoint(function (ep) {
+    api({ action: 'pushLog', employeeId: u.employeeId, token: u.token, endpoint: ep, kind: kind }, function (r) {
+      if (!r || r.success === false) { box.innerHTML = '<div class="nk-log-empty">기록을 불러오지 못했어요. (서버 SQL 실행 전이면 아직 기록이 없어요)</div>'; return; }
+      var rows = r.rows || [];
+      if (!rows.length) { box.innerHTML = '<div class="nk-log-empty">최근 보낸 ' + NK_NAMES[kind] + '이 없어요.</div>'; return; }
+      box.innerHTML = rows.map(function (x) {
+        var st = x.acked ? '<em class="ok">✓ 받음 ' + esc(x.acked) + '</em>'
+          : x.ok === false ? '<em class="bad">✕ 보내지 못함</em>'
+          : (x.tries >= x.max ? '<em class="bad">못 받음</em>' : '<em class="wait">받는 중…</em>');
+        return '<div class="nk-log-row"><div><b>' + esc(x.title || NK_NAMES[kind]) + '</b>' + (x.mine ? '' : ' <small>(다른 기기)</small>') +
+          '<small>' + esc(String(x.at || '').slice(5, 16)) + ' 보냄' + (x.tries > 1 ? ' · ' + (x.tries - 1) + '번 다시 보냄' : '') + '</small></div>' + st + '</div>';
+      }).join('');
+    });
+  });
+}
 function openNxSettings() {
   $('nx-on').checked = getNxCfg().on;
   $('nx-result').textContent = '';
+  nkRender();
   $('nx-panel').classList.add('active');
 }
 function closeNxSettings() { $('nx-panel').classList.remove('active'); }
@@ -12372,6 +12468,7 @@ function runLoginPopups() {
   briefingLoginCheck(gen);   /* 오늘의 브리핑: 켠 사용자만 하루 첫 접속 때 */
   noticeCheckNew(gen);       /* 새 공지사항: 사용자별 최초 1회 (운휴 팝업 위에 표시) */
   setTimeout(function () { permAutoPrompt(gen); }, 4000);   /* 알림 권한(소리·진동·팝업): 처음 한 번 안내 */
+  setTimeout(function () { try { if (getNotiPrefs().retry) nkSyncServer(); } catch (e) {} }, 6000);   /* 다시 알림 설정을 서버 구독에 맞춰 둠 */
 }
 /* ============ 알림 방식 설정: 팝업 · 소리 · 진동 · 볼륨 (이 폰에만 저장) ============ */
 function notiPrefKey() { return 'notiPrefs_' + (getCurrentUser().employeeId || ''); }
@@ -12383,6 +12480,8 @@ function getNotiPrefs() {
     if (typeof o.sound === 'boolean') d.sound = o.sound;
     if (typeof o.vib === 'boolean') d.vib = o.vib;
     if (o.vol >= 0 && o.vol <= 100) d.vol = Math.round(o.vol);
+    if (o.kinds && typeof o.kinds === 'object') d.kinds = o.kinds;
+    if (o.retry && typeof o.retry === 'object') d.retry = o.retry;
   } catch (e) {}
   return d;
 }
@@ -15492,6 +15591,31 @@ html body #main-section .menu-grid > .menu-btn > span{display:flex;align-items:f
 #wg-panel .wg-lab small{font-weight:600;color:#17a85a;margin-left:6px}
 </style>
 <style id="widget-panel-style-end"></style>
+<style id="nk-style">
+.nk-card{padding:12px 12px 10px}
+.nk-in-pv2{margin-top:10px;border-top:1px dashed #dfe6f1;padding:12px 2px 2px}
+.nk-title{font-weight:800;font-size:13.5px;color:#22324d;margin:0 2px 6px}
+.nk-title small{font-weight:700;color:#7b879a;margin-left:4px;font-size:11.5px}
+.nk-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 2px;border-bottom:1px solid #eef1f6}
+.nk-row span{display:flex;flex-direction:column;min-width:0}
+.nk-row b{font-size:13px;color:#22324d}.nk-row small{font-size:11px;color:#8590a2}
+.nk-row.dis{opacity:.45}
+.nk-retry{padding:10px 2px 4px}
+.nk-retry b{display:block;font-size:13px;color:#22324d;margin-bottom:6px}
+.nk-retry small{display:block;font-size:11px;color:#8590a2;margin-top:6px;line-height:1.45}
+.nk-retry-sel{display:flex;align-items:center;gap:6px}
+.nk-retry-sel select{flex:1;min-width:0;border:1.5px solid #dfe6f1;border-radius:10px;padding:8px;background:#fff;font-size:13px;font-weight:700;color:#22324d}
+.nk-log-btn{margin-top:8px;width:100%;border:1.5px solid #c9dbf7;border-radius:10px;background:#fff;color:#2f6fd6;font-weight:800;font-size:12.5px;padding:8px 0}
+.nk-log{margin-top:8px;border-radius:10px;background:#f7f9fc;padding:4px 8px}
+.nk-log-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid #e9eef5}
+.nk-log-row:last-child{border-bottom:0}
+.nk-log-row div{min-width:0}.nk-log-row b{font-size:12px;color:#22324d}
+.nk-log-row small{display:block;font-size:10.5px;color:#8590a2}
+.nk-log-row em{font-style:normal;font-size:11px;font-weight:800;white-space:nowrap}
+.nk-log-row em.ok{color:#2b8a3e}.nk-log-row em.bad{color:#e03131}.nk-log-row em.wait{color:#e8590c}
+.nk-log-empty{font-size:11.5px;color:#8590a2;padding:8px 0;text-align:center}
+</style>
+
 <style id="brief-wx-style">
 #brief-set-panel .brief-wx-lab{font-weight:800;font-size:13.5px;color:#22324d;margin:0 2px 8px}
 #brief-set-panel .brief-wx-seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px;border-radius:12px;background:#eef2f8}

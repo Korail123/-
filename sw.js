@@ -164,15 +164,21 @@ self.addEventListener('push', function (e) {
       toApp,
       mark,
       readPrefs().then(function (p) {
-        var sound = p.sound !== false;
-        var vib = p.vib !== false;
+        /* 알림 종류별 설정(운휴 · 통과/도착 · 출근): 팝업 · 소리 · 진동. 종류 설정이 없으면 공통 설정 */
+        var kind = d.kind || (d.pass ? 'pass' : (/^nx-/.test(d.tag || '') ? 'nx' : 'alarm'));
+        var kp = (p.kinds && p.kinds[kind]) || {};
+        function pick(k) { return (typeof kp[k] === 'boolean' ? kp[k] : p[k]) !== false; }
+        var popup = pick('popup');
+        var sound = popup && pick('sound');
+        var vib = popup && pick('vib');
 
         return self.registration.showNotification(title, {
           body: d.body || '새로운 열차 운행 알림입니다.',
           tag: d.tag || 'alarm',
-          renotify: true,
+          renotify: popup,
           silent: !sound && !vib,
-          requireInteraction: true,
+          /* 팝업을 끄면 알림창에만 조용히 쌓임 (화면 위로 뜨지 않음) */
+          requireInteraction: popup,
           icon: 'icon-192.png',
           badge: 'icon-192.png',
           vibrate: vib
