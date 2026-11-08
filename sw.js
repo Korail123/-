@@ -183,10 +183,20 @@ self.addEventListener('push', function (e) {
             pass: d.pass || null
           }
         });
+      }).then(function () {
+        /* 알림을 띄웠으면 서버에 '받았음'을 알림 → 서버는 다시 보내지 않음 (못 띄웠으면 2분 뒤 다시 옴) */
+        return pushAck(d.ack);
       })
     ])
   );
 });
+function pushAck(a) {
+  if (!a || !a.u || !a.id) return Promise.resolve();
+  var h = { 'Content-Type': 'application/json' };
+  if (a.k) { h.apikey = a.k; h.Authorization = 'Bearer ' + a.k; }
+  function once() { return fetch(a.u, { method: 'POST', headers: h, body: JSON.stringify({ p: { id: a.id } }), cache: 'no-store' }); }
+  return once().catch(function () { return new Promise(function (r) { setTimeout(r, 1500); }).then(once); }).catch(function () {});
+}
 
 self.addEventListener('notificationclick', function (e) {
   e.notification.close();
