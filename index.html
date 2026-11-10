@@ -1932,7 +1932,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="schedule-edit-input-group">
       <label class="schedule-edit-label" for="schedule-edit-dia">다이아 번호 / 열차번호 입력</label>
       <div class="rs-dia-duty-row">
-        <input id="schedule-edit-dia" class="schedule-edit-input" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="20" placeholder="다이아 번호 또는 열차번호 입력 (예: 12B07 / 1001)">
+        <input id="schedule-edit-dia" class="schedule-edit-input" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="20" placeholder="다이아 번호 또는 열차번호 입력 (예: 12B07 / 1001 / L / M)">
         <div class="schedule-edit-double rs-dia-duty-small" id="schedule-edit-duty-choice" role="group" aria-label="근무 구분">
           <button type="button" class="schedule-edit-credit-btn" data-duty="주" onclick="selectScheduleDuty('주')">주간</button>
           <button type="button" class="schedule-edit-credit-btn" data-duty="야" onclick="selectScheduleDuty('야')">야간</button>
@@ -5639,9 +5639,20 @@ function findScheduleTrainCandidates(trainNo) {
       var trainKey = scheduleTrainKey(trains[j]);
       /* 숫자만 입력한 경우에도 열차번호의 숫자 부분이 정확히 일치하면 찾습니다.
          예: 입력 1234 → 저장값 K1234, 1234열차 등과 매칭 */
-      var numericMatch = /^\\d+$/.test(key) &&
-        String(trains[j] == null ? '' : trains[j]).replace(/[^0-9]/g, '') === key;
-      if (trainKey === key || numericMatch) { matched = true; break; }
+      var trainDigits = String(trains[j] == null ? '' : trains[j]).replace(/[^0-9]/g, '');
+      /* 숫자만 입력하면 열차번호 안에 해당 숫자가 포함된 항목을 검색합니다.
+         예: 123 입력 → L123, 1234, K-123 등 숫자 부분에 123이 있는 열차 */
+      var numericMatch = /^\d+$/.test(key) && trainDigits.indexOf(key) >= 0;
+      /* L, M 등 알파벳 열차번호와 'L < M'처럼 구분기호가 포함된 입력도 지원 */
+      var alphaNumericKey = key.replace(/[^A-Z0-9]/g, '');
+      var alphaNumericTrain = trainKey.replace(/[^A-Z0-9]/g, '');
+      var compoundTokens = key.split(/[^A-Z0-9]+/).filter(Boolean);
+      var compoundMatch = compoundTokens.length > 1 &&
+        compoundTokens.indexOf(trainKey.replace(/[^A-Z0-9]/g, '')) >= 0;
+      if (trainKey === key || numericMatch ||
+          (alphaNumericKey && alphaNumericTrain === alphaNumericKey) || compoundMatch) {
+        matched = true; break;
+      }
     }
     if (matched) found.push(it);
   }
@@ -6009,7 +6020,7 @@ function fitGroupTableText() {
     }
     if (fit) break;
   }
-  tb.style.setProperty('--group-table-font-size', Math.max(7, fs) + 'px');
+  tb.style.setProperty('--group-table-font-size', (Math.max(7, fs) + 1.333) + 'px');
 }
 window.addEventListener('resize', function () { fitGroupTableText(); });
 function renderGroupTable() {
