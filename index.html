@@ -196,6 +196,15 @@ padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-appl
 #group-section .g-mini-note.g-swap{color:#1769d2}
 #group-info-body .rs-credit-row b{color:#d63040}
 </style>
+<style id="rs-group-uniform-font-20261110">
+/* 근무그룹 표의 문자 크기는 한 값으로 고정: 한글 한 글자, 별표 포함 */
+#group-schedule-table th,
+#group-schedule-table td,
+#group-schedule-table th *,
+#group-schedule-table td * {
+  font-size: var(--group-table-font-size, 15px) !important;
+}
+</style>
 </head>
 <body>
 <!-- 다크 모드 되돌림 필터: html의 invert(.92)+hue-rotate(180)를 정확히 거꾸로 (사진 · 열차 애니메이션 · 프로필 원래 색) -->
@@ -4323,7 +4332,13 @@ function wgLineHtml() {
   }).join('') + '</div>';
 }
 /* ===== 안드로이드 / 아이폰 탭 + 따라하기 애니메이션 ===== */
-var WG_SCRIPTABLE = "// 철도비서 근무표 달력 위젯 (아이폰 · Scriptable 앱용)\n// 사용법\n//  1) 앱스토어에서 Scriptable 설치 → 열기 → 오른쪽 위 + → 이 내용 전체 붙여넣기 → 이름 '철도비서' → Done\n//  2) 홈 화면 길게 누르기 → 왼쪽 위 + (또는 편집 › 위젯 추가) → Scriptable → 큰 크기(Large) 추가\n//  3) 위젯 길게 누르기 › 위젯 편집\n//       Script    : 철도비서\n//       Parameter : 철도비서 › 환경설정 › 위젯 연결 › '그림 주소 복사' 한 주소 붙여넣기\n//       When Interacting : Run Script (누르면 바로 새로고침)\n//  ※ 위젯을 언제 새로 그릴지는 iOS가 정해요(보통 10~20분 간격). 바로 보려면 위젯을 누르세요.\n\nconst url = (args.widgetParameter || '').trim();\n\nconst widget = new ListWidget();\nwidget.backgroundColor = new Color('#ffffff', 0);\nwidget.setPadding(0, 0, 0, 0);\n// 15분 뒤 다시 그려 달라고 요청 (실제 시점은 iOS가 정함)\nwidget.refreshAfterDate = new Date(Date.now() + 15 * 60 * 1000);\n\nif (!url) {\n  const t = widget.addText('위젯 편집 › Parameter에\\n철도비서 그림 주소를 붙여넣어 주세요');\n  t.font = Font.boldSystemFont(14);\n  t.textColor = Color.gray();\n} else {\n  try {\n    // 주소 끝에 시각을 붙여서 예전 그림을 다시 쓰지 않게 함\n    const req = new Request(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now());\n    req.timeoutInterval = 20;\n    const img = await req.loadImage();\n    widget.addSpacer();\n    const row = widget.addStack();\n    row.addSpacer();\n    const pic = row.addImage(img);\n    pic.applyFittingContentMode();\n    pic.centerAlignImage();\n    row.addSpacer();\n    widget.addSpacer();\n  } catch (e) {\n    const t = widget.addText('달력을 불러오지 못했어요\\n(인터넷 연결 · 주소 확인)');\n    t.font = Font.systemFont(13);\n    t.textColor = Color.gray();\n  }\n}\n\nif (config.runsInWidget) {\n  Script.setWidget(widget);\n} else {\n  await widget.presentLarge();\n}\nScript.complete();\n";
+var WG_SCRIPTABLE = "// 철도비서 근무표 달력 위젯 (아이폰 · Scriptable)\n// 철도비서 > 환경설정 > 위젯 연결에서 복사된 스크립트입니다.\n// Parameter에는 기존 '그림 주소 복사' 주소를 붙여넣으세요.\n// 위젯을 누르면 철도비서 사이트를 엽니다. iOS에 따라 Safari로 열릴 수 있습니다.\nconst APP_URL = __RAIL_APP_URL__;\nconst url = (args.widgetParameter || '').trim();\nconst widget = new ListWidget();\nwidget.backgroundColor = new Color('#ffffff', 0);\nwidget.setPadding(0, 0, 0, 0);\nwidget.refreshAfterDate = new Date(Date.now() + 15 * 60 * 1000);\nif (/^https:\\/\\//i.test(APP_URL)) widget.url = APP_URL;\n\nif (!url) {\n  const t = widget.addText('위젯 편집 › Parameter에\\n철도비서 그림 주소를 붙여넣어 주세요');\n  t.font = Font.boldSystemFont(14);\n  t.textColor = Color.gray();\n} else {\n  try {\n    const req = new Request(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now());\n    req.timeoutInterval = 20;\n    const img = await req.loadImage();\n    widget.addSpacer();\n    const row = widget.addStack();\n    row.addSpacer();\n    const pic = row.addImage(img);\n    pic.applyFittingContentMode();\n    pic.centerAlignImage();\n    row.addSpacer();\n    widget.addSpacer();\n  } catch (e) {\n    const t = widget.addText('달력을 불러오지 못했어요\\n(인터넷 연결 · 주소 확인)');\n    t.font = Font.systemFont(13);\n    t.textColor = Color.gray();\n  }\n}\nif (config.runsInWidget) {\n  Script.setWidget(widget);\n} else {\n  await widget.presentLarge();\n}\nScript.complete();\n";
+
+/* 복사 시 현재 배포된 철도비서 주소를 삽입. 위젯 그림 API 주소와 분리. */
+function wgScriptableForSite() {
+  var page = window.location.href.split('#')[0].split('?')[0];
+  return WG_SCRIPTABLE.replace('__RAIL_APP_URL__', JSON.stringify(page));
+}
 function wgIsIphone() { var ua = navigator.userAgent || ''; return /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
 var wgTabNow = '';
 function wgTab(k) {
@@ -4355,7 +4370,7 @@ GD_SCENES.wi = [
   { cap: '④ 홈 화면 꾹 › + › Scriptable › 큰 크기 › 위젯 추가', tap: [50, 85], sel: '.gd-sheet .gd-btn', html: 'WPICK_I' },
   { cap: '⑤ 위젯 꾹 › 위젯 편집 › Script · Parameter 넣기', tap: [50, 50], sel: '.gd-in.hl', html:
     '<div class="gd-top">위젯 편집</div><div class="gd-lab">Script</div><div class="gd-in">철도비서</div><div class="gd-lab">Parameter</div><div class="gd-in hl">https://…widget_png?t=…<span class="gd-caret"></span></div><div class="gd-lab">When Interacting</div><div class="gd-in">Run Script</div>' },
-  { cap: '⑥ 홈 화면에 근무표 달력 완성 (누르면 새로고침)', tap: null, html: 'HOME' }
+  { cap: '⑥ 홈 화면에 근무표 달력 완성 (누르면 철도비서 열기)', tap: null, html: 'HOME' }
 ];
 function rsFeedUrl(token) { return SUPABASE_URL + '/rest/v1/rpc/widget?t=' + token + '&apikey=' + SUPABASE_KEY; }
 function openWidgetPanel() {
@@ -4423,14 +4438,14 @@ function wgRender(r) {
     /* ---- 아이폰 (Scriptable) ---- */
     '<div class="wg-pane" data-t="ios" hidden>' +
     '<div class="gd-stage" data-g="wi"></div>' +
-    '<div class="wg-btns"><button type="button" onclick="wgCopy(window.wgPngNow)">① 그림 주소 복사</button><button type="button" onclick="wgCopy(WG_SCRIPTABLE)">② 스크립트 복사</button></div>' +
+    '<div class="wg-btns"><button type="button" onclick="wgCopy(window.wgPngNow)">① 그림 주소 복사</button><button type="button" onclick="wgCopy(wgScriptableForSite())">② 스크립트 복사</button></div>' +
     '<ol class="wg-steps">' +
     '<li>App Store에서 <b>Scriptable</b>(무료, 광고 없음)을 설치해요.</li>' +
     '<li>위 <b>② 스크립트 복사</b>를 누르고 Scriptable을 열어요 › 오른쪽 위 <b>+</b> › 붙여넣기 › 맨 위 이름을 <b>철도비서</b>로 › <b>Done</b>.</li>' +
     '<li>홈 화면 빈 곳을 꾹 › 왼쪽 위 <b>+</b> (또는 <b>편집 › 위젯 추가</b>) › <b>Scriptable</b> › <b>큰 크기</b> › 위젯 추가.</li>' +
     '<li>철도비서로 돌아와 <b>① 그림 주소 복사</b>를 눌러요.</li>' +
     '<li>추가한 위젯을 꾹 › <b>위젯 편집</b> › <b>Script</b>: 철도비서 / <b>Parameter</b>: 붙여넣기 / <b>When Interacting</b>: Run Script.</li>' +
-    '<li>끝! 위젯은 iOS가 보통 15~30분마다 다시 그려요. 바로 보려면 위젯을 한 번 누르세요.</li>' +
+    '<li>끝! 위젯은 iOS가 정한 주기로 자동 갱신돼요. 위젯을 누르면 철도비서 주소가 열려요(아이폰 설정에 따라 Safari로 열릴 수 있어요).</li>' +
     '</ol>' +
     '<div class="wg-tip">아이폰 위젯은 ‹ › 로 달을 넘길 수 없어서 <b>이번 달</b>만 보여요.</div>' +
     '</div>' +
@@ -5898,21 +5913,24 @@ function rsGroupCalendarDuty(info) {
 function isLeaveInfo(info) {
   return !!(info && info.label && (info.overrideType === 'status' || info.label === '휴' || info.label === 'X'));
 }
-/* 근무그룹 표: 칸 크기는 고정하고, 칸보다 긴 글자는 글자 크기를 줄여 칸 안에 맞춤 */
+/* 근무그룹 표: 모든 글자(주·야·비·X·*·이름·날짜·합계)는 항상 같은 글자 크기.
+   가장 긴 텍스트에 맞춰 표 전체의 글자 크기를 함께 조정한다. */
 function fitGroupTableText() {
   var tb = $('group-schedule-table');
-  if (!tb || !tb.offsetWidth) return;      // 화면에 안 보일 때는 측정 불가
+  if (!tb || !tb.offsetWidth) return;
   var cells = tb.querySelectorAll('th, td');
-  for (var i = 0; i < cells.length; i++) {
-    var c = cells[i];
-    c.style.fontSize = '';
-    var fs = parseFloat(window.getComputedStyle(c).fontSize) || 12;
-    var guard = 0;
-    while (c.scrollWidth > c.clientWidth && fs > 7 && guard++ < 30) {
-      fs -= 0.5;
-      c.style.fontSize = fs + 'px';
+  tb.style.setProperty('--group-table-font-size', '15px');
+  var fs = 15;
+  for (; fs > 7; fs -= 0.5) {
+    tb.style.setProperty('--group-table-font-size', fs + 'px');
+    var fit = true;
+    for (var i = 0; i < cells.length; i++) {
+      var c = cells[i];
+      if (c.scrollWidth > c.clientWidth + 1) { fit = false; break; }
     }
+    if (fit) break;
   }
+  tb.style.setProperty('--group-table-font-size', Math.max(7, fs) + 'px');
 }
 window.addEventListener('resize', function () { fitGroupTableText(); });
 function renderGroupTable() {
