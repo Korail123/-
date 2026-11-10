@@ -1930,14 +1930,15 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="schedule-edit-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무변경" alt="" aria-hidden="true">근무 변경</div>
     <div id="schedule-edit-date" class="schedule-edit-date"></div>
     <div class="schedule-edit-input-group">
-      <label class="schedule-edit-label" for="schedule-edit-dia">DIA 번호 입력</label>
+      <label class="schedule-edit-label" for="schedule-edit-dia">다이아 번호 / 열차번호 입력</label>
       <div class="rs-dia-duty-row">
-        <input id="schedule-edit-dia" class="schedule-edit-input" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="20" placeholder="예: 12B07">
+        <input id="schedule-edit-dia" class="schedule-edit-input" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="20" placeholder="다이아 번호 또는 열차번호 입력 (예: 12B07 / 1001)">
         <div class="schedule-edit-double rs-dia-duty-small" id="schedule-edit-duty-choice" role="group" aria-label="근무 구분">
           <button type="button" class="schedule-edit-credit-btn" data-duty="주" onclick="selectScheduleDuty('주')">주간</button>
           <button type="button" class="schedule-edit-credit-btn" data-duty="야" onclick="selectScheduleDuty('야')">야간</button>
         </div>
       </div>
+      <div id="schedule-edit-train-results" style="display:none;margin-top:8px;padding:9px;border:1px solid #cfe0f5;border-radius:10px;background:#f4f8ff;text-align:left"></div>
     </div>
     <div class="schedule-edit-input-group">
       <div class="schedule-edit-label">충당 구분</div>
@@ -5611,6 +5612,68 @@ function selectScheduleDuty(value) {
     document.querySelectorAll('#schedule-edit-options .schedule-edit-option').forEach(function(btn) { btn.classList.remove('selected'); });
   }
 }
+/* 열차번호 입력 시: 개인별 순서표에서 휴무를 제외하고 해당 열차가 포함된 순번을 찾습니다. */
+function scheduleTrainKey(value) {
+  return String(value == null ? '' : value).trim().toUpperCase().replace(/\s+/g, '');
+}
+function clearScheduleTrainResults() {
+  var box = $('schedule-edit-train-results');
+  if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+  var input = $('schedule-edit-dia');
+  if (input) input.removeAttribute('data-pending-train');
+}
+function findScheduleTrainCandidates(trainNo) {
+  var key = scheduleTrainKey(trainNo);
+  if (!key) return [];
+  var list = rotList();
+  var found = [];
+  for (var i = 0; i < list.length; i++) {
+    var it = list[i] || {};
+    var type = String(it.type || '').trim();
+    var dia = String(it.dia || '').trim();
+    /* 휴무 순번은 열차번호 선택 목록에서 제외합니다. */
+    if (type === '휴' || /휴무|휴가/.test(type) || dia === '휴무') continue;
+    var trains = [it.train1, it.train2, it.train3];
+    var matched = false;
+    for (var j = 0; j < trains.length; j++) {
+      if (scheduleTrainKey(trains[j]) === key) { matched = true; break; }
+    }
+    if (matched) found.push(it);
+  }
+  return found;
+}
+function showScheduleTrainCandidates(trainNo) {
+  var input = $('schedule-edit-dia');
+  var box = $('schedule-edit-train-results');
+  if (!input || !box) return;
+  var typed = String(trainNo || '').trim().toUpperCase();
+  clearScheduleTrainResults();
+  if (!typed) return;
+  /* 기존 다이아 번호 입력 동작을 우선 보존합니다. */
+  if (diaByNumber(typed)) return;
+  var candidates = findScheduleTrainCandidates(typed);
+  if (!candidates.length) return;
+  input.setAttribute('data-pending-train', '1');
+  var html = '<div style="font-size:12px;font-weight:800;color:#24558b;margin-bottom:7px">열차번호가 포함된 순서표를 선택하세요</div>';
+  for (var i = 0; i < candidates.length; i++) {
+    var it = candidates[i];
+    html += '<button type="button" class="schedule-edit-option" data-train-candidate="' + i + '" style="display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px;margin:4px 0;padding:9px 10px;border:1px solid #d5e2f2;border-radius:8px;background:#fff;text-align:left;color:#26384d">' +
+      '<span><b>' + esc(String(it.seq || '-') + '번 순서') + '</b><small style="display:block;font-size:11px;color:#66788d">다이아 ' + esc(it.dia || it.type || '-') + ' · ' + esc(it.type || '-') + '</small></span>' +
+      '<span style="font-size:12px;color:#315f96">' + esc([it.train1,it.train2,it.train3].filter(Boolean).join(' · ')) + '</span></button>';
+  }
+  box.innerHTML = html;
+  box.style.display = 'block';
+  var buttons = box.querySelectorAll('[data-train-candidate]');
+  for (var bi = 0; bi < buttons.length; bi++) {
+    buttons[bi].onclick = function () {
+      var selected = candidates[parseInt(this.getAttribute('data-train-candidate'), 10)];
+      if (!selected) return;
+      input.value = String(selected.dia || '').trim().toUpperCase();
+      clearScheduleTrainResults();
+      if (typeof showToast === 'function') showToast(String(selected.seq || '') + '번 순서의 다이아를 선택했습니다.');
+    };
+  }
+}
 function openScheduleEdit(y, m, d) {
   scheduleEditDate = { y: y, m: m, d: d };
   var panel = $('schedule-edit-panel');
@@ -5623,6 +5686,7 @@ function openScheduleEdit(y, m, d) {
   var info = getInfo(y, m, d);
   $('schedule-edit-message').textContent = '';
   input.value = '';
+  clearScheduleTrainResults();
   if (partnerInput) partnerInput.value = info && info.manual ? String(info.swapPartnerName || '') : '';
   options.innerHTML = '';
   clearScheduleCreditSelection();
@@ -5648,7 +5712,8 @@ function openScheduleEdit(y, m, d) {
     options.appendChild(b);
   });
   input.oninput = function () {
-    /* DIA 입력 시에도 선택한 주·야·비·휴·X와 충당 구분을 그대로 유지합니다. */
+    /* 등록된 다이아 번호는 기존 방식 그대로 처리하고, 열차번호이면 순서표 선택지를 표시합니다. */
+    showScheduleTrainCandidates(input.value);
   };
   /* 팝업이 열릴 때 입력창에 자동으로 커서를 두지 않음 → DIA 입력창을 직접 눌렀을 때만 키보드가 나타남 */
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
@@ -5657,6 +5722,7 @@ function openScheduleEdit(y, m, d) {
 function closeScheduleEdit() {
   var panel = $('schedule-edit-panel');
   if (panel) panel.classList.remove('active');
+  clearScheduleTrainResults();
   clearScheduleCreditSelection();
   scheduleEditDuty = '';
   scheduleEditDate = null;
@@ -5682,6 +5748,10 @@ function saveScheduleEdit() {
   var input = $('schedule-edit-dia');
   var options = $('schedule-edit-options');
   var dia = input ? input.value.trim().toUpperCase() : '';   // 영문은 대문자로 저장 (예: 12b07 → 12B07)
+  if (input && input.getAttribute('data-pending-train') === '1') {
+    msg.textContent = '열차번호에 해당하는 순서표를 먼저 선택해주세요.';
+    return;
+  }
   var partnerName = $('schedule-edit-partner') ? $('schedule-edit-partner').value.trim() : '';
   var selectedDutyStatus = '';
   var selected = options ? options.querySelector('.schedule-edit-option.selected') : null;
