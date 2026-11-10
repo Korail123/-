@@ -5636,7 +5636,12 @@ function findScheduleTrainCandidates(trainNo) {
     var trains = [it.train1, it.train2, it.train3];
     var matched = false;
     for (var j = 0; j < trains.length; j++) {
-      if (scheduleTrainKey(trains[j]) === key) { matched = true; break; }
+      var trainKey = scheduleTrainKey(trains[j]);
+      /* 숫자만 입력한 경우에도 열차번호의 숫자 부분이 정확히 일치하면 찾습니다.
+         예: 입력 1234 → 저장값 K1234, 1234열차 등과 매칭 */
+      var numericMatch = /^\\d+$/.test(key) &&
+        String(trains[j] == null ? '' : trains[j]).replace(/[^0-9]/g, '') === key;
+      if (trainKey === key || numericMatch) { matched = true; break; }
     }
     if (matched) found.push(it);
   }
@@ -5649,10 +5654,14 @@ function showScheduleTrainCandidates(trainNo) {
   var typed = String(trainNo || '').trim().toUpperCase();
   clearScheduleTrainResults();
   if (!typed) return;
-  /* 기존 다이아 번호 입력 동작을 우선 보존합니다. */
-  if (diaByNumber(typed)) return;
+  /* 열차번호 후보를 먼저 확인해 숫자만 입력한 경우도 찾습니다.
+     해당 숫자가 다이아 번호와 겹치더라도 열차번호 후보가 있으면 선택할 수 있습니다. */
   var candidates = findScheduleTrainCandidates(typed);
-  if (!candidates.length) return;
+  if (!candidates.length) {
+    /* 열차번호 후보가 없으면 기존 다이아 번호 입력 동작을 유지합니다. */
+    if (diaByNumber(typed)) return;
+    return;
+  }
   input.setAttribute('data-pending-train', '1');
   var html = '<div style="font-size:12px;font-weight:800;color:#24558b;margin-bottom:7px">열차번호가 포함된 순서표를 선택하세요</div>';
   for (var i = 0; i < candidates.length; i++) {
