@@ -205,6 +205,17 @@ padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-appl
   font-size: var(--group-table-font-size, 15px) !important;
 }
 </style>
+
+<style id="settings-category-style">
+#settings-section .settings-category{margin:0 0 22px}
+#settings-section .settings-category-title{display:flex;align-items:center;gap:9px;margin:20px 2px 10px;font-size:16px;font-weight:800;color:var(--text,#17233f);letter-spacing:-.3px}
+#settings-section .settings-category-mark{width:5px;height:19px;border-radius:8px;background:#8794a8;flex:0 0 auto}
+#settings-section .settings-category-mark.theme{background:#4388ef}
+#settings-section .settings-category-mark.work{background:#16a078}
+#settings-section .settings-category-mark.other{background:#8993a5}
+#settings-section .settings-category .setting-grid{margin-top:0}
+#settings-section .settings-category+.settings-category{border-top:1px solid rgba(120,135,160,.18);padding-top:2px}
+</style>
 </head>
 <body>
 <!-- 다크 모드 되돌림 필터: html의 invert(.92)+hue-rotate(180)를 정확히 거꾸로 (사진 · 열차 애니메이션 · 프로필 원래 색) -->
@@ -1167,23 +1178,36 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 </div>
 <div id="settings-section" class="page-view">
   <h1><span class="page-heading-icon" aria-hidden="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="환경설정" alt="" decoding="async"></span> 환경설정</h1>
-  <div class="setting-grid">
-    <button type="button" class="set-tile" onclick="openUiPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="화면설정" alt="" aria-hidden="true"><span>화면 설정</span></button>
-    <button type="button" class="set-tile" onclick="openIconPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="아이콘설정" alt="" aria-hidden="true"><span>아이콘 설정</span></button>
-    <button type="button" class="set-tile" onclick="openRoutePlan()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="예상행로표" alt="" aria-hidden="true"><span>다이아 행로표 만들기</span></button>
-    <button type="button" class="set-tile" onclick="openDiaSelector()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무설정" alt="" aria-hidden="true" decoding="async"><span class="set-label">근무설정</span></button>
-    <button type="button" class="set-tile" onclick="openBackupPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="백업동기화" alt="" aria-hidden="true" decoding="async"><span class="set-label">백업·동기화</span></button>
-    <button type="button" class="set-tile" onclick="openPermPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알람설정" alt="" aria-hidden="true" decoding="async"><span class="set-label">출근알림 설정</span><small id="perm-sub" class="set-sub" hidden></small></button>
-    <button type="button" class="set-tile" onclick="openNxSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차운휴알림" alt="" aria-hidden="true" decoding="async"><span class="set-label">열차 운휴 알림</span><small id="nx-sub" class="set-sub" hidden></small></button>
-    <button type="button" class="set-tile" onclick="openPassSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차통과알림" alt="" aria-hidden="true" decoding="async"><span class="set-label">열차통과/도착 알림</span></button>
-    <button type="button" class="set-tile" onclick="openNxViewSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="NXLogis조회" alt="" aria-hidden="true" decoding="async"><span class="set-label">NXLogis<br>조회 방식</span></button>
-    <button type="button" class="set-tile" onclick="openFavMenu()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="즐겨찾기메뉴" alt="" aria-hidden="true" decoding="async"><span class="set-label">즐겨찾기 메뉴</span></button>
-    <button type="button" class="set-tile" onclick="openWidgetPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="위젯연결" alt="" aria-hidden="true" decoding="async"><span class="set-label">위젯 연결</span></button>
-    <button type="button" class="set-tile" onclick="openGuidePanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="사용가이드" alt="" aria-hidden="true" decoding="async"><span class="set-label">철도비서 사용가이드</span></button>
-    <button type="button" class="set-tile" onclick="openAnimSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="애니메이션효과" alt="" aria-hidden="true" decoding="async"><span class="set-label">애니메이션 효과</span><small id="anim-sub" class="set-badge" hidden>OFF</small></button>
-    <button type="button" class="set-tile danger" onclick="openResetAllDataPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="전체데이터초기화" alt="" aria-hidden="true" decoding="async"><span class="set-label">데이터 초기화</span></button>
-    <button type="button" class="set-tile danger" onclick="openDeleteAccountPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="회원탈퇴" alt="" aria-hidden="true" decoding="async"><span class="set-label">회원탈퇴</span></button>
-  </div>
+  <section class="settings-category">
+    <h2 class="settings-category-title"><span class="settings-category-mark theme"></span>테마</h2>
+    <div class="setting-grid">
+      <button type="button" class="set-tile" onclick="openUiPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="화면설정" alt="" aria-hidden="true"><span>화면 설정</span></button>
+      <button type="button" class="set-tile" onclick="openIconPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="아이콘설정" alt="" aria-hidden="true"><span>아이콘 설정</span></button>
+      <button type="button" class="set-tile" onclick="openFavMenu()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="즐겨찾기메뉴" alt="" aria-hidden="true" decoding="async"><span class="set-label">즐겨찾기 메뉴</span></button>
+    </div>
+  </section>
+  <section class="settings-category">
+    <h2 class="settings-category-title"><span class="settings-category-mark work"></span>근무</h2>
+    <div class="setting-grid">
+      <button type="button" class="set-tile" onclick="openDiaSelector()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무설정" alt="" aria-hidden="true" decoding="async"><span class="set-label">근무설정</span></button>
+      <button type="button" class="set-tile" onclick="openPassSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차통과알림" alt="" aria-hidden="true" decoding="async"><span class="set-label">열차통과/도착 알림</span></button>
+      <button type="button" class="set-tile" onclick="openNxViewSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="NXLogis조회" alt="" aria-hidden="true" decoding="async"><span class="set-label">NXLOGIS 조회방식</span></button>
+      <button type="button" class="set-tile" onclick="openPermPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알람설정" alt="" aria-hidden="true" decoding="async"><span class="set-label">출근알림 설정</span><small id="perm-sub" class="set-sub" hidden></small></button>
+      <button type="button" class="set-tile" onclick="openNxSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차운휴알림" alt="" aria-hidden="true" decoding="async"><span class="set-label">열차 운휴 알림</span><small id="nx-sub" class="set-sub" hidden></small></button>
+    </div>
+  </section>
+  <section class="settings-category">
+    <h2 class="settings-category-title"><span class="settings-category-mark other"></span>기타</h2>
+    <div class="setting-grid">
+      <button type="button" class="set-tile" onclick="openRoutePlan()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="예상행로표" alt="" aria-hidden="true"><span>다이아 행로표 만들기</span></button>
+      <button type="button" class="set-tile" onclick="openBackupPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="백업동기화" alt="" aria-hidden="true" decoding="async"><span class="set-label">백업·동기화</span></button>
+      <button type="button" class="set-tile" onclick="openWidgetPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="위젯연결" alt="" aria-hidden="true" decoding="async"><span class="set-label">위젯 연결</span></button>
+      <button type="button" class="set-tile" onclick="openGuidePanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="사용가이드" alt="" aria-hidden="true" decoding="async"><span class="set-label">철도비서 사용가이드</span></button>
+      <button type="button" class="set-tile" onclick="openAnimSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="애니메이션효과" alt="" aria-hidden="true" decoding="async"><span class="set-label">애니메이션 효과</span><small id="anim-sub" class="set-badge" hidden>OFF</small></button>
+      <button type="button" class="set-tile danger" onclick="openResetAllDataPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="전체데이터초기화" alt="" aria-hidden="true" decoding="async"><span class="set-label">데이터 초기화</span></button>
+      <button type="button" class="set-tile danger" onclick="openDeleteAccountPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="회원탈퇴" alt="" aria-hidden="true" decoding="async"><span class="set-label">회원탈퇴</span></button>
+    </div>
+  </section>
   <div id="app-version" class="app-ver" onclick="appVersionCheck(true)"></div>
   <div id="notice-panel" class="page-view board-page">
     <div class="board-page-inner">
