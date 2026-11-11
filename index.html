@@ -1128,15 +1128,18 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="mp-sec" data-sec="history"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('history');renderMyHistory()" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무변경" alt="" aria-hidden="true">근무 변경 기록<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
   <div id="mypage-history" class="mypage-box"></div>
   </div></div>
-<div class="mp-sec" data-sec="xrois"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('xrois')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무표" alt="" aria-hidden="true">XROIS 근무표 대조<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
+<div class="mp-sec" data-sec="crew"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('crew')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="CREW연동" alt="" aria-hidden="true">CREW 연동<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
   <div class="mypage-box">
-    <div class="mp-note">XROIS의 <b>당월승무근무표</b>에서 직접 확인한 응답 JSON을 붙여 넣어 철도비서 근무표와 비교합니다. 이 화면은 XROIS에 별도 로그인하거나 자동 요청하지 않으며, 붙여 넣은 데이터는 이 기기에서만 분석합니다.</div>
-    <label class="mp-field" style="display:block"><span style="display:block;margin-bottom:6px">XROIS 응답 JSON</span><textarea id="xrois-json" rows="7" placeholder="F12 → 네트워크 → 해당 XHR → 응답의 JSON을 붙여 넣으세요." style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #d7e0eb;border-radius:9px;font-size:12px;line-height:1.5;resize:vertical"></textarea></label>
-    <div class="mp-crew-btns"><button type="button" class="crew-refresh" onclick="xroisAnalyze()">근무표 비교</button><button type="button" class="crew-refresh crew-off" onclick="xroisClear()">입력 지우기</button></div>
-    <div id="xrois-status" class="mp-crew-status" aria-live="polite">아직 비교하지 않았습니다.</div>
-    <div id="xrois-preview" style="margin-top:10px"></div>
-    <div id="xrois-apply-wrap" style="display:none;margin-top:10px"><button type="button" class="crew-refresh" style="width:100%;padding:10px" onclick="xroisApply()">선택한 XROIS 변경사항을 근무표에 적용</button></div>
-    <div class="mp-note" style="margin-top:9px">※ 적용한 날짜는 철도비서의 기존 근무변경 방식으로 저장되어 <b>*</b>가 표시됩니다. DIA·출퇴근시간만 비교하며, JSON 원문이나 XROIS 비밀번호는 저장하지 않습니다. XROIS 조회 자체의 서버 접속기록은 이 기능으로 제어할 수 없습니다.</div>
+    <div class="mp-note">crew.korail.com(승무원 외부망) 비밀번호를 저장해 두면, 함께 타는 <b>승무원</b> 정보를 알림 없이 <b>자동으로 최신화</b>해서 근무표 상세정보에 보여줍니다. (월말에는 다음 달까지)</div>
+    <div class="mp-field"><span>로그인 사원번호</span><b id="crew-id">-</b></div>
+    <label class="mp-field"><span>crew 비밀번호</span><input type="password" id="crew-pw" autocomplete="off" placeholder="비밀번호 입력" style="width:150px"></label>
+    <div class="mp-crew-btns">
+      <button type="button" class="crew-refresh" onclick="saveCrewLogin()">저장(연동)</button>
+      <button type="button" class="crew-refresh" onclick="requestCrewRoster()">지금 최신화</button>
+      <button type="button" class="crew-refresh crew-off" onclick="clearCrewLogin()">연동 해제</button>
+    </div>
+    <div id="crew-status" class="mp-crew-status"></div>
+    <div class="mp-note" style="margin-top:8px">※ 비밀번호는 이 폰(브라우저)에만 저장되고, 서버에는 저장되지 않습니다. 공용 기기에서는 사용하지 마세요.</div>
   </div>
   </div></div>
 </div>
@@ -5285,9 +5288,17 @@ function crewNextInQueue() {
 /* 자동 최신화 (알림 없음): 로그인할 때 · 앱으로 다시 돌아올 때 · 켜 둔 동안 30분마다 확인, 1시간에 한 번까지
    - 이번 달 + 월말(23일부터)에는 다음 달도 함께 */
 function autoCrewRoster() {
-  /* XROIS 수동 JSON 대조 화면으로 전환: 이전 CREW 서버함수 자동호출은 중단합니다.
-     기존에 기기에 저장된 CREW 데이터/비밀번호는 사용자가 직접 해제하기 전까지 삭제하지 않습니다. */
-  return;
+  if (!crewAllowed()) return;
+  if (!getCrewPw() && !(window.CrewBridge && window.CrewBridge.requestRoster)) return;
+  if (!getCurrentUser().token) return;
+  var m = getCrewMeta();
+  if (m.tried && Date.now() - m.tried < CREW_AUTO_MS && m.ok) return;
+  requestCrewRoster(true);
+  var t = todayKST();
+  if (t.d >= 23) {
+    var nx = new Date(Date.UTC(t.y, t.m + 1, 1));
+    requestCrewRoster(true, false, nx.getUTCFullYear() + '-' + pad2(nx.getUTCMonth() + 1));
+  }
 }
 document.addEventListener('visibilitychange', function () {
   if (document.visibilityState === 'visible') setTimeout(function () { try { autoCrewRoster(); } catch (e) {} }, 1500);
@@ -5472,12 +5483,6 @@ function renderDayDetail() {
   if (rsPlan) {
     if (!startTime && rsPlan.start) { startTime = rsPlan.start; rsStartEstimated = true; }
     if (!endTime && rsPlan.end) { endTime = rsPlan.end; rsEndEstimated = true; }
-  }
-  /* XROIS에서 사용자가 승인한 출퇴근시간 보정값은 DIA 예상값보다 우선합니다. */
-  var xroisTimeFix = (typeof xroisGetTime === 'function') ? xroisGetTime(dateKeyForSelectedDay()) : null;
-  if (xroisTimeFix) {
-    if (xroisTimeFix.start) { startTime = xroisTimeFix.start; rsStartEstimated = false; }
-    if (xroisTimeFix.end) { endTime = xroisTimeFix.end; rsEndEstimated = false; }
   }
   var train1 = info.train1 || (diaMeta && diaMeta.train1) || '';
   var train2 = info.train2 || (diaMeta && diaMeta.train2) || '';
@@ -17579,19 +17584,6 @@ html.ui-dark #weekly-wx-panel .ww-close{background:#354f70;color:#e2f2ff}
     <div class="ww-foot">빨강은 최고기온, 파랑은 최저기온, ☂는 최대 강수확률입니다. 출처: Open-Meteo · 예보는 변경될 수 있습니다.</div>
   </div>
 </div>
-
-<style id="xrois-compare-style">
-#xrois-preview .xrois-row{display:grid;grid-template-columns:24px minmax(0,1fr);gap:7px;padding:9px 7px;border-bottom:1px solid #e8edf3;font-size:12px;line-height:1.5}
-#xrois-preview .xrois-row:last-child{border-bottom:0}
-#xrois-preview .xrois-date{font-weight:800;color:#243b59}
-#xrois-preview .xrois-diff{color:#b42318;font-weight:700}
-#xrois-preview .xrois-same{color:#16804a}
-#xrois-preview .xrois-current{color:#667085}
-#xrois-preview .xrois-new{color:#175cd3;font-weight:700}
-#xrois-preview .xrois-check{width:18px;height:18px;margin-top:2px}
-#xrois-preview .xrois-empty{padding:12px;text-align:center;color:#718096;background:#f7f9fc;border-radius:9px;font-size:12px}
-</style>
-
 <script id="weekly-wx-script">
 (function(){
   'use strict';
@@ -17640,116 +17632,5 @@ html.ui-dark #weekly-wx-panel .ww-close{background:#354f70;color:#e2f2ff}
   window.closeWeeklyWeather=function(){var e=q('weekly-wx-panel');if(e)e.classList.remove('active');};
 })();
 </script>
-
-<script id="xrois-compare-script">
-(function(){
-  'use strict';
-  var pending = [];
-  function el(id){return document.getElementById(id);}
-  function normKey(k){return String(k||'').toLowerCase().replace(/[ _.-]/g,'');}
-  function first(obj, names){
-    if(!obj || typeof obj!=='object') return '';
-    var keys=Object.keys(obj), map={};
-    keys.forEach(function(k){map[normKey(k)]=obj[k];});
-    for(var i=0;i<names.length;i++){var n=normKey(names[i]);if(map[n]!=null && map[n]!=='')return map[n];}
-    return '';
-  }
-  function dateValue(v, parent){
-    var s=String(v==null?'':v).trim();
-    if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
-    if(/^\d{8}$/.test(s)) return s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8);
-    if(/^\d{6}$/.test(s) && parent){var day=String(parent).replace(/\D/g,'');if(/^\d{6}$/.test(day))return s.slice(0,4)+'-'+s.slice(4,6)+'-'+day.slice(-2);}
-    return '';
-  }
-  function timeValue(v){
-    var s=String(v==null?'':v).trim(); if(!s)return '';
-    var m=s.match(/(\d{1,2})\s*[:시]\s*(\d{2})/); if(m)return ('0'+m[1]).slice(-2)+':'+m[2];
-    s=s.replace(/\D/g,''); if(s.length===4)return s.slice(0,2)+':'+s.slice(2); if(s.length===3)return '0'+s[0]+':'+s.slice(1);
-    return '';
-  }
-  function extractRows(root){
-    var out=[], seen=[];
-    var diaNames=['dia','diano','dianm','dianame','dianame','wrkDiaNm','crewDiaNm','dutyDia','dutyNm','다이아','다이아명','다이아이름','근무다이아','근무명'];
-    var dateNames=['date','workdate','workdt','wrkd t','wr kdt','dutydate','op rdt','oprdate','ymd','runDate','runDt','운행일','근무일','일자','승무일자','wrkYmd'];
-    var startNames=['start','starttime','sttime','strttm','gotime','ontime','workstarttime','출근','출근시간','출근시각','승무시작시간'];
-    var endNames=['end','endtime','edtime','endtm','offtime','workendtime','퇴근','퇴근시간','퇴근시각','승무종료시간'];
-    function walk(node,inheritedDate,parent){
-      if(!node || typeof node!=='object')return;
-      if(Array.isArray(node)){node.forEach(function(v){walk(v,inheritedDate,parent);});return;}
-      var rawDate=first(node,dateNames);
-      var date=dateValue(rawDate) || inheritedDate;
-      if(!date){var yy=first(node,['pjtYm','ym','yearMonth']);var dd=first(node,['day','dd','wrkDay']);if(yy&&dd){var ys=String(yy).replace(/\D/g,'').slice(0,6),ds=('0'+String(dd).replace(/\D/g,'')).slice(-2);if(/^\d{6}$/.test(ys))date=ys.slice(0,4)+'-'+ys.slice(4,6)+'-'+ds;}}
-      var dia=first(node,diaNames);
-      if(date && dia){
-        var row={date:date,dia:String(dia).trim().replace(/^~/,'').replace(/[()]/g,''),start:timeValue(first(node,startNames)),end:timeValue(first(node,endNames))};
-        var key=row.date+'|'+row.dia+'|'+row.start+'|'+row.end;
-        if(seen.indexOf(key)<0){seen.push(key);out.push(row);}
-      }
-      Object.keys(node).forEach(function(k){var v=node[k];if(v&&typeof v==='object')walk(v,date,k);});
-    }
-    walk(root,'','');
-    return out;
-  }
-  function localTimeMap(){try{return JSON.parse(LS.getItem('xroisTime_'+(getCurrentUser().employeeId||''))||'{}')||{};}catch(e){return {};}}
-  window.xroisGetTime=function(date){var m=localTimeMap();return m[date]||null;};
-  function currentFor(date){
-    var p=date.split('-').map(Number), info=getInfo(p[0],p[1]-1,p[2]);
-    if(!info)return {dia:'',start:'',end:'',info:null};
-    var dia=String(info.dia||(!info.manual&&diaByNumber(info.label)?info.label:'')||'').trim();
-    var meta=dia?diaByNumber(dia):null, tm=xroisGetTime(date);
-    return {dia:dia,start:(tm&&tm.start)||info.start||(meta&&meta.start)||'',end:(tm&&tm.end)||info.end||(meta&&meta.end)||'',info:info};
-  }
-  function compare(rows){
-    var result=[];
-    rows.forEach(function(r){
-      var c=currentFor(r.date), changes=[];
-      if(r.dia && String(c.dia||'').toUpperCase()!==String(r.dia).toUpperCase())changes.push('dia');
-      if(r.start && timeValue(c.start)!==r.start)changes.push('start');
-      if(r.end && timeValue(c.end)!==r.end)changes.push('end');
-      if(changes.length)result.push({date:r.date,x:r,c:c,changes:changes,checked:true});
-    });
-    return result;
-  }
-  function labelValue(v){return v?String(v):'—';}
-  window.xroisAnalyze=function(){
-    var raw=el('xrois-json').value.trim();
-    if(!raw){el('xrois-status').textContent='XROIS 응답 JSON을 먼저 붙여 넣어주세요.';return;}
-    var data;try{data=JSON.parse(raw);}catch(e){el('xrois-status').textContent='JSON 형식이 올바르지 않습니다: '+e.message;return;}
-    var rows=extractRows(data);
-    if(!rows.length){pending=[];el('xrois-preview').innerHTML='<div class="xrois-empty">날짜·다이아 필드를 찾지 못했습니다. 실제 응답 JSON의 필드명이 확인되어야 변환 규칙을 정확히 맞출 수 있습니다.</div>';el('xrois-apply-wrap').style.display='none';el('xrois-status').textContent='인식된 근무 행이 0개입니다.';return;}
-    pending=compare(rows);
-    if(!pending.length){el('xrois-preview').innerHTML='<div class="xrois-empty">비교 완료: 철도비서 근무표와 다른 DIA·출퇴근시간이 없습니다.</div>';el('xrois-apply-wrap').style.display='none';el('xrois-status').textContent=rows.length+'개 날짜를 비교했습니다.';return;}
-    var html=pending.map(function(it,i){
-      var bits=[];
-      if(it.changes.indexOf('dia')>=0)bits.push('<span class="xrois-current">DIA '+labelValue(it.c.dia)+'</span> → <span class="xrois-new">'+esc(it.x.dia)+'</span>');
-      if(it.changes.indexOf('start')>=0)bits.push('<span class="xrois-current">출근 '+labelValue(it.c.start)+'</span> → <span class="xrois-new">'+esc(it.x.start)+'</span>');
-      if(it.changes.indexOf('end')>=0)bits.push('<span class="xrois-current">퇴근 '+labelValue(it.c.end)+'</span> → <span class="xrois-new">'+esc(it.x.end)+'</span>');
-      return '<label class="xrois-row"><input class="xrois-check" type="checkbox" checked data-xrois-index="'+i+'"><span><span class="xrois-date">'+esc(it.date)+'</span><br>'+bits.join('<br>')+'</span></label>';
-    }).join('');
-    el('xrois-preview').innerHTML='<div style="font-size:12px;font-weight:700;margin-bottom:5px">변경 후보 '+pending.length+'건 · 적용할 항목만 체크하세요.</div>'+html;
-    el('xrois-apply-wrap').style.display='block';
-    el('xrois-status').textContent=rows.length+'개 날짜 비교 완료 · 차이 '+pending.length+'건';
-  };
-  window.xroisApply=function(){
-    var checks=el('xrois-preview').querySelectorAll('[data-xrois-index]'), chosen=[];
-    checks.forEach(function(c){if(c.checked&&pending[+c.getAttribute('data-xrois-index')])chosen.push(pending[+c.getAttribute('data-xrois-index')]);});
-    if(!chosen.length){showToast('적용할 변경사항을 선택해주세요.');return;}
-    if(!confirm('선택한 '+chosen.length+'건을 XROIS 기준으로 근무표에 적용할까요?\n적용한 날짜에는 * 표시가 생깁니다.'))return;
-    var uid=String(getCurrentUser().employeeId||''); if(!uid||uid==='guest'){showToast('로그인 후 이용해주세요.');return;}
-    var times=localTimeMap(), applied=0;
-    chosen.forEach(function(it){
-      var dia=it.x.dia||it.c.dia;
-      if(dia){snapUpsertOverride(uid,it.date,'dia',dia,'','','','');}
-      if(it.x.start||it.x.end){times[it.date]={start:it.x.start||it.c.start||'',end:it.x.end||it.c.end||''};}
-      applied++;
-    });
-    try{LS.setItem('xroisTime_'+uid,JSON.stringify(times));}catch(e){showToast('시간 보정값을 기기에 저장하지 못했습니다.');}
-    pending=[];el('xrois-apply-wrap').style.display='none';el('xrois-preview').innerHTML='<div class="xrois-empty">'+applied+'건을 적용했습니다. 근무표를 새로 불러옵니다.</div>';el('xrois-status').textContent='적용 완료 · '+stampNow();
-    try{loadMyMonth(true);}catch(e){} try{renderCalendar();}catch(e){} try{renderDayDetail();}catch(e){} try{renderMyPageProfile();}catch(e){}
-  };
-  window.xroisClear=function(){if(el('xrois-json'))el('xrois-json').value='';pending=[];if(el('xrois-preview'))el('xrois-preview').innerHTML='';if(el('xrois-apply-wrap'))el('xrois-apply-wrap').style.display='none';if(el('xrois-status'))el('xrois-status').textContent='입력 내용을 지웠습니다.';};
-})();
-</script>
-
 </body>
 </html>
