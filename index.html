@@ -1095,8 +1095,8 @@ function icCenter(img) {
       var d = x.getImageData(0, 0, n, n).data, t = n, b = -1, l = n, r = -1;
       for (var yy = 0; yy < n; yy++) for (var xx = 0; xx < n; xx++) if (d[(yy * n + xx) * 4 + 3] > 12) { if (yy < t) t = yy; if (yy > b) b = yy; if (xx < l) l = xx; if (xx > r) r = xx; }
       if (b < 0) return;
-      var w = r - l + 1, h = b - t + 1, side = Math.max(w, h) + 4, o = document.createElement('canvas'); o.width = o.height = side;
-      o.getContext('2d').drawImage(c, l, t, w, h, (side - w) / 2, (side - h) / 2, w, h);
+      var w = r - l + 1, h = b - t + 1, o = document.createElement('canvas'); o.width = w + 4; o.height = h + 4;
+      o.getContext('2d').drawImage(c, l, t, w, h, 2, 2, w, h);
       var out = o.toDataURL('image/png'); IC_CENTER_CACHE[src] = out;
       if (img.getAttribute('src') === src) img.src = out;
     } catch (e) {}
@@ -5811,11 +5811,11 @@ function renderDayDetail() {
     var diaImageSrc = diaImageUrl(diaNo);
     if (ddPlan) {
       html += '<div class="dd-dia-image-wrap"><div class="dd-dia-image-title">행로표 <small class="dd-plan-tag">내가 만든 행로표</small></div>' +
-        '<img class="dd-dia-image" src="' + ddPlan.url + '" alt="DIA ' + esc(ddPlan.dia) + ' 행로표" onclick="openRouteViewer(\'' + esc(ddPlan.dia) + '\', this.src)" decoding="async"></div>';
+        '<img class="dd-dia-image" src="' + ddPlan.url + '"' + routeArAttr(ddPlan.url, ddPlan.dia) + ' alt="DIA ' + esc(ddPlan.dia) + ' 행로표" onclick="openRouteViewer(\'' + esc(ddPlan.dia) + '\', this.src)" decoding="async"></div>';
     } else if (diaImageSrc) {
       html += '<div class="dd-dia-image-wrap">' +
         '<div class="dd-dia-image-title">행로표</div>' +
-        '<img class="dd-dia-image" src="' + diaImageSrc + '" alt="DIA ' + esc(diaNo) + ' 행로표" ' +
+        '<img class="dd-dia-image" src="' + diaImageSrc + '"' + routeArAttr(diaImageSrc, diaNo) + ' alt="DIA ' + esc(diaNo) + ' 행로표" ' +
         'data-dia="' + esc(diaNo.toUpperCase()) + '" data-try="0" onclick="openRouteViewer(this.getAttribute(\'data-dia\'))" ' +
         'onerror="diaImgFallback(this)" decoding="async">' +
         '<div class="dd-dia-image-missing" style="display:none">행로표 이미지가 없습니다.</div></div>';
@@ -7348,7 +7348,7 @@ function openGroupInfo(k, key) {
       if (url) {
         html += '<div class="pi-route">' +
           '<div class="pi-route-cap">' + (groupPlan ? '예상 행로표' : '행로표') + '</div>' +
-          '<img src="' + url + '" alt="DIA ' + esc(diaNo) + ' 행로표" data-dia="' + esc(String(diaNo).toUpperCase()) + '" data-try="0" loading="eager" decoding="async" fetchpriority="high" ' +
+          '<img src="' + url + '"' + routeArAttr(url, diaNo) + ' alt="DIA ' + esc(diaNo) + ' 행로표" data-dia="' + esc(String(diaNo).toUpperCase()) + '" data-try="0" loading="eager" decoding="async" fetchpriority="high" ' +
           'onclick="openRouteViewer(this.getAttribute(\'data-dia\'), this.src)" ' +
           'onerror="diaImgFallback(this)">' +
           '<div class="pi-none" style="display:none">행로표 이미지가 없습니다.</div></div>';
@@ -8159,7 +8159,7 @@ function openPatternInfo(i) {
     if (url) {
       html += '<div class="pi-route">' +
         '<div class="pi-route-cap">행로표</div>' +
-        '<img src="' + url + '" alt="DIA ' + esc(diaNo) + ' 행로표" data-dia="' + esc(String(diaNo).toUpperCase()) + '" data-try="0" ' +
+        '<img src="' + url + '"' + routeArAttr(url, diaNo) + ' alt="DIA ' + esc(diaNo) + ' 행로표" data-dia="' + esc(String(diaNo).toUpperCase()) + '" data-try="0" ' +
         'onclick="openRouteViewer(this.getAttribute(\'data-dia\'))" ' +
         'onerror="diaImgFallback(this)" decoding="async">' +
         '<div class="pi-none" style="display:none">행로표 이미지가 없습니다.</div></div>';
@@ -18424,6 +18424,19 @@ function openStats() {
   /* 근무표 자료가 아직이면 불러온 뒤 다시 */
   if (typeof snapshotUsable === 'function' && !snapshotUsable() && typeof loadMeta === 'function') { try { loadMeta(function () { statsRender(); }); } catch (e) {} }
 }
+/* 내 근무 통계 달력: 그날 근무 이름 (주 · 야 · 비 · 휴 · 휴가 이름 · 휴무충당) */
+function statsDayLabel(key) {
+  var mb = typeof findMyMember === 'function' ? findMyMember() : null, info = null;
+  try { if (mb && snapshotUsable()) info = snapDayWithAuto(key, mb, snapshot.raw.dia || [], snapshot.ovMap); } catch (e) {}
+  if (!info) return { t: '', c: '' };
+  var isCredit = info.creditStatus === '휴무충당' || info.status === '휴무충당' || info.label === '휴무충당';
+  if (isCredit) return { t: '충당', c: 'l-cr' };
+  var t = String((info.overrideType === 'status' ? (info.status || info.label) : (info.type || info.label)) || '').trim();
+  if (t === '비번') t = '비';
+  if (t === '휴무') t = '휴';
+  var c = t === '주' ? 'l-d' : t === '야' ? 'l-n' : t === '비' ? 'l-o' : t === '휴' ? 'l-r' : t === 'X' ? 'l-x' : 'l-v';
+  return { t: t.length > 3 ? t.slice(0, 3) : t, c: c };
+}
 function schWeekRender() {
   var box = $('sch-week'); if (!box) return;
   var y = typeof statsY === 'number' ? statsY : calendarYear, m = typeof statsM === 'number' ? statsM : calendarMonth, sh = schShiftsAround(y, m);
@@ -18447,8 +18460,10 @@ function schWeekRender() {
       var min = o ? o.min : 0, hol = x ? (+x.hldy || 0) : 0, ext = x ? (+x.extn || 0) : 0, nig = x ? (+x.niht || 0) : 0;
       wk.min += min; wk.hol += hol; wk.ext += ext;
       if (inM) { tot.min += min; tot.hol += hol; tot.ext += ext; tot.nig += nig; if (min > 0) tot.days++; if (o && o.xr) tot.xr++; }
+      var lb = statsDayLabel(key);
       rows += '<div class="sc-c' + (inM ? '' : ' out') + (key === todayKey ? ' today' : '') + (i === 0 ? ' sun' : i === 6 ? ' sat' : '') + '">' +
         '<span class="sc-d">' + dt.getDate() + '</span>' +
+        '<span class="sc-l ' + lb.c + '">' + esc(lb.t) + '</span>' +
         (min > 0 ? '<b class="sc-h">' + h1(min) + '</b>' : '<b class="sc-h none">·</b>') + '</div>';   /* 날짜 칸은 숫자만 (XROIS 사업시간 = 연장 포함) */
     }
     var over = wk.min > 52 * 60;
@@ -18474,6 +18489,7 @@ function schWeekRender() {
   }
   box.innerHTML = '<div class="sw-h"><b>날짜별 근무시간</b><small>칸 숫자 = 그날 근무시간(연장 포함, 시간)</small></div>' +
     '<div class="sc-grid">' + head + rows + '</div>' +
+    '<div class="sc-total"><span>' + (m + 1) + '월 총 근무시간</span><b>' + hm(tot.min) + '</b><small>연장 ' + h1(tot.ext) + ' · 휴일 ' + h1(tot.hol) + ' · 야간 ' + h1(tot.nig) + '시간</small></div>' +
     (rest.length ? '<div class="sw-rest"><b>근무 사이 휴식 11시간 미만</b><br>' + rest.map(esc).join('<br>') + '</div>' : '') +
     '<div class="sw-note">주 합계가 52시간(1주 40시간 + 연장 12시간, 근로기준법 제50조·제53조)을 넘으면 빨갛게 표시해요. 철도(육상운송업)는 제59조 특례 대상이라 근로자대표 서면합의가 있으면 넘을 수 있고, 대신 근무 사이 11시간 이상 휴식이 필요해요. 야간근무는 출근한 날에 시간을 넣어요. 참고용이에요.</div>';
 }
@@ -18518,5 +18534,49 @@ function schWeekRender() {
 #stats-section .sc-sum.over b{color:#d32f2f}
 #stats-section .sw-empty{font-size:13px;color:#8a96a8;text-align:center;padding:16px 0}
 </style>
+<style id="fix3-css">
+/* 근무교환 · 비교하기 아이콘: 같은 높이 · 가운데 · 그림 비율대로 */
+.group-swap-open-btn{align-items:center!important}
+.group-swap-open-btn .cmp-ico,.group-cmp-open-btn .cmp-ico,#group-section .group-swap-open-btn > .cmp-ico{display:block!important;flex:none!important;height:30px!important;width:auto!important;max-width:52px!important;object-fit:contain!important;transform:none!important;margin:0!important;align-self:center!important}
+.cmp-ico-lg{height:32px!important;width:auto!important;max-width:56px!important;object-fit:contain!important;vertical-align:middle}
+/* 행로표: 칸 크기를 처음부터 고정 → 그림이 늦게 들어와도 팝업이 커지지 않음 */
+.pi-route img,.dd-dia-image{width:100%!important;height:auto!important;max-height:none!important;object-fit:contain!important;aspect-ratio:3/4}
+/* 내 근무 통계: 날짜 칸 근무 이름 + 총 근무시간 */
+#stats-section .sc-c{min-height:58px!important}
+#stats-section .sc-l{font-size:12px;font-weight:900;line-height:1.2;min-height:14px}
+#stats-section .sc-l.l-d{color:#e8a000}#stats-section .sc-l.l-n{color:#1769d2}#stats-section .sc-l.l-o{color:#7d6bd6}
+#stats-section .sc-l.l-r{color:#e5484d}#stats-section .sc-l.l-x{color:#1769d2}#stats-section .sc-l.l-v{color:#2e9b5b;font-size:10.5px}#stats-section .sc-l.l-cr{color:#e5484d;font-size:10.5px}
+#stats-section .sc-h{font-size:12.5px!important}
+#stats-section .sc-total{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;gap:2px 8px;margin-top:10px;padding:10px;border-radius:12px;background:#eef3fa}
+#stats-section .sc-total span{font-size:12.5px;color:#475467;font-weight:700}
+#stats-section .sc-total b{font-size:18px;font-weight:900;color:#1b2b45}
+#stats-section .sc-total small{flex:1 1 100%;text-align:center;font-size:11.5px;color:#5b6678}
+</style>
+<script id="route-ar-script">
+/* 행로표 칸을 그림 비율에 딱 맞게 (빈 공간 없이, 그림이 늦게 들어와도 팝업 크기가 안 변하게)
+   · 예상 행로표(철도비서가 그린 SVG): 그림 안의 크기(viewBox)로 바로 비율을 앎
+   · 올려둔 행로표 사진: 처음 열 때 비율을 이 폰에 기억 → 다음부터 바로 그 비율 */
+function routeArGetCache() { try { return JSON.parse(localStorage.getItem('rs_dia_ar') || '{}') || {}; } catch (e) { return {}; } }
+function routeArAttr(url, dia) {
+  var w = 0, h = 0, u = String(url || '');
+  if (/^data:image\/svg/.test(u)) {
+    var dec = u; try { dec = decodeURIComponent(u.slice(u.indexOf(',') + 1)); } catch (e) {}
+    var m = dec.match(/viewBox="\s*0\s+0\s+([\d.]+)\s+([\d.]+)"/);
+    if (m) { w = +m[1]; h = +m[2]; }
+  } else {
+    var c = routeArGetCache()[String(dia || '').toUpperCase()];
+    if (c && c[0] && c[1]) { w = c[0]; h = c[1]; }
+  }
+  var on = ' onload="routeArLoad(this)"';
+  return (w > 0 && h > 0 ? ' style="aspect-ratio:' + Math.round(w) + '/' + Math.round(h) + '"' : '') + on;
+}
+function routeArLoad(img) {
+  var w = img.naturalWidth, h = img.naturalHeight;
+  if (!(w > 0 && h > 0)) return;
+  img.style.aspectRatio = w + '/' + h;
+  var src = img.getAttribute('src') || '', dia = (img.getAttribute('data-dia') || '').toUpperCase();
+  if (dia && !/^data:/.test(src)) { var c = routeArGetCache(); c[dia] = [w, h]; try { localStorage.setItem('rs_dia_ar', JSON.stringify(c)); } catch (e) {} }
+}
+</script>
 </body>
 </html>
