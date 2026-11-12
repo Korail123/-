@@ -411,6 +411,14 @@ padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-appl
 #group-schedule-table td * {
   font-size: var(--group-table-font-size, 15px) !important;
 }
+/* 모든 칸 같은 글꼴 · 굵기 (공가·연차 같은 휴가 글자도 주·야·비·휴와 동일) */
+#group-schedule-table tbody td,
+#group-schedule-table tfoot td { font-weight: 700 !important; letter-spacing: 0 !important; font-family: inherit !important; }
+#group-schedule-table tfoot td.name-col { white-space: normal !important; word-break: keep-all; line-height: 1.25; }
+#calendar-grid .cell-lbl { letter-spacing: 0 !important; }
+/* 2글자 근무(공가·연차·출산 …)는 주·야·비·휴·X보다 약 2pt 작게 */
+#calendar-grid .cell-lbl.rs-duty2 { font-size: 14.3px !important; }
+#group-schedule-table tbody td.g-duty2 { font-size: calc(var(--group-table-font-size, 15px) - 2.67px) !important; }
 </style>
 
 <style id="settings-category-style">
@@ -3778,6 +3786,7 @@ function renderCalendar() {
       /* 달력에는 DIA 번호를 표시하지 않고 근무 구분만 표시합니다. */
       var rawDuty = String(info.overrideType === 'status' ? (info.status || info.type || info.label || '')
         : (info.dutyStatus || info.type || info.label || '')).trim();
+      rawDuty = rawDuty.replace(/^\*+/, '').trim();   /* 별표(*)는 근무변경한 날(info.manual)에만 붙임 */
       var calendarDuty = '';
       /* X는 DIA 이름이 아니라 기존 근무 구분이므로 주·야·비·휴와 함께 그대로 표시. */
       if (/^X$/i.test(rawDuty)) calendarDuty = 'X';
@@ -3802,7 +3811,8 @@ function renderCalendar() {
       if (calendarDuty) {
         var tone = toneOf(calendarDuty);
         var cls = tone === 'day' ? ' t-day' : tone === 'bi' ? ' t-bi' : tone === 'off' || (info.overrideType === 'status' && !/^(주|야|비|X)$/.test(calendarDuty)) ? ' t-off' : '';
-        labelHtml = '<div class="cell-lbl' + cls + (calendarDuty.length > 2 ? ' rs-leave-long' : '') + '">' + (info.manual ? '*' : '') + esc(calendarDuty) + '</div>';
+        var shortDuty = rsDutyShort(calendarDuty);
+        labelHtml = '<div class="cell-lbl' + cls + (shortDuty.length >= 2 ? ' rs-duty2' : '') + '">' + (info.manual ? '*' : '') + esc(shortDuty) + '</div>';
       }
       if (info.swapPartnerName || info.swapPartnerId) {
         var swapPn = String(info.swapPartnerName || info.swapPartnerId).trim();
@@ -6171,11 +6181,23 @@ function groupCellClass(label, isStatus) {
 }
 /* 근무그룹 표는 근무표 달력의 근무구분만 동일하게 표시합니다.
    교환 상대·휴무충당·대기충당 등 상세 정보는 칸 클릭 팝업에서만 표시합니다. */
+/* 근무표 · 근무그룹 표시용: 최대 2글자 (별표 * 는 글자 수에서 뺌). 휴무·휴일 → 휴, 출산휴가 → 출산 … */
+var RS_DUTY_SHORT = { '휴무': '휴', '휴일': '휴', '휴무일': '휴', '주간': '주', '야간': '야', '비번': '비', '육아휴직': '육아', '출산휴가': '출산', '특별휴가': '특별',
+  '돌봄휴가': '돌봄', '경조휴가': '경조', '대체휴무': '대체', '보상휴가': '보상', '대기충당': '대기', '휴무충당': '충당' };
+function rsDutyShort(label) {
+  var t = String(label == null ? '' : label).trim();
+  var star = /^\*/.test(t) ? '*' : '';
+  t = t.replace(/^\*+/, '').trim();
+  if (!t) return star;
+  t = RS_DUTY_SHORT[t] || t;
+  return star + Array.from(t).slice(0, 2).join('');
+}
 function rsGroupCalendarDuty(info) {
   if (!info || !(info.label || info.type || info.status)) return '';
-  var rawDuty = String(info.overrideType === 'status'
+  var rawFull = String(info.overrideType === 'status'
     ? (info.status || info.type || info.label || '')
-    : (info.dutyStatus || info.type || info.label || '')).trim().replace(/^\*/, '');
+    : (info.dutyStatus || info.type || info.label || '')).trim();
+  var rawDuty = rawFull.replace(/^\*+/, '');
   var label = '';
   if (/^X$/i.test(rawDuty)) label = 'X';
   else if (/^(주|주간|day)$/i.test(rawDuty)) label = '주';
@@ -6194,7 +6216,8 @@ function rsGroupCalendarDuty(info) {
       label = ({'주간':'주','야간':'야','비번':'비','휴무':'휴'})[fallback] || fallback;
     }
   }
-  return label ? (info.manual ? '*' : '') + label : '-';
+  /* 별표(*)는 근무변경한 날에만 */
+  return label ? (info.manual ? '*' : '') + rsDutyShort(label) : '-';
 }
 function isLeaveInfo(info) {
   return !!(info && info.label && (info.overrideType === 'status' || info.label === '휴' || info.label === 'X'));
@@ -6204,9 +6227,9 @@ function isLeaveInfo(info) {
 function fitGroupTableText() {
   var tb = $('group-schedule-table');
   if (!tb || !tb.offsetWidth) return;
-  var cells = tb.querySelectorAll('th, td');
-  tb.style.setProperty('--group-table-font-size', '15px');
-  var fs = 15;
+  /* 맨 아래 '휴가·휴무·X' 이름칸은 두 줄로 접히므로 크기 계산에서 뺌 */
+  var cells = tb.querySelectorAll('thead th, thead td, tbody th, tbody td, tfoot td:not(.name-col)');
+  var fs = 16.333;
   for (; fs > 7; fs -= 0.5) {
     tb.style.setProperty('--group-table-font-size', fs + 'px');
     var fit = true;
@@ -6216,7 +6239,7 @@ function fitGroupTableText() {
     }
     if (fit) break;
   }
-  tb.style.setProperty('--group-table-font-size', (Math.max(7, fs) + 1.333) + 'px');
+  tb.style.setProperty('--group-table-font-size', Math.max(7, fs) + 'px');
 }
 window.addEventListener('resize', function () { fitGroupTableText(); });
 function renderGroupTable() {
@@ -6318,6 +6341,7 @@ function renderGroupTable() {
         var groupOff = info.overrideType === 'status' && !/^(주|야|비|X)$/.test(groupDuty);
         cls = groupCellClass(groupDuty, groupOff);
         if (!cls && groupDuty !== '-') cls = 'g-status';
+        if (groupDuty.length >= 2) cls += ' g-duty2';   /* 공가·연차 등 2글자는 한 단계 작게 */
       }
       if (isLeaveInfo(info)) {
         counts[j]++;
