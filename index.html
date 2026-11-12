@@ -418,7 +418,10 @@ padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-appl
 #calendar-grid .cell-lbl { letter-spacing: 0 !important; }
 /* 2글자 근무(공가·연차·출산 …)는 주·야·비·휴·X보다 약 2pt 작게 */
 #calendar-grid .cell-lbl.rs-duty2 { font-size: 14.3px !important; }
-#group-schedule-table tbody td.g-duty2 { font-size: calc(var(--group-table-font-size, 15px) - 2.67px) !important; }
+/* 표 안 근무 글자(주·야·비·휴·X …)는 이름·요일보다 1pt 작게, 2글자는 거기서 2pt 더 작게 */
+#group-schedule-table tbody td:not(.name-col) { font-size: calc(var(--group-duty-font-size, 16.333px) - 1.333px) !important; }
+#group-schedule-table tbody td.g-duty2 { font-size: calc(var(--group-duty-font-size, 16.333px) - 4px) !important; }
+#group-schedule-table.g-measure tfoot td.name-col { white-space: nowrap !important; }
 </style>
 
 <style id="settings-category-style">
@@ -6227,19 +6230,28 @@ function isLeaveInfo(info) {
 function fitGroupTableText() {
   var tb = $('group-schedule-table');
   if (!tb || !tb.offsetWidth) return;
-  /* 맨 아래 '휴가·휴무·X' 이름칸은 두 줄로 접히므로 크기 계산에서 뺌 */
-  var cells = tb.querySelectorAll('thead th, thead td, tbody th, tbody td, tfoot td:not(.name-col)');
-  var fs = 16.333;
+  function fits(list) {
+    for (var i = 0; i < list.length; i++) if (list[i].scrollWidth > list[i].clientWidth + 1) return false;
+    return true;
+  }
+  /* 1) 근무 글자(주·야·비·휴·X·공가 …): 16.333px부터 칸에 들어갈 때까지 줄임 → 실제 크기는 CSS에서 -1pt(2글자는 -3pt) */
+  var duty = tb.querySelectorAll('tbody td:not(.name-col)');
+  var ds = 16.333;
+  for (; ds > 7; ds -= 0.5) {
+    tb.style.setProperty('--group-duty-font-size', ds + 'px');
+    if (fits(duty)) break;
+  }
+  /* 2) 이름 · 요일 · 날짜 · 합계: 원래 방식 그대로 (15px부터 맞춘 뒤 +1.333px).
+        맨 아래 '휴가·휴무·X' 칸도 한 줄 기준으로 계산하고, 화면에서는 두 줄로 접어 보여줌 */
+  var cells = tb.querySelectorAll('thead th, thead td, tbody td.name-col, tfoot td');
+  tb.classList.add('g-measure');
+  var fs = 15;
   for (; fs > 7; fs -= 0.5) {
     tb.style.setProperty('--group-table-font-size', fs + 'px');
-    var fit = true;
-    for (var i = 0; i < cells.length; i++) {
-      var c = cells[i];
-      if (c.scrollWidth > c.clientWidth + 1) { fit = false; break; }
-    }
-    if (fit) break;
+    if (fits(cells)) break;
   }
-  tb.style.setProperty('--group-table-font-size', Math.max(7, fs) + 'px');
+  tb.classList.remove('g-measure');
+  tb.style.setProperty('--group-table-font-size', (Math.max(7, fs) + 1.333) + 'px');
 }
 window.addEventListener('resize', function () { fitGroupTableText(); });
 function renderGroupTable() {
