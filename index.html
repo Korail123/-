@@ -1144,16 +1144,16 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   </div></div>
 <div class="mp-sec" data-sec="crew"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('crew')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="CREW연동" alt="" aria-hidden="true">CREW 연동<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
   <div class="mypage-box">
-    <div class="mp-note">xcrew.korail.com(승무원 외부망) 비밀번호를 저장해 두면, 함께 타는 <b>승무원</b> 정보를 알림 없이 <b>자동으로 최신화</b>해서 근무표 상세정보에 보여줍니다. (월말에는 다음 달까지)</div>
+    <div class="mp-note">XROIS(xcrew.korail.com) 비밀번호를 저장해 두면, <b>XROIS 당월승무근무표</b>에서 12시간마다 다이아와 함께 타는 <b>승무원</b> 정보를 가져와 근무표에 맞춰 줍니다. (월말에는 다음 달까지)</div>
     <div class="mp-field"><span>로그인 사원번호</span><b id="crew-id">-</b></div>
-    <label class="mp-field"><span>crew 비밀번호</span><input type="password" id="crew-pw" autocomplete="off" placeholder="비밀번호 입력" style="width:150px"></label>
+    <label class="mp-field"><span>XROIS 비밀번호</span><input type="password" id="crew-pw" autocomplete="off" placeholder="비밀번호 입력" style="width:150px"></label>
     <div class="mp-crew-btns">
       <button type="button" class="crew-refresh" onclick="saveCrewLogin()">저장(연동)</button>
-      <button type="button" class="crew-refresh" onclick="requestCrewRoster()">지금 최신화</button>
+      <button type="button" class="crew-refresh" onclick="xrAutoSync(true, true)">지금 최신화</button>
       <button type="button" class="crew-refresh crew-off" onclick="clearCrewLogin()">연동 해제</button>
     </div>
     <div id="crew-status" class="mp-crew-status"></div>
-    <div class="mp-xr"><div><b>XROIS 다이아 자동 맞춤</b><small id="xr-status">12시간마다 XROIS 근무표를 확인해서 바뀐 다이아를 근무표에 자동 반영해요.</small></div><button type="button" class="crew-refresh" onclick="xrAutoSync(true, true)">지금 확인</button></div>
+    <div class="mp-xr"><div><b>XROIS 다이아 자동 맞춤</b><small id="xr-status">12시간마다 XROIS 근무표를 확인해서 바뀐 다이아를 근무표에 자동 반영해요.</small></div></div>
     <div class="mp-note" style="margin-top:8px">※ 비밀번호는 이 폰(브라우저)에만 저장되고, 서버에는 저장되지 않습니다. 공용 기기에서는 사용하지 마세요.</div>
   </div>
   </div></div>
@@ -5106,7 +5106,15 @@ function userStartTimeText(dateKey, startTime, isStatus, info, workType) {
    또는 { error:'LOGIN' } (로그인 필요) */
 function crewRosterKey() { return 'crewRoster_' + (getCurrentUser().employeeId || ''); }
 function crewRosterLoad() {
-  try { return JSON.parse(LS.getItem(crewRosterKey()) || '{}') || {}; } catch (e) { return {}; }
+  /* 승무원 정보는 XROIS 당월승무근무표에서 가져온 것 (12시간마다 최신화, 이 폰에만 저장)
+     형식: { 'YYYY-MM-DD': { at, rows: [{ dia, train1, train2, crew:[*주영, …] }] } } */
+  try {
+    var st = (typeof xrGet === 'function') ? xrGet('roster', {}) : {}, at = (typeof xrGet === 'function') ? (xrGet('meta', {}).rosterAt || '') : '', out = {};
+    Object.keys(st).forEach(function (k) {
+      out[k] = { at: at, rows: (st[k] || []).map(function (r) { var t = r.trains || []; return { dia: r.dia || '', train1: t[0] || '', train2: t[1] || '', start: r.start || '', end: r.end || '', crew: r.crew || [] }; }) };
+    });
+    return out;
+  } catch (e) { return {}; }
 }
 function crewRosterSave(o) {
   /* 지난달 1일 이후만 보관 */
@@ -5177,9 +5185,8 @@ function saveCrewLogin() {
   var pw = $('crew-pw') ? $('crew-pw').value : '';
   if (!pw && !getCrewPw()) { showToast('xcrew.korail.com 비밀번호를 입력해주세요.'); return; }
   if (pw) setCrewPw(pw);
-  showToast('CREW 연동을 저장했어요. 승무원 정보와 XROIS 다이아는 자동으로 맞춰져요.');
-  requestCrewRoster(true, true);
-  try { xrAutoSync(true); } catch (e) {}
+  showToast('CREW 연동을 저장했어요. XROIS에서 다이아와 승무원 정보를 가져와요.');
+  try { xrAutoSync(true, true); } catch (e) {}
 }
 function clearCrewLogin() {
   if (!confirm('CREW 연동을 해제할까요? 이 폰에 저장된 비밀번호와 승무원 정보가 지워집니다.')) return;
@@ -5318,17 +5325,8 @@ function crewNextInQueue() {
    - 이번 달 + 월말(23일부터)에는 다음 달도 함께 */
 function autoCrewRoster() {
   if (!crewAllowed()) return;
+  /* XROIS 당월승무근무표 한 번으로 다이아 맞춤 + 승무원 정보까지 (12시간에 로그인 1번) */
   try { xrAutoSync(false); } catch (e) {}
-  if (!getCrewPw() && !(window.CrewBridge && window.CrewBridge.requestRoster)) return;
-  if (!getCurrentUser().token) return;
-  var m = getCrewMeta();
-  if (m.tried && Date.now() - m.tried < CREW_AUTO_MS && m.ok) return;
-  requestCrewRoster(true);
-  var t = todayKST();
-  if (t.d >= 23) {
-    var nx = new Date(Date.UTC(t.y, t.m + 1, 1));
-    requestCrewRoster(true, false, nx.getUTCFullYear() + '-' + pad2(nx.getUTCMonth() + 1));
-  }
 }
 document.addEventListener('visibilitychange', function () {
   if (document.visibilityState === 'visible') setTimeout(function () { try { autoCrewRoster(); } catch (e) {} }, 1500);
@@ -17775,11 +17773,13 @@ function xrAutoSync(force, manual) {
       mm.ok = false; mm.msg = err.message;
       if (err.code === 'LOGIN_FAILED') { mm.fail = true; mm.pwSig = sig; }
       xrPut('meta', mm); xrRenderStatus();
+      try { renderCrewSetting(); } catch (e) {}
       if (manual) showToast(err.message);
       return;
     }
     mm.ok = true; mm.msg = ''; mm.fail = false; xrPut('meta', mm);
     xrApply(d.days || [], manual);
+    try { renderCrewSetting(); } catch (e) {}
   });
 }
 
@@ -17798,7 +17798,23 @@ function xrMyDays(months, cb) {
 
 function xrApply(days, manual) {
   var t = todayKST(), today = getDateKey(t.y, t.m, t.d);
-  var uniq = {}; days.forEach(function (x) { if (x && /^\d{4}-\d{2}-\d{2}$/.test(x.date)) uniq[x.date] = x; });
+  /* 날짜별 줄 모으기 (같은 줄 중복 제거) → 승무원 정보로 저장 */
+  var byDate = {}, myName = (typeof crewMask === 'function') ? crewMask(getCurrentUser().name) : '';
+  days.forEach(function (x) {
+    if (!x || !/^\d{4}-\d{2}-\d{2}$/.test(x.date)) return;
+    var arr = byDate[x.date] || (byDate[x.date] = []), sig = xrNorm(x.dia) + '|' + (x.trains || []).join(',') + '|' + (x.crew || []).join(',');
+    if (!arr.some(function (y) { return y.__s === sig; })) { x.__s = sig; arr.push(x); }
+  });
+  var roster = xrGet('roster', {});
+  Object.keys(byDate).forEach(function (k) { roster[k] = byDate[k].map(function (x) { return { dia: xrNorm(x.dia), trains: x.trains || [], crew: x.crew || [], me: x.me }; }); });
+  /* 본인 줄: 사번이 맞는 줄 → 한 줄뿐이면 그 줄 → 내 이름이 들어 있는 줄 */
+  var uniq = {};
+  Object.keys(byDate).forEach(function (k) {
+    var a = byDate[k], mine = a.filter(function (x) { return x.me === true; })[0];
+    if (!mine && a.length === 1 && a[0].me !== false) mine = a[0];
+    if (!mine && myName) mine = a.filter(function (x) { return (x.crew || []).indexOf(myName) >= 0; })[0];
+    if (mine) uniq[k] = mine;
+  });
   var keys = Object.keys(uniq).sort();
   var months = []; keys.forEach(function (k) { var p = k.split('-'), ym = [+p[0], +p[1] - 1]; if (!months.some(function (a) { return a[0] === ym[0] && a[1] === ym[1]; })) months.push(ym); });
   xrMyDays(months, function (mine) {
@@ -17818,7 +17834,9 @@ function xrApply(days, manual) {
     var od = new Date(t.y, t.m - 2, t.d), old = getDateKey(od.getFullYear(), od.getMonth(), od.getDate());
     Object.keys(seen).forEach(function (k) { if (k < old) delete seen[k]; });
     Object.keys(info).forEach(function (k) { if (k < old) delete info[k]; });
-    xrPut('seen', seen); xrPut('info', info);
+    Object.keys(roster).forEach(function (k) { if (k < old) delete roster[k]; });
+    xrPut('seen', seen); xrPut('info', info); xrPut('roster', roster);
+    var m2 = xrGet('meta', {}); m2.rosterAt = stampNow(); xrPut('meta', m2);
 
     changes.forEach(function (c) {
       var next = snapShiftKey(c.date, 1), known = diaByNumber(c.to);
@@ -17918,7 +17936,14 @@ function xrFetchForEdit(dk, dia) {
 /* 마이페이지 상태 줄도 같이 */
 (function () {
   var orig = window.renderCrewSetting;
-  if (typeof orig === 'function') window.renderCrewSetting = function () { orig.apply(this, arguments); try { xrRenderStatus(); } catch (e) {} };
+  if (typeof orig === 'function') window.renderCrewSetting = function () {
+    orig.apply(this, arguments);
+    try {
+      var st = $('crew-status');
+      if (st && getCrewPw()) { var m = xrGet('meta', {}); st.innerHTML = m.fail ? '<span style="color:#c62828">XROIS 로그인 실패</span>' : (m.rosterAt ? '연동됨 · 12시간마다 자동 · 마지막 <b>' + esc(String(m.rosterAt).slice(5, 16)) + '</b>' : '연동됨 · 아직 불러오지 않음'); }
+      xrRenderStatus();
+    } catch (e) {}
+  };
 })();
 </script>
 </body>
