@@ -1259,6 +1259,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
     <div id="calendar-grid" class="sch-grid"></div>
   </div>
+  <div id="sch-week" class="sch-week"></div>
   <div class="sch-tools"><button type="button" class="sch-png-btn" onclick="schSavePng()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>근무표 PNG 저장</button></div>
   <div class="sch-note">
     ※ 날짜를 길게 누르면 근무를 변경할 수 있습니다.
@@ -1377,6 +1378,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div id="ps-status" class="ps-status"></div>
   <div id="ps-slip-inline" class="ps-slip-inline"></div>
   <div id="ps-summary" class="ps-summary"></div>
+  <div id="ps-xr"></div>
   <details id="ps-me-box" class="ps-card ps-fold">
     <summary class="ps-card-h"><span>내 정보 · 선택 항목</span><small>이 폰에만 저장</small></summary>
     <div id="ps-me"></div>
@@ -3886,6 +3888,7 @@ function renderCalendar() {
     grid.appendChild(emptyTail);
   }
   fitSwapBadges(grid);
+  try { schWeekRender(); } catch (e) {}
 }
 /* 근무교환 이름표가 칸보다 넓으면 높이는 그대로 두고 가로만 살짝 줄여 이름 전체가 보이게 함 */
 function fitSwapBadges(root) {
@@ -8859,6 +8862,16 @@ function renderPayslip(full) {
   $('ps-status').textContent = status;
   try { xrEnsureSpec(wm.y, wm.m); } catch (e) {}   /* 그 근무월 XROIS 개인근무명세서가 없으면 가져와서 다시 그림 */
   var wst = payWorkStats(wm.y, wm.m, S);
+  /* 맨 위 안내: XROIS 개인근무명세서 반영 여부 + 직접 가져오기 */
+  (function () {
+    var box = $('ps-xr'); if (!box) return;
+    var linked = typeof crewLinked === 'function' && crewLinked();
+    if (wst && wst.src === 'xrois') { box.innerHTML = '<div class="ps-xr-ok">✓ 시간외 · 야간 · 휴일은 <b>XROIS 개인근무명세서</b>(' + (wm.m + 1) + '월 근무) 기준이에요<button type="button" onclick="xrEnsureSpec(' + wm.y + ',' + wm.m + ',true)">다시 가져오기</button></div>'; return; }
+    if (!linked) { box.innerHTML = '<div class="ps-xr-warn"><b>시간외 · 야간 · 휴일이 근무표로 어림한 값이에요</b><small>마이페이지 › CREW 연동에 XROIS 비밀번호를 저장하면 XROIS 개인근무명세서 값으로 정확히 계산해요.</small></div>'; return; }
+    var xym = wm.y + String(wm.m + 1).padStart(2, '0'), xer = (xrGet('specErr', {}) || {})[xym] || '';
+    box.innerHTML = '<div class="ps-xr-warn"><b>XROIS 개인근무명세서(' + (wm.m + 1) + '월 근무)가 아직 반영되지 않았어요</b><small>지금 시간외 · 야간 · 휴일은 근무표로 어림한 값이라 실제와 많이 다를 수 있어요.' + (xer && xer !== '가져오는 중…' ? ' (' + esc(xer) + ')' : '') + '</small>' +
+      '<button type="button" onclick="xrEnsureSpec(' + wm.y + ',' + wm.m + ',true)"' + (xer === '가져오는 중…' ? ' disabled' : '') + '>' + (xer === '가져오는 중…' ? '가져오는 중…' : 'XROIS에서 가져오기') + '</button></div>';
+  })();
   var auto = payWorkAuto(wst);
   var work = payWorkValues(auto, wm);
   if (full) {
@@ -8950,11 +8963,6 @@ function renderPayslip(full) {
     };
     w += tiles(['days', 'dayN', 'nightN', 'crew'], '근무 횟수');
     w += tiles(['h', 'nh', 'hh', 'oh'], '근무 시간 <small>(시간)</small>');
-    if (!(wst && wst.src === 'xrois') && typeof crewLinked === 'function' && crewLinked()) {
-      var xym = wm.y + String(wm.m + 1).padStart(2, '0'), xer = (xrGet('specErr', {}) || {})[xym] || '';
-      w += '<div class="ps-xr-warn"><b>XROIS 개인근무명세서가 아직 반영되지 않았어요</b><small>지금 시간외 · 야간 · 휴일은 근무표로 어림한 값이라 실제와 많이 다를 수 있어요.' + (xer ? ' (' + esc(xer) + ')' : '') + '</small>' +
-        '<button type="button" onclick="xrEnsureSpec(' + wm.y + ',' + wm.m + ',true)">' + (xer === '가져오는 중…' ? '가져오는 중…' : 'XROIS에서 가져오기') + '</button></div>';
-    }
     w += '<div class="ps-work-foot"><span>' + (wst && wst.src === 'xrois' ? '근무 시간은 <b>XROIS 개인근무명세서</b> 기준 · ' : '') + '✎ 숫자를 누르면 직접 고칠 수 있어요</span>' +
       (Object.keys(ed).length ? '<button type="button" class="ps-reset" onclick="payResetWork()">근무표 값으로</button>' : '') + '</div>';
     /* 공제 입력: 공제조합(구좌) · 철도신협(승무회비 · 동호회) */
@@ -17991,6 +17999,9 @@ html.ui-dark #weekly-wx-panel .ww-close{background:#354f70;color:#e2f2ff}
 .ps-xr-warn{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:8px 0;padding:10px 12px;border-radius:12px;background:#fff6e5;border:1px solid #f3d38b}
 .ps-xr-warn b{font-size:13px;color:#8a5a00;flex:1 1 100%}
 .ps-xr-warn small{font-size:11.5px;color:#7a6a4a;line-height:1.45;flex:1 1 60%;word-break:keep-all}
+.ps-xr-ok{display:flex;align-items:center;gap:8px;margin:8px 0;padding:9px 12px;border-radius:12px;background:#eef8f1;border:1px solid #bfe3cb;font-size:12.5px;color:#25603a}
+.ps-xr-ok button{margin-left:auto;flex:0 0 auto;border:1px solid #bfe3cb;border-radius:9px;background:#fff;color:#25603a;font-weight:800;font-size:11.5px;padding:5px 9px}
+.ps-xr-warn button[disabled]{opacity:.6}
 .ps-xr-warn button{flex:0 0 auto;border:0;border-radius:10px;background:#2f6fd6;color:#fff;font-weight:800;font-size:12.5px;padding:8px 12px}
 .mp-xr{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border:1px solid #d9e6fb;border-radius:12px;background:#f4f8ff}
 .mp-xr>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
@@ -18332,5 +18343,89 @@ function xrEnsureSpec(y, m, force) {
 @media(max-width:359px){#bottom-nav .bn-btn .bn-ico{width:44px!important;height:35px!important;min-height:35px!important}#bottom-nav .bn-btn .nav-art{width:44px!important;height:44px!important}#bottom-nav .bn-btn{font-size:10px!important}}
 @media(min-width:481px){#bottom-nav .bn-btn .bn-ico{width:58px!important;height:44px!important;min-height:44px!important}#bottom-nav .bn-btn .nav-art{width:58px!important;height:58px!important}}
 </style>
+<style id="sch-week-css">
+.sch-week{margin:12px 0 4px;padding:12px;border:1px solid #e3e9f2;border-radius:14px;background:#fbfcfe}
+.sch-week:empty{display:none}
+.sch-week .sw-h{display:flex;align-items:baseline;gap:6px;margin-bottom:8px}
+.sch-week .sw-h b{font-size:14px;color:#1b2b45}
+.sch-week .sw-h small{font-size:11px;color:#8a96a8}
+.sch-week .sw-row{display:grid;grid-template-columns:92px 1fr 70px;align-items:center;gap:8px;padding:5px 0}
+.sch-week .sw-d{font-size:12.5px;color:#475467;font-weight:700}
+.sch-week .sw-bar{position:relative;height:9px;border-radius:999px;background:#edf1f6;overflow:hidden}
+.sch-week .sw-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:#3b8beb}
+.sch-week .sw-bar em{position:absolute;top:-2px;bottom:-2px;width:2px;background:#1b2b45;opacity:.55}
+.sch-week .sw-v{text-align:right;font-size:13px;font-weight:900;color:#1b2b45}
+.sch-week .sw-row.over .sw-bar i{background:#e5484d}
+.sch-week .sw-row.over .sw-v{color:#d32f2f}
+.sch-week .sw-row.part .sw-v{color:#8a96a8;font-weight:700}
+.sch-week .sw-rest{margin-top:8px;padding:8px 10px;border-radius:10px;background:#fff4f4;border:1px solid #f6caca;font-size:12px;color:#a8282d;line-height:1.5}
+.sch-week .sw-ok{margin-top:6px;font-size:12px;color:#25603a}
+.sch-week .sw-note{margin-top:8px;font-size:10.5px;color:#8a96a8;line-height:1.5;word-break:keep-all}
+</style>
+<script id="sch-week-script">
+/* 근무표: 주(일~토)별 근로시간이 52시간을 넘는지 + 근무 사이 휴식 11시간 확인
+   · 시간: XROIS 개인근무명세서 사업시간이 있으면 그 값, 없으면 출근~퇴근 시각
+   · 야간근무처럼 자정을 넘는 근무는 실제 시각대로 주를 나눠서 셈
+   · 근로기준법 제50조(1주 40시간) · 제53조(연장 12시간) · 제59조(운송업 특례: 서면합의 시 초과 가능, 대신 11시간 휴식) */
+function schShiftsAround(y, m) {
+  var mb = typeof findMyMember === 'function' ? findMyMember() : null;
+  if (!mb || typeof snapshotUsable !== 'function' || !snapshotUsable()) return null;
+  var first = new Date(y, m, 1), start = new Date(y, m, 1 - first.getDay() - 1);   /* 첫 주 일요일 하루 전부터 */
+  var last = new Date(y, m + 1, 0), end = new Date(y, m + 1, 0 + (6 - last.getDay()) + 1);
+  var sp = typeof xrGet === 'function' ? xrGet('spec', {}) : {}, out = [];
+  for (var dt = new Date(start); dt <= end; dt.setDate(dt.getDate() + 1)) {
+    var key = getDateKey(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    var info = null; try { info = snapDayWithAuto(key, mb, snapshot.raw.dia || [], snapshot.ovMap); } catch (e) {}
+    if (!info) continue;
+    var isCredit = info.creditStatus === '휴무충당' || info.status === '휴무충당' || info.label === '휴무충당';
+    if (info.overrideType === 'status' && !isCredit) continue;
+    var type = String(info.type || info.label || '').trim();
+    if (type !== '주' && type !== '야' && !isCredit) continue;
+    var diaNo = String(info.dia || '').trim().toUpperCase(), meta = diaNo ? diaByNumber(diaNo) : null;
+    var a = parseHM(info.start || (meta && meta.start)), b = parseHM(info.end || (meta && meta.end));
+    var xs = sp[key];
+    if (isNaN(a) || isNaN(b)) { if (xs && xs.tot > 0) { a = 9 * 60; b = a + xs.tot; } else continue; }
+    if (b <= a) b += 1440;
+    var day0 = Math.round((new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()) - new Date(y, m, 1)) / 86400000);
+    var s0 = day0 * 1440 + a, e0 = day0 * 1440 + b;
+    out.push({ key: key, s: s0, e: e0, work: xs && xs.tot > 0 ? xs.tot : (b - a), xr: !!(xs && xs.tot > 0), dia: diaNo });
+  }
+  return out;
+}
+function schWeekRender() {
+  var box = $('sch-week'); if (!box) return;
+  var y = calendarYear, m = calendarMonth, sh = schShiftsAround(y, m);
+  if (!sh || !sh.length) { box.innerHTML = ''; return; }
+  var first = new Date(y, m, 1), lastD = new Date(y, m + 1, 0).getDate();
+  var w0 = -first.getDay(), rows = [], anyXr = sh.some(function (x) { return x.xr; });
+  function md(off) { var d = new Date(y, m, 1 + off); return (d.getMonth() + 1) + '/' + d.getDate(); }
+  for (var ws = w0; ws < lastD; ws += 7) {
+    var a = ws * 1440, b = (ws + 7) * 1440, min = 0;
+    sh.forEach(function (x) {
+      var ov = Math.max(0, Math.min(b, x.e) - Math.max(a, x.s));
+      if (ov > 0) min += x.work * ov / (x.e - x.s);     /* 사업시간을 실제 시각 비율대로 그 주에 나눔 */
+    });
+    var hrs = Math.round(min / 6) / 10, part = ws < 0 || ws + 7 > lastD;
+    rows.push('<div class="sw-row' + (hrs > 52 ? ' over' : '') + (part && hrs <= 52 ? ' part' : '') + '"><span class="sw-d">' + md(ws) + '~' + md(ws + 6) + '</span>' +
+      '<span class="sw-bar"><i style="width:' + Math.min(100, hrs / 60 * 100).toFixed(1) + '%"></i><em style="left:' + (52 / 60 * 100).toFixed(1) + '%"></em></span>' +
+      '<span class="sw-v">' + hrs + '시간' + (hrs > 52 ? ' ⚠' : '') + '</span></div>');
+  }
+  /* 근무 사이 휴식 11시간 */
+  var rest = [];
+  sh.sort(function (p, q) { return p.s - q.s; });
+  for (var i = 1; i < sh.length; i++) {
+    var gap = sh[i].s - sh[i - 1].e;
+    if (gap >= 0 && gap < 660 && sh[i].s >= 0 && sh[i].s < lastD * 1440) {
+      var e = sh[i - 1].e, s2 = sh[i].s;
+      var t = function (v) { var d = Math.floor(v / 1440), mm = ((v % 1440) + 1440) % 1440; return md(d) + ' ' + String(Math.floor(mm / 60)).padStart(2, '0') + ':' + String(mm % 60).padStart(2, '0'); };
+      rest.push(t(e) + ' 퇴근 → ' + t(s2) + ' 출근 (휴식 ' + (Math.round(gap / 6) / 10) + '시간)');
+    }
+  }
+  var overN = rows.filter(function (r) { return / over/.test(r); }).length;
+  box.innerHTML = '<div class="sw-h"><b>주간 근로시간</b><small>일~토 · 52시간 기준선 · ' + (anyXr ? 'XROIS 사업시간 우선' : '출근~퇴근 시각 기준') + '</small></div>' + rows.join('') +
+    (rest.length ? '<div class="sw-rest"><b>근무 사이 휴식 11시간 미만</b><br>' + rest.map(esc).join('<br>') + '</div>' : (overN ? '' : '<div class="sw-ok">✓ 모든 주가 52시간 이하이고, 근무 사이 휴식도 11시간 이상이에요.</div>')) +
+    '<div class="sw-note">근로기준법: 1주 40시간 + 연장 12시간 = 52시간(제50조·제53조). 철도 같은 육상운송업은 제59조 특례 대상이라 근로자대표와 서면합의가 있으면 52시간을 넘을 수 있고, 대신 근무 사이 11시간 이상 휴식이 필요해요. 참고용이며 정확한 판단은 노무 담당자에게 확인하세요.</div>';
+}
+</script>
 </body>
 </html>
