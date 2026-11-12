@@ -8594,6 +8594,16 @@ function payListHas(list, v) {
   return s.split(/[,·/]/).some(function (x) { return x.replace(/[^0-9]/g, '') === String(v); });
 }
 /* ---- 명세서 계산 ---- */
+/* 실제 급여명세서에 찍히는 이름으로 (예: 야간근로수당 → 야간근무수당, 정액급식비 → 급식비, 승무수당(부기관사) → 승무수당) */
+function payShowName(n) {
+  n = String(n || '');
+  if (/^야간근로수당$/.test(n)) return '야간근무수당';
+  if (/^휴일근로수당$/.test(n)) return '휴일근무수당';
+  if (/^(초과근무수당|시간외근로수당)$/.test(n)) return '시간외근무수당';
+  if (/^정액급식비$/.test(n)) return '급식비';
+  if (/^승무수당\((기관사|부기관사|여객전무|전철차장)\)$/.test(n)) return '승무수당';
+  return n;
+}
 function payCalc(T, prefs, work, grade, step, payM, payY, joinDate) {
   var S = T.settings || {};
   var out = { pay: [], ded: [], gross: 0, dedSum: 0, net: 0, base: 0, baseFound: false, ordinary: 0, hourly: 0, taxable: 0, taxfree: 0 };
@@ -8635,6 +8645,42 @@ function payCalc(T, prefs, work, grade, step, payM, payY, joinDate) {
   if (items.some(function (it) { return it.kind === '지급' && /조정수당/.test(it.name || '') && /교번/.test(it.name || ''); })) {
     items = items.filter(function (it) { return !(it.kind === '지급' && /조정수당/.test(it.name || '') && !/교번/.test(it.name || '')); });
   }
+  /* 같은 수당이 두 번 나오지 않게 (보수규정 · 실제 명세서 기준 한 종류에 한 줄)
+     · 야간 / 휴일 / 시간외 / 급식비 / 조정수당 / 안전역할 / 장기근속 / 명절상여 : 하나만
+     · 기술수당 : 여러 자격증이면 유리한 1개만 (시행세칙 제22조①)
+     · 위험수당 : 갑종 · 을종 중 하나 (유리한 쪽)
+     · 승무수당 · 특별업무수당 · 업무지원수당 : 유리한 1개만 (보수규정 별표7 ※) */
+  (function () {
+    function cat(it) {
+      var n = String(it.name || '').replace(/\s+/g, '');
+      if (it.kind !== '지급') return 'id' + it.id;
+      if (it.calc === '야간시간' || /^야간(근로|근무)?수당/.test(n)) return 'night';
+      if (it.calc === '휴일시간' || /^휴일(근로|근무)?수당/.test(n)) return 'hol';
+      if (it.calc === '초과시간' || /^(시간외|초과)(근로|근무)?수당/.test(n)) return 'over';
+      if (/급식/.test(n)) return 'meal';
+      if (/^조정수당/.test(n)) return 'adj';
+      if (/안전역할/.test(n)) return 'safety';
+      if (/장기근속/.test(n)) return 'long';
+      if (it.calc === '명절상여' || /명절.*상여/.test(n)) return 'bonus';
+      if (/^기술수당/.test(n)) return 'tech';
+      if (/^위험수당/.test(n)) return 'risk';
+      if (/^승무수당|^특별업무수당|^업무지원수당/.test(n)) return 'crewlike';
+      return 'id' + it.id;
+    }
+    function est(it) {
+      var f = fixedVal(it, true);
+      return f ? f.v : (+it.amount || 0) + (+it.rate || 0);
+    }
+    var best = {};
+    items.forEach(function (it, i) {
+      var c = cat(it);
+      if (/^id/.test(c)) return;
+      var v = est(it), b = best[c];
+      /* 시간 수당은 먼저 나온 것(정렬 순서), 나머지는 금액이 큰 것 */
+      if (!b || (!/^(night|hol|over)$/.test(c) && v > b.v)) best[c] = { i: i, v: v };
+    });
+    items = items.filter(function (it, i) { var c = cat(it); return /^id/.test(c) || (best[c] && best[c].i === i); });
+  })();
   function cnt(it) { return it.input === '인원' ? Math.min(+it.max || 10, parseInt(prefs.counts[it.id], 10) || 0) : 1; }
   function fixedVal(it, full) {
     var n = cnt(it), dayFactor = full ? 1 : dayFactor0, dayNote = full ? '' : dayNote0;
@@ -8661,7 +8707,7 @@ function payCalc(T, prefs, work, grade, step, payM, payY, joinDate) {
     /* 명절상여금 · 평가금(성과급)은 통상임금에서 뺌 (보수표에 통상임금 표시가 되어 있어도) */
     if (it.calc === '명절상여' || /명절|상여|평가/.test(String(it.name || ''))) return;
     var f = fixedVal(it, true);
-    if (f) ordinary += f.v;
+    if (f) ordinary += Math.floor(f.v / 10) * 10;   /* 각 수당은 10원 미만 절사한 금액으로 (예: 조정수당 103,275 → 103,270) */
   });
   var STD_H = Math.max(1, paySetNum(S, '통상임금_기준시간', 209));   /* Supabase 설정 우선, 기본 기준시간 209시간 */
   var hourly = ordinary / STD_H;   /* 시급은 반올림하지 않고 계산, 수당에서 10원 미만 절사 */
@@ -8702,10 +8748,11 @@ function payCalc(T, prefs, work, grade, step, payM, payY, joinDate) {
       var hrs = work[HOURS[it.calc][0]] || 0;
       if (+it.amount > 0) { v = hrs * (+it.amount); d = HOURS[it.calc][1] + ' ' + hrs + '시간 × ' + won(+it.amount) + '원'; }
       else {
-        v = f10p(hrs * hourly * (+it.rate)); d = HOURS[it.calc][1] + ' ' + hrs + '시간 × 시급 ' + won(hourly) + '원 × ' + (+it.rate);
+        /* 실제 명세서: 시급(통상임금 ÷ 209)을 원 단위로 반올림한 뒤 × 시간 × 배율, 10원 미만 절사 */
+        v = f10p(hrs * Math.round(hourly) * (+it.rate)); d = HOURS[it.calc][1] + ' ' + hrs + '시간 × 시급 ' + won(hourly) + '원 × ' + (+it.rate);
         /* 같은 시간으로 법정차액도 따로 (명세서: 시간외수당_법정차액 · 야간수당_법정차액) */
-        var lv = legalHourly > 0 && it.calc !== '근무시간' ? f10p(hrs * legalHourly * (+it.rate)) : 0;
-        if (lv > 0) legalItems.push({ per: 'prev', name: String(it.name || '').replace(/근무수당$/, '수당') + '_법정차액', amt: lv,
+        var lv = legalHourly > 0 && it.calc !== '근무시간' ? f10p(hrs * Math.round(legalHourly) * (+it.rate)) : 0;
+        if (lv > 0) legalItems.push({ per: 'prev', name: payShowName(it.name).replace(/근무수당$/, '수당') + '_법정차액', amt: lv,
           detail: HOURS[it.calc][1] + ' ' + hrs + '시간 × 차액시급 ' + won(legalHourly) + '원 × ' + (+it.rate),
           help: '회사 통상임금으로 계산한 수당과 법정 통상임금(기본급 + 위험 · 기술 · 대우 · 조정 · 승무 · 1인승무 · 특별업무 · 업무지원수당 + 급식보조비, 명절상여금 · 평가금 제외)으로 계산한 수당의 차이예요. 차액시급 = 월 ' + won(legalExtra) + '원' + (legalNames.length ? '(' + legalNames.join(' · ') + ')' : '') + ' ÷ ' + STD_H + '시간. 전달 근무 시간으로 계산해요.' });
       }
@@ -8718,7 +8765,7 @@ function payCalc(T, prefs, work, grade, step, payM, payY, joinDate) {
     if (+it.taxfree > 0) taxfree += Math.min(v, +it.taxfree);
     /* 지급 시점: 근무 실적으로 정해지는 수당(시간 · 횟수 · 17일 기준 월액)은 전달분, 나머지 고정 수당은 그달분 */
     var per = (HOURS[it.calc] || DAYS[it.calc] || /17일/.test(it.calc || '')) ? 'prev' : 'cur';
-    out.pay.push({ name: it.name, amt: v, detail: d, note: it.note || '', help: it.help || '', per: per });
+    out.pay.push({ name: payShowName(it.name), amt: v, detail: d, note: it.note || '', help: it.help || '', per: per });
   });
   legalItems.forEach(function (x) { out.pay.push(x); });
   out.gross = out.pay.reduce(function (a, x) { return a + x.amt; }, 0);
