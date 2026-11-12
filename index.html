@@ -8950,6 +8950,11 @@ function renderPayslip(full) {
     };
     w += tiles(['days', 'dayN', 'nightN', 'crew'], '근무 횟수');
     w += tiles(['h', 'nh', 'hh', 'oh'], '근무 시간 <small>(시간)</small>');
+    if (!(wst && wst.src === 'xrois') && typeof crewLinked === 'function' && crewLinked()) {
+      var xym = wm.y + String(wm.m + 1).padStart(2, '0'), xer = (xrGet('specErr', {}) || {})[xym] || '';
+      w += '<div class="ps-xr-warn"><b>XROIS 개인근무명세서가 아직 반영되지 않았어요</b><small>지금 시간외 · 야간 · 휴일은 근무표로 어림한 값이라 실제와 많이 다를 수 있어요.' + (xer ? ' (' + esc(xer) + ')' : '') + '</small>' +
+        '<button type="button" onclick="xrEnsureSpec(' + wm.y + ',' + wm.m + ',true)">' + (xer === '가져오는 중…' ? '가져오는 중…' : 'XROIS에서 가져오기') + '</button></div>';
+    }
     w += '<div class="ps-work-foot"><span>' + (wst && wst.src === 'xrois' ? '근무 시간은 <b>XROIS 개인근무명세서</b> 기준 · ' : '') + '✎ 숫자를 누르면 직접 고칠 수 있어요</span>' +
       (Object.keys(ed).length ? '<button type="button" class="ps-reset" onclick="payResetWork()">근무표 값으로</button>' : '') + '</div>';
     /* 공제 입력: 공제조합(구좌) · 철도신협(승무회비 · 동호회) */
@@ -17983,6 +17988,10 @@ html.ui-dark #weekly-wx-panel .ww-close{background:#354f70;color:#e2f2ff}
 })();
 </script>
 <style id="xrois-sync-css">
+.ps-xr-warn{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:8px 0;padding:10px 12px;border-radius:12px;background:#fff6e5;border:1px solid #f3d38b}
+.ps-xr-warn b{font-size:13px;color:#8a5a00;flex:1 1 100%}
+.ps-xr-warn small{font-size:11.5px;color:#7a6a4a;line-height:1.45;flex:1 1 60%;word-break:keep-all}
+.ps-xr-warn button{flex:0 0 auto;border:0;border-radius:10px;background:#2f6fd6;color:#fff;font-weight:800;font-size:12.5px;padding:8px 12px}
 .mp-xr{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border:1px solid #d9e6fb;border-radius:12px;background:#f4f8ff}
 .mp-xr>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 .mp-xr b{font-size:13px;color:#1b2b45}
@@ -18264,7 +18273,7 @@ function xrFetchForEdit(dk, dia) {
 /* 미리보는 월급: 그 근무월의 XROIS 개인근무명세서가 없으면(또는 덜 있으면) 한 번 가져와서 다시 계산
    · 1시간에 한 번까지 · 로그인 실패 상태면 안 함 · 앞으로 올 달은 안 함 */
 var xrSpecBusy = false;
-function xrEnsureSpec(y, m) {
+function xrEnsureSpec(y, m, force) {
   if (xrSpecBusy || typeof crewLinked !== 'function' || !crewLinked()) return;
   if (!(y >= 2020 && y <= 2100) || !(m >= 0 && m <= 11)) return;
   var t = todayKST();
@@ -18272,21 +18281,32 @@ function xrEnsureSpec(y, m) {
   var ym = y + String(m + 1).padStart(2, '0'), last = new Date(y, m + 1, 0).getDate(), sp = xrGet('spec', {}), have = 0;
   for (var d = 1; d <= last; d++) if (sp[getDateKey(y, m, d)]) have++;
   var past = y < t.y || (y === t.y && m < t.m);
-  if (have >= last - 1 && past) return;                      /* 지난 달은 다 있으면 끝 */
+  if (have >= last - 1 && past && !force) return;            /* 지난 달은 다 있으면 끝 */
   var tries = xrGet('specTry', {});
-  if (tries[ym] && Date.now() - tries[ym] < 3600000) return;   /* 1시간에 한 번 */
+  if (!force && tries[ym] && Date.now() - tries[ym] < 3600000) return;   /* 1시간에 한 번 */
   var meta = xrGet('meta', {});
   if (meta.fail && meta.pwSig === xrSig(getCrewPw())) return;
-  if (!past && have >= last - 1 && meta.at && Date.now() - meta.at < 3600000) return;  /* 이번 달은 방금 동기화했으면 */
+  if (!force && !past && have >= last - 1 && meta.at && Date.now() - meta.at < 3600000) return;  /* 이번 달은 방금 동기화했으면 */
   tries[ym] = Date.now(); xrPut('specTry', tries);
+  var errs = xrGet('specErr', {}); errs[ym] = '가져오는 중…'; xrPut('specErr', errs);
   xrSpecBusy = true;
+  if (force) { try { renderPayslip(true); } catch (e) {} }
   xrCall({ action: 'xrSpec', specYms: [ym] }, function (err, d) {
     xrSpecBusy = false;
-    if (err) { if (err.code === 'LOGIN_FAILED') { var mm = xrGet('meta', {}); mm.fail = true; mm.pwSig = xrSig(getCrewPw()); xrPut('meta', mm); } return; }
+    var er = xrGet('specErr', {});
+    if (err) {
+      if (err.code === 'LOGIN_FAILED') { var mm = xrGet('meta', {}); mm.fail = true; mm.pwSig = xrSig(getCrewPw()); xrPut('meta', mm); }
+      er[ym] = (/BAD_REQUEST|HTTP400/.test(err.code) || /날짜를 선택|예전 버전/.test(err.message)) ? '서버 함수(clever-action)를 새 코드로 Deploy 해주세요.' : err.message;
+      xrPut('specErr', er);
+      try { renderPayslip(true); } catch (e) {}
+      return;
+    }
+    er[ym] = Object.keys(d.spec || {}).length ? '' : 'XROIS 개인근무명세서에 이 달 자료가 없어요.'; xrPut('specErr', er);
     var s2 = xrGet('spec', {}), n = 0;
     Object.keys(d.spec || {}).forEach(function (k) { s2[k] = d.spec[k]; n++; });
     xrPut('spec', s2);
-    if (n) { try { renderPayslip(true); } catch (e) {} try { renderDayDetail(); } catch (e) {} }
+    try { renderPayslip(true); } catch (e) {}
+    if (n) { try { renderDayDetail(); } catch (e) {} }
   });
 }
 /* 마이페이지 상태 줄도 같이 */
