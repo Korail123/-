@@ -5558,25 +5558,46 @@ function crewSkipDay(diaNo, type, status, label) {
   return CREW_STANDBY_DIAS.indexOf(String(diaNo || '').trim().toUpperCase()) >= 0;
 }
 /* 날짜·다이아(+열차번호)로 CREW 표의 행을 찾고, 본인(selfName)을 뺀 함께 타는 승무원 목록을 돌려줌 */
-function crewFindMates(dateKey, diaNo, trains, selfName) {
-  var store = crewRosterLoad();
-  var day = store[dateKey];
+/* 승무원 찾기 (XROIS 승무근무표 현황 기준)
+   1순위: 같은 다이아 이름 줄의 승무원 (본인 이름 제외)
+   2순위: 1순위에 아무도 없거나 본인만 있으면 → 열차번호1·열차번호2가 둘 다 같은 다른 줄의 승무원 */
+function crewIsMe(c, full) {
+  c = String(c || '').trim(); full = String(full || '').trim();
+  if (!c || !full || c.length !== full.length) return false;
+  for (var i = 0; i < c.length; i++) if (c[i] !== '*' && c[i] !== '＊' && c[i] !== full[i]) return false;
+  return true;
+}
+function crewPick(dateKey, diaNo, trains, selfName) {
+  var day = crewRosterLoad()[dateKey];
   if (!day) return null;
-  var want = crewNorm(diaNo);
-  var rows = (day.rows || []).filter(function (r) { return crewNorm(r.dia) === want; });
-  if (!rows.length) {
-    var ts = (trains || []).map(crewNorm).filter(function (x) { return x && x !== '-'; });
-    rows = (day.rows || []).filter(function (r) { return ts.indexOf(crewNorm(r.train1)) >= 0 || ts.indexOf(crewNorm(r.train2)) >= 0; });
-  }
-  var me = crewMask(selfName);
-  var mates = [];
-  rows.forEach(function (r) {
-    (r.crew || []).forEach(function (c) {
-      c = String(c || '').trim();
-      if (c && c !== me && mates.indexOf(c) < 0) mates.push(c);
+  var all = day.rows || [], want = crewNorm(diaNo);
+  var names = function (rows) {
+    var out = [];
+    rows.forEach(function (r) { (r.crew || []).forEach(function (c) { c = String(c || '').trim(); if (c && !crewIsMe(c, selfName) && out.indexOf(c) < 0) out.push(c); }); });
+    return out;
+  };
+  var mine = all.filter(function (r) { return crewNorm(r.dia) === want; });
+  var when = String(day.at || '').slice(5, 16).replace('-', '/');
+  var p1 = names(mine);
+  if (p1.length) return { found: true, level: 1, mates: p1, when: when };
+  /* 2순위: 내 열차번호 두 개 (현황의 내 다이아 줄 → 없으면 근무표 열차번호) */
+  var pair = [];
+  var src = mine[0] ? [mine[0].train1, mine[0].train2] : (trains || []);
+  src.forEach(function (t) { t = crewNorm(t).replace(/^([A-Z]*)0+(?=\d)/, '$1'); if (t && t !== '-' && t !== 'K' && pair.indexOf(t) < 0) pair.push(t); });
+  if (pair.length >= 2) {
+    var a = pair[0], b = pair[1];
+    var rows2 = all.filter(function (r) {
+      if (crewNorm(r.dia) === want) return false;
+      var t1 = crewNorm(r.train1).replace(/^([A-Z]*)0+(?=\d)/, '$1'), t2 = crewNorm(r.train2).replace(/^([A-Z]*)0+(?=\d)/, '$1');
+      return (t1 === a && t2 === b) || (t1 === b && t2 === a);
     });
-  });
-  return { found: rows.length > 0, mates: mates, when: String(day.at || '').slice(5, 16).replace('-', '/') };
+    var p2 = names(rows2);
+    if (p2.length) return { found: true, level: 2, mates: p2, trains: [a, b], dias: rows2.map(function (r) { return r.dia; }).filter(Boolean), when: when };
+  }
+  return { found: mine.length > 0, level: 0, mates: [], when: when };
+}
+function crewFindMates(dateKey, diaNo, trains, selfName) {
+  return crewPick(dateKey, diaNo, trains, selfName);
 }
 /* 근무그룹 다이아 정보 팝업용 '승무원' 줄 (CREW 연동된 사용자만) */
 function crewMatesPiRow(dateKey, diaNo, trains, memberName) {
@@ -5596,41 +5617,15 @@ function crewMatesPiRow(dateKey, diaNo, trains, memberName) {
 /* 근무표 상세정보용: 나를 뺀 승무원을 '함께 타는 승무원'으로 표시 */
 function crewMatesHtml(dateKey, diaNo, trains) {
   if (!crewLinked()) return '';                       /* CREW 연동 안 한 사람에게는 아무것도 표시하지 않음 */
-  var store = crewRosterLoad();
-  var day = store[dateKey];
   var ico = '<img class="detail-art" src="' + appIcon('승무원') + '" alt="" aria-hidden="true">';
-  if (!day) return '<div class="dd-row dd-icon-row crew-row">' + ico + '<span>승무원 : <small>아직 안 가져왔어요 (이번 달 근무일 · 마이페이지 CREW 연동 [지금 최신화])</small></span></div>';
-  var me = crewMask(getCurrentUser().name);
-  var want = crewNorm(diaNo);
-  var all = day.rows || [];
-  var namesOf = function (rows) {
-    var out = [];
-    rows.forEach(function (r) { (r.crew || []).forEach(function (c) { c = String(c || '').trim(); if (c && c !== me && out.indexOf(c) < 0) out.push(c); }); });
-    return out;
-  };
-  /* ① 승무근무표 현황에서 내 다이아와 같은 이름의 줄 */
-  var diaRows = all.filter(function (r) { return crewNorm(r.dia) === want; });
-  var diaMates = namesOf(diaRows);
-  /* ② 내 열차번호1 · 열차번호2와 같은 열차를 타는 다른 다이아 줄 */
-  var ts = [];
-  (trains || []).forEach(function (t) { t = crewNorm(t); if (t && t !== '-' && t !== 'K' && ts.indexOf(t) < 0) ts.push(t); });
-  var trainLines = ts.map(function (t) {
-    var rows = all.filter(function (r) { return crewNorm(r.dia) !== want && (crewNorm(r.train1) === t || crewNorm(r.train2) === t); });
-    var names = namesOf(rows).filter(function (n) { return diaMates.indexOf(n) < 0; });
-    var dias = []; rows.forEach(function (r) { if (r.dia && dias.indexOf(r.dia) < 0) dias.push(r.dia); });
-    return { train: t, names: names, dias: dias };
-  }).filter(function (x) { return x.names.length; });
-  var when = String(day.at || '').slice(5, 16).replace('-', '/');
-  var lines = [];
-  lines.push('<div class="crew-line"><em>같은 다이아</em>' + (diaRows.length
-    ? (diaMates.length ? '<b class="crew-names">' + diaMates.map(esc).join(', ') + '</b>' : '<small>단독 승무</small>')
-    : '<small>표에서 ' + esc(diaNo) + '를 찾지 못했어요</small>') + '</div>');
-  trainLines.forEach(function (x) {
-    lines.push('<div class="crew-line"><em>열차 ' + esc(x.train) + '</em><b class="crew-names">' + x.names.map(esc).join(', ') + '</b>' +
-      (x.dias.length ? ' <small>(' + x.dias.map(esc).join(', ') + ')</small>' : '') + '</div>');
-  });
+  var r = crewPick(dateKey, diaNo, trains, getCurrentUser().name);
+  if (!r) return '<div class="dd-row dd-icon-row crew-row">' + ico + '<span>승무원 : <small>아직 안 가져왔어요 (마이페이지 CREW 연동 [지금 최신화])</small></span></div>';
+  var line;
+  if (r.level === 1) line = '<div class="crew-line"><em>같은 다이아</em><b class="crew-names">' + r.mates.map(esc).join(', ') + '</b></div>';
+  else if (r.level === 2) line = '<div class="crew-line"><em>같은 열차 ' + esc(r.trains.join('·')) + '</em><b class="crew-names">' + r.mates.map(esc).join(', ') + '</b>' + (r.dias && r.dias.length ? ' <small>(' + r.dias.map(esc).join(', ') + ')</small>' : '') + '</div>';
+  else line = '<div class="crew-line"><small>' + (r.found ? '단독 승무' : '승무근무표 현황에서 ' + esc(diaNo) + '를 찾지 못했어요') + '</small></div>';
   return '<div class="dd-row dd-icon-row crew-row">' + ico +
-    '<span class="crew-box"><span class="crew-title">승무원' + (when ? ' <small class="crew-when">(' + esc(when) + ' 기준)</small>' : '') + '</span>' + lines.join('') + '</span></div>';
+    '<span class="crew-box"><span class="crew-title">승무원' + (r.when ? ' <small class="crew-when">(' + esc(r.when) + ' 기준)</small>' : '') + '</span>' + line + '</span></div>';
 }
 /* ============ 일일 메모장 ============
    날짜별 개인 메모. 개인적인 내용이 있을 수 있어 이 폰(localStorage)에만 저장하고
