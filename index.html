@@ -8396,8 +8396,9 @@ function payWorkStats(y, m, S) {
     var type = String(info.type || info.label || '').trim();
     if (type !== '주' && type !== '야' && !isCredit) continue;
     st.days++;
-    /* 승무수당 · 조정수당의 17일 기준 근무일은 소정근무만 (휴일근무=휴무충당 제외) — 시행세칙 제15조②, 제17조② */
-    if (!isCredit) st.regDays++;
+    /* 승무수당 · 조정수당의 17일 기준 근무일은 소정근무만 (휴일근무=휴무충당 제외) — 시행세칙 제15조②, 제17조②
+       야간근무는 출근일 · 퇴근일 이틀에 걸치므로 2일 (실제 명세서: 교번근무 승무수당 전액 지급과 일치) */
+    if (!isCredit) st.regDays += (type === '야' ? 2 : 1);
     if (type === '야') st.nightN++; else st.dayN++;
     var diaNo = String(info.dia || '').trim().toUpperCase();
     if (!(typeof CREW_STANDBY_DIAS !== 'undefined' && CREW_STANDBY_DIAS.indexOf(diaNo) >= 0)) st.crew++;
@@ -8427,6 +8428,7 @@ function payWorkStats(y, m, S) {
   }
   var stdH = paySetNum(S, '월_기준근무시간', 0);
   var stdMin = stdH > 0 ? stdH * 60 : Math.round(last * 40 / 7 * 60);
+  st.regDays = Math.min(st.regDays, last);
   st.stdMin = stdMin;
   st.overMin = Math.max(0, st.min - stdMin);
   /* XROIS 개인근무명세서가 그 달을 다 덮으면: 야간 · 휴일 · 연장(초과) · 총 사업시간은 XROIS 정산값(분)으로
