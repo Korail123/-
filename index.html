@@ -853,6 +853,9 @@ html::-webkit-scrollbar,body::-webkit-scrollbar,*::-webkit-scrollbar{display:non
 <style id="crew-roster-style">.crew-row{flex-wrap:wrap;white-space:normal!important}
 .crew-row small{font-size:.8em;color:#8a96a8;font-weight:normal}
 .crew-names{color:#1d5fc4}
+.crew-box{display:flex;flex-direction:column;gap:3px;min-width:0}
+.crew-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;line-height:1.45}
+.crew-line em{font-style:normal;font-size:.82em;font-weight:800;color:#5b6678;background:#eef3fa;border-radius:6px;padding:1px 6px}
 .crew-refresh{margin-left:6px;padding:3px 9px;border:1px solid #1769d2;border-radius:999px;background:#fff;color:#1769d2;font-size:12px;font-weight:700;cursor:pointer}</style>
 <script id="app-icons">
 /* 앱 아이콘 모음 (한 번만 저장하고 여러 곳에서 재사용) */
@@ -5390,26 +5393,37 @@ function crewMatesHtml(dateKey, diaNo, trains) {
   var day = store[dateKey];
   var ico = '<img class="detail-art" src="' + appIcon('승무원') + '" alt="" aria-hidden="true">';
   if (!day) return '<div class="dd-row dd-icon-row crew-row">' + ico + '<span>승무원 : <small>정보 없음</small></span></div>';
-  var want = crewNorm(diaNo);
-  var rows = (day.rows || []).filter(function (r) { return crewNorm(r.dia) === want; });
-  if (!rows.length) {
-    /* 다이아가 안 맞으면 열차번호로 한 번 더 찾기 */
-    var ts = (trains || []).map(crewNorm).filter(function (x) { return x && x !== '-'; });
-    rows = (day.rows || []).filter(function (r) { return ts.indexOf(crewNorm(r.train1)) >= 0 || ts.indexOf(crewNorm(r.train2)) >= 0; });
-  }
   var me = crewMask(getCurrentUser().name);
-  var mates = [];
-  rows.forEach(function (r) {
-    (r.crew || []).forEach(function (c) {
-      c = String(c || '').trim();
-      if (c && c !== me && mates.indexOf(c) < 0) mates.push(c);
-    });
-  });
+  var want = crewNorm(diaNo);
+  var all = day.rows || [];
+  var namesOf = function (rows) {
+    var out = [];
+    rows.forEach(function (r) { (r.crew || []).forEach(function (c) { c = String(c || '').trim(); if (c && c !== me && out.indexOf(c) < 0) out.push(c); }); });
+    return out;
+  };
+  /* ① 승무근무표 현황에서 내 다이아와 같은 이름의 줄 */
+  var diaRows = all.filter(function (r) { return crewNorm(r.dia) === want; });
+  var diaMates = namesOf(diaRows);
+  /* ② 내 열차번호1 · 열차번호2와 같은 열차를 타는 다른 다이아 줄 */
+  var ts = [];
+  (trains || []).forEach(function (t) { t = crewNorm(t); if (t && t !== '-' && t !== 'K' && ts.indexOf(t) < 0) ts.push(t); });
+  var trainLines = ts.map(function (t) {
+    var rows = all.filter(function (r) { return crewNorm(r.dia) !== want && (crewNorm(r.train1) === t || crewNorm(r.train2) === t); });
+    var names = namesOf(rows).filter(function (n) { return diaMates.indexOf(n) < 0; });
+    var dias = []; rows.forEach(function (r) { if (r.dia && dias.indexOf(r.dia) < 0) dias.push(r.dia); });
+    return { train: t, names: names, dias: dias };
+  }).filter(function (x) { return x.names.length; });
   var when = String(day.at || '').slice(5, 16).replace('-', '/');
-  var text = !rows.length ? '<small>표에서 이 다이아를 찾지 못했습니다</small>'
-    : mates.length ? '<b class="crew-names">' + mates.map(esc).join(', ') + '</b>' : '<small>단독 승무</small>';
+  var lines = [];
+  lines.push('<div class="crew-line"><em>같은 다이아</em>' + (diaRows.length
+    ? (diaMates.length ? '<b class="crew-names">' + diaMates.map(esc).join(', ') + '</b>' : '<small>단독 승무</small>')
+    : '<small>표에서 ' + esc(diaNo) + '를 찾지 못했어요</small>') + '</div>');
+  trainLines.forEach(function (x) {
+    lines.push('<div class="crew-line"><em>열차 ' + esc(x.train) + '</em><b class="crew-names">' + x.names.map(esc).join(', ') + '</b>' +
+      (x.dias.length ? ' <small>(' + x.dias.map(esc).join(', ') + ')</small>' : '') + '</div>');
+  });
   return '<div class="dd-row dd-icon-row crew-row">' + ico +
-    '<span>승무원 : ' + text + (when ? ' <small class="crew-when">(' + esc(when) + ' 기준)</small>' : '') + '</span></div>';
+    '<span class="crew-box"><span class="crew-title">승무원' + (when ? ' <small class="crew-when">(' + esc(when) + ' 기준)</small>' : '') + '</span>' + lines.join('') + '</span></div>';
 }
 /* ============ 일일 메모장 ============
    날짜별 개인 메모. 개인적인 내용이 있을 수 있어 이 폰(localStorage)에만 저장하고
@@ -5562,7 +5576,7 @@ function renderDayDetail() {
   var diaTypeForCrew = (diaNo && diaByNumber(diaNo) || {}).type;
   var isOffDay = !!info.nightCarryover || info.label === '비번' ||
                  crewSkipDay(diaNo, info.type || diaTypeForCrew, info.status, info.label);
-  if (!isStatus && diaNo && !isOffDay) html += crewMatesHtml(dateKeyForSelectedDay(), diaNo, [train1, train2, train3]);
+  if (!isStatus && diaNo && !isOffDay) { var crewTs = [train1, train2, train3]; try { var xi = xrGet('info', {})[dateKeyForSelectedDay()]; if (xi && xrNorm(xi.dia) === xrNorm(diaNo)) crewTs = crewTs.concat(xi.trains || []); } catch (e) {} html += crewMatesHtml(dateKeyForSelectedDay(), diaNo, crewTs); }
   /* 선택한 날짜의 DIA와 행로표 정보를 한눈에 확인할 수 있도록 하단에 별도 표시 */
   if ((!isStatus && diaNo) || (typeof rpForDate === 'function' && rpForDate(dateKeyForSelectedDay()))) {
     html += '<div class="dd-route">';
@@ -17851,7 +17865,6 @@ function xrMakePlans(changes) {
 function xrShowChanges(changes) {
   $('xr-list').innerHTML = changes.map(function (c) {
     var w = [];
-    if (c.start || c.end) w.push('출근 ' + (c.start || '-') + ' · 퇴근 ' + (c.end || '-'));
     if (c.trains && c.trains.length) w.push('열차 ' + c.trains.join(' · '));
     return '<div class="xr-item"><div class="xr-d">' + xrDateLabel(c.date) + '</div><div class="xr-ch">' + (c.from ? '<s>' + esc(c.from) + '</s>→ ' : '') + '<b>' + esc(c.to) + '</b></div>' + (w.length ? '<div class="xr-w">' + esc(w.join(' / ')) + '</div>' : '') + '</div>';
   }).join('');
@@ -17862,9 +17875,9 @@ function xrCloseChanges() { $('xr-change').classList.remove('active'); }
 /* 근무표 상세: 그 날 XROIS 출근·퇴근·열차 */
 function xrInfoFor(dk, diaNo) {
   var i = xrGet('info', {})[dk];
-  if (!i || !diaNo || xrNorm(i.dia) !== xrNorm(diaNo) || !(i.start || i.end || (i.trains || []).length)) return '';
-  return '<div class="dd-xr"><span>출근 <b>' + esc(i.start || '-') + '</b></span><span>퇴근 <b>' + esc(i.end || '-') + '</b></span>' +
-    ((i.trains || []).length ? '<span>열차 <b>' + esc(i.trains.join(' · ')) + '</b></span>' : '') + '<small>XROIS</small></div>';
+  if (!i || !diaNo || xrNorm(i.dia) !== xrNorm(diaNo) || !(i.trains || []).length) return '';
+  if (diaByNumber(diaNo)) return '';                 /* 등록된 다이아는 원래 열차번호 줄이 있음 */
+  return '<div class="dd-xr"><span>열차 <b>' + esc(i.trains.join(' · ')) + '</b></span><small>XROIS</small></div>';
 }
 
 /* ============ 근무표에서 다이아를 바꾸면 그때 XROIS에서 가져오기 ============
@@ -17899,7 +17912,7 @@ function xrFetchForEdit(dk, dia) {
     if (type === '야' && !diaByNumber(dia)) { try { snapUpsertOverride(getCurrentUser().employeeId, snapShiftKey(dk, 1), 'auto-status', '', '비'); } catch (e) {} }
     try { loadMyMonth(); } catch (e) {}
     try { renderDayDetail(); } catch (e) {}
-    showToast(xrDateLabel(dk) + ' ' + dia + ' · 출근 ' + (start || '-') + ' · 퇴근 ' + (end || '-') + (trains.length ? ' · 열차 ' + trains.join(', ') : '') + ' · 예상 행로표도 넣었어요.');
+    showToast(xrDateLabel(dk) + ' ' + dia + (trains.length ? ' · 열차 ' + trains.join(', ') : '') + ' · XROIS 정보로 예상 행로표를 넣었어요.');
   });
 }
 /* 마이페이지 상태 줄도 같이 */
