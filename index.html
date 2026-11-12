@@ -1353,7 +1353,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   </div></div>
 <div class="mp-sec" data-sec="crew"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('crew')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="CREW연동" alt="" aria-hidden="true">CREW 연동<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
   <div class="mypage-box">
-    <div class="mp-note">XROIS(xcrew.korail.com) 비밀번호를 저장해 두면, 12시간마다 <b>XROIS 당월승무근무표</b>로 다이아를 맞추고, <b>승무근무표 현황</b>에서 함께 타는 <b>승무원</b> 정보를 가져옵니다. (승무원은 오늘부터 7일)</div>
+    <div class="mp-note">XROIS(xcrew.korail.com) 비밀번호를 저장해 두면, 12시간마다 <b>XROIS 당월승무근무표</b>로 다이아를 맞추고, <b>승무근무표 현황</b>에서 함께 타는 <b>승무원</b> 정보를 가져옵니다. (승무원은 이번 달 근무일)</div>
     <div class="mp-field"><span>로그인 사원번호</span><b id="crew-id">-</b></div>
     <label class="mp-field"><span>XROIS 비밀번호</span><input type="password" id="crew-pw" autocomplete="off" placeholder="비밀번호 입력" style="width:150px"></label>
     <div class="mp-crew-btns">
@@ -5315,7 +5315,7 @@ function userStartTimeText(dateKey, startTime, isStatus, info, workType) {
    또는 { error:'LOGIN' } (로그인 필요) */
 function crewRosterKey() { return 'crewRoster_' + (getCurrentUser().employeeId || ''); }
 function crewRosterLoad() {
-  /* 승무원 정보는 XROIS 승무근무표 현황에서 가져온 것 (12시간마다 · 오늘부터 7일 · 이 폰에만 저장)
+  /* 승무원 정보는 XROIS 승무근무표 현황에서 가져온 것 (12시간마다 · 이번 달 근무일 · 이 폰에만 저장)
      형식: { 'YYYY-MM-DD': { at, rows: [{ dia, train1, train2, crew:[*주영, …] }] } } */
   try {
     var st = (typeof xrGet === 'function') ? xrGet('roster', {}) : {}, at = (typeof xrGet === 'function') ? (xrGet('meta', {}).rosterAt || '') : '', out = {};
@@ -5599,7 +5599,7 @@ function crewMatesHtml(dateKey, diaNo, trains) {
   var store = crewRosterLoad();
   var day = store[dateKey];
   var ico = '<img class="detail-art" src="' + appIcon('승무원') + '" alt="" aria-hidden="true">';
-  if (!day) return '<div class="dd-row dd-icon-row crew-row">' + ico + '<span>승무원 : <small>아직 안 가져왔어요 (XROIS는 오늘부터 7일 · 마이페이지 CREW 연동 [지금 최신화])</small></span></div>';
+  if (!day) return '<div class="dd-row dd-icon-row crew-row">' + ico + '<span>승무원 : <small>아직 안 가져왔어요 (이번 달 근무일 · 마이페이지 CREW 연동 [지금 최신화])</small></span></div>';
   var me = crewMask(getCurrentUser().name);
   var want = crewNorm(diaNo);
   var all = day.rows || [];
@@ -17973,9 +17973,14 @@ function xrAutoSync(force, manual) {
   xrBusy = true;
   m.at = now; m.stamp = stampNow().slice(5, 16); xrPut('meta', m);
   if (manual) xrStatus('XROIS 근무표 확인 중…');
-  /* 승무원(승무근무표 현황): 오늘부터 7일 중 근무 있는 날만 · 같은 로그인 안에서 */
-  var crewDates = [];
-  for (var ci = 0; ci < 7; ci++) { var cd = new Date(t.y, t.m, t.d + ci); crewDates.push(cd.getFullYear() + String(cd.getMonth() + 1).padStart(2, '0') + String(cd.getDate()).padStart(2, '0')); }
+  /* 승무원(승무근무표 현황): 이번 달 중 근무 있는 날 · 같은 로그인 안에서
+     지난 날은 한 번 가져왔으면 다시 안 가져옴(바뀌지 않음), 오늘 이후는 12시간마다 새로 */
+  var crewDates = [], haveRos = xrGet('roster', {}), lastDay = new Date(t.y, t.m + 1, 0).getDate();
+  for (var ci = 1; ci <= lastDay; ci++) {
+    var cdk = getDateKey(t.y, t.m, ci);
+    if (ci < t.d && haveRos[cdk]) continue;
+    crewDates.push(cdk.replace(/-/g, ''));
+  }
   xrCall({ action: 'xrRoster', yms: yms, crewDates: crewDates }, function (err, d) {
     xrBusy = false;
     var mm = xrGet('meta', {});
@@ -18120,30 +18125,39 @@ function xrFetchForEdit(dk, dia) {
   if (m.fail && m.pwSig === xrSig(pw)) { showToast('XROIS 로그인 실패 상태라 정보를 가져오지 않았어요. 마이페이지 CREW 연동에서 비밀번호를 다시 저장해주세요.'); return; }
   dia = xrNorm(dia);
   showToast(dia + ' 정보를 XROIS에서 가져오는 중…');
-  xrCall({ action: 'xrDia', items: [{ dia: dia, date: dk }], withCrew: true }, function (err, d) {
+  /* 같은 로그인 안에서: ① 당월승무근무표(그 날 다이아가 맞으면 출근·퇴근·열차) ② 승무다이아(행로표) ③ 승무근무표 현황(승무원) */
+  xrCall({ action: 'xrDia', items: [{ dia: dia, date: dk }], withRoster: true, withCrew: true }, function (err, d) {
     if (err) {
       if (err.code === 'LOGIN_FAILED') { var mm = xrGet('meta', {}); mm.fail = true; mm.pwSig = xrSig(pw); mm.ok = false; mm.msg = err.message; xrPut('meta', mm); try { xrRenderStatus(); } catch (e) {} }
       showToast(err.message); return;
     }
-    var r = (d.results || [])[0] || {};
+    var r = (d.results || [])[0] || {}, wk = r.work || null, wkOk = !!(wk && wk.match);
     var rows = (r.rows || []).map(function (x) {
       return { kind: String(x.kind || '').replace(/\s+/g, ''), train: String(x.train || '').toUpperCase(), from: x.from || '', to: x.to || '', dep: rpTime(x.dep), arr: rpTime(x.arr) };
     }).filter(function (x) { return x.kind && (x.dep || x.arr); });
-    if (!r.ok || !rows.length) { showToast('XROIS 승무다이아에 ' + dia + ' (' + xrDateLabel(dk) + ') 정보가 없어요.'); return; }
-    /* 출근·퇴근·열차번호 */
-    var start = rows[0].dep || rows[0].arr, end = rows[rows.length - 1].arr || rows[rows.length - 1].dep, trains = [];
-    rows.forEach(function (x) { if (/운전/.test(x.kind) && x.train && x.train !== 'K' && trains.indexOf(x.train) < 0) trains.push(x.train); });
+    if ((!r.ok || !rows.length) && !wkOk) { showToast('XROIS 승무다이아에 ' + dia + ' (' + xrDateLabel(dk) + ') 정보가 없어요.'); return; }
+    /* 출근·퇴근·열차번호: 당월승무근무표에서 그 날 다이아가 맞으면 그 값, 아니면 승무다이아 내역(첫·마지막 시각, 운전 열차)으로 */
+    var start = '', end = '', trains = [];
+    if (wkOk) { start = wk.start || ''; end = wk.end || ''; (wk.trains || []).forEach(function (t) { if (t && trains.indexOf(t) < 0) trains.push(t); }); }
+    if (rows.length) {
+      if (!start) start = rows[0].dep || rows[0].arr;
+      if (!end) end = rows[rows.length - 1].arr || rows[rows.length - 1].dep;
+      rows.forEach(function (x) { if (/운전/.test(x.kind) && x.train && x.train !== 'K' && trains.indexOf(x.train) < 0) trains.push(x.train); });
+    }
     var info = xrGet('info', {}); info[dk] = { dia: dia, start: start, end: end, trains: trains }; xrPut('info', info);
     /* 그 날 승무원 (승무근무표 현황) */
     if (Array.isArray(r.crew)) { var ros = xrGet('roster', {}); ros[dk] = r.crew.map(function (x) { return { dia: xrNorm(x.dia), trains: x.trains || [], crew: x.crew || [] }; }); xrPut('roster', ros); var mt = xrGet('meta', {}); mt.rosterAt = stampNow(); xrPut('meta', mt); }
-    /* 예상 행로표 저장 + 그 날에 넣기 */
-    var type = rpGuessType(rows), a = rpAll();
-    a[dia] = { rows: rows, at: Date.now(), type: type, src: 'xrois' }; rpSaveAll(a); rpSetDate(dk, dia);
+    /* 예상 행로표 저장 + 그 날에 넣기 (승무다이아 내역이 있을 때) */
+    var type = rows.length ? rpGuessType(rows) : ((rpMin(end) != null && rpMin(start) != null && rpMin(end) < rpMin(start)) ? '야' : '주'), a = rpAll();
+    if (rows.length) { a[dia] = { rows: rows, at: Date.now(), type: type, src: 'xrois' }; rpSaveAll(a); rpSetDate(dk, dia); }
     /* 목록에 없는 야간 다이아면 다음 날 비번 */
     if (type === '야' && !diaByNumber(dia)) { try { snapUpsertOverride(getCurrentUser().employeeId, snapShiftKey(dk, 1), 'auto-status', '', '비'); } catch (e) {} }
     try { loadMyMonth(); } catch (e) {}
     try { renderDayDetail(); } catch (e) {}
-    showToast(xrDateLabel(dk) + ' ' + dia + (trains.length ? ' · 열차 ' + trains.join(', ') : '') + ' · XROIS 정보로 예상 행로표를 넣었어요.');
+    var head = xrDateLabel(dk) + ' ' + dia + ' · 출근 ' + (start || '-') + ' · 퇴근 ' + (end || '-') + (trains.length ? ' · 열차 ' + trains.join(', ') : '');
+    var tail = rows.length ? ' · 예상 행로표를 넣었어요.' : ' · 승무다이아 내역은 아직 없어요.';
+    if (wk && !wk.match && wk.xroisDia && /^[0-9A-Z]{3,8}$/.test(wk.xroisDia)) tail += ' (XROIS 당월승무근무표에는 ' + wk.xroisDia + '로 되어 있어요)';
+    showToast(head + tail);
   });
 }
 /* 마이페이지 상태 줄도 같이 */
