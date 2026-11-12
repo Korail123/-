@@ -1230,6 +1230,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <button type="button" class="menu-btn" onclick="openGroupSection()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무그룹" alt="" aria-hidden="true" decoding="async"><span>근무그룹</span></button>
     <button type="button" class="menu-btn" onclick="openPattern()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무패턴" alt="" aria-hidden="true" decoding="async"><span>근무패턴</span></button>
     <button type="button" class="menu-btn" onclick="openVacation()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="휴가관리" alt="" aria-hidden="true" decoding="async"><span>휴가관리</span></button>
+    <button type="button" class="menu-btn" onclick="openStats()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무통계" alt="" aria-hidden="true" decoding="async"><span>내 근무 통계</span></button>
     <button type="button" class="menu-btn" onclick="openTrainQuery()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차운행조회" alt="" aria-hidden="true" decoding="async"><span>열차운행<br>정보 조회</span></button>
     <button type="button" class="menu-btn" onclick="openSitesPanel()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="사이트" alt="" aria-hidden="true" decoding="async"><span>사이트</span></button>
     <button type="button" class="menu-btn menu-dev" onclick="openPayslipPreview()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="예상월급명세서" alt="" aria-hidden="true" decoding="async"><span><b class="menu-one-line">미리보는 월급</b><small class="dev-badge" id="payslip-dev-badge">개발 중</small></span></button>
@@ -1238,6 +1239,16 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <button type="button" class="menu-btn" onclick="openSettings()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="환경설정" alt="" aria-hidden="true" decoding="async"><span>환경설정</span></button>
   </div>
   <button type="button" class="logout-btn" onclick="logout()">로그아웃</button>
+</div>
+<div id="stats-section" class="page-view">
+  <h1 class="screen-title"><span class="page-heading-icon" aria-hidden="true"><img class="heading-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무통계" alt="" decoding="async"></span>내 근무 통계</h1>
+  <div class="sch-head">
+    <button type="button" class="sch-nav" onclick="statsMonth(-1)" aria-label="이전 달">◀</button>
+    <div id="stats-title" class="sch-title"></div>
+    <button type="button" class="sch-nav" onclick="statsMonth(1)" aria-label="다음 달">▶</button>
+  </div>
+  <div class="stats-card"><div class="stats-h">이번 달 근무</div><div id="mypage-stats" class="mypage-box"></div></div>
+  <div id="sch-week" class="sch-week"></div>
 </div>
 <div id="schedule-section" class="page-view">
   <h1 class="screen-title"><span class="page-heading-icon" aria-hidden="true"><img class="heading-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무표" alt="" decoding="async"></span>근무표</h1>
@@ -1259,7 +1270,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
     <div id="calendar-grid" class="sch-grid"></div>
   </div>
-  <div id="sch-week" class="sch-week"></div>
   <div class="sch-tools"><button type="button" class="sch-png-btn" onclick="schSavePng()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>근무표 PNG 저장</button></div>
   <div class="sch-note">
     ※ 날짜를 길게 누르면 근무를 변경할 수 있습니다.
@@ -1342,9 +1352,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
     <div class="mp-note" style="margin-top:4px">※ 호봉은 매년 1월 1일에 자동으로 1호봉씩 올라갑니다.</div>
   </div>
-  </div></div>
-  <div class="mp-sec" data-sec="stats"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('stats')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무통계" alt="" aria-hidden="true">이번 달 근무 통계<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
-  <div id="mypage-stats" class="mypage-box"></div>
   </div></div>
   <div class="mp-sec" data-sec="swaps"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('swaps')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무교환내역" alt="" aria-hidden="true">근무교환 내역<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
   <div id="mypage-swaps" class="mypage-box"></div>
@@ -3549,7 +3556,7 @@ function switchSection(id) {
   if (id !== 'group-section') stopGroupAutoRefresh();
   [
     'login-section', 'signup-section', 'main-section', 'schedule-section',
-    'group-section', 'pattern-section', 'vacation-management-section', 'vacation-section', 'settings-section', 'payslip-section',
+    'group-section', 'pattern-section', 'vacation-management-section', 'vacation-section', 'settings-section', 'payslip-section', 'stats-section',
     'notice-panel', 'suggestion-panel', 'board-post-page', 'board-edit-page'
   ].forEach(function (s) {
     var e = $(s);
@@ -3888,7 +3895,6 @@ function renderCalendar() {
     grid.appendChild(emptyTail);
   }
   fitSwapBadges(grid);
-  try { schWeekRender(); } catch (e) {}
 }
 /* 근무교환 이름표가 칸보다 넓으면 높이는 그대로 두고 가로만 살짝 줄여 이름 전체가 보이게 함 */
 function fitSwapBadges(root) {
@@ -5057,6 +5063,7 @@ var FAV_ITEMS = [
   { g: '메인화면', k: 'group', label: '근무그룹', icon: '근무그룹', sec: 'group-section', fn: function () { openGroupSection(); } },
   { g: '메인화면', k: 'pattern', label: '근무패턴', icon: '근무패턴', sec: 'pattern-section', fn: function () { openPattern(); } },
   { g: '메인화면', k: 'vacation', label: '휴가관리', icon: '휴가관리', sec: 'vacation-management-section', fn: function () { openVacation(); } },
+  { g: '메인화면', k: 'stats', label: '내 근무 통계', short: '근무통계', icon: '근무통계', sec: 'stats-section', fn: function () { openStats(); } },
   { g: '메인화면', k: 'trainq', label: '열차운행정보 조회', short: '열차조회', icon: '열차운행조회', fn: function () { openTrainQuery(); } },
   { g: '메인화면', k: 'sites', label: '사이트', icon: '사이트', fn: function () { openSitesPanel(); } },
   { g: '메인화면', k: 'payslip', label: '미리보는 월급', short: '월급', icon: '예상월급명세서', sec: 'payslip-section', fn: function () { openPayslipPreview(); } },
@@ -7560,7 +7567,7 @@ function renderMyTenure() {
 function myMonthStats() {
   var mb = findMyMember();
   if (!mb || !snapshotUsable()) return null;
-  var t = todayKST();
+  var t0 = todayKST(), t = { y: typeof statsY === 'number' ? statsY : t0.y, m: typeof statsM === 'number' ? statsM : t0.m };
   var last = new Date(Date.UTC(t.y, t.m + 1, 0)).getUTCDate();
   var st = { y: t.y, m: t.m, day: 0, night: 0, off: 0, rest: 0, leave: 0, x: 0, minutes: 0, swaps: 0, leaveKinds: {} };
   for (var d = 1; d <= last; d++) {
@@ -9744,7 +9751,7 @@ function doLogin(id, name, isAuto) {
       try { lastSec = LS.getItem('railwaySecretaryLastSection') || ''; } catch (e) {}
       var allowed = {
         'main-section': 1, 'schedule-section': 1, 'group-section': 1,
-        'pattern-section': 1, 'vacation-management-section': 1, 'vacation-section': 1, 'settings-section': 1, 'payslip-section': 1
+        'pattern-section': 1, 'vacation-management-section': 1, 'vacation-section': 1, 'settings-section': 1, 'payslip-section': 1, 'stats-section': 1
       };
       if (!allowed[lastSec]) lastSec = 'main-section';
       suppressSectionHistory = true;
@@ -9759,6 +9766,8 @@ function doLogin(id, name, isAuto) {
         else if (lastSec === 'vacation-section' && typeof openMyPage === 'function') openMyPage();
         else if (lastSec === 'settings-section' && typeof openSettings === 'function') openSettings();
         else if (lastSec === 'payslip-section' && typeof openPayslip === 'function') openPayslip();
+      else if (lastSec === 'stats-section' && typeof openStats === 'function') openStats();
+        else if (lastSec === 'stats-section' && typeof openStats === 'function') openStats();
       } catch (e) {}
     } else {
       switchSection('main-section');
@@ -10125,7 +10134,7 @@ function logout() {
     try { lastSec = LS.getItem('railwaySecretaryLastSection') || ''; } catch (e) {}
     var allowed = {
       'main-section': 1, 'schedule-section': 1, 'group-section': 1,
-      'pattern-section': 1, 'vacation-management-section': 1, 'vacation-section': 1, 'settings-section': 1, 'payslip-section': 1
+      'pattern-section': 1, 'vacation-management-section': 1, 'vacation-section': 1, 'settings-section': 1, 'payslip-section': 1, 'stats-section': 1
     };
     if (!allowed[lastSec]) lastSec = 'main-section';
     suppressSectionHistory = true;
@@ -10140,6 +10149,7 @@ function logout() {
         else if (lastSec === 'vacation-section' && typeof openMyPage === 'function') openMyPage();
       else if (lastSec === 'settings-section' && typeof openSettings === 'function') openSettings();
       else if (lastSec === 'payslip-section' && typeof openPayslip === 'function') openPayslip();
+      else if (lastSec === 'stats-section' && typeof openStats === 'function') openStats();
     } catch (e) {}
   }
   function softRevalidate(u) {
@@ -18392,9 +18402,29 @@ function schShiftsAround(y, m) {
   }
   return out;
 }
+/* ===== 메인화면 › 내 근무 통계 (이번 달 근무 통계 + 주간 근로시간 52시간 확인) ===== */
+var statsY = null, statsM = null;
+function statsRender() {
+  var t = todayKST(); if (statsY === null) { statsY = t.y; statsM = t.m; }
+  var el = $('stats-title'); if (el) el.textContent = statsY + '년 ' + (statsM + 1) + '월';
+  try { renderMyStats(); } catch (e) {}
+  try { schWeekRender(); } catch (e) {}
+}
+function statsMonth(d) {
+  var x = new Date(statsY, statsM + d, 1); statsY = x.getFullYear(); statsM = x.getMonth();
+  statsRender();
+}
+function openStats() {
+  var t = todayKST(); statsY = t.y; statsM = t.m;
+  switchSection('stats-section');
+  try { applyAppIcons(); } catch (e) {}
+  statsRender();
+  /* 근무표 자료가 아직이면 불러온 뒤 다시 */
+  if (typeof snapshotUsable === 'function' && !snapshotUsable() && typeof loadMeta === 'function') { try { loadMeta(function () { statsRender(); }); } catch (e) {} }
+}
 function schWeekRender() {
   var box = $('sch-week'); if (!box) return;
-  var y = calendarYear, m = calendarMonth, sh = schShiftsAround(y, m);
+  var y = typeof statsY === 'number' ? statsY : calendarYear, m = typeof statsM === 'number' ? statsM : calendarMonth, sh = schShiftsAround(y, m);
   if (!sh || !sh.length) { box.innerHTML = ''; return; }
   var first = new Date(y, m, 1), lastD = new Date(y, m + 1, 0).getDate();
   var w0 = -first.getDay(), rows = [], anyXr = sh.some(function (x) { return x.xr; });
@@ -18427,5 +18457,11 @@ function schWeekRender() {
     '<div class="sw-note">근로기준법: 1주 40시간 + 연장 12시간 = 52시간(제50조·제53조). 철도 같은 육상운송업은 제59조 특례 대상이라 근로자대표와 서면합의가 있으면 52시간을 넘을 수 있고, 대신 근무 사이 11시간 이상 휴식이 필요해요. 참고용이며 정확한 판단은 노무 담당자에게 확인하세요.</div>';
 }
 </script>
+<style id="stats-page-css">
+#stats-section .stats-card{margin:6px 0 12px;padding:12px;border:1px solid #e3e9f2;border-radius:14px;background:#fff}
+#stats-section .stats-h{font-size:14px;font-weight:900;color:#1b2b45;margin-bottom:6px}
+#stats-section .mypage-box{margin:0}
+#stats-section .mp-month{display:none}
+</style>
 </body>
 </html>
