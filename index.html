@@ -1247,7 +1247,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div id="stats-title" class="sch-title"></div>
     <button type="button" class="sch-nav" onclick="statsMonth(1)" aria-label="다음 달">▶</button>
   </div>
-  <div class="stats-card"><div class="stats-h">이번 달 근무</div><div id="mypage-stats" class="mypage-box"></div></div>
+  <div class="stats-card"><div id="stats-sum"></div><div id="mypage-stats" class="mypage-box"></div></div>
   <div id="sch-week" class="sch-week"></div>
 </div>
 <div id="schedule-section" class="page-view">
@@ -18408,6 +18408,8 @@ function statsRender() {
   var t = todayKST(); if (statsY === null) { statsY = t.y; statsM = t.m; }
   var el = $('stats-title'); if (el) el.textContent = statsY + '년 ' + (statsM + 1) + '월';
   try { renderMyStats(); } catch (e) {}
+  /* 위 '총 근무'와 겹치는 줄은 숨김 */
+  try { [].slice.call(document.querySelectorAll('#stats-section #mypage-stats .mp-row')).forEach(function (r) { if (/^(총 근무시간|근무 일수)/.test((r.querySelector('span') || {}).textContent || '')) r.style.display = 'none'; }); } catch (e) {}
   try { schWeekRender(); } catch (e) {}
 }
 function statsMonth(d) {
@@ -18425,36 +18427,55 @@ function openStats() {
 function schWeekRender() {
   var box = $('sch-week'); if (!box) return;
   var y = typeof statsY === 'number' ? statsY : calendarYear, m = typeof statsM === 'number' ? statsM : calendarMonth, sh = schShiftsAround(y, m);
-  if (!sh || !sh.length) { box.innerHTML = ''; return; }
-  var first = new Date(y, m, 1), lastD = new Date(y, m + 1, 0).getDate();
-  var w0 = -first.getDay(), rows = [], anyXr = sh.some(function (x) { return x.xr; });
-  function md(off) { var d = new Date(y, m, 1 + off); return (d.getMonth() + 1) + '/' + d.getDate(); }
+  if (!sh) { box.innerHTML = '<div class="sw-empty">근무표를 불러오는 중이에요.</div>'; return; }
+  var sp = typeof xrGet === 'function' ? xrGet('spec', {}) : {};
+  var first = new Date(y, m, 1), lastD = new Date(y, m + 1, 0).getDate(), w0 = -first.getDay();
+  /* 날짜별: 근무 분 · XROIS 휴일 · 연장 · 야간 (근무는 출근한 날에 넣음) */
+  var byKey = {};
+  sh.forEach(function (x) { var o = byKey[x.key] || (byKey[x.key] = { min: 0, xr: false }); o.min += x.work; o.xr = o.xr || x.xr; });
+  function h1(min) { return Math.round(min / 6) / 10; }
+  function hm(min) { var hh = Math.floor(min / 60), mm = Math.round(min % 60); return hh + '시간' + (mm ? ' ' + mm + '분' : ''); }
+  var tot = { min: 0, hol: 0, ext: 0, nig: 0, days: 0, xr: 0 };
+  var head = ['일', '월', '화', '수', '목', '금', '토'].map(function (d, i) { return '<div class="sc-hd' + (i === 0 ? ' sun' : i === 6 ? ' sat' : '') + '">' + d + '</div>'; }).join('') + '<div class="sc-hd sc-sum-h">주 합계</div>';
+  var rows = '';
+  var t = todayKST(), todayKey = getDateKey(t.y, t.m, t.d);
   for (var ws = w0; ws < lastD; ws += 7) {
-    var a = ws * 1440, b = (ws + 7) * 1440, min = 0;
-    sh.forEach(function (x) {
-      var ov = Math.max(0, Math.min(b, x.e) - Math.max(a, x.s));
-      if (ov > 0) min += x.work * ov / (x.e - x.s);     /* 사업시간을 실제 시각 비율대로 그 주에 나눔 */
-    });
-    var hrs = Math.round(min / 6) / 10, part = ws < 0 || ws + 7 > lastD;
-    rows.push('<div class="sw-row' + (hrs > 52 ? ' over' : '') + (part && hrs <= 52 ? ' part' : '') + '"><span class="sw-d">' + md(ws) + '~' + md(ws + 6) + '</span>' +
-      '<span class="sw-bar"><i style="width:' + Math.min(100, hrs / 60 * 100).toFixed(1) + '%"></i><em style="left:' + (52 / 60 * 100).toFixed(1) + '%"></em></span>' +
-      '<span class="sw-v">' + hrs + '시간' + (hrs > 52 ? ' ⚠' : '') + '</span></div>');
+    var wk = { min: 0, hol: 0, ext: 0 };
+    for (var i = 0; i < 7; i++) {
+      var off = ws + i, dt = new Date(y, m, 1 + off), inM = off >= 0 && off < lastD;
+      var key = getDateKey(dt.getFullYear(), dt.getMonth(), dt.getDate()), o = byKey[key], x = sp[key] || null;
+      var min = o ? o.min : 0, hol = x ? (+x.hldy || 0) : 0, ext = x ? (+x.extn || 0) : 0, nig = x ? (+x.niht || 0) : 0;
+      wk.min += min; wk.hol += hol; wk.ext += ext;
+      if (inM) { tot.min += min; tot.hol += hol; tot.ext += ext; tot.nig += nig; if (min > 0) tot.days++; if (o && o.xr) tot.xr++; }
+      rows += '<div class="sc-c' + (inM ? '' : ' out') + (key === todayKey ? ' today' : '') + (i === 0 ? ' sun' : i === 6 ? ' sat' : '') + '">' +
+        '<span class="sc-d">' + dt.getDate() + '</span>' +
+        (min > 0 ? '<b class="sc-h">' + h1(min) + '</b>' : '<b class="sc-h none">·</b>') + '</div>';   /* 날짜 칸은 숫자만 (XROIS 사업시간 = 연장 포함) */
+    }
+    var over = wk.min > 52 * 60;
+    rows += '<div class="sc-sum' + (over ? ' over' : '') + '"><b>' + h1(wk.min) + '</b><small>시간</small>' +
+      (wk.ext > 0 ? '<i class="sc-t ext">연 ' + h1(wk.ext) + '</i>' : '') + (wk.hol > 0 ? '<i class="sc-t hol">휴 ' + h1(wk.hol) + '</i>' : '') +
+      (over ? '<i class="sc-t warn">52↑</i>' : '') + '</div>';
   }
+  /* 맨 위: 이번 달 얼마나 일했나 */
+  var sumBox = $('stats-sum');
+  if (sumBox) sumBox.innerHTML = '<div class="ss-top"><span>' + y + '년 ' + (m + 1) + '월 총 근무</span><b>' + hm(tot.min) + '</b><small>근무한 날 ' + tot.days + '일</small></div>' +
+    '<div class="ss-row"><div class="ss-k ext"><span>연장근로</span><b>' + h1(tot.ext) + '<small>시간</small></b></div><div class="ss-k hol"><span>휴일근무</span><b>' + h1(tot.hol) + '<small>시간</small></b></div><div class="ss-k nig"><span>야간근로</span><b>' + h1(tot.nig) + '<small>시간</small></b></div></div>' +
+    '<div class="ss-src">' + (tot.xr ? '근무시간 · 연장 · 휴일 · 야간은 <b>XROIS 개인근무명세서</b> 기준' + (tot.xr < tot.days ? ' (일부 날짜는 근무표 출근~퇴근 시각)' : '') : '근무표 출근~퇴근 시각 기준 · 연장 · 휴일 · 야간은 XROIS 개인근무명세서를 가져오면 보여요') + '</div>';
   /* 근무 사이 휴식 11시간 */
   var rest = [];
   sh.sort(function (p, q) { return p.s - q.s; });
-  for (var i = 1; i < sh.length; i++) {
-    var gap = sh[i].s - sh[i - 1].e;
-    if (gap >= 0 && gap < 660 && sh[i].s >= 0 && sh[i].s < lastD * 1440) {
-      var e = sh[i - 1].e, s2 = sh[i].s;
-      var t = function (v) { var d = Math.floor(v / 1440), mm = ((v % 1440) + 1440) % 1440; return md(d) + ' ' + String(Math.floor(mm / 60)).padStart(2, '0') + ':' + String(mm % 60).padStart(2, '0'); };
-      rest.push(t(e) + ' 퇴근 → ' + t(s2) + ' 출근 (휴식 ' + (Math.round(gap / 6) / 10) + '시간)');
+  function md(off) { var d = new Date(y, m, 1 + off); return (d.getMonth() + 1) + '/' + d.getDate(); }
+  for (var k = 1; k < sh.length; k++) {
+    var gap = sh[k].s - sh[k - 1].e;
+    if (gap >= 0 && gap < 660 && sh[k].s >= 0 && sh[k].s < lastD * 1440) {
+      var tt = function (v) { var d = Math.floor(v / 1440), mm = ((v % 1440) + 1440) % 1440; return md(d) + ' ' + String(Math.floor(mm / 60)).padStart(2, '0') + ':' + String(mm % 60).padStart(2, '0'); };
+      rest.push(tt(sh[k - 1].e) + ' 퇴근 → ' + tt(sh[k].s) + ' 출근 (휴식 ' + h1(gap) + '시간)');
     }
   }
-  var overN = rows.filter(function (r) { return / over/.test(r); }).length;
-  box.innerHTML = '<div class="sw-h"><b>주간 근로시간</b><small>일~토 · 52시간 기준선 · ' + (anyXr ? 'XROIS 사업시간 우선' : '출근~퇴근 시각 기준') + '</small></div>' + rows.join('') +
-    (rest.length ? '<div class="sw-rest"><b>근무 사이 휴식 11시간 미만</b><br>' + rest.map(esc).join('<br>') + '</div>' : (overN ? '' : '<div class="sw-ok">✓ 모든 주가 52시간 이하이고, 근무 사이 휴식도 11시간 이상이에요.</div>')) +
-    '<div class="sw-note">근로기준법: 1주 40시간 + 연장 12시간 = 52시간(제50조·제53조). 철도 같은 육상운송업은 제59조 특례 대상이라 근로자대표와 서면합의가 있으면 52시간을 넘을 수 있고, 대신 근무 사이 11시간 이상 휴식이 필요해요. 참고용이며 정확한 판단은 노무 담당자에게 확인하세요.</div>';
+  box.innerHTML = '<div class="sw-h"><b>날짜별 근무시간</b><small>칸 숫자 = 그날 근무시간(연장 포함, 시간)</small></div>' +
+    '<div class="sc-grid">' + head + rows + '</div>' +
+    (rest.length ? '<div class="sw-rest"><b>근무 사이 휴식 11시간 미만</b><br>' + rest.map(esc).join('<br>') + '</div>' : '') +
+    '<div class="sw-note">주 합계가 52시간(1주 40시간 + 연장 12시간, 근로기준법 제50조·제53조)을 넘으면 빨갛게 표시해요. 철도(육상운송업)는 제59조 특례 대상이라 근로자대표 서면합의가 있으면 넘을 수 있고, 대신 근무 사이 11시간 이상 휴식이 필요해요. 야간근무는 출근한 날에 시간을 넣어요. 참고용이에요.</div>';
 }
 </script>
 <style id="stats-page-css">
@@ -18462,6 +18483,40 @@ function schWeekRender() {
 #stats-section .stats-h{font-size:14px;font-weight:900;color:#1b2b45;margin-bottom:6px}
 #stats-section .mypage-box{margin:0}
 #stats-section .mp-month{display:none}
+</style>
+<style id="stats-cal-css">
+#stats-section .ss-top{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0 10px}
+#stats-section .ss-top span{font-size:12.5px;color:#5b6678;font-weight:700}
+#stats-section .ss-top b{font-size:28px;font-weight:900;color:#1b2b45;letter-spacing:-.5px}
+#stats-section .ss-top small{font-size:12px;color:#8a96a8}
+#stats-section .ss-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
+#stats-section .ss-k{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:12px;background:#f5f8fc}
+#stats-section .ss-k span{font-size:11.5px;color:#5b6678;font-weight:700}
+#stats-section .ss-k b{font-size:17px;font-weight:900}
+#stats-section .ss-k b small{font-size:11px;font-weight:700;margin-left:1px}
+#stats-section .ss-k.ext b{color:#e07b00}#stats-section .ss-k.hol b{color:#d32f2f}#stats-section .ss-k.nig b{color:#5b4bd6}
+#stats-section .ss-src{font-size:11px;color:#8a96a8;text-align:center;margin-bottom:8px;word-break:keep-all}
+#stats-section .sc-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr)) minmax(0,1.25fr);gap:3px}
+#stats-section .sc-hd{text-align:center;font-size:11.5px;font-weight:800;color:#5b6678;padding:4px 0}
+#stats-section .sc-hd.sun{color:#e5484d}#stats-section .sc-hd.sat{color:#2f6fd6}
+#stats-section .sc-hd.sc-sum-h{color:#1b2b45;background:#eef3fa;border-radius:8px}
+#stats-section .sc-c{min-height:46px;padding:3px 2px;border-radius:8px;background:#fff;border:1px solid #edf1f6;display:flex;flex-direction:column;align-items:center;gap:1px}
+#stats-section .sc-c.out{opacity:.38}
+#stats-section .sc-c.today{border-color:#3b8beb;box-shadow:0 0 0 1px #3b8beb inset}
+#stats-section .sc-d{font-size:10.5px;color:#8a96a8;font-weight:700;align-self:flex-start;padding-left:2px}
+#stats-section .sc-c.sun .sc-d{color:#e5484d}#stats-section .sc-c.sat .sc-d{color:#2f6fd6}
+#stats-section .sc-h{font-size:13.5px;font-weight:900;color:#1b2b45}
+#stats-section .sc-h.none{color:#cfd6e0}
+#stats-section .sc-t{font-style:normal;font-size:9.5px;font-weight:800;border-radius:5px;padding:0 3px;line-height:1.5;white-space:nowrap}
+#stats-section .sc-t.hol{background:#ffe8e8;color:#c62828}
+#stats-section .sc-t.ext{background:#fff1dc;color:#b45f00}
+#stats-section .sc-t.warn{background:#e5484d;color:#fff}
+#stats-section .sc-sum{min-height:56px;padding:3px 2px;border-radius:8px;background:#eef3fa;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+#stats-section .sc-sum b{font-size:14.5px;font-weight:900;color:#1b2b45;line-height:1.1}
+#stats-section .sc-sum small{font-size:9.5px;color:#5b6678;font-weight:700}
+#stats-section .sc-sum.over{background:#ffe3e3}
+#stats-section .sc-sum.over b{color:#d32f2f}
+#stats-section .sw-empty{font-size:13px;color:#8a96a8;text-align:center;padding:16px 0}
 </style>
 </body>
 </html>
