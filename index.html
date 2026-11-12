@@ -5778,6 +5778,14 @@ function renderDayDetail() {
   var diaTypeForCrew = (diaNo && diaByNumber(diaNo) || {}).type;
   var isOffDay = !!info.nightCarryover || info.label === '비번' ||
                  crewSkipDay(diaNo, info.type || diaTypeForCrew, info.status, info.label);
+  /* 휴무충당 날: XROIS 개인근무명세서의 휴일근무 시간 */
+  try {
+    var hdk = dateKeyForSelectedDay();
+    if (rsCreditForDate(hdk, info) === '휴무충당' && typeof xrGet === 'function') {
+      var hs = xrGet('spec', {})[hdk], hIco = '<img class="detail-art" src="' + appIcon('근무시간') + '" alt="" aria-hidden="true">';
+      html += '<div class="dd-row dd-icon-row"><span>' + hIco + '휴일근무 : ' + (hs ? '<b>' + Math.floor(hs.hldy / 60) + '시간 ' + (hs.hldy % 60) + '분</b> <small style="color:#8a96a8">(XROIS 개인근무명세서)</small>' : '<small style="color:#8a96a8">XROIS 개인근무명세서에서 아직 안 가져왔어요</small>') + '</span></div>';
+    }
+  } catch (e) {}
   if (!isStatus && diaNo && !isOffDay) { var crewTs = [train1, train2, train3]; try { var xi = xrGet('info', {})[dateKeyForSelectedDay()]; if (xi && xrNorm(xi.dia) === xrNorm(diaNo)) crewTs = crewTs.concat(xi.trains || []); } catch (e) {} html += crewMatesHtml(dateKeyForSelectedDay(), diaNo, crewTs); }
   /* 선택한 날짜의 DIA와 행로표 정보를 한눈에 확인할 수 있도록 하단에 별도 표시 */
   if ((!isStatus && diaNo) || (typeof rpForDate === 'function' && rpForDate(dateKeyForSelectedDay()))) {
@@ -8369,7 +8377,7 @@ function payWorkStats(y, m, S) {
   if (isNaN(ne)) ne = 360;
   var sunHol = /^(y|yes|예|o|1|true)/i.test(String((S && S['휴일_일요일포함']) || ''));
   var last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-  var st = { days: 0, dayN: 0, nightN: 0, crew: 0, min: 0, nightMin: 0, holMin: 0, overMin: 0, noTime: 0 };
+  var st = { days: 0, regDays: 0, dayN: 0, nightN: 0, crew: 0, min: 0, nightMin: 0, holMin: 0, overMin: 0, noTime: 0 };
   function isHol(dayOffsetFrom, d) {
     var x = new Date(Date.UTC(y, m, d + dayOffsetFrom));
     if (holidayName(x.getUTCFullYear(), x.getUTCMonth(), x.getUTCDate())) return true;
@@ -8386,11 +8394,23 @@ function payWorkStats(y, m, S) {
     var type = String(info.type || info.label || '').trim();
     if (type !== '주' && type !== '야' && !isCredit) continue;
     st.days++;
+    /* 승무수당 · 조정수당의 17일 기준 근무일은 소정근무만 (휴일근무=휴무충당 제외) — 시행세칙 제15조②, 제17조② */
+    if (!isCredit) st.regDays++;
     if (type === '야') st.nightN++; else st.dayN++;
     var diaNo = String(info.dia || '').trim().toUpperCase();
     if (!(typeof CREW_STANDBY_DIAS !== 'undefined' && CREW_STANDBY_DIAS.indexOf(diaNo) >= 0)) st.crew++;
     var meta = diaNo ? diaByNumber(diaNo) : null;
     var a = parseHM(info.start || (meta && meta.start)), b = parseHM(info.end || (meta && meta.end));
+    /* 휴무충당 날 휴일근무 시간: XROIS 개인근무명세서(hldyTnum, 분)가 있으면 그 값 */
+    var xs = null; try { xs = isCredit && typeof xrGet === 'function' ? xrGet('spec', {})[key] : null; } catch (e) {}
+    if (isCredit && xs && xs.hldy > 0) {
+      st.holMin += xs.hldy; st.holDays = (st.holDays || 0) + 1; st.holXrois = (st.holXrois || 0) + 1;
+      if (isNaN(a) || isNaN(b)) { st.min += xs.tot > 0 ? xs.tot : xs.hldy; continue; }
+      if (b <= a) b += 1440;
+      st.min += b - a;
+      for (var k2 = -1; k2 <= 1; k2++) { var ws2 = ns + 1440 * k2, we2 = (ne <= ns ? ne + 1440 : ne) + 1440 * k2; st.nightMin += overlap(a, b, ws2, we2); }
+      continue;
+    }
     if ((isNaN(a) || isNaN(b)) && isCredit) { st.holMin += 8 * 60; st.holDays = (st.holDays || 0) + 1; st.min += 8 * 60; continue; }   /* 시간 모르면 8시간 */
     if (isNaN(a) || isNaN(b)) { st.noTime++; continue; }
     if (b <= a) b += 1440;
@@ -8407,8 +8427,33 @@ function payWorkStats(y, m, S) {
   var stdMin = stdH > 0 ? stdH * 60 : Math.round(last * 40 / 7 * 60);
   st.stdMin = stdMin;
   st.overMin = Math.max(0, st.min - stdMin);
+  /* XROIS 개인근무명세서가 그 달을 다 덮으면: 야간 · 휴일 · 연장(초과) · 총 사업시간은 XROIS 정산값(분)으로
+     (감시 제외 · 편승 50% 같은 정산 규칙은 XROIS 값에 이미 반영) */
+  try {
+    var xsAll = typeof xrGet === 'function' ? xrGet('spec', {}) : {}, xc = 0, sN = 0, sH = 0, sE = 0, sT = 0;
+    for (var d2 = 1; d2 <= last; d2++) {
+      var xv = xsAll[getDateKey(y, m, d2)];
+      if (!xv) continue;
+      xc++; sN += +xv.niht || 0; sH += +xv.hldy || 0; sE += +xv.extn || 0; sT += +xv.tot || 0;
+    }
+    if (xc >= last - 1) {
+      st.nightMin = sN; st.holMin = sH; st.overMin = sE;
+      /* 총 근무시간(정산 인정): XROIS 총 사업시간에서 편승은 50%만, 감시는 빼고 */
+      var adj = 0;
+      for (var d3 = 1; d3 <= last; d3++) {
+        var xw = xsAll[getDateKey(y, m, d3)], c = (xw && xw.c) || {};
+        adj += (+c[PAY_XR_CODE.pyeon] || 0) * 0.5;
+        PAY_XR_CODE.gamsi.forEach(function (g) { adj += +c[g] || 0; });
+      }
+      if (sT > 0) st.min = Math.max(0, sT - adj);
+      st.src = 'xrois';
+    }
+  } catch (e) {}
   return st;
 }
+/* XROIS 개인근무명세서 구분별 사업시간 칸 (pjtTnum○○○): 100 준비 · 200 운전/입환 · 300 편승 · 800 정리 · B00 승계
+   감시 칸은 확인되면 gamsi 에 넣기 (예: ['500']) */
+var PAY_XR_CODE = { pyeon: '300', gamsi: [] };
 var PAY_WORK_FIELDS = [
   ['days', '근무일', '일'], ['dayN', '주간', '회'], ['nightN', '야간', '회'], ['crew', '승무일(대기 제외)', '일'],
   ['h', '총 근무시간', '시간'], ['nh', '야간 시간', '시간'], ['hh', '휴일(휴무충당) 시간', '시간'], ['oh', '초과 근무시간', '시간']
@@ -8416,7 +8461,9 @@ var PAY_WORK_FIELDS = [
 function payWorkAuto(st) {
   if (!st) return null;
   function h(x) { return Math.round(x / 6) / 10; }
-  return { days: st.days, dayN: st.dayN, nightN: st.nightN, crew: st.crew, h: h(st.min), nh: h(st.nightMin), hh: h(st.holMin), oh: h(st.overMin) };
+  /* 시간외 · 휴일 · 야간: 월간 합계를 분 단위로 더하고 10분 미만은 버림 — 시행세칙 제10조⑤ */
+  function h10(x) { return Math.round(Math.floor((x || 0) / 10) * 10 / 60 * 100) / 100; }
+  return { days: st.days, regDays: st.regDays, dayN: st.dayN, nightN: st.nightN, crew: st.crew, h: h(st.min), nh: h10(st.nightMin), hh: h10(st.holMin), oh: h10(st.overMin) };
 }
 function payWorkKey(wm) { return wm.y + '-' + wm.m; }
 function payWorkValues(auto, wm) {
@@ -8427,6 +8474,8 @@ function payWorkValues(auto, wm) {
     v[k] = ed[k] != null && ed[k] !== '' ? +ed[k] : (auto ? auto[k] : 0);
     if (!isFinite(v[k]) || v[k] < 0) v[k] = 0;
   });
+  /* 17일 기준 근무일(휴일근무 제외): 근무일을 직접 고쳤으면 그 값 */
+  v.regDays = ed.days != null && ed.days !== '' ? v.days : (auto && auto.regDays != null ? auto.regDays : v.days);
   return v;
 }
 function payEditWork(k, val) {
@@ -8554,8 +8603,10 @@ function payCalc(T, prefs, work, grade, step, payM, payY, joinDate) {
   });
   if (!rateBase) rateBase = base;      /* 정률수당 기준액이 없으면 기본급으로 */
   var DAYS_STD = Math.max(1, paySetNum(S, '근무일_기준', 17));
-  var dayFactor0 = Math.min(1, (work.days || 0) / DAYS_STD);   /* 17일 이상 전액, 미만 일할 */
-  var dayNote0 = (work.days || 0) >= DAYS_STD ? '' : ' × ' + (work.days || 0) + '/' + DAYS_STD + '일';
+  /* 17일 이상 전액, 미만 일할 — 근무일은 소정근무일(휴일근무 제외, 시행세칙 제15조② · 제17조②) */
+  var regD = work.regDays != null ? work.regDays : (work.days || 0);
+  var dayFactor0 = Math.min(1, regD / DAYS_STD);
+  var dayNote0 = regD >= DAYS_STD ? '' : ' × ' + regD + '/' + DAYS_STD + '일';
   /* 근속연수 (지급 월 1일 기준) */
   var serviceYears = -1;
   var jm = String(joinDate || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -8847,7 +8898,7 @@ function renderPayslip(full) {
     };
     w += tiles(['days', 'dayN', 'nightN', 'crew'], '근무 횟수');
     w += tiles(['h', 'nh', 'hh', 'oh'], '근무 시간 <small>(시간)</small>');
-    w += '<div class="ps-work-foot"><span>✎ 숫자를 누르면 직접 고칠 수 있어요</span>' +
+    w += '<div class="ps-work-foot"><span>' + (wst && wst.src === 'xrois' ? '근무 시간은 <b>XROIS 개인근무명세서</b> 기준 · ' : '') + '✎ 숫자를 누르면 직접 고칠 수 있어요</span>' +
       (Object.keys(ed).length ? '<button type="button" class="ps-reset" onclick="payResetWork()">근무표 값으로</button>' : '') + '</div>';
     /* 공제 입력: 공제조합(구좌) · 철도신협(승무회비 · 동호회) */
     var unit = paySetNum(S, '공제조합_1구좌', 5000), cuFee = paySetNum(S, '신협_승무회비', 30000);
@@ -17976,7 +18027,8 @@ function xrAutoSync(force, manual) {
     if (ci < t.d && haveRos[cdk]) continue;
     crewDates.push(cdk.replace(/-/g, ''));
   }
-  xrCall({ action: 'xrRoster', yms: yms, crewDates: crewDates }, function (err, d) {
+  var pv = new Date(t.y, t.m - 1, 1), specYms = [pv.getFullYear() + String(pv.getMonth() + 1).padStart(2, '0'), yms[0]];
+  xrCall({ action: 'xrRoster', yms: yms, crewDates: crewDates, specYms: specYms }, function (err, d) {
     xrBusy = false;
     var mm = xrGet('meta', {});
     if (err) {
@@ -17988,6 +18040,8 @@ function xrAutoSync(force, manual) {
       return;
     }
     mm.ok = true; mm.msg = ''; mm.fail = false; xrPut('meta', mm);
+    /* 개인근무명세서(휴일근무 등, 분) 저장 */
+    try { var sp = xrGet('spec', {}); Object.keys(d.spec || {}).forEach(function (k) { sp[k] = d.spec[k]; }); var od = new Date(t.y, t.m - 3, 1), ok = getDateKey(od.getFullYear(), od.getMonth(), 1); Object.keys(sp).forEach(function (k) { if (k < ok) delete sp[k]; }); xrPut('spec', sp); } catch (e) {}
     xrApply(d.days || [], manual, d.crew || {});
     try { renderCrewSetting(); } catch (e) {}
   });
