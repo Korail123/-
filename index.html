@@ -1144,7 +1144,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   </div></div>
 <div class="mp-sec" data-sec="crew"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('crew')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="CREW연동" alt="" aria-hidden="true">CREW 연동<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
   <div class="mypage-box">
-    <div class="mp-note">XROIS(xcrew.korail.com) 비밀번호를 저장해 두면, <b>XROIS 당월승무근무표</b>에서 12시간마다 다이아와 함께 타는 <b>승무원</b> 정보를 가져와 근무표에 맞춰 줍니다. (월말에는 다음 달까지)</div>
+    <div class="mp-note">XROIS(xcrew.korail.com) 비밀번호를 저장해 두면, 12시간마다 <b>XROIS 당월승무근무표</b>로 다이아를 맞추고, <b>승무근무표 현황</b>에서 함께 타는 <b>승무원</b> 정보를 가져옵니다. (승무원은 오늘부터 7일)</div>
     <div class="mp-field"><span>로그인 사원번호</span><b id="crew-id">-</b></div>
     <label class="mp-field"><span>XROIS 비밀번호</span><input type="password" id="crew-pw" autocomplete="off" placeholder="비밀번호 입력" style="width:150px"></label>
     <div class="mp-crew-btns">
@@ -5106,7 +5106,7 @@ function userStartTimeText(dateKey, startTime, isStatus, info, workType) {
    또는 { error:'LOGIN' } (로그인 필요) */
 function crewRosterKey() { return 'crewRoster_' + (getCurrentUser().employeeId || ''); }
 function crewRosterLoad() {
-  /* 승무원 정보는 XROIS 당월승무근무표에서 가져온 것 (12시간마다 최신화, 이 폰에만 저장)
+  /* 승무원 정보는 XROIS 승무근무표 현황에서 가져온 것 (12시간마다 · 오늘부터 7일 · 이 폰에만 저장)
      형식: { 'YYYY-MM-DD': { at, rows: [{ dia, train1, train2, crew:[*주영, …] }] } } */
   try {
     var st = (typeof xrGet === 'function') ? xrGet('roster', {}) : {}, at = (typeof xrGet === 'function') ? (xrGet('meta', {}).rosterAt || '') : '', out = {};
@@ -17766,7 +17766,10 @@ function xrAutoSync(force, manual) {
   xrBusy = true;
   m.at = now; m.stamp = stampNow().slice(5, 16); xrPut('meta', m);
   if (manual) xrStatus('XROIS 근무표 확인 중…');
-  xrCall({ action: 'xrRoster', yms: yms }, function (err, d) {
+  /* 승무원(승무근무표 현황): 오늘부터 7일 중 근무 있는 날만 · 같은 로그인 안에서 */
+  var crewDates = [];
+  for (var ci = 0; ci < 7; ci++) { var cd = new Date(t.y, t.m, t.d + ci); crewDates.push(cd.getFullYear() + String(cd.getMonth() + 1).padStart(2, '0') + String(cd.getDate()).padStart(2, '0')); }
+  xrCall({ action: 'xrRoster', yms: yms, crewDates: crewDates }, function (err, d) {
     xrBusy = false;
     var mm = xrGet('meta', {});
     if (err) {
@@ -17778,7 +17781,7 @@ function xrAutoSync(force, manual) {
       return;
     }
     mm.ok = true; mm.msg = ''; mm.fail = false; xrPut('meta', mm);
-    xrApply(d.days || [], manual);
+    xrApply(d.days || [], manual, d.crew || {});
     try { renderCrewSetting(); } catch (e) {}
   });
 }
@@ -17796,7 +17799,7 @@ function xrMyDays(months, cb) {
   });
 }
 
-function xrApply(days, manual) {
+function xrApply(days, manual, crewMap) {
   var t = todayKST(), today = getDateKey(t.y, t.m, t.d);
   /* 날짜별 줄 모으기 (같은 줄 중복 제거) → 승무원 정보로 저장 */
   var byDate = {}, myName = (typeof crewMask === 'function') ? crewMask(getCurrentUser().name) : '';
@@ -17805,8 +17808,9 @@ function xrApply(days, manual) {
     var arr = byDate[x.date] || (byDate[x.date] = []), sig = xrNorm(x.dia) + '|' + (x.trains || []).join(',') + '|' + (x.crew || []).join(',');
     if (!arr.some(function (y) { return y.__s === sig; })) { x.__s = sig; arr.push(x); }
   });
+  /* 승무원 정보 = XROIS 승무근무표 현황 (그 날 모든 다이아의 승무원) */
   var roster = xrGet('roster', {});
-  Object.keys(byDate).forEach(function (k) { roster[k] = byDate[k].map(function (x) { return { dia: xrNorm(x.dia), trains: x.trains || [], crew: x.crew || [], me: x.me }; }); });
+  Object.keys(crewMap || {}).forEach(function (k) { roster[k] = (crewMap[k] || []).map(function (x) { return { dia: xrNorm(x.dia), trains: x.trains || [], crew: x.crew || [] }; }); });
   /* 본인 줄: 사번이 맞는 줄 → 한 줄뿐이면 그 줄 → 내 이름이 들어 있는 줄 */
   var uniq = {};
   Object.keys(byDate).forEach(function (k) {
