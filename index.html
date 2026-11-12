@@ -5781,8 +5781,10 @@ function renderDayDetail() {
   /* 휴무충당 날: XROIS 개인근무명세서의 휴일근무 시간 */
   try {
     var hdk = dateKeyForSelectedDay();
-    if (rsCreditForDate(hdk, info) === '휴무충당' && typeof xrGet === 'function') {
-      var hs = xrGet('spec', {})[hdk], hIco = '<img class="detail-art" src="' + appIcon('근무시간') + '" alt="" aria-hidden="true">';
+    var hs0 = typeof xrGet === 'function' ? xrGet('spec', {})[hdk] : null;
+    /* 휴무충당 날, 또는 XROIS에 휴일근무가 찍힌 날 */
+    if (typeof xrGet === 'function' && (rsCreditForDate(hdk, info) === '휴무충당' || (hs0 && hs0.hldy > 0))) {
+      var hs = hs0, hIco = '<img class="detail-art" src="' + appIcon('근무시간') + '" alt="" aria-hidden="true">';
       html += '<div class="dd-row dd-icon-row"><span>' + hIco + '휴일근무 : ' + (hs ? '<b>' + Math.floor(hs.hldy / 60) + '시간 ' + (hs.hldy % 60) + '분</b> <small style="color:#8a96a8">(XROIS 개인근무명세서)</small>' : '<small style="color:#8a96a8">XROIS 개인근무명세서에서 아직 안 가져왔어요</small>') + '</span></div>';
     }
   } catch (e) {}
@@ -8853,6 +8855,7 @@ function renderPayslip(full) {
   if (!T) status = payState.loading ? '보수표를 불러오는 중...' : (payState.err || '보수표를 불러오지 못했습니다.');
   else if (payState.err) status = '연결이 안 돼 마지막으로 받은 보수표로 계산했어요.';
   $('ps-status').textContent = status;
+  try { xrEnsureSpec(wm.y, wm.m); } catch (e) {}   /* 그 근무월 XROIS 개인근무명세서가 없으면 가져와서 다시 그림 */
   var wst = payWorkStats(wm.y, wm.m, S);
   var auto = payWorkAuto(wst);
   var work = payWorkValues(auto, wm);
@@ -18088,7 +18091,7 @@ function xrAutoSync(force, manual) {
     }
     mm.ok = true; mm.msg = ''; mm.fail = false; xrPut('meta', mm);
     /* 개인근무명세서(휴일근무 등, 분) 저장 */
-    try { var sp = xrGet('spec', {}); Object.keys(d.spec || {}).forEach(function (k) { sp[k] = d.spec[k]; }); var od = new Date(t.y, t.m - 3, 1), ok = getDateKey(od.getFullYear(), od.getMonth(), 1); Object.keys(sp).forEach(function (k) { if (k < ok) delete sp[k]; }); xrPut('spec', sp); } catch (e) {}
+    try { var sp = xrGet('spec', {}); Object.keys(d.spec || {}).forEach(function (k) { sp[k] = d.spec[k]; }); var od = new Date(t.y, t.m - 13, 1), ok = getDateKey(od.getFullYear(), od.getMonth(), 1); Object.keys(sp).forEach(function (k) { if (k < ok) delete sp[k]; }); xrPut('spec', sp); } catch (e) {}
     xrApply(d.days || [], manual, d.crew || {});
     try { renderCrewSetting(); } catch (e) {}
   });
@@ -18254,6 +18257,34 @@ function xrFetchForEdit(dk, dia) {
     var tail = rows.length ? ' · 예상 행로표를 넣었어요.' : ' · 승무다이아 내역은 아직 없어요.';
     if (wk && !wk.match && wk.xroisDia && /^[0-9A-Z]{3,8}$/.test(wk.xroisDia)) tail += ' (XROIS 당월승무근무표에는 ' + wk.xroisDia + '로 되어 있어요)';
     showToast(head + tail);
+  });
+}
+/* 미리보는 월급: 그 근무월의 XROIS 개인근무명세서가 없으면(또는 덜 있으면) 한 번 가져와서 다시 계산
+   · 1시간에 한 번까지 · 로그인 실패 상태면 안 함 · 앞으로 올 달은 안 함 */
+var xrSpecBusy = false;
+function xrEnsureSpec(y, m) {
+  if (xrSpecBusy || typeof crewLinked !== 'function' || !crewLinked()) return;
+  if (!(y >= 2020 && y <= 2100) || !(m >= 0 && m <= 11)) return;
+  var t = todayKST();
+  if (y > t.y || (y === t.y && m > t.m)) return;
+  var ym = y + String(m + 1).padStart(2, '0'), last = new Date(y, m + 1, 0).getDate(), sp = xrGet('spec', {}), have = 0;
+  for (var d = 1; d <= last; d++) if (sp[getDateKey(y, m, d)]) have++;
+  var past = y < t.y || (y === t.y && m < t.m);
+  if (have >= last - 1 && past) return;                      /* 지난 달은 다 있으면 끝 */
+  var tries = xrGet('specTry', {});
+  if (tries[ym] && Date.now() - tries[ym] < 3600000) return;   /* 1시간에 한 번 */
+  var meta = xrGet('meta', {});
+  if (meta.fail && meta.pwSig === xrSig(getCrewPw())) return;
+  if (!past && have >= last - 1 && meta.at && Date.now() - meta.at < 3600000) return;  /* 이번 달은 방금 동기화했으면 */
+  tries[ym] = Date.now(); xrPut('specTry', tries);
+  xrSpecBusy = true;
+  xrCall({ action: 'xrSpec', specYms: [ym] }, function (err, d) {
+    xrSpecBusy = false;
+    if (err) { if (err.code === 'LOGIN_FAILED') { var mm = xrGet('meta', {}); mm.fail = true; mm.pwSig = xrSig(getCrewPw()); xrPut('meta', mm); } return; }
+    var s2 = xrGet('spec', {}), n = 0;
+    Object.keys(d.spec || {}).forEach(function (k) { s2[k] = d.spec[k]; n++; });
+    xrPut('spec', s2);
+    if (n) { try { renderPayslip(true); } catch (e) {} try { renderDayDetail(); } catch (e) {} }
   });
 }
 /* 마이페이지 상태 줄도 같이 */
