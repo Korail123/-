@@ -3975,7 +3975,7 @@ function trainLink(trainNo, explicitDateKey) {
   /* 링크를 그릴 때 열차별 운행 날짜를 저장해, 클릭 시 날짜가 바뀌어도 원래 날짜를 전달 */
   var selectedDay = explicitDateKey || dateKeyForSelectedDay();
   return '<a class="dd-chip" href="#" onclick="return openNxLogis(\'' + esc(n) + '\',\'' + esc(selectedDay) + '\')" ' +
-    'title="NXLogis에서 ' + esc(n) + ' 열차 조회">' + esc(n) + ' ↗</a>';
+    'title="NXLogis에서 ' + esc(n) + ' 열차 조회">' + esc(n) + '</a>';
 }
 /* 열차번호를 누르면 NXLogis 검색창에 번호와 날짜를 미리 전달해 새 창에서 조회 */
 /* ============ 안드로이드 앱 연동 (앱 안에서 열렸을 때만 동작) ============
@@ -5621,7 +5621,7 @@ function crewMatesHtml(dateKey, diaNo, trains) {
   var r = crewPick(dateKey, diaNo, trains, getCurrentUser().name);
   if (!r) return '<div class="dd-row dd-icon-row crew-row">' + ico + '<span>승무원 : <small>아직 안 가져왔어요 (마이페이지 CREW 연동 [지금 최신화])</small></span></div>';
   var line;
-  if (r.level === 1) line = '<div class="crew-line"><em>같은 다이아</em><b class="crew-names">' + r.mates.map(esc).join(', ') + '</b></div>';
+  if (r.level === 1) line = '<div class="crew-line"><b class="crew-names">' + r.mates.map(esc).join(', ') + '</b></div>';
   else if (r.level === 2) line = '<div class="crew-line"><em>같은 열차 ' + esc(r.trains.join('·')) + '</em><b class="crew-names">' + r.mates.map(esc).join(', ') + '</b>' + (r.dias && r.dias.length ? ' <small>(' + r.dias.map(esc).join(', ') + ')</small>' : '') + '</div>';
   else line = '<div class="crew-line"><small>' + (r.found ? '단독 승무' : '승무근무표 현황에서 ' + esc(diaNo) + '를 찾지 못했어요') + '</small></div>';
   return '<div class="dd-row dd-icon-row crew-row">' + ico +
