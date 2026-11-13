@@ -17943,7 +17943,12 @@ function xrEnsureSpec(y, m, force) {
       try { renderPayslip(true); } catch (e) {}
       return;
     }
-    er[ym] = Object.keys(d.spec || {}).length ? '' : 'XROIS 개인근무명세서에 이 달 자료가 없어요.'; xrPut('specErr', er);
+    var inYm = Object.keys(d.spec || {}).filter(function (k) { return k.replace(/-/g, '').slice(0, 6) === ym; }).length;
+    var why = (d.why || {})[ym];
+    er[ym] = inYm ? '' : (why && why.got && why.got.length
+      ? 'XROIS가 ' + (m + 1) + '월 대신 ' + why.got.map(function (g) { return (+g.slice(4, 6)) + '월'; }).join('·') + ' 자료를 보내왔어요. (검색칸: ' + (why.fields || []).join(', ') + ')'
+      : 'XROIS 개인근무명세서에 ' + (m + 1) + '월 자료가 없어요.');
+    xrPut('specErr', er);
     var s2 = xrGet('spec', {}), n = 0;
     Object.keys(d.spec || {}).forEach(function (k) { s2[k] = d.spec[k]; n++; });
     xrPut('spec', s2);
