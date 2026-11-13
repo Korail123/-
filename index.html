@@ -7310,11 +7310,15 @@ function openGroupInfo(k, key) {
     }
   }
   var html = '';
+  /* 연차 · 휴가 · 휴무 등 쉬는 날은 원래 다이아(이름 · 시간 · 열차 · 행로표)를 보여주지 않고 근무구분만 */
+  var groupShown = info ? String(rsGroupCalendarDuty(info) || '').replace(/^\*/, '') : '';
+  var groupLeave = !!(info && info.label && !infoFromNight && groupShown && !/^(주|야|비|X|-)$/i.test(groupShown));
   if (!info || !info.label) {
     html = '<div class="pi-none">근무 정보가 없습니다.</div>';
-  } else if (info.overrideType === 'status') {
+  } else if (info.overrideType === 'status' || groupLeave) {
     var creditStatus = String(info.creditStatus || (/^(대기충당|휴무충당|기타)$/.test(String(info.status || '')) ? info.status : '') || '');
-    var statusDuty = String(info.status || info.label || '').trim();
+    var statusDuty = String((info.overrideType === 'status' ? (info.status || info.label) : (info.dutyStatus || info.status || info.label)) || '').trim().replace(/^\*/, '');
+    if (/^(휴|휴일)$/.test(statusDuty)) statusDuty = '휴무';
     /* 충당은 별도 행이 아닌 근무구분 안에 통합 */
     html += piRow('근무구분', creditStatus ? (statusDuty && statusDuty !== creditStatus ? statusDuty + ' (' + creditStatus + ')' : creditStatus) : statusDuty);
     if (info.swapPartnerName || info.swapPartnerId) {
