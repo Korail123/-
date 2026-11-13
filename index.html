@@ -18249,6 +18249,30 @@ function cbRender() {
     (body || '<tr><td colspan="7" style="padding:20px;color:#8b95a1">내용이 없어요</td></tr>') + '</tbody></table></div>';
 }
 </script>
+
+<style id="settings-list-style">
+/* ===== 하단 고정바 아이콘: 약 12% 작게 (58 → 51px) ===== */
+html body #bottom-nav .bn-btn .bn-ico{width:51px!important;height:39px!important;min-height:39px!important}
+html body #bottom-nav .bn-btn .nav-art{width:51px!important;height:51px!important}
+
+/* ===== 환경설정: 분류별 세로 목록 (아이콘 · 이름 · 오른쪽 화살표) ===== */
+html body #settings-section .settings-category{margin:0!important;padding:6px 0 8px!important;border-top:0!important}
+html body #settings-section .settings-category+.settings-category{border-top:1px solid #edf0f3!important;padding-top:10px!important}
+html body #settings-section .settings-category-title{margin:10px 4px 4px!important;font-size:14px!important;font-weight:600!important;color:#8b95a1!important;justify-content:flex-start!important;text-align:left!important}
+html body #settings-section .settings-category-mark{display:none!important}
+html body #settings-section .settings-category .setting-grid{display:flex!important;flex-direction:column!important;gap:0!important;margin:0!important;grid-auto-rows:auto!important}
+html body #settings-section .setting-grid .set-tile{position:relative!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;gap:14px!important;width:100%!important;min-height:56px!important;padding:8px 34px 8px 4px!important;border-radius:12px!important;text-align:left!important;color:#191f28!important;background:transparent!important}
+html body #settings-section .setting-grid .set-tile:active{background:#f2f4f6!important}
+html body #settings-section .setting-grid .set-tile .set-art{width:34px!important;height:34px!important;margin:0!important;flex:0 0 34px!important;object-position:center!important}
+html body #settings-section .setting-grid .set-tile>span,html body #settings-section .setting-grid .set-tile .set-label{flex:1 1 auto!important;display:block!important;width:auto!important;min-height:0!important;padding:0!important;text-align:left!important;font-size:16.5px!important;font-weight:500!important;letter-spacing:-.3px!important;line-height:1.3!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+html body #settings-section .setting-grid .set-tile::after{content:"";position:absolute;right:12px;top:50%;width:9px;height:9px;border-top:2px solid #8b95a1;border-right:2px solid #8b95a1;transform:translateY(-50%) rotate(45deg)}
+html body #settings-section .setting-grid .set-tile .set-sub,html body #settings-section .setting-grid .set-tile .set-badge{position:static!important;flex:0 0 auto!important;margin:0!important;font-size:13.5px!important;font-weight:500!important;color:#8b95a1!important;background:none!important;padding:0!important;line-height:1.3!important;white-space:nowrap!important}
+html body #settings-section .setting-grid .set-tile .set-sub[hidden],html body #settings-section .setting-grid .set-tile .set-badge[hidden]{display:none!important}
+html body #settings-section .setting-grid .set-tile.danger,html body #settings-section .setting-grid .set-tile.danger>span{color:#e03131!important}
+html.ui-dark body #settings-section .setting-grid .set-tile{color:#e9edf2!important}
+html.ui-dark body #settings-section .setting-grid .set-tile:active{background:#262b33!important}
+html.ui-dark body #settings-section .settings-category+.settings-category{border-top-color:#2c323b!important}
+</style>
 <script>(function(){var a=document.querySelector('#pp-compose-scene .pc-tank:not(.t2)'),b=document.querySelector('#pp-compose-scene .pc-tank.t2');if(a&&b)b.src=a.src;})();</script>
 </body>
 </html>
