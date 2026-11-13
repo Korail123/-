@@ -414,7 +414,7 @@ padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-appl
 /* 모든 칸 같은 글꼴 · 굵기 (공가·연차 같은 휴가 글자도 주·야·비·휴와 동일) */
 #group-schedule-table tbody td,
 #group-schedule-table tfoot td { font-weight: 700 !important; letter-spacing: 0 !important; font-family: inherit !important; }
-#group-schedule-table tfoot td.name-col { white-space: normal !important; word-break: keep-all; line-height: 1.25; }
+#group-schedule-table tfoot td.name-col { white-space: nowrap !important; overflow: hidden; letter-spacing: -.4px !important; font-size: var(--group-foot-label-size, 11px) !important; }
 #calendar-grid .cell-lbl { letter-spacing: 0 !important; }
 /* 행로표 그림이 뜨기 전 대체 글자(alt)가 비치지 않게 */
 .pi-route img, .dd-dia-image { color: transparent; }
@@ -423,7 +423,7 @@ padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-appl
 /* 표 안 근무 글자(주·야·비·휴·X …)는 이름·요일보다 1pt 작게, 2글자는 거기서 2pt 더 작게 */
 #group-schedule-table tbody td:not(.name-col) { font-size: calc(var(--group-duty-font-size, 16.333px) - 1.333px) !important; }
 #group-schedule-table tbody td.g-duty2 { font-size: calc(var(--group-duty-font-size, 16.333px) - 4px) !important; }
-#group-schedule-table.g-measure tfoot td.name-col { white-space: nowrap !important; }
+#group-schedule-table.g-measure tfoot td.name-col { white-space: nowrap !important; font-size: var(--group-table-font-size, 15px) !important; letter-spacing: 0 !important; }   /* 이름·요일 크기는 예전 방식 그대로 계산 */
 </style>
 
 <style id="settings-category-style">
@@ -1948,13 +1948,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeNxViewSettings()">닫기</button></div>
   </div>
 </div>
-<div id="nr-panel" class="dia-modal" style="z-index:420" onclick="if(event.target===this)closeNoticeReaders()">
-  <div class="dia-dialog ns-dialog nr-dialog">
-    <div class="dia-dialog-title">공지 읽은 사람</div>
-    <div id="nr-body"></div>
-    <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeNoticeReaders()">닫기</button></div>
-  </div>
-</div>
 <div id="guide-panel" class="dia-modal" style="z-index:405" onclick="if(event.target===this)closeGuidePanel()">
   <div class="dia-dialog ns-dialog guide-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="사용가이드" alt="" aria-hidden="true">철도비서 사용가이드</div>
@@ -2128,9 +2121,9 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div style="text-align:center;margin-top:2px"><img class="popup-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="공지사항" alt="" aria-hidden="true" style="width:46px;height:46px"></div>
     <div class="dia-dialog-title" style="text-align:center;font-size:15px">새 공지사항</div>
     <div id="notice-popup-body" style="max-height:55vh;overflow-y:auto;margin:6px 2px 4px;text-align:left;white-space:normal"></div>
-    <button type="button" class="pill-btn pill-primary pill-center" onclick="closeNoticePopup()">확인</button>
-    <div style="text-align:center;margin-top:2px">
-      <button type="button" class="dia-text-btn" onclick="openNoticePopupDetail()">자세히 보기</button>
+    <div class="np-btns">
+      <button type="button" class="np-btn np-sub" onclick="openNoticePopupDetail()">자세히 보기</button>
+      <button type="button" class="np-btn np-main" onclick="closeNoticePopup()">확인</button>
     </div>
   </div>
 </div>
@@ -4296,32 +4289,6 @@ function openGuidePanel() {
   document.querySelectorAll('#guide-panel .guide-sec[open]').forEach(function (d) { gdPlay(d.getAttribute('data-g')); });
 }
 function closeGuidePanel() { $('guide-panel').classList.remove('active'); gdStopAll(); }
-/* ===== 공지사항 읽은 사람: 공지를 열면 서버에 '읽음' 기록, 관리자는 읽은 사람 / 안 읽은 사람 목록 ===== */
-function noticeReadMark(id) {
-  var u = getCurrentUser();
-  if (!u || !u.token || u.employeeId === 'guest' || !id) return;
-  try { api({ action: 'noticeRead', employeeId: u.employeeId, token: u.token, id: String(id) }, function () {}); } catch (e) {}
-}
-function openNoticeReaders(id) {
-  var u = getCurrentUser();
-  var box = $('nr-body');
-  $('nr-panel').classList.add('active');
-  box.innerHTML = '<div class="nr-msg">불러오는 중…</div>';
-  api({ action: 'noticeReaders', employeeId: u.employeeId, token: u.token, id: String(id) }, function (r) {
-    if (!r || !r.success) { box.innerHTML = '<div class="nr-msg err">' + esc((r && r.message) || '불러오지 못했어요.') + '</div>'; return; }
-    var rd = r.read || [], ur = r.unread || [];
-    box.innerHTML =
-      '<div class="nr-sum"><b>' + rd.length + '</b>명 읽음 · <b>' + ur.length + '</b>명 안 읽음</div>' +
-      '<div class="nr-h">읽은 사람</div>' +
-      (rd.length ? '<div class="nr-list">' + rd.map(function (x) {
-        return '<div class="nr-row"><span>' + esc(x[0]) + '</span><small>' + esc(x[1]) + (x[2] > 1 ? ' · ' + x[2] + '번' : '') + '</small></div>';
-      }).join('') + '</div>' : '<div class="nr-msg">아직 없어요.</div>') +
-      '<div class="nr-h">안 읽은 사람</div>' +
-      (ur.length ? '<div class="nr-chips">' + ur.map(function (n) { return '<span>' + esc(n) + '</span>'; }).join('') + '</div>' : '<div class="nr-msg">모두 읽었어요.</div>') +
-      '<div class="nr-note">※ 공지를 직접 열어 본 사람만 읽음으로 기록돼요. 기록 기능을 넣기 전에 읽은 사람은 안 읽음으로 보여요.</div>';
-  });
-}
-function closeNoticeReaders() { $('nr-panel').classList.remove('active'); }
 /* ===== 접속 기록: 앱을 열거나 로그인할 때 서버에 '오늘 접속' 표시 (같은 폰에서는 10분에 한 번만) ===== */
 function rsSeenInfo() {
   var ua = navigator.userAgent || '';
@@ -6365,6 +6332,12 @@ function fitGroupTableText() {
   }
   tb.classList.remove('g-measure');
   tb.style.setProperty('--group-table-font-size', (Math.max(7, fs) + 1.333) + 'px');
+  /* 3) 맨 아래 '휴가·휴무·X' 칸: 글자를 줄여서라도 한 줄로 */
+  var foot = tb.querySelector('tfoot td.name-col');
+  if (foot) {
+    var ls = Math.max(7, fs) + 1.333;
+    for (; ls > 6; ls -= 0.5) { tb.style.setProperty('--group-foot-label-size', ls + 'px'); if (foot.scrollWidth <= foot.clientWidth + 1) break; }
+  }
 }
 window.addEventListener('resize', function () { fitGroupTableText(); });
 function renderGroupTable() {
@@ -9304,12 +9277,10 @@ function openBoardDetail(type, id) {
     $('board-detail-title').textContent = type === 'notice' ? noticeTitleOf(post) : (post.title || '건의사항');
     $('board-detail-content').textContent = post.content || post.body || '';
     var canEdit = type === 'notice' ? isBoardAdmin() : String(authorId) === String(getCurrentUser().employeeId);
-    $('board-detail-actions').innerHTML = (type === 'notice' && isBoardAdmin()
-      ? '<button type="button" class="bp-act bp-readers" onclick="openNoticeReaders(decodeURIComponent(\'' + encodeURIComponent(String(id)) + '\'))">읽은 사람</button>' : '') +
+    $('board-detail-actions').innerHTML = 
       (canEdit
       ? '<button type="button" class="bp-act" onclick="editActiveBoardPost()">수정</button><button type="button" class="bp-act bp-del" onclick="deleteActiveBoardPost()">삭제</button>'
       : '');
-    if (type === 'notice') noticeReadMark(id);
   });
   if (type === 'notice') return; // 공지사항에는 댓글 기능을 제공하지 않음
   loadBoardComments(id);
@@ -13387,7 +13358,6 @@ function closeTopOverlayForBack() {
     ['trainq-panel', closeTrainQuery],
     ['png-panel', closePngPanel],
     ['anim-panel', closeAnimSettings],
-    ['nr-panel', closeNoticeReaders],
     ['guide-panel', closeGuidePanel],
     ['wg-panel', closeWidgetPanel],
     ['fav-panel', closeFavMenu],
@@ -16536,22 +16506,6 @@ html body #main-section .menu-grid > .menu-btn > span{display:flex;align-items:f
 @keyframes ppRailMove{to{background-position:-12px 0}}
 #pass-pop-panel .pp-zone[hidden]{display:none!important}
 </style>
-<style id="notice-readers-style">
-#nr-panel .nr-dialog{max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow-y:auto}
-#nr-panel .nr-sum{font-size:14px;color:#33415c;margin:2px 0 10px}
-#nr-panel .nr-sum b{color:#2f6fd6;font-size:16px}
-#nr-panel .nr-h{font-size:12.5px;font-weight:800;color:#0b376d;margin:12px 0 6px}
-#nr-panel .nr-list{border:1px solid #e3e8f0;border-radius:12px;overflow:hidden}
-#nr-panel .nr-row{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-bottom:1px solid #eef1f6;font-size:13.5px;font-weight:700;color:#1b2b45}
-#nr-panel .nr-row:last-child{border-bottom:0}
-#nr-panel .nr-row small{font-weight:600;color:#7b879a;font-size:11.5px}
-#nr-panel .nr-chips{display:flex;flex-wrap:wrap;gap:6px}
-#nr-panel .nr-chips span{padding:5px 10px;border-radius:999px;background:#f1f3f7;color:#5f6b7f;font-size:12.5px;font-weight:700}
-#nr-panel .nr-msg{font-size:13px;color:#7b879a;padding:8px 2px}
-#nr-panel .nr-msg.err{color:#d93636}
-#nr-panel .nr-note{font-size:11.5px;color:#98a2b3;margin-top:12px;line-height:1.5}
-.bp-act.bp-readers{color:#2f6fd6;border-color:#c9dbf7}
-</style>
 <style id="brief-mates-style">
 .brief-mates{margin:10px 0 4px;border:1px solid #e3e8f0;border-radius:14px;padding:10px 12px;background:#fbfcfe}
 .brief-mates .bm-title{font-size:13.5px;font-weight:800;color:#0b376d;margin-bottom:8px}
@@ -18270,6 +18224,12 @@ function routeArLoad(img) {
 /* 날짜 넘기기: 네모 칸 없이 화살표만 */
 #crewboard-section .sch-nav{background:none!important;border:0!important;box-shadow:none!important;width:auto!important;min-width:0!important;padding:6px 10px!important;color:#3182f6!important;font-size:20px!important}
 html.ui-dark #crewboard-section .sch-nav{background:none!important;color:#8cb8ff!important}
+.np-btns{display:flex;gap:8px;margin-top:14px}
+.np-btns .np-btn{flex:1 1 0;min-width:0;height:46px;border-radius:12px;font-size:15px;font-weight:800;border:0;cursor:pointer}
+.np-btns .np-sub{background:#eef2f7;color:#33415c}
+.np-btns .np-main{background:#2f6fd6;color:#fff}
+html.ui-dark .np-btns .np-sub{background:#2a3038!important;color:#e9edf2!important}
+html.ui-dark .np-btns .np-main{background:#3182f6!important;color:#fff!important}
 .dd-row.crew-inline .crew-sub{font-size:.8em;color:#8a96a8;font-weight:500}
 html.ui-dark #crewboard-section .cb-table tr.me td{background:#1d3357!important}
 html.ui-dark #crewboard-section .cb-table td.cb-n.me{color:#8cb8ff!important}
@@ -18369,9 +18329,9 @@ function cbRender() {
 </script>
 
 <style id="settings-list-style">
-/* ===== 하단 고정바 아이콘: 약 12% 작게 (58 → 51px) ===== */
-html body #bottom-nav .bn-btn .bn-ico{width:51px!important;height:39px!important;min-height:39px!important}
-html body #bottom-nav .bn-btn .nav-art{width:51px!important;height:51px!important}
+/* ===== 하단 고정바 아이콘: 51px에서 15% 더 작게 (→ 43px) ===== */
+html body #bottom-nav .bn-btn .bn-ico{width:43px!important;height:33px!important;min-height:33px!important}
+html body #bottom-nav .bn-btn .nav-art{width:43px!important;height:43px!important}
 
 /* ===== 환경설정: 분류별 세로 목록 (아이콘 · 이름 · 오른쪽 화살표) ===== */
 html body #settings-section .settings-category{margin:0!important;padding:6px 0 8px!important;border-top:0!important}
