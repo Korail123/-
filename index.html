@@ -3545,7 +3545,7 @@ function switchSection(id) {
   if (id !== 'group-section') stopGroupAutoRefresh();
   [
     'login-section', 'signup-section', 'main-section', 'schedule-section',
-    'group-section', 'pattern-section', 'vacation-management-section', 'vacation-section', 'settings-section', 'payslip-section', 'stats-section',
+    'group-section', 'pattern-section', 'vacation-management-section', 'vacation-section', 'settings-section', 'payslip-section', 'stats-section', 'crewboard-section',
     'notice-panel', 'suggestion-panel', 'board-post-page', 'board-edit-page'
   ].forEach(function (s) {
     var e = $(s);
@@ -9696,7 +9696,7 @@ function doLogin(id, name, isAuto) {
       try { lastSec = LS.getItem('railwaySecretaryLastSection') || ''; } catch (e) {}
       var allowed = {
         'main-section': 1, 'schedule-section': 1, 'group-section': 1,
-        'pattern-section': 1, 'vacation-management-section': 1, 'vacation-section': 1, 'settings-section': 1, 'payslip-section': 1, 'stats-section': 1
+        'pattern-section': 1, 'vacation-management-section': 1, 'vacation-section': 1, 'settings-section': 1, 'payslip-section': 1, 'stats-section': 1, 'crewboard-section': 1
       };
       if (!allowed[lastSec]) lastSec = 'main-section';
       suppressSectionHistory = true;
@@ -9951,7 +9951,7 @@ function logout() {
     try { lastSec = LS.getItem('railwaySecretaryLastSection') || ''; } catch (e) {}
     var allowed = {
       'main-section': 1, 'schedule-section': 1, 'group-section': 1,
-      'pattern-section': 1, 'vacation-management-section': 1, 'vacation-section': 1, 'settings-section': 1, 'payslip-section': 1, 'stats-section': 1
+      'pattern-section': 1, 'vacation-management-section': 1, 'vacation-section': 1, 'settings-section': 1, 'payslip-section': 1, 'stats-section': 1, 'crewboard-section': 1
     };
     if (!allowed[lastSec]) lastSec = 'main-section';
     suppressSectionHistory = true;
