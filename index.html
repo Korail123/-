@@ -1237,8 +1237,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     저장 공간을 쓸 수 없어 매번 새로 불러옵니다.
   </div>
   <div class="menu-grid">
-    <button type="button" class="menu-btn" onclick="openNoticePanel()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="공지사항" alt="" aria-hidden="true" decoding="async"><span>공지사항</span></button>
-    <button type="button" class="menu-btn" onclick="openSuggestionPanel()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="건의사항" alt="" aria-hidden="true" decoding="async"><span>건의사항</span></button>
     <button type="button" class="menu-btn" onclick="openSchedule()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무표" alt="" aria-hidden="true" decoding="async"><span>근무표</span></button>
     <button type="button" class="menu-btn" onclick="openGroupSection()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무그룹" alt="" aria-hidden="true" decoding="async"><span>근무그룹</span></button>
     <button type="button" class="menu-btn" onclick="openPattern()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무패턴" alt="" aria-hidden="true" decoding="async"><span>근무패턴</span></button>
@@ -1443,12 +1441,19 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
   </section>
   <section class="settings-category">
+    <h2 class="settings-category-title"><span class="settings-category-mark other"></span>철도비서</h2>
+    <div class="setting-grid">
+      <button type="button" class="set-tile" onclick="openNoticePanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="공지사항" alt="" aria-hidden="true" decoding="async"><span class="set-label">공지사항</span></button>
+      <button type="button" class="set-tile" onclick="openSuggestionPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="건의사항" alt="" aria-hidden="true" decoding="async"><span class="set-label">건의사항</span></button>
+      <button type="button" class="set-tile" onclick="openGuidePanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="사용가이드" alt="" aria-hidden="true" decoding="async"><span class="set-label">철도비서 사용가이드</span></button>
+    </div>
+  </section>
+  <section class="settings-category">
     <h2 class="settings-category-title"><span class="settings-category-mark other"></span>기타</h2>
     <div class="setting-grid">
       <button type="button" class="set-tile" onclick="openRoutePlan()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="예상행로표" alt="" aria-hidden="true"><span>다이아 행로표 만들기</span></button>
       <button type="button" class="set-tile" onclick="openBackupPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="백업동기화" alt="" aria-hidden="true" decoding="async"><span class="set-label">백업·동기화</span></button>
       <button type="button" class="set-tile" onclick="openWidgetPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="위젯연결" alt="" aria-hidden="true" decoding="async"><span class="set-label">위젯 연결</span></button>
-      <button type="button" class="set-tile" onclick="openGuidePanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="사용가이드" alt="" aria-hidden="true" decoding="async"><span class="set-label">철도비서 사용가이드</span></button>
       <button type="button" class="set-tile" onclick="openAnimSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="애니메이션효과" alt="" aria-hidden="true" decoding="async"><span class="set-label">애니메이션 효과</span><small id="anim-sub" class="set-badge" hidden>OFF</small></button>
       <button type="button" class="set-tile danger" onclick="openResetAllDataPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="전체데이터초기화" alt="" aria-hidden="true" decoding="async"><span class="set-label">데이터 초기화</span></button>
       <button type="button" class="set-tile danger" onclick="openDeleteAccountPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="회원탈퇴" alt="" aria-hidden="true" decoding="async"><span class="set-label">회원탈퇴</span></button>
@@ -1958,10 +1963,21 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <li>회원가입 후 로그인해요.</li>
       <li>환경설정 › <b>근무설정</b>에서 근무 패턴과 기준일을 정해요.</li>
       <li>메인화면 › <b>근무표</b>에서 이번 달 근무를 확인해요.</li></ol></details>
-    <details class="guide-sec" data-g="change"><summary>근무 변경</summary><div class="gd-stage" data-g="change"></div><ol>
+    <details class="guide-sec" data-g="change"><summary>근무 변경 (XROIS 다이아 자동 반영)</summary><div class="gd-stage" data-g="change"></div><ol>
       <li><b>근무표</b>에서 바꿀 날짜를 <b>꾹(길게)</b> 눌러요.</li>
-      <li>근무 변경 창에서 바꾼 사람 이름, DIA 번호(또는 대기충당 · 휴무충당), 휴가 · 근무 상태를 입력해요.</li>
-      <li><b>저장</b>을 누르면 그 날짜에 <b>*</b> 표시가 붙고 바로 자동 백업돼요. 되돌리려면 '원래 근무로 되돌리기'.</li></ol></details>
+      <li>근무 변경 창에서 바꾼 사람 이름, <b>DIA 번호</b>(또는 대기충당 · 휴무충당), 휴가 · 근무 상태를 입력하고 <b>저장</b>해요.</li>
+      <li>XROIS 연동을 했다면 그 날 그 다이아의 <b>출근 · 퇴근 · 열차번호1 · 2</b>를 XROIS에서 가져오고, <b>승무다이아</b>로 <b>예상 행로표</b>까지 자동으로 넣어요.</li>
+      <li>바뀐 날짜에는 <b>*</b> 표시가 붙고 바로 자동 백업돼요. 되돌리려면 '원래 근무로 되돌리기'.</li></ol></details>
+    <details class="guide-sec" data-g="xrois"><summary>XROIS 연동 (마이페이지)</summary><div class="gd-stage" data-g="xrois"></div><ol>
+      <li>하단 <b>마이페이지</b> › <b>CREW(XROIS) 연동</b>을 열어요.</li>
+      <li>XROIS 비밀번호를 넣고 <b>저장</b>해요. 비밀번호는 <b>이 폰에만</b> 저장되고 서버에는 저장하지 않아요.</li>
+      <li><b>12시간마다</b> XROIS 당월승무근무표를 확인해서, 다이아가 바뀌었으면 근무표에 자동 반영하고 <b>팝업</b>으로 알려줘요.</li>
+      <li>근무표 상세에 <b>함께 타는 승무원</b>이 나오고, 미리보는 월급에는 <b>개인근무명세서</b>의 휴일 · 연장 · 야간 시간이 들어가요.</li>
+      <li>메인화면 › <b>승무근무표 현황</b>에서 그 날 전체 다이아 표를 볼 수 있어요.</li></ol></details>
+    <details class="guide-sec" data-g="theme"><summary>아이콘 테마 바꾸기</summary><div class="gd-stage" data-g="theme"></div><ol>
+      <li>환경설정 › <b>아이콘 설정</b>을 열어요.</li>
+      <li><b>기본 · 귀여운 열차 · 철도 · 강아지/고양이 · 쿼카/레서판다</b> 중 마음에 드는 테마를 눌러요.</li>
+      <li>메인화면 · 하단 메뉴 · 환경설정 아이콘이 바로 그 테마로 바뀌어요. (다크 모드는 환경설정 › 화면 설정)</li></ol></details>
     <details class="guide-sec" data-g="swap"><summary>근무 교환</summary><div class="gd-stage" data-g="swap"></div><ol>
       <li>하단 <b>근무그룹</b> › <b>근무교환</b> 버튼을 눌러요.</li>
       <li>'누구와 바꾸시겠습니까?'에서 교환할 그룹원을 골라요.</li>
@@ -4069,23 +4085,37 @@ var GD_SCENES = {
   start: [
     { cap: '① 사번 · 비밀번호로 로그인', tap: [50, 78], html:
       '<div class="gd-top">철도비서</div><div class="gd-in">사번</div><div class="gd-in">비밀번호</div><div class="gd-btn">로그인</div>' },
-    { cap: '② 환경설정 › 근무설정', tap: [24, 52], html:
-      '<div class="gd-top">환경설정</div><div class="gd-grid"><i class="hl">근무설정</i><i>근무그룹</i><i>휴가관리</i><i>위젯 연결</i><i>알람설정</i><i>가이드</i></div>' },
+    { cap: '② 환경설정 › 근무설정', tap: [50, 50], sel: '.gd-set .hl', html: 'SET:테마|화면 설정,아이콘 설정|근무|*근무설정,열차통과/도착 알림,출근알림 설정' },
     { cap: '③ 근무 순서와 기준일 정하고 저장', tap: [50, 84], html:
       '<div class="gd-top">근무설정</div><div class="gd-chips"><b class="d">주</b><b class="n">야</b><b class="n">비</b><b class="o">휴</b></div><div class="gd-in">기준일 2026-11-01</div><div class="gd-btn">저장</div>' },
     { cap: '④ 근무표에 한 달 근무가 채워져요', tap: null, html: 'CAL' }
   ],
   change: [
     { cap: '① 근무표에서 바꿀 날짜를 꾹 눌러요', tap: [64, 58], long: true, html: 'CAL' },
-    { cap: '② 바꾼 사람 · DIA(대기충당 · 휴무충당) · 상태 입력', tap: [50, 50], sel: '.gd-chip2.hl', html:
-      '<div class="gd-top">근무 변경 <small>11월 12일</small></div><div class="gd-lab">누구와 근무를 변경했나요?</div><div class="gd-in">이영희<span class="gd-caret"></span></div>' +
-      '<div class="gd-lab">DIA 번호</div><div class="gd-row2"><div class="gd-in sm">12602</div><span class="gd-chip2">대기충당</span><span class="gd-chip2 hl">휴무충당</span></div>' +
+    { cap: '② 바꾼 사람 · DIA 번호 입력', tap: [50, 50], sel: '.gd-in.hl', html:
+      '<div class="gd-top">근무 변경 <small>11월 12일</small></div><div class="gd-lab">누구와 근무를 변경했나요?</div><div class="gd-in">이영희</div>' +
+      '<div class="gd-lab">DIA 번호</div><div class="gd-row2"><div class="gd-in sm hl">12H88<span class="gd-caret"></span></div><span class="gd-chip2">대기충당</span><span class="gd-chip2">휴무충당</span></div>' +
       '<div class="gd-lab">휴가 / 근무 상태</div><div class="gd-st3"><i>연차</i><i>병가</i><i>휴무</i></div>' },
     { cap: '③ 저장을 눌러요', tap: [70, 88], sel: '.gd-btn', html:
       '<div class="gd-top">근무 변경 <small>11월 12일</small></div><div class="gd-lab">누구와 근무를 변경했나요?</div><div class="gd-in">이영희</div>' +
-      '<div class="gd-lab">DIA 번호</div><div class="gd-row2"><div class="gd-in sm">12602</div><span class="gd-chip2">대기충당</span><span class="gd-chip2 on">휴무충당</span></div>' +
+      '<div class="gd-lab">DIA 번호</div><div class="gd-row2"><div class="gd-in sm">12H88</div><span class="gd-chip2">대기충당</span><span class="gd-chip2">휴무충당</span></div>' +
       '<div class="gd-btns2"><span>취소</span><span class="gd-btn">저장</span></div>' },
-    { cap: '④ 바뀐 날짜에 * 표시 · 바로 자동 백업', tap: null, html: 'CAL_STAR' }
+    { cap: '④ XROIS에서 출근 · 퇴근 · 열차번호를 가져와요', tap: null, html: 'XR_DETAIL' },
+    { cap: '⑤ 승무다이아로 예상 행로표까지 자동', tap: null, html: 'XR_ROUTE' }
+  ],
+  xrois: [
+    { cap: '① 하단 마이페이지 › CREW(XROIS) 연동', tap: [50, 62], sel: '.gd-set .hl', html: 'MP_LIST' },
+    { cap: '② XROIS 비밀번호 넣고 저장 (이 폰에만 저장)', tap: [50, 86], sel: '.gd-btn', html:
+      '<div class="gd-top">CREW(XROIS) 연동</div><div class="gd-lab">사번</div><div class="gd-in">199878</div><div class="gd-lab">XROIS 비밀번호</div><div class="gd-in">●●●●●●●<span class="gd-caret"></span></div>' +
+      '<div class="gd-note">🔒 비밀번호는 이 폰에만 저장돼요</div><div class="gd-btn">저장</div>' },
+    { cap: '③ 12시간마다 확인 · 다이아가 바뀌면 팝업', tap: null, html: 'XR_POP' },
+    { cap: '④ 함께 타는 승무원 · 휴일/연장/야간 시간 반영', tap: null, html: 'XR_CREW' },
+    { cap: '⑤ 메인화면 › 승무근무표 현황', tap: null, html: 'XR_BOARD' }
+  ],
+  theme: [
+    { cap: '① 환경설정 › 아이콘 설정', tap: [50, 40], sel: '.gd-set .hl', html: 'SET:테마|화면 설정,*아이콘 설정,즐겨찾기 메뉴|근무|근무설정,열차통과/도착 알림' },
+    { cap: '② 마음에 드는 테마를 눌러요', tap: [50, 60], sel: '.gd-themes .hl', html: 'THEMES' },
+    { cap: '③ 아이콘이 바로 그 테마로 바뀌어요', tap: null, html: 'THEME_MAIN' }
   ],
   swap: [
     { cap: '① 근무그룹 › 근무교환 버튼', tap: [70, 18], sel: '.gd-pill.hl', html:
@@ -4098,30 +4128,27 @@ var GD_SCENES = {
   ],
   train: [
     { cap: '① 메인화면 › 열차운행정보 조회', tap: [76, 52], html:
-      '<div class="gd-top">메인화면</div><div class="gd-grid"><i>근무표</i><i>휴가관리</i><i class="hl">열차운행</i><i>메모장</i><i>공지사항</i><i>환경설정</i></div>' },
+      '<div class="gd-top">메인화면</div><div class="gd-grid"><i>근무표</i><i>휴가관리</i><i class="hl">열차운행</i><i>승무현황</i><i>근무통계</i><i>환경설정</i></div>' },
     { cap: '② 날짜와 열차번호 넣고 조회', tap: [50, 84], html:
       '<div class="gd-top">열차운행정보 조회</div><div class="gd-in">2026-11-06</div><div class="gd-in">1001<span class="gd-caret"></span></div><div class="gd-btn">조회</div>' },
     { cap: '③ 지금 위치가 애니메이션으로 보여요', tap: null, html: 'TRACK' },
     { cap: '④ 열차를 누르면 바로 새로고침 (30초마다 자동)', tap: [50, 40], sel: '.gd-train', html: 'TRACK' }
   ],
   pass: [
-    { cap: '① 환경설정 › 열차통과/도착 알림', tap: [50, 50], html:
-      '<div class="gd-top">환경설정</div><div class="gd-grid"><i>근무설정</i><i>출근알림</i><i>운휴 알림</i><i class="hl">통과/도착</i><i>위젯 연결</i><i>가이드</i></div>' },
+    { cap: '① 환경설정 › 열차통과/도착 알림', tap: [50, 50], sel: '.gd-set .hl', html: 'SET:근무|근무설정,*열차통과/도착 알림,NXLOGIS 조회방식,출근알림 설정,열차 운휴 알림' },
     { cap: '② 알림 받을 열차번호 추가', tap: [80, 40], sel: '.gd-add.hl b', html: 'PASS1' },
     { cap: '③ 알림 받을 역 이름 추가', tap: [80, 60], sel: '.gd-add.hl b', html: 'PASS2' },
     { cap: '④ 진입 중 · 통과 중 받을 알림 켜기', tap: [70, 80], sel: '.gd-tog.hl', html: 'PASS3' },
     { cap: '⑤ 그 역에 다가오면 알림이 와요', tap: null, html: 'PASS_NOTI' }
   ],
   nx: [
-    { cap: '① 환경설정 › 열차 운휴 알림', tap: [50, 50], html:
-      '<div class="gd-top">환경설정</div><div class="gd-grid"><i>근무설정</i><i>출근알림</i><i class="hl">운휴 알림</i><i>통과/도착</i><i>위젯 연결</i><i>가이드</i></div>' },
+    { cap: '① 환경설정 › 열차 운휴 알림', tap: [50, 70], sel: '.gd-set .hl', html: 'SET:근무|근무설정,열차통과/도착 알림,NXLOGIS 조회방식,출근알림 설정,*열차 운휴 알림' },
     { cap: '② 운휴 알림 스위치 켜기', tap: [80, 30], sel: '.gd-sw', html: 'NX1' },
     { cap: '③ 로그인하면 오늘~모레 운휴를 팝업으로', tap: null, html: 'NX_POP' },
     { cap: '④ 앱이 꺼져도 10분마다 확인해서 알림', tap: null, html: 'NX_NOTI' }
   ],
   widget: [
-    { cap: '① 환경설정 › 위젯 연결', tap: [76, 66], html:
-      '<div class="gd-top">환경설정</div><div class="gd-grid"><i>근무설정</i><i>근무그룹</i><i>휴가관리</i><i>알람설정</i><i>즐겨찾기</i><i class="hl">위젯 연결</i></div>' },
+    { cap: '① 환경설정 › 위젯 연결', tap: [50, 60], sel: '.gd-set .hl', html: 'SET:기타|다이아 행로표 만들기,백업·동기화,*위젯 연결,애니메이션 효과' },
     { cap: '② 위젯 주소 만들고 비트맵 수식 복사', tap: [50, 80], html:
       '<div class="gd-top">위젯 연결</div><div class="gd-mini-cal"></div><div class="gd-btn">비트맵 수식 복사</div>' },
     { cap: '③ KWGT 이미지 › 비트맵 수식에 붙여넣기 · 저장', tap: [50, 72], html:
@@ -4144,7 +4171,43 @@ function gdCal(opt) {
     (opt === 'btn' || opt === 'saved' ? '<div class="gd-btn sm">근무표 PNG 저장</div>' : '') +
     (opt === 'saved' ? '<div class="gd-toast">PNG로 저장했어요</div>' : '');
 }
+function gdIco(name, theme) {
+  try {
+    if (theme && theme !== 'basic' && window.APP_ICON_THEMES && APP_ICON_THEMES[theme] && APP_ICON_THEMES[theme][name]) return APP_ICON_THEMES[theme][name];
+    return (window.APP_ICONS && APP_ICONS[name]) || '';
+  } catch (e) { return ''; }
+}
+/* 환경설정 목록 화면: 'SET:분류|항목,*강조항목|분류|항목' */
+function gdSetList(spec) {
+  var p = spec.split('|'), h = '<div class="gd-top">환경설정</div><div class="gd-set">';
+  for (var i = 0; i + 1 < p.length; i += 2) {
+    h += '<em>' + p[i] + '</em>';
+    p[i + 1].split(',').forEach(function (x) { var hl = x.charAt(0) === '*'; h += '<i' + (hl ? ' class="hl"' : '') + '>' + (hl ? x.slice(1) : x) + '</i>'; });
+  }
+  return h + '</div>';
+}
+var GD_THEME_LIST = [['basic', '기본'], ['cute', '귀여운 열차'], ['char', '철도'], ['pet', '강아지/고양이'], ['quokka', '쿼카/레서판다']];
 function gdScreenHtml(sc) {
+  if (/^SET:/.test(sc.html)) return gdSetList(sc.html.slice(4));
+  if (sc.html === 'MP_LIST') return '<div class="gd-top">마이페이지</div><div class="gd-set"><em>내 정보</em><i>이름 · 사번</i><i>근무 통계</i><em>연동</em><i class="hl">CREW(XROIS) 연동</i><i>백업 · 동기화</i></div>';
+  if (sc.html === 'XR_DETAIL' || sc.html === 'XR_CREW') {
+    var cw = sc.html === 'XR_CREW';
+    return '<div class="gd-top">11월 12일 상세 근무 정보</div><div class="gd-dd"><b class="gd-dia">DIA : 12H88 (주) *</b>' +
+      '<p>출근 시간 : 12:50</p><p>퇴근 시간 : 20:50</p><p>열차 번호 : <span class="gd-tn">4656</span><span class="gd-tn">K</span></p>' +
+      '<p' + (cw ? ' class="hl"' : '') + '>승무원 : *철수, *영희</p>' + (cw ? '<p class="hl">휴일 3시간 · 연장 2시간 <small>(XROIS)</small></p>' : '') + '</div>' +
+      (cw ? '' : '<div class="gd-toast">XROIS에서 가져왔어요</div>');
+  }
+  if (sc.html === 'XR_ROUTE') return '<div class="gd-top">행로표 <small style="color:#c2410c">예상 행로표</small></div><div class="gd-route"><div class="gd-rs"><span>청량리</span><span>동두천</span></div>' +
+    '<div class="gd-rl a"><i>15:30</i><b>(K)</b><i>16:30</i></div><div class="gd-rl b"><i>18:55</i><b>4656</b><i>18:03</i></div></div><div class="gd-toast">예상 행로표를 넣었어요</div>';
+  if (sc.html === 'XR_POP') return '<div class="gd-top">XROIS 근무 변경</div><div class="gd-card"><div class="gd-pt">XROIS 당월승무근무표와 달라서 근무표를 바꿨어요.</div>' +
+    '<div class="gd-chg"><span>11/14 (토)</span><s>12601</s><b>→ 12H88</b></div><div class="gd-chg"><span>11/15 (일)</span><s>휴</s><b>→ 비</b></div></div><div class="gd-btn sm">확인</div>';
+  if (sc.html === 'XR_BOARD') return '<div class="gd-top">승무근무표 현황 <small>11월 13일</small></div><div class="gd-tb"><span>다이아</span><span>열차1</span><span>출근</span><span>승무원1</span>' +
+    '<span class="me">12H88</span><span class="me">4656</span><span class="me">12:50</span><span class="me">*주영</span>' +
+    '<span>12101</span><span>1673</span><span>07:30</span><span>*철수</span><span>12401</span><span>1501</span><span>08:10</span><span>*지훈</span><span>12601</span><span>1801</span><span>18:20</span><span>*상우</span></div>';
+  if (sc.html === 'THEMES') return '<div class="gd-top">아이콘 설정</div><div class="gd-themes">' + GD_THEME_LIST.map(function (t) {
+      return '<i' + (t[0] === 'pet' ? ' class="hl"' : '') + '><img src="' + gdIco('근무표', t[0]) + '" alt=""><span>' + t[1] + '</span></i>'; }).join('') + '</div>';
+  if (sc.html === 'THEME_MAIN') return '<div class="gd-top">메인화면 · 강아지/고양이</div><div class="gd-icos">' + ['근무표', '근무그룹', '근무패턴', '휴가관리', '마이페이지', '환경설정'].map(function (n) {
+      return '<i><img src="' + gdIco(n, 'pet') + '" alt=""><span>' + n + '</span></i>'; }).join('') + '</div><div class="gd-toast">테마를 바꿨어요</div>';
   if (sc.html === 'PASS1' || sc.html === 'PASS2' || sc.html === 'PASS3') {
     var st2 = sc.html !== 'PASS1', st3 = sc.html === 'PASS3';
     return '<div class="gd-top">열차통과/도착 알림</div>' +
@@ -5063,8 +5126,8 @@ function animPreview() {
 /* ============ 즐겨찾기 메뉴: 하단 고정메뉴 1~6개 선택 (이 폰에만 저장) ============ */
 var FAV_ITEMS = [
   { g: '메인화면', k: 'home', label: '메인화면', icon: '메인화면', sec: 'main-section', fn: function () { switchSection('main-section'); } },
-  { g: '메인화면', k: 'notice', label: '공지사항', icon: '공지사항', sec: 'notice-panel', fn: function () { openNoticePanel(); } },
-  { g: '메인화면', k: 'suggest', label: '건의사항', icon: '건의사항', sec: 'suggestion-panel', fn: function () { openSuggestionPanel(); } },
+  { g: '환경설정', k: 'notice', label: '공지사항', icon: '공지사항', sec: 'notice-panel', fn: function () { openNoticePanel(); } },
+  { g: '환경설정', k: 'suggest', label: '건의사항', icon: '건의사항', sec: 'suggestion-panel', fn: function () { openSuggestionPanel(); } },
   { g: '메인화면', k: 'schedule', label: '근무표', icon: '근무표', sec: 'schedule-section', fn: function () { openSchedule(); } },
   { g: '메인화면', k: 'group', label: '근무그룹', icon: '근무그룹', sec: 'group-section', fn: function () { openGroupSection(); } },
   { g: '메인화면', k: 'pattern', label: '근무패턴', icon: '근무패턴', sec: 'pattern-section', fn: function () { openPattern(); } },
@@ -5087,6 +5150,7 @@ var FAV_ITEMS = [
   { g: '환경설정', k: 'ui', label: '화면 설정', short: '화면', icon: '화면설정', fn: function () { openUiPanel(); } },
   { g: '환경설정', k: 'routeplan2', label: '다이아 행로표 만들기', short: '행로표', icon: '예상행로표', fn: function () { openRoutePlan(); } },
   { g: '환경설정', k: 'icon', label: '아이콘 설정', short: '아이콘', icon: '아이콘설정', fn: function () { openIconPanel(); } },
+  { g: '환경설정', k: 'guide', label: '철도비서 사용가이드', short: '가이드', icon: '사용가이드', fn: function () { openGuidePanel(); } },
   { g: '환경설정', k: 'reset', label: '데이터 초기화', short: '초기화', icon: '전체데이터초기화', fn: function () { openResetAllDataPanel(); } },
   { g: '환경설정', k: 'leave', label: '회원탈퇴', icon: '회원탈퇴', fn: function () { openDeleteAccountPanel(); } }
 ];
@@ -5608,12 +5672,12 @@ function crewMatesHtml(dateKey, diaNo, trains) {
   var ico = '<img class="detail-art" src="' + appIcon('승무원') + '" alt="" aria-hidden="true">';
   var r = crewPick(dateKey, diaNo, trains, getCurrentUser().name);
   if (!r) return '<div class="dd-row dd-icon-row crew-row">' + ico + '<span>승무원 : <small>아직 안 가져왔어요 (마이페이지 CREW 연동 [지금 최신화])</small></span></div>';
-  var line;
-  if (r.level === 1) line = '<div class="crew-line"><b class="crew-names">' + r.mates.map(esc).join(', ') + '</b></div>';
-  else if (r.level === 2) line = '<div class="crew-line"><em>같은 열차 ' + esc(r.trains.join('·')) + '</em><b class="crew-names">' + r.mates.map(esc).join(', ') + '</b>' + (r.dias && r.dias.length ? ' <small>(' + r.dias.map(esc).join(', ') + ')</small>' : '') + '</div>';
-  else line = '<div class="crew-line"><small>' + (r.found ? '단독 승무' : '승무근무표 현황에서 ' + esc(diaNo) + '를 찾지 못했어요') + '</small></div>';
-  return '<div class="dd-row dd-icon-row crew-row">' + ico +
-    '<span class="crew-box"><span class="crew-title">승무원' + (r.when ? ' <small class="crew-when">(' + esc(r.when) + ' 기준)</small>' : '') + '</span>' + line + '</span></div>';
+  /* 출근 시간 · 퇴근 시간 줄과 똑같이 한 줄로: '승무원 : *철수, *영희' */
+  var val;
+  if (r.level === 1) val = r.mates.map(esc).join(', ');
+  else if (r.level === 2) val = r.mates.map(esc).join(', ') + ' <small class="crew-sub">(같은 열차 ' + esc(r.trains.join('·')) + ')</small>';
+  else val = '<small class="crew-sub">' + (r.found ? '단독 승무' : '승무근무표 현황에 ' + esc(diaNo) + ' 없음') + '</small>';
+  return '<div class="dd-row dd-icon-row crew-row crew-inline">' + ico + '<span>승무원 : ' + val + '</span></div>';
 }
 /* ============ 일일 메모장 ============
    날짜별 개인 메모. 개인적인 내용이 있을 수 있어 이 폰(localStorage)에만 저장하고
@@ -5717,6 +5781,17 @@ function renderDayDetail() {
   }
   var train1 = info.train1 || (diaMeta && diaMeta.train1) || '';
   var train2 = info.train2 || (diaMeta && diaMeta.train2) || '';
+  /* 근무변경으로 넣은 다이아: XROIS에서 가져온 그 날 그 다이아의 출근 · 퇴근 · 열차번호1 · 2를 다이아 정보로 표시 */
+  try {
+    var ddXi = (!isStatus && diaNo && typeof xrGet === 'function') ? xrGet('info', {})[dateKeyForSelectedDay()] : null;
+    if (ddXi && xrNorm(ddXi.dia) === xrNorm(diaNo)) {
+      if (ddXi.start) { startTime = ddXi.start; rsStartEstimated = false; }
+      if (ddXi.end) { endTime = ddXi.end; rsEndEstimated = false; }
+      var xt1 = ddXi.t1 || (ddXi.trains || [])[0] || '', xt2 = ddXi.t2 || (ddXi.trains || [])[1] || '';
+      if (xt1) train1 = xt1;
+      if (xt2) train2 = xt2;
+    }
+  } catch (e) {}
   var train3 = info.train3 || (diaMeta && diaMeta.train3) || '';
   var workType = info.type || (diaMeta && diaMeta.type) || ((typeof rpGet === 'function' && diaNo && rpGet(diaNo)) ? rpGet(diaNo).type || '' : '');
   var tone = isStatus ? 'off' : toneOf(info.label);
@@ -9084,7 +9159,7 @@ function openNoticePanel() {
     if (isBoardAdmin()) noticeMarkSeen((r.announcements || r.posts || []).map(noticeId));
   });
 }
-function closeNoticePanel() { switchSection('main-section'); }
+function closeNoticePanel() { if (typeof openSettings === 'function') openSettings(); else switchSection('main-section'); }
 function openSuggestionPanel() {
   switchSection('suggestion-panel');
   var list = $('suggestion-list');
@@ -16296,6 +16371,38 @@ html body #main-section .menu-grid > .menu-btn > span{display:flex;align-items:f
 #guide-panel .guide-sec ol{margin:8px 0 2px;padding-left:20px;font-size:13px;line-height:1.6;color:#33415c}
 </style>
 <style id="guide-anim-style">
+#guide-panel .gd-set{display:flex;flex-direction:column}
+#guide-panel .gd-set em{font-style:normal;font-size:8px;color:#8b95a1;margin:5px 2px 2px}
+#guide-panel .gd-set i{font-style:normal;display:flex;align-items:center;justify-content:space-between;padding:6px 6px;border-radius:7px;font-size:9.5px;font-weight:600;color:#191f28;transition:transform .15s}
+#guide-panel .gd-set i::after{content:'›';color:#8b95a1;font-size:12px;line-height:1}
+#guide-panel .gd-set i.hl{background:#eef4ff;outline:1.5px solid #2f6fd6}
+#guide-panel .gd-note{font-size:8.5px;color:#16a078;margin:2px 2px 0;font-weight:700}
+#guide-panel .gd-dd{background:#fff;border:1px solid #e1e7f1;border-radius:10px;padding:8px;line-height:1.55}
+#guide-panel .gd-dd .gd-dia{display:block;color:#e5a800;font-size:11px;margin-bottom:3px}
+#guide-panel .gd-dd p{margin:0;font-size:9.5px;padding:1px 3px;border-radius:5px}
+#guide-panel .gd-dd p.hl{background:#eef4ff;color:#1b64da;font-weight:700}
+#guide-panel .gd-tn{display:inline-block;background:#cfe8ff;color:#1769d2;border-radius:999px;padding:0 6px;margin-left:3px;font-weight:700}
+#guide-panel .gd-route{background:#fff;border:1px solid #e1e7f1;border-radius:10px;padding:10px 8px;height:120px;position:relative}
+#guide-panel .gd-rs{display:flex;justify-content:space-between;font-weight:800;font-size:9px;margin-bottom:18px}
+#guide-panel .gd-rl{display:flex;align-items:center;gap:4px;font-size:8px;margin-bottom:22px}
+#guide-panel .gd-rl b{flex:1;text-align:center;border-bottom:1.5px solid #22324d;font-weight:600;line-height:1.2}
+#guide-panel .gd-rl i{font-style:normal;color:#5b6678}
+#guide-panel .gd-card{background:#fff;border:1px solid #e1e7f1;border-radius:10px;padding:8px}
+#guide-panel .gd-pt{font-size:9px;color:#475467;margin-bottom:5px}
+#guide-panel .gd-chg{display:flex;gap:6px;align-items:center;font-size:9.5px;padding:4px 0;border-top:1px solid #f0f2f5}
+#guide-panel .gd-chg s{color:#adb5bd}#guide-panel .gd-chg b{color:#1b64da}
+#guide-panel .gd-tb{display:grid;grid-template-columns:1.2fr 1fr 1fr 1.1fr;border:1px solid #dfe3ea;border-radius:8px;overflow:hidden;background:#fff}
+#guide-panel .gd-tb span{font-size:8.5px;text-align:center;padding:6px 1px;border-bottom:1px solid #eef0f3}
+#guide-panel .gd-tb span:nth-child(-n+4){background:#eef2f8;font-weight:800}
+#guide-panel .gd-tb span.me{background:#e8f1ff;color:#1b64da;font-weight:800}
+#guide-panel .gd-themes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+#guide-panel .gd-themes i,#guide-panel .gd-icos i{font-style:normal;display:flex;flex-direction:column;align-items:center;gap:2px;background:#fff;border:1px solid #e1e7f1;border-radius:9px;padding:5px 2px;font-size:7.5px;font-weight:700;text-align:center;transition:transform .15s}
+#guide-panel .gd-themes i.hl{border-color:#2f6fd6;background:#eef4ff}
+#guide-panel .gd-themes span{white-space:nowrap;font-size:6.8px;letter-spacing:-.3px}
+#guide-panel .gd-themes img,#guide-panel .gd-icos img{width:34px;height:34px;object-fit:contain}
+#guide-panel .gd-icos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+#guide-panel .gd-icos img{width:40px;height:40px}
+
 #guide-panel .gd-stage,#wg-panel .gd-stage{display:flex;flex-direction:column;align-items:center;margin:10px 0 4px}
 #guide-panel .gd-phone,#wg-panel .gd-phone{position:relative;width:180px;height:260px;border-radius:24px;background:#16233a;padding:8px;box-shadow:0 6px 18px rgba(16,40,80,.18)}
 #guide-panel .gd-scr,#wg-panel .gd-scr{position:relative;width:100%;height:100%;border-radius:17px;background:#f6f8fc;overflow:hidden;padding:10px 9px;box-sizing:border-box;font-size:10px;color:#22324d}
@@ -17790,6 +17897,7 @@ function xrCloseChanges() { $('xr-change').classList.remove('active'); }
 /* 근무표 상세: 그 날 XROIS 출근·퇴근·열차 */
 function xrInfoFor(dk, diaNo) {
   var i = xrGet('info', {})[dk];
+  return '';   /* 이제 출근·퇴근·열차번호 줄에 바로 표시하므로 따로 보여주지 않음 */
   if (!i || !diaNo || xrNorm(i.dia) !== xrNorm(diaNo) || !(i.trains || []).length) return '';
   if (diaByNumber(diaNo)) return '';                 /* 등록된 다이아는 원래 열차번호 줄이 있음 */
   return '<div class="dd-xr"><span>열차 <b>' + esc(i.trains.join(' · ')) + '</b></span><small>XROIS</small></div>';
@@ -17813,21 +17921,30 @@ function xrFetchForEdit(dk, dia) {
       showToast(err.message); return;
     }
     var r = (d.results || [])[0] || {}, wk = r.work || null, wkOk = !!(wk && wk.match);
+    /* 승무근무표 현황에서 이 다이아 줄 (출근 · 퇴근 · 열차번호1 · 열차번호2) — 내 근무가 아니어도 그 날 그 다이아 정보가 있음 */
+    var cr = Array.isArray(r.crew) ? (r.crew.filter(function (x) { return xrNorm(x.dia) === dia; })[0] || null) : null;
+    var crOk = !!(cr && (cr.start || cr.end || cr.t1 || cr.t2));
     var rows = (r.rows || []).map(function (x) {
       return { kind: String(x.kind || '').replace(/\s+/g, ''), train: String(x.train || '').toUpperCase(), from: x.from || '', to: x.to || '', dep: rpTime(x.dep), arr: rpTime(x.arr) };
     }).filter(function (x) { return x.kind && (x.dep || x.arr); });
-    if ((!r.ok || !rows.length) && !wkOk) { showToast('XROIS 승무다이아에 ' + dia + ' (' + xrDateLabel(dk) + ') 정보가 없어요.'); return; }
-    /* 출근·퇴근·열차번호: 당월승무근무표에서 그 날 다이아가 맞으면 그 값, 아니면 승무다이아 내역(첫·마지막 시각, 운전 열차)으로 */
-    var start = '', end = '', trains = [];
+    if ((!r.ok || !rows.length) && !wkOk && !crOk) { showToast('XROIS에 ' + dia + ' (' + xrDateLabel(dk) + ') 정보가 없어요.'); return; }
+    /* 출근·퇴근·열차번호 순서: ① 개인 당월승무근무표(그 날 내 다이아가 맞을 때) ② 승무근무표 현황의 이 다이아 줄 ③ 승무다이아 내역(첫·마지막 시각, 운전 열차) */
+    var start = '', end = '', trains = [], t1 = '', t2 = '';
     if (wkOk) { start = wk.start || ''; end = wk.end || ''; (wk.trains || []).forEach(function (t) { if (t && trains.indexOf(t) < 0) trains.push(t); }); }
+    if (crOk) {
+      if (!start) start = cr.start || ''; if (!end) end = cr.end || '';
+      t1 = cr.t1 || ''; t2 = cr.t2 || '';
+      [cr.t1, cr.t2].forEach(function (t) { if (t && trains.indexOf(t) < 0) trains.push(t); });
+    }
     if (rows.length) {
       if (!start) start = rows[0].dep || rows[0].arr;
       if (!end) end = rows[rows.length - 1].arr || rows[rows.length - 1].dep;
       rows.forEach(function (x) { if (/운전/.test(x.kind) && x.train && x.train !== 'K' && trains.indexOf(x.train) < 0) trains.push(x.train); });
     }
-    var info = xrGet('info', {}); info[dk] = { dia: dia, start: start, end: end, trains: trains }; xrPut('info', info);
+    if (!t1) t1 = trains[0] || ''; if (!t2) t2 = trains[1] || '';
+    var info = xrGet('info', {}); info[dk] = { dia: dia, start: start, end: end, trains: trains, t1: t1, t2: t2 }; xrPut('info', info);
     /* 그 날 승무원 (승무근무표 현황) */
-    if (Array.isArray(r.crew)) { var ros = xrGet('roster', {}); ros[dk] = r.crew.map(function (x) { return { dia: xrNorm(x.dia), trains: x.trains || [], crew: x.crew || [] }; }); xrPut('roster', ros); var mt = xrGet('meta', {}); mt.rosterAt = stampNow(); xrPut('meta', mt); }
+    if (Array.isArray(r.crew)) { var ros = xrGet('roster', {}); ros[dk] = r.crew.map(function (x) { return { dia: xrNorm(x.dia), trains: x.trains || [], crew: x.crew || [] }; });   /* 승무원 찾기용 */ xrPut('roster', ros); var mt = xrGet('meta', {}); mt.rosterAt = stampNow(); xrPut('meta', mt); }
     /* 예상 행로표 저장 + 그 날에 넣기 (승무다이아 내역이 있을 때) */
     var type = rows.length ? rpGuessType(rows) : ((rpMin(end) != null && rpMin(start) != null && rpMin(end) < rpMin(start)) ? '야' : '주'), a = rpAll();
     if (rows.length) { a[dia] = { rows: rows, at: Date.now(), type: type, src: 'xrois' }; rpSaveAll(a); rpSetDate(dk, dia); }
@@ -17835,7 +17952,7 @@ function xrFetchForEdit(dk, dia) {
     if (type === '야' && !diaByNumber(dia)) { try { snapUpsertOverride(getCurrentUser().employeeId, snapShiftKey(dk, 1), 'auto-status', '', '비'); } catch (e) {} }
     try { loadMyMonth(); } catch (e) {}
     try { renderDayDetail(); } catch (e) {}
-    var head = xrDateLabel(dk) + ' ' + dia + ' · 출근 ' + (start || '-') + ' · 퇴근 ' + (end || '-') + (trains.length ? ' · 열차 ' + trains.join(', ') : '');
+    var head = xrDateLabel(dk) + ' ' + dia + ' · 출근 ' + (start || '-') + ' · 퇴근 ' + (end || '-') + ((t1 || t2) ? ' · 열차 ' + [t1, t2].filter(Boolean).join(', ') : '');
     var tail = rows.length ? ' · 예상 행로표를 넣었어요.' : ' · 승무다이아 내역은 아직 없어요.';
     if (wk && !wk.match && wk.xroisDia && /^[0-9A-Z]{3,8}$/.test(wk.xroisDia)) tail += ' (XROIS 당월승무근무표에는 ' + wk.xroisDia + '로 되어 있어요)';
     showToast(head + tail);
@@ -18153,6 +18270,7 @@ function routeArLoad(img) {
 /* 날짜 넘기기: 네모 칸 없이 화살표만 */
 #crewboard-section .sch-nav{background:none!important;border:0!important;box-shadow:none!important;width:auto!important;min-width:0!important;padding:6px 10px!important;color:#3182f6!important;font-size:20px!important}
 html.ui-dark #crewboard-section .sch-nav{background:none!important;color:#8cb8ff!important}
+.dd-row.crew-inline .crew-sub{font-size:.8em;color:#8a96a8;font-weight:500}
 html.ui-dark #crewboard-section .cb-table tr.me td{background:#1d3357!important}
 html.ui-dark #crewboard-section .cb-table td.cb-n.me{color:#8cb8ff!important}
 </style>
