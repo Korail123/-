@@ -18137,7 +18137,7 @@ function routeArLoad(img) {
 #crewboard-section .cb-status button:disabled{opacity:.55}
 #crewboard-section .cb-list{padding-bottom:20px}
 #crewboard-section .cb-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid #dfe3ea;border-radius:12px;background:#fff}
-#crewboard-section table.cb-table{width:100%;border-collapse:collapse;table-layout:auto;font-size:clamp(10px,2.95vw,12.5px);letter-spacing:-.3px}
+#crewboard-section table.cb-table{width:100%;border-collapse:collapse;table-layout:auto;font-size:clamp(11px,3.4vw,14px);letter-spacing:-.2px}
 #crewboard-section .cb-table th{position:sticky;top:0;background:#eef2f8;color:#344054;font-weight:800;padding:8px 1px;border-bottom:1px solid #d5dbe5;white-space:nowrap}
 #crewboard-section .cb-table td{padding:7px 1px;border-bottom:1px solid #eef0f3;text-align:center;white-space:nowrap;color:#191f28}
 #crewboard-section .cb-table tr:last-child td{border-bottom:0}
@@ -18150,13 +18150,16 @@ function routeArLoad(img) {
 #crewboard-section .cb-empty button{margin-top:10px;border:0;background:#3182f6;color:#fff;font-weight:700;border-radius:10px;padding:9px 16px;font-size:14px;cursor:pointer}
 #crewboard-section .cb-skel{height:300px;border-radius:12px;background:linear-gradient(90deg,#f2f4f6 25%,#e9edf1 50%,#f2f4f6 75%);background-size:200% 100%;animation:cbsk 1.2s infinite}
 @keyframes cbsk{0%{background-position:200% 0}100%{background-position:-200% 0}}
+/* 날짜 넘기기: 네모 칸 없이 화살표만 */
+#crewboard-section .sch-nav{background:none!important;border:0!important;box-shadow:none!important;width:auto!important;min-width:0!important;padding:6px 10px!important;color:#3182f6!important;font-size:20px!important}
+html.ui-dark #crewboard-section .sch-nav{background:none!important;color:#8cb8ff!important}
 html.ui-dark #crewboard-section .cb-table tr.me td{background:#1d3357!important}
 html.ui-dark #crewboard-section .cb-table td.cb-n.me{color:#8cb8ff!important}
 </style>
 
 <script>
 /* ============ 승무근무표 현황 (XROIS) ============
-   · XROIS '승무근무표 현황'을 표 그대로(다이아 · 열차1 · 열차2 · 출근 · 퇴근 · 승무원1~4, XROIS 순서) 보여줌
+   · XROIS '승무근무표 현황'을 표 그대로(다이아 · 열차1 · 열차2 · 출근 · 퇴근 · 승무원1 · 승무원2, XROIS 순서) 보여줌
    · 가져온 내용은 이 폰에만 저장(최근 10일). 이름은 서버에서 첫 글자를 가려서 옴 (*주영)
    · 같은 날짜는 저장본을 바로 보여주고, 12시간이 지났거나 [새로 가져오기]를 누를 때만 XROIS에 다시 접속 */
 var cbDate = null, cbBusy = false;
@@ -18209,8 +18212,9 @@ function cbFetch(manual) {
 }
 var cbErr = '';
 function cbNames(r) {
-  if (r.names && r.names.length) return r.names.slice(0, 4).concat(['', '', '', '']).slice(0, 4);
-  return (r.crew || []).slice(0, 4).concat(['', '', '', '']).slice(0, 4);   /* 예전 저장본 */
+  /* 승무원1 · 승무원2 칸만 */
+  if (r.names && r.names.length) return r.names.slice(0, 2).concat(['', '']).slice(0, 2);
+  return (r.crew || []).slice(0, 2).concat(['', '']).slice(0, 2);   /* 예전 저장본 */
 }
 function cbRender() {
   var title = $('cb-title'), list = $('cb-list'), stEl = $('cb-status');
@@ -18241,8 +18245,8 @@ function cbRender() {
       '<td>' + esc(r.start || '') + '</td><td>' + esc(r.end || '') + '</td>' +
       names.map(function (n) { return '<td class="cb-n' + (n && me && crewIsMe(n, me) ? ' me' : '') + '">' + esc(n) + '</td>'; }).join('') + '</tr>';
   }).join('');
-  list.innerHTML = '<div class="cb-wrap"><table class="cb-table"><thead><tr><th>다이아</th><th>열차1</th><th>열차2</th><th>출근</th><th>퇴근</th><th>승무원1</th><th>승무원2</th><th>승무원3</th><th>승무원4</th></tr></thead><tbody>' +
-    (body || '<tr><td colspan="9" style="padding:20px;color:#8b95a1">내용이 없어요</td></tr>') + '</tbody></table></div>';
+  list.innerHTML = '<div class="cb-wrap"><table class="cb-table"><thead><tr><th>다이아</th><th>열차1</th><th>열차2</th><th>출근</th><th>퇴근</th><th>승무원1</th><th>승무원2</th></tr></thead><tbody>' +
+    (body || '<tr><td colspan="7" style="padding:20px;color:#8b95a1">내용이 없어요</td></tr>') + '</tbody></table></div>';
 }
 </script>
 <script>(function(){var a=document.querySelector('#pp-compose-scene .pc-tank:not(.t2)'),b=document.querySelector('#pp-compose-scene .pc-tank.t2');if(a&&b)b.src=a.src;})();</script>
