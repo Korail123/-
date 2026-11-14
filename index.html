@@ -2933,18 +2933,21 @@ function snapBuildDay(dateKey, seq, anchor, dia, ov, name) {
           autoDia = dia[ai]; break;
         }
       }
+      var frozenType = /^고정/.test(String(ov.status || '')) ? String(ov.status).replace(/^고정:?/, '') : null;
       if (autoDia) {
         d = {};
         for (var ak in autoDia) if (Object.prototype.hasOwnProperty.call(autoDia, ak)) d[ak] = autoDia[ak];
       } else {
         d = snapEmptyDay();
         d.dia = String(ov.dia || '').trim().toUpperCase();
-        d.type = '야';
+        d.type = frozenType != null ? frozenType : '야';
       }
+      if (frozenType) d.type = frozenType;
       d.manual = false;
       d.overrideType = '';
       d.status = '';
-      d.auto = true;
+      d.auto = frozenType == null;   /* 근무설정을 바꾸기 전의 지난 근무(고정)는 원래 근무와 똑같이 취급 */
+      d.frozen = frozenType != null;
       d.updatedAt = ov.updatedAt || '';
     } else if (ov.type === 'auto-status') {
       d = snapEmptyDay();
@@ -5434,6 +5437,14 @@ function openNxLogisDirect(trainNo, selectedDateKey) {
   return false;
 }
 /* ============ 행로표 확대/축소 팝업 ============ */
+/* 정규 다이아(관리자가 저장해 둔 행로표 그림이 있는 다이아)면 그 그림 주소, 아니면 '' */
+function rsOfficialRouteUrl(diaNo) {
+  var d = String(diaNo || '').trim().toUpperCase();
+  if (!d) return '';
+  if (DIA_IMAGE_EMBED[d]) return DIA_IMAGE_EMBED[d];
+  if (DIA_IMAGE_FILES[d]) return DIA_IMAGE_BASE + DIA_IMAGE_FILES[d];
+  return '';
+}
 function diaImageUrl(diaNo) {
   /* 공식 행로표 그림이 목록에 없고, 내가 만든 예상 행로표가 있으면 그걸 바로 보여줌 */
   /* 앱 안에 넣어 둔 행로표 → 없으면 내가 만든 행로표 → 둘 다 없으면 '' (팝업에 '행로표 이미지가 없습니다' 바로 표시, 인터넷에서 찾지 않음) */
@@ -5969,7 +5980,7 @@ function renderDayDetail() {
   var info = getInfo(selDate.y, selDate.m, selDate.d);
   if (!info || !info.label) {
     var emptyPlan = (typeof rpForDate === 'function') ? rpForDate(getDateKey(selDate.y, selDate.m, selDate.d)) : null;
-    detail.innerHTML = dayDetailHead(dateText) + '<div class="dd-empty">근무 정보가 없습니다.</div>' + (emptyPlan ? '<div class="dd-dia-image-wrap"><div class="dd-dia-image-title">내가 만든 행로표</div><img class="dd-dia-image" alt="행로표" src="' + emptyPlan.url + '"></div>' : '');
+    detail.innerHTML = dayDetailHead(dateText) + '<div class="dd-empty">근무 정보가 없습니다.</div>' + (emptyPlan ? '<div class="dd-dia-image-wrap"><div class="dd-dia-image-title">행로표 <small class="dd-plan-tag">예상 행로표</small></div><img class="dd-dia-image" alt="행로표" src="' + emptyPlan.url + '"></div>' : '');
     return;
   }
   var isStatus = info.overrideType === 'status' && !info.nightCarryover;
@@ -6082,8 +6093,12 @@ function renderDayDetail() {
     var ddXr = (typeof xrInfoFor === 'function') ? xrInfoFor(ddKey, diaNo) : null;
     if (ddXr) html += ddXr;
     var diaImageSrc = diaImageUrl(diaNo);
+    /* 정규 다이아는 관리자가 저장해 둔 행로표를 그대로, 그 밖의 다이아만 철도비서가 만든 예상 행로표 */
+    var ddOfficial = diaNo ? rsOfficialRouteUrl(diaNo) : '';
+    if (ddOfficial) { ddPlan = null; diaImageSrc = ddOfficial; }
+    else if (!ddPlan && diaImageSrc) { ddPlan = { dia: diaNo, url: diaImageSrc }; }
     if (ddPlan) {
-      html += '<div class="dd-dia-image-wrap"><div class="dd-dia-image-title">행로표 <small class="dd-plan-tag">내가 만든 행로표</small></div>' +
+      html += '<div class="dd-dia-image-wrap"><div class="dd-dia-image-title">행로표 <small class="dd-plan-tag">예상 행로표</small></div>' +
         '<img class="dd-dia-image" src="' + ddPlan.url + '"' + routeArAttr(ddPlan.url, ddPlan.dia) + ' alt="DIA ' + esc(ddPlan.dia) + ' 행로표" onclick="openRouteViewer(\'' + esc(ddPlan.dia) + '\', this.src)" decoding="async"></div>';
     } else if (diaImageSrc) {
       html += '<div class="dd-dia-image-wrap">' +
@@ -6292,7 +6307,7 @@ function removeAutoNextDayOff(employeeId, dateKey) {
   var loc = ensureLocal(employeeId);
   var before = loc.overrides.length;
   loc.overrides = loc.overrides.filter(function (r) {
-    return !(r[0] === dateKey && (r[1] === 'auto-status' || r[1] === 'auto-dia'));
+    return !(r[0] === dateKey && (r[1] === 'auto-status' || (r[1] === 'auto-dia' && !/^고정/.test(String(r[3] || '')))));
   });
   if (loc.overrides.length !== before) {
     saveLocalChange(employeeId, loc);
@@ -7839,10 +7854,12 @@ function openGroupInfo(k, key) {
     var crewMe = getCurrentUser(), crewIsMe = crewMe && String(mem.employeeId || '') === String(crewMe.employeeId || '');
     if (crewIsMe && diaNo && !infoFromNight && !crewSkipDay(diaNo, type, info.status, info.label)) html += crewMatesPiRow(key, diaNo, [train1, train2, train3], mem.name);
     if (diaNo) {
-      var url = (groupPlan && groupPlan.rows && groupPlan.rows.length && typeof rpUrl === 'function') ? rpUrl(diaNo, groupPlan.rows) : diaImageUrl(diaNo);
+      /* 정규 다이아 → 관리자가 저장해 둔 행로표, 그 밖의 다이아 → 예상 행로표 */
+      var gOfficial = rsOfficialRouteUrl(diaNo);
+      var url = gOfficial || ((groupPlan && groupPlan.rows && groupPlan.rows.length && typeof rpUrl === 'function') ? rpUrl(diaNo, groupPlan.rows) : diaImageUrl(diaNo));
       if (url) {
         html += '<div class="pi-route">' +
-          '<div class="pi-route-cap">' + (groupPlan ? '예상 행로표' : '행로표') + '</div>' +
+          '<div class="pi-route-cap">' + (gOfficial ? '행로표' : '예상 행로표') + '</div>' +
           '<img src="' + url + '"' + routeArAttr(url, diaNo) + ' alt="DIA ' + esc(diaNo) + ' 행로표" data-dia="' + esc(String(diaNo).toUpperCase()) + '" data-try="0" loading="eager" decoding="async" fetchpriority="high" ' +
           'onclick="openRouteViewer(this.getAttribute(\'data-dia\'), this.src)" ' +
           'onerror="diaImgFallback(this)">' +
@@ -8634,7 +8651,7 @@ function openPatternInfo(i) {
     var url = diaImageUrl(diaNo);
     if (url) {
       html += '<div class="pi-route">' +
-        '<div class="pi-route-cap">행로표</div>' +
+        '<div class="pi-route-cap">' + (rsOfficialRouteUrl(diaNo) ? '행로표' : '예상 행로표') + '</div>' +
         '<img src="' + url + '"' + routeArAttr(url, diaNo) + ' alt="DIA ' + esc(diaNo) + ' 행로표" data-dia="' + esc(String(diaNo).toUpperCase()) + '" data-try="0" ' +
         'onclick="openRouteViewer(this.getAttribute(\'data-dia\'))" ' +
         'onerror="diaImgFallback(this)" decoding="async">' +
@@ -10144,6 +10161,29 @@ function closeDiaSelector() {
   var panel = $('dia-panel');
   if (panel) panel.classList.remove('active');
 }
+function rsFreezePast(empId, todayKey, newSeq) {
+  var loc = ensureLocal(empId);
+  var oSeq = loc.seq || (mySettings && mySettings.seq) || '', oAnc = loc.anchor || (mySettings && mySettings.anchor) || '';
+  if (!oSeq || !oAnc) return 0;                       /* 처음 설정하는 사람은 고정할 지난 근무 없음 */
+  var raw = snapshot && snapshot.raw, list = (raw && raw.dia) || diaList || [];
+  if (!list.length) return 0;
+  var name = (getCurrentUser() || {}).name || '';
+  var have = {}; (loc.overrides || []).forEach(function (r) { have[r[0]] = 1; });
+  try { ((raw && raw.overrides) || []).forEach(function (r) { if (String(r[0]) === String(empId)) have[r[1]] = 1; }); } catch (e) {}
+  var start = getDateKey(RS_START.y, RS_START.m, RS_START.d), n = 0, k = start, stamp = stampNow();
+  while (k < todayKey) {
+    if (!have[k]) {
+      var b = snapBaseDay(k, oSeq, oAnc, list, name);
+      var ty = String(b.type || '').trim();
+      var nb = snapBaseDay(k, newSeq, todayKey, list, name);   /* 새 설정으로도 같은 근무인 날은 고정할 필요 없음 */
+      var same = String(nb.dia || '') === String(b.dia || '') && String(nb.type || '').trim() === ty;
+      if (!same && (ty || b.dia)) { loc.overrides.push([k, 'auto-dia', String(b.dia || ''), '고정:' + ty, stamp, '', '', '']); n++; }
+    }
+    k = snapShiftKey(k, 1);
+  }
+  if (n) writeLocal(empId, loc);
+  return n;
+}
 function saveSelectedDia() {
   var warn = $('dia-warning');
   if (!tempSeq) {
@@ -10153,6 +10193,8 @@ function saveSelectedDia() {
   var user = getCurrentUser();
   var t = todayKST();
   var anchorKey = getDateKey(t.y, t.m, t.d);
+  /* 근무설정을 바꿔도 지난 근무는 그대로: 오늘 전날까지(2026-06-01부터) 바꾸기 전 설정의 근무를 '고정'해 둠 (* 없음, 서버 백업 · 근무그룹에도 그대로) */
+  try { rsFreezePast(user.employeeId, anchorKey, tempSeq); } catch (e) {}
   mySettings = { seq: tempSeq, anchor: anchorKey };
   myMonth = null;
   /* 서버로 보내지 않고 이 폰에만 저장 (백업은 환경설정에서) */
