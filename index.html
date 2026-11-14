@@ -4941,7 +4941,7 @@ function schSavePngDraw() {
   var now = new Date(Date.now() + 9 * 3600000);
   c.textAlign = 'right'; c.font = '500 ' + (9 * S) + 'px ' + F; c.fillStyle = '#a0aab8';
   c.fillText('저장 ' + now.getUTCFullYear() + '.' + pad2(now.getUTCMonth() + 1) + '.' + pad2(now.getUTCDate()) + ' ' + pad2(now.getUTCHours()) + ':' + pad2(now.getUTCMinutes()), W - padX, H - 11 * S);
-  pngName = '철도비서_근무표_' + y + '-' + pad2(m + 1) + '.png';
+  pngName = 'railway_schedule_' + y + '-' + pad2(m + 1) + '.png';   /* 한글 파일이름은 일부 폰 브라우저에서 'download'(확장자 없음)로 저장돼 갤러리에 안 보임 → 영문 이름 */
   var url = cv.toDataURL('image/png');
   $('png-img').src = url;
   pngBlob = null;
@@ -5006,7 +5006,7 @@ function schSavePng() {
   img.onload = function () {
     var cv = document.createElement('canvas'); cv.width = Wt * S; cv.height = Ht * S;
     var c = cv.getContext('2d'); c.scale(S, S); c.fillStyle = bg; c.fillRect(0, 0, Wt, Ht); c.drawImage(img, 0, 0);
-    pngName = '철도비서_근무표_' + y + '-' + pad2(m + 1) + '.png';
+    pngName = 'railway_schedule_' + y + '-' + pad2(m + 1) + '.png';   /* 한글 파일이름은 일부 폰 브라우저에서 'download'(확장자 없음)로 저장돼 갤러리에 안 보임 → 영문 이름 */
     var url;
     try { url = cv.toDataURL('image/png'); } catch (e) { url = ''; }
     if (!url || url.length < 2000) { schPngFallback('보안 제한'); return; }
@@ -5101,9 +5101,15 @@ function pngDownload(auto) {
     showToast('이 화면(앱 안 브라우저)에서는 파일 저장이 막혀 있어요. 이미지를 길게 눌러 \'이미지 저장\'을 눌러 주세요.');
     return;
   }
-  /* ③ 휴대폰: 공유 창으로 '이미지 저장' (다운로드가 실패하는 폰이 많아서 먼저 시도) */
-  var mobile = /Android|iPhone|iPad|iPod/i.test(ua);
-  if (mobile && pngBlob && navigator.canShare) {
+  var android = /Android/i.test(ua), ios = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+  /* ③ 아이폰: 사진첩 저장은 공유 창의 '이미지 저장'으로만 가능.
+        PNG를 만드는 동안 '누른 동작'이 끝나 공유 창이 막히므로, 자동 호출이면 미리보기의 [저장]을 한 번 더 누르게 함 */
+  if (ios && pngBlob && navigator.canShare) {
+    if (auto) {
+      $('png-panel').classList.add('active');
+      showToast('[저장]을 누르고 \'이미지 저장\'을 고르면 사진첩에 저장돼요.');
+      return;
+    }
     try {
       var file = new File([pngBlob], pngName, { type: 'image/png' });
       if (navigator.canShare({ files: [file] })) {
@@ -5111,23 +5117,25 @@ function pngDownload(auto) {
           .catch(function (err) {
             if (err && err.name === 'AbortError') return;          /* 사용자가 공유 창을 닫음 */
             $('png-panel').classList.add('active');
-            showToast('공유 창으로 저장하지 못했어요. 이미지를 길게 눌러 저장해 주세요.');
+            showToast('공유 창을 열지 못했어요. 이미지를 길게 눌러 \'사진 앱에 저장\'을 눌러 주세요.');
           });
         return;
       }
     } catch (e) {}
   }
-  /* ④ 브라우저: PNG 파일로 바로 다운로드 (+ 혹시 실패해도 길게 눌러 저장할 수 있게 미리보기도 띄움) */
+  /* ④ 안드로이드 · PC 브라우저: PNG 파일로 바로 다운로드 → 폰의 '다운로드' 폴더(갤러리에도 보임)에 저장 */
   try {
     var href = pngBlob ? URL.createObjectURL(pngBlob) : url;
     var a = document.createElement('a');
     a.href = href; a.download = pngName; a.rel = 'noopener';
     document.body.appendChild(a); a.click(); a.remove();
-    if (pngBlob) setTimeout(function () { URL.revokeObjectURL(href); }, 4000);
-    if (mobile) { $('png-panel').classList.add('active'); showToast('다운로드를 시작했어요. \'저장 실패\'가 뜨면 아래 이미지를 길게 눌러 저장해 주세요.'); }
+    if (pngBlob) setTimeout(function () { URL.revokeObjectURL(href); }, 60000);
+    if (android) { showToast('PNG를 다운로드 폴더에 저장했어요. (갤러리 › Download)'); closePngPanel(); }
+    else if (ios) { $('png-panel').classList.add('active'); showToast('파일 앱 › 다운로드에 저장돼요. 사진첩에 넣으려면 이미지를 길게 눌러 저장해 주세요.'); }
     else { showToast(pngName + ' 파일로 저장했어요.'); closePngPanel(); }
   } catch (e) {
     $('png-panel').classList.add('active');
+    showToast('저장하지 못했어요. 이미지를 길게 눌러 저장해 주세요.');
   }
 }
 /* ============ 마이페이지 › 근무 변경 기록 (서버 override_history) ============
