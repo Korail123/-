@@ -7422,9 +7422,27 @@ function revertSwapRangeOriginal() {
         };
       });
     }
-    var mineItems = toObj(r.mine);
-    var theirItems = toObj(r.theirs);
     var targetId = String(swapTargetMember.employeeId);
+    /* 원래 근무 순서에서 비번인 날로 '비번' 또는 전날 야간 다이아가 돌아오면 → 기록을 지워 원래 비번 그대로 */
+    function fixOff(empId, items) {
+      return items.map(function (it) {
+        /* 원래 근무 순서와 똑같은 근무가 돌아오면 기록을 지움 → * 없이 원래 근무 그대로 */
+        var bd = rsBaseDayFor(empId, it.date);
+        if (bd && !it.partnerId && it.type === 'dia' && it.dia && !it.status && !it.dutyStatus && String(bd.dia || '').toUpperCase() === String(it.dia).toUpperCase()) return { date: it.date, type: 'clear' };
+        var bt = rsBaseTypeFor(empId, it.date);
+        if (bt !== '비' || it.partnerId) return it;
+        var st = String(it.status || '').replace(/^\*/, '');
+        if (it.type === 'status' && /^(비|비번)$/.test(st)) return { date: it.date, type: 'clear' };
+        if (it.type === 'dia' && it.dia && !st) {
+          var dt = String((diaByNumber(it.dia) || {}).type || '');
+          var prevDia = rsBaseDiaFor(empId, snapShiftKey(it.date, -1));
+          if (dt === '야' || dt === '야간' || (prevDia && prevDia.toUpperCase() === String(it.dia).toUpperCase())) return { date: it.date, type: 'clear' };
+        }
+        return it;
+      });
+    }
+    var mineItems = fixOff(user.employeeId, toObj(r.mine));
+    var theirItems = fixOff(targetId, toObj(r.theirs));
     swapApplyLocal(user.employeeId, mineItems);
     swapApplyLocal(targetId, theirItems);
     refreshUiAfterSwap();
@@ -7465,6 +7483,12 @@ function swapMemberInfo(employeeId, key) {
 function swapDayAssignment(employeeId, key) {
   var info = swapMemberInfo(employeeId, key);
   if (!info || !info.label) return { type: 'status', status: '비번', dutyStatus: '' };
+  /* 비번 날은 전날 야간 다이아를 이어서 보여줄 뿐이므로 다이아가 아니라 '비번'으로 교환·기록
+     (예전엔 이어받은 야간 다이아가 저장돼서, 되돌리면 비번 자리에 야간 다이아가 들어갔음) */
+  var lb = String(info.label || '').replace(/^\*/, ''), ty = String(info.type || '');
+  if (info.nightCarryover || info.nightCarryStatus || ((lb === '비' || lb === '비번' || ty === '비') && info.overrideType !== 'combined' && !/충당/.test(String(info.creditStatus || info.status || '')))) {
+    return { type: 'status', status: '비번', dutyStatus: '' };
+  }
   var duty = String(info.dutyStatus || '');
   var credit = String(info.creditStatus || '');
   if (!credit && (info.status === '대기충당' || info.status === '휴무충당')) credit = String(info.status);
@@ -18242,6 +18266,20 @@ function xrMyDays(months, cb) {
 
 /* 이 폰에 저장된 내 근무변경 기록 (자동으로 넣은 다음날 비번은 제외) */
 /* XROIS · 공유 행로표로 야간 다이아를 넣었을 때 다음 날 자동 비번: 사용자가 그 날을 직접 수정했으면 건드리지 않음 */
+/* 아무 사용자의 원래 근무(근무 순서 기준) */
+function rsBaseDayFor(empId, dateKey) {
+  try {
+    var raw = snapshot && snapshot.raw, mb = raw ? (raw.members || []).filter(function (x) { return String(x.employeeId) === String(empId); })[0] : null;
+    if (mb && mb.seq && mb.anchor) return snapBaseDay(dateKey, mb.seq, mb.anchor, raw.dia || [], mb.name);
+  } catch (e) {}
+  return null;
+}
+function rsBaseTypeFor(empId, dateKey) { var b = rsBaseDayFor(empId, dateKey); return b ? String(b.type || '').trim() : ''; }
+function rsBaseDiaFor(empId, dateKey) {
+  /* 전날 실제 다이아(내 기록 → 원래 근무) */
+  try { var ov = (String(empId) === String(getCurrentUser().employeeId)) ? xrMyOverride(empId, dateKey) : null; if (ov && ov[2]) return String(ov[2]); } catch (e) {}
+  var b = rsBaseDayFor(empId, dateKey); return b ? String(b.dia || '') : '';
+}
 /* 그 날의 원래 근무 구분(근무 순서 기준, 사용자 수정 제외) */
 function rsNextBaseType(dateKey) {
   try {
@@ -19077,6 +19115,26 @@ function rsRestoreCheck(force) {
   });
 }
 setTimeout(function () { try { rsRestoreCheck(true); } catch (e) {} }, 4000);
+/* 한 번만: 예전 근무교환 되돌리기로 비번 자리에 남은 '전날 야간 다이아' 기록 정리 → 원래 비번 */
+setTimeout(function () {
+  try {
+    var u = getCurrentUser(); if (!u || !u.token || !snapshotUsable()) return;
+    var fk = 'rs_fix_swapoff_' + u.employeeId; if (localStorage.getItem(fk)) return;
+    var loc = ensureLocal(u.employeeId), fixed = 0;
+    var byDate = {}; (loc.overrides || []).forEach(function (r) { byDate[r[0]] = r; });
+    loc.overrides = (loc.overrides || []).filter(function (r) {
+      if (String(r[5] || '') || String(r[6] || '') || String(r[7] || '')) return true;
+      if (rsBaseTypeFor(u.employeeId, r[0]) !== '비') return true;
+      var st = String(r[3] || '');
+      var prevK = snapShiftKey(r[0], -1), pr = byDate[prevK], prevDia = pr && pr[2] ? String(pr[2]) : (rsBaseDayFor(u.employeeId, prevK) || {}).dia || '';
+      var bad = (r[1] === 'status' && /^(비|비번)$/.test(st)) || (r[1] === 'dia' && !st && r[2] && prevDia && String(prevDia).toUpperCase() === String(r[2]).toUpperCase());
+      if (bad) fixed++;
+      return !bad;
+    });
+    localStorage.setItem(fk, '1');
+    if (fixed) { saveLocalChange(u.employeeId, loc); mergeLocalIntoSnapshot(); snapAfterLocalChange(); try { loadMyMonth(); } catch (e) {} showToast('근무교환 되돌리기 후 남아 있던 비번 ' + fixed + '일을 원래대로 고쳤어요.'); }
+  } catch (e) {}
+}, 6000);
 document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') setTimeout(function () { try { rsRestoreCheck(false); } catch (e) {} }, 2000); });
 </script>
 <style id="backup-versions-style">
