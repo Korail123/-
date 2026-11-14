@@ -1292,7 +1292,15 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
     <div id="calendar-grid" class="sch-grid"></div>
   </div>
-  <div class="sch-tools"><button type="button" class="sch-png-btn" onclick="schSavePng()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>근무표 PNG 저장</button></div>
+  <div class="sch-tools"><button type="button" class="sch-png-btn sch-tool-sm" onclick="schSavePng()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>PNG 저장</button><button type="button" class="sch-png-btn sch-tool-sm" onclick="openMarkOrder()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h10M5 12h7M5 18h4M18 5v14m0 0l-3-3m3 3l3-3"/></svg>표시 순위</button></div>
+  <div id="mark-order-panel" class="dia-modal" onclick="if(event.target===this)closeMarkOrder()">
+    <div class="dia-dialog ns-dialog">
+      <div class="dia-dialog-title">달력 표시 순위</div>
+      <div class="ns-note" style="margin:0 2px 10px">한 날짜에 여러 표시가 있으면 달력 칸에는 순위가 가장 높은 것 하나만 보여요. 날짜를 누르면 상세 정보에는 모두 나와요.</div>
+      <div id="mark-order-list" class="mo-list"></div>
+      <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="rsMarkReset()">기본값</button><button type="button" class="dia-text-btn" onclick="closeMarkOrder()">취소</button><button type="button" class="dia-text-btn" onclick="saveMarkOrder()">저장</button></div>
+    </div>
+  </div>
   <div class="sch-note">
     ※ 날짜를 길게 누르면 근무를 변경할 수 있습니다.
   </div>
@@ -3833,12 +3841,15 @@ function renderCalendar() {
     }
     /* 달력 칸에는 표시 하나만 (1순위 근무교환 상대 → 2순위 휴무충당 → 3순위 대기충당). 상세 근무 정보에는 모두 표시 */
     var swapPn = info ? String(info.swapPartnerName || info.swapPartnerId || '').trim() : '';
-    if (swapPn) {
+    var have = { swap: !!swapPn, '휴무충당': /휴무충당/.test(creditStatus || ''), '대기충당': /대기충당/.test(creditStatus || '') };
+    var top = rsMarkOrder().filter(function (k) { return have[k]; })[0];   /* 표시 순위 설정대로 하나만 */
+    if (top === 'swap') {
       labelHtml += '<div class="cell-swap" title="' + esc(swapPn) + '님과 근무 교환">⇄ ' + esc(swapPn) + '</div>';
       cell.classList.add('swapped');
+    } else if (top) {
+      labelHtml += '<div class="cell-credit rs-credit-pill">' + esc(top) + '</div>';
     } else if (creditStatus) {
-      var crTop = /휴무충당/.test(creditStatus) ? '휴무충당' : (/대기충당/.test(creditStatus) ? '대기충당' : creditStatus);
-      labelHtml += '<div class="cell-credit rs-credit-pill">' + esc(crTop) + '</div>';
+      labelHtml += '<div class="cell-credit rs-credit-pill">' + esc(creditStatus) + '</div>';
     }
     cell.innerHTML =
       '<div class="cell-top"><span class="cell-num">' + d + '</span><span class="cell-side">' +
@@ -4844,74 +4855,97 @@ function appVersionCheck(byUser) {
 /* ============ 근무표 월달력 PNG 저장 ============
    지금 보고 있는 달의 근무표를 그림(PNG)으로 만들어 저장/공유 */
 var pngBlob = null, pngName = '';
+/* 근무표 PNG 저장: 화면에 보이는 근무표(제목 + 달력) 그대로 이미지로 */
 function schSavePng() {
   var y = calendarYear, m = calendarMonth;
   if (!myMonth || myMonth.y !== y || myMonth.m !== m) { showToast('근무표를 불러온 뒤 다시 눌러주세요.'); return; }
-  var S = 3, W = 360 * S, padX = 14 * S, headH = 64 * S, wdH = 26 * S, cellH = 74 * S, footH = 30 * S;
-  var first = new Date(y, m, 1).getDay(), last = new Date(y, m + 1, 0).getDate();
-  var rows = Math.ceil((first + last) / 7);
-  var H = headH + wdH + rows * cellH + footH;
-  var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  var c = cv.getContext('2d');
-  var F = (uiFontFam() ? uiFontFam() + ',' : '') + "'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif";   /* 화면 설정 글꼴 우선 */
-  function rr(x, y0, w, h, r) { c.beginPath(); c.moveTo(x + r, y0); c.arcTo(x + w, y0, x + w, y0 + h, r); c.arcTo(x + w, y0 + h, x, y0 + h, r); c.arcTo(x, y0 + h, x, y0, r); c.arcTo(x, y0, x + w, y0, r); c.closePath(); }
-  c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
-  /* 제목 */
-  var u = getCurrentUser() || {};
-  c.fillStyle = '#1b2b45'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
-  c.font = '800 ' + (21 * S) + 'px ' + F; c.fillText(y + '년 ' + (m + 1) + '월 근무표', W / 2, 32 * S);
-  c.font = '500 ' + (11.5 * S) + 'px ' + F; c.fillStyle = '#8a96a8';
-  c.fillText((u.name ? u.name + ' · ' : '') + '철도비서', W / 2, 51 * S);
-  /* 요일 */
-  var cw = (W - padX * 2) / 7, wd = ['일', '월', '화', '수', '목', '금', '토'];
-  c.font = '700 ' + (12 * S) + 'px ' + F;
-  for (var i = 0; i < 7; i++) { c.fillStyle = i === 0 ? '#e5484d' : i === 6 ? '#2f6fd6' : '#8a96a8'; c.fillText(wd[i], padX + cw * i + cw / 2, headH + 17 * S); }
-  var t = todayKST();
-  var tone = { day: '#e5a800', night: '#1a73e8', off: '#e53935', status: '#e53935' };
-  for (var d = 1; d <= last; d++) {
-    var idx = first + d - 1, col = idx % 7, row = Math.floor(idx / 7);
-    var x = padX + cw * col, y0 = headH + wdH + cellH * row;
-    var hol = holidayName(y, m, d), info = getInfo(y, m, d);
-    rr(x + 2 * S, y0 + 2 * S, cw - 4 * S, cellH - 4 * S, 9 * S);
-    var isToday = t.y === y && t.m === m && t.d === d;
-    c.fillStyle = isToday ? '#eaf2ff' : '#f6f8fb'; c.fill();
-    if (isToday) { c.lineWidth = 1.6 * S; c.strokeStyle = '#2f6fd6'; c.stroke(); }
-    /* 날짜 · 공휴일 */
-    c.textAlign = 'left'; c.font = '800 ' + (12 * S) + 'px ' + F;
-    c.fillStyle = (hol || col === 0) ? '#e5484d' : col === 6 ? '#2f6fd6' : '#1b2b45';
-    c.fillText(String(d), x + 7 * S, y0 + 17 * S);
-    if (hol) { c.font = '600 ' + (7.5 * S) + 'px ' + F; c.fillStyle = '#e5484d'; c.textAlign = 'right'; c.fillText(hol.length > 4 ? hol.slice(0, 4) : hol, x + cw - 6 * S, y0 + 15 * S); }
-    /* 근무 구분 */
-    if (info && info.label) {
-      var credit = (info.creditStatus === '대기충당' || info.creditStatus === '휴무충당') ? info.creditStatus : '';
-      var lab = info.label === '대기충당' || info.label === '휴무충당' ? '' : (info.manual ? '*' : '') + info.label;
-      if (lab) {
-        var tn = info.overrideType === 'status' ? 'status' : toneOf(info.label);
-        c.fillStyle = tone[tn] || '#1a73e8'; c.textAlign = 'center';
-        var fs = lab.length >= 3 ? 14 : lab.length === 2 ? 17 : 21;
-        c.font = '800 ' + (fs * S) + 'px ' + F;
-        while (c.measureText(lab).width > cw - 10 * S && fs > 9) { fs -= 1; c.font = '800 ' + (fs * S) + 'px ' + F; }
-        c.fillText(lab, x + cw / 2, y0 + 47 * S);
-      }
-      var sub = '';
-      if (info.swapPartnerName || info.swapPartnerId) sub = '⇄ ' + String(info.swapPartnerName || info.swapPartnerId).trim();
-      else if (credit) sub = credit;
-      if (sub) {
-        c.font = '600 ' + (8 * S) + 'px ' + F; c.fillStyle = sub.charAt(0) === '⇄' ? '#8a6bd1' : '#8a96a8'; c.textAlign = 'center';
-        while (c.measureText(sub).width > cw - 8 * S && sub.length > 2) sub = sub.slice(0, -1);
-        c.fillText(sub, x + cw / 2, y0 + 63 * S);
-      }
+  var head = document.querySelector('#schedule-section .sch-head'), card = $('calendar-card');
+  if (!card) return;
+  showToast('근무표 이미지를 만드는 중…');
+  var srcEls = [head, card].filter(Boolean);
+  var W = Math.ceil(card.getBoundingClientRect().width), S = 3, gap = 6;
+  /* 화면 요소를 복제하면서 계산된 스타일을 그대로 붙임 (그래서 화면과 똑같이 나옴) */
+  function cloneStyled(src) {
+    var dst = src.cloneNode(false);
+    if (src.nodeType === 1) {
+      var cs = getComputedStyle(src), txt = '';
+      for (var k = 0; k < cs.length; k++) { var p = cs[k]; txt += p + ':' + cs.getPropertyValue(p) + ';'; }
+      dst.setAttribute('style', txt);
+      dst.removeAttribute('id'); dst.removeAttribute('onclick');
+      ['::before', '::after'].forEach(function (ps) {
+        var pc = getComputedStyle(src, ps), ct = pc.getPropertyValue('content');
+        if (!ct || ct === 'none' || ct === 'normal') return;
+        var span = document.createElement('span'), t2 = '';
+        for (var q = 0; q < pc.length; q++) { var pp = pc[q]; if (pp !== 'content') t2 += pp + ':' + pc.getPropertyValue(pp) + ';'; }
+        span.setAttribute('style', t2);
+        var tx = ct.replace(/^["']|["']$/g, ''); if (tx && !/^url\(/.test(tx)) span.textContent = tx;
+        if (ps === '::before') dst.appendChild(span); else dst._after = span;
+      });
     }
+    for (var n = src.firstChild; n; n = n.nextSibling) {
+      if (n.nodeType === 1 && /^(SCRIPT|STYLE)$/.test(n.tagName)) continue;
+      if (n.nodeType === 1 && (n.classList.contains('sch-nav'))) { var ph = document.createElement('span'); ph.setAttribute('style', 'display:inline-block;width:' + n.getBoundingClientRect().width + 'px'); dst.appendChild(ph); continue; }
+      dst.appendChild(n.nodeType === 1 ? cloneStyled(n) : n.cloneNode(true));
+    }
+    if (dst._after) { dst.appendChild(dst._after); delete dst._after; }
+    return dst;
   }
-  /* 아래 · 만든 시각 */
-  var now = new Date(Date.now() + 9 * 3600000);
-  c.textAlign = 'right'; c.font = '500 ' + (9 * S) + 'px ' + F; c.fillStyle = '#a0aab8';
-  c.fillText('저장 ' + now.getUTCFullYear() + '.' + pad2(now.getUTCMonth() + 1) + '.' + pad2(now.getUTCDate()) + ' ' + pad2(now.getUTCHours()) + ':' + pad2(now.getUTCMinutes()), W - padX, H - 11 * S);
-  pngName = '철도비서_근무표_' + y + '-' + pad2(m + 1) + '.png';
-  var url = cv.toDataURL('image/png');
-  $('png-img').src = url;
-  pngBlob = null;
-  try { cv.toBlob(function (b) { pngBlob = b; pngDownload(true); }, 'image/png'); } catch (e) { pngDownload(true); }
+  var wrap = document.createElement('div');
+  var bg = getComputedStyle(document.body).backgroundColor || '#ffffff';
+  if (/rgba\(0, 0, 0, 0\)|transparent/.test(bg)) bg = document.documentElement.classList.contains('ui-dark') ? '#14171c' : '#ffffff';
+  wrap.setAttribute('style', 'width:' + W + 'px;padding:10px;box-sizing:content-box;background:' + bg + ';font-family:' + getComputedStyle(card).fontFamily);
+  var H = 20;
+  srcEls.forEach(function (el, idx) {
+    var cl = cloneStyled(el);
+    cl.style.margin = '0'; cl.style.width = W + 'px'; cl.style.boxSizing = 'border-box';
+    if (idx) cl.style.marginTop = gap + 'px';
+    wrap.appendChild(cl);
+    H += el.getBoundingClientRect().height + (idx ? gap : 0);
+  });
+  var foot = document.createElement('div'), now = new Date(Date.now() + 9 * 3600000), u = getCurrentUser() || {};
+  foot.textContent = (u.name ? u.name + ' · ' : '') + '철도비서 · 저장 ' + now.getUTCFullYear() + '.' + pad2(now.getUTCMonth() + 1) + '.' + pad2(now.getUTCDate()) + ' ' + pad2(now.getUTCHours()) + ':' + pad2(now.getUTCMinutes());
+  foot.setAttribute('style', 'text-align:right;font-size:10px;color:#a0aab8;margin-top:6px;height:14px;line-height:14px');
+  wrap.appendChild(foot); H += 20;
+  var Wt = W + 20, Ht = Math.ceil(H);
+  var xml = new XMLSerializer().serializeToString(wrap);
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + Wt + '" height="' + Ht + '"><foreignObject x="0" y="0" width="100%" height="100%">' +
+    xml.replace(/^<div /, '<div xmlns="http://www.w3.org/1999/xhtml" ') + '</foreignObject></svg>';
+  var img = new Image();
+  img.onload = function () {
+    var cv = document.createElement('canvas'); cv.width = Wt * S; cv.height = Ht * S;
+    var c = cv.getContext('2d'); c.scale(S, S); c.fillStyle = bg; c.fillRect(0, 0, Wt, Ht); c.drawImage(img, 0, 0);
+    pngName = '철도비서_근무표_' + y + '-' + pad2(m + 1) + '.png';
+    var url;
+    try { url = cv.toDataURL('image/png'); } catch (e) { showToast('이 기기에서는 근무표 이미지를 만들 수 없어요.'); return; }
+    $('png-img').src = url;
+    pngBlob = null;
+    try { cv.toBlob(function (b) { pngBlob = b; pngDownload(true); }, 'image/png'); } catch (e) { pngDownload(true); }
+  };
+  img.onerror = function () { showToast('근무표 이미지를 만들지 못했어요.'); };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+/* ===== 달력 칸 표시 순위: 누구랑 교환 · 대기충당 · 휴무충당 (기본: 교환 → 휴무충당 → 대기충당) ===== */
+var RS_MARK_DEF = ['swap', '휴무충당', '대기충당'];
+var RS_MARK_NAME = { swap: '누구랑 교환', '휴무충당': '휴무충당', '대기충당': '대기충당' };
+function rsMarkOrder() {
+  try { var a = JSON.parse(localStorage.getItem('rs_mark_order_' + getCurrentUser().employeeId) || 'null'); if (Array.isArray(a) && a.length === 3 && RS_MARK_DEF.every(function (k) { return a.indexOf(k) >= 0; })) return a; } catch (e) {}
+  return RS_MARK_DEF.slice();
+}
+var rsMarkDraft = null;
+function openMarkOrder() { rsMarkDraft = rsMarkOrder(); rsMarkRender(); $('mark-order-panel').classList.add('active'); }
+function closeMarkOrder() { $('mark-order-panel').classList.remove('active'); }
+function rsMarkRender() {
+  $('mark-order-list').innerHTML = rsMarkDraft.map(function (k, i) {
+    return '<div class="mo-row"><b class="mo-n">' + (i + 1) + '순위</b><span class="mo-name">' + RS_MARK_NAME[k] + '</span>' +
+      '<button type="button" class="mo-mv" ' + (i === 0 ? 'disabled' : '') + ' onclick="rsMarkMove(' + i + ',-1)" aria-label="위로">▲</button>' +
+      '<button type="button" class="mo-mv" ' + (i === 2 ? 'disabled' : '') + ' onclick="rsMarkMove(' + i + ',1)" aria-label="아래로">▼</button></div>';
+  }).join('');
+}
+function rsMarkMove(i, d) { var j = i + d; if (j < 0 || j > 2) return; var t = rsMarkDraft[i]; rsMarkDraft[i] = rsMarkDraft[j]; rsMarkDraft[j] = t; rsMarkRender(); }
+function rsMarkReset() { rsMarkDraft = RS_MARK_DEF.slice(); rsMarkRender(); }
+function saveMarkOrder() {
+  try { localStorage.setItem('rs_mark_order_' + getCurrentUser().employeeId, JSON.stringify(rsMarkDraft)); } catch (e) {}
+  closeMarkOrder(); renderCalendar(); showToast('달력 표시 순위를 저장했어요.');
 }
 function closePngPanel() { $('png-panel').classList.remove('active'); }
 function pngDownload(auto) {
@@ -16334,7 +16368,15 @@ html body #login-section .signup-link-btn:hover, html body #signup-section .sign
 html body #main-section .logout-btn, html body #main-section .logout-btn:hover{background:#fdeeee!important;color:#d64545!important;box-shadow:inset 0 0 0 1.5px #f5cfcf!important}
 </style>
 <style id="sch-png-style">
-.sch-tools{display:flex;justify-content:center;margin:10px 2px 6px}
+.sch-tools{display:flex;justify-content:center;gap:8px;margin:10px 2px 6px}
+.sch-png-btn.sch-tool-sm{flex:1 1 0;width:auto;padding:8px 10px;font-size:12.5px}
+.mo-list{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+.mo-row{display:flex;align-items:center;gap:8px;background:#f6f8fb;border:1px solid #e5ebf3;border-radius:12px;padding:10px 10px 10px 12px}
+.mo-n{flex:0 0 46px;font-size:13px;font-weight:900;color:#2f6fd6}
+.mo-name{flex:1;font-size:15px;font-weight:800;color:#1b2b45}
+.mo-mv{width:34px;height:32px;border:1px solid #d5dde8;background:#fff;border-radius:8px;color:#33415c;font-size:12px;cursor:pointer}
+.mo-mv:disabled{opacity:.3}
+html.ui-dark .mo-row{background:#1f242b!important;border-color:#2c323b!important}
 .sch-png-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:11px 14px;border:1.5px solid #c9dbf7;border-radius:999px;background:#fff;color:#2f6fd6;font-size:13px;font-weight:800;cursor:pointer}
 .sch-png-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 #png-panel .png-dialog{max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow-y:auto}
