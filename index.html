@@ -17977,6 +17977,17 @@ function xrMyDays(months, cb) {
   });
 }
 
+/* 이 폰에 저장된 내 근무변경 기록 (자동으로 넣은 다음날 비번은 제외) */
+function xrMyOverride(emp, dateKey) {
+  try {
+    var loc = ensureLocal(emp), rows = (loc && loc.overrides) || [];
+    for (var i = rows.length - 1; i >= 0; i--) {
+      var r = rows[i];
+      if (r && r[0] === dateKey && !/^auto/.test(String(r[1] || ''))) return r;
+    }
+  } catch (e) {}
+  return null;
+}
 function xrApply(days, manual, crewMap) {
   var t = todayKST(), today = getDateKey(t.y, t.m, t.d);
   /* 날짜별 줄 모으기 (같은 줄 중복 제거) → 승무원 정보로 저장 */
@@ -18010,7 +18021,10 @@ function xrApply(days, manual, crewMap) {
       var my = mine[k] || {}, myDia = xrNorm(my.dia || '');
       if (myDia === dia) return;
       if (prev && prev === dia) return;                                /* XROIS 그대로 = 내가 직접 바꾼 것 존중 */
-      changes.push({ date: k, from: my.dia || my.label || '', to: dia, start: x.start, end: x.end, trains: x.trains || [] });
+      /* 내가 직접 넣은 기록 확인: 휴가·휴무 등 근무 상태만 넣은 날은 건드리지 않음 */
+      var ov = xrMyOverride(emp, k);
+      if (ov && (ov[1] === 'status' || (ov[1] === 'combined' && !ov[2] && ov[7] && !/^(주|야|비|주간|야간|비번)$/.test(String(ov[7]).replace(/^\*/, ''))))) return;
+      changes.push({ date: k, from: my.dia || my.label || '', to: dia, start: x.start, end: x.end, trains: x.trains || [], keep: ov || null });
     });
     /* 오래된 기록 정리 (60일 전) */
     var od = new Date(t.y, t.m - 2, t.d), old = getDateKey(od.getFullYear(), od.getMonth(), od.getDate());
@@ -18023,7 +18037,11 @@ function xrApply(days, manual, crewMap) {
     changes.forEach(function (c) {
       var next = snapShiftKey(c.date, 1), known = diaByNumber(c.to);
       removeAutoNextDayOff(emp, next);
-      snapUpsertOverride(emp, c.date, 'dia', c.to, '', '', '', '');
+      /* 다이아만 XROIS 것으로 바꾸고, 내가 적어 둔 바꾼 사람 · 휴무충당/대기충당 · 근무 상태는 그대로 둠 */
+      var kp = c.keep, kStatus = kp ? String(kp[3] || '') : '', kPid = kp ? String(kp[5] || '') : '', kPname = kp ? String(kp[6] || '') : '', kDuty = kp ? String(kp[7] || '') : '';
+      var nType = 'dia';
+      if (kp && (kp[1] === 'combined' || kp[1] === 'status-credit' || kp[1] === 'dia-credit' || kStatus)) nType = 'combined';
+      snapUpsertOverride(emp, c.date, nType, c.to, kStatus, kPid, kPname, kDuty);
       try { tdSet(c.date, known ? '' : c.to); } catch (e) {}
       var type = String(known && known.type || '');
       var night = type === '야' || type === '야간' || (!known && rpMin(c.end) != null && rpMin(c.start) != null && rpMin(c.end) < rpMin(c.start));
