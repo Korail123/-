@@ -17177,10 +17177,15 @@ function iconPanelRender() {
   var el = document.getElementById('ic-list'); if (!el) return;
   el.innerHTML = ICON_THEMES.map(function (t) {
     var src = t.k === 'basic' ? ((dark && window.APP_ICONS_DARK && window.APP_ICONS_DARK['근무표']) || window.APP_ICONS['근무표']) : window.APP_ICON_THEMES[t.k]['근무표'];
-    return '<button type="button" class="ic-card' + (t.k === cur ? ' on' : '') + '" onclick="setIconTheme(\'' + t.k + '\')" aria-pressed="' + (t.k === cur) + '">' +
+    return '<button type="button" class="ic-card' + (t.k === cur ? ' on' : '') + '" onclick="setIconTheme(\'' + t.k + '\')" aria-pressed="' + (t.k === cur) + '" title="' + t.name + ' · ' + t.desc + '">' +
       '<img src="' + src + '" alt=""' + (t.k !== 'basic' ? ' data-th="1"' : '') + '>' +
-      '<span class="ic-name">' + t.name + '</span><small>' + t.desc + '</small><i class="ic-ck" aria-hidden="true"></i></button>';
+      '<span class="ic-name">' + t.name.replace('/', '/<wbr>') + '</span><small>' + t.desc + '</small><i class="ic-ck" aria-hidden="true"></i></button>';
   }).join('');
+  /* 지금 고른 테마 설명은 목록 아래 한 줄로 */
+  var curT = ICON_THEMES.filter(function (t) { return t.k === cur; })[0] || ICON_THEMES[0];
+  var note = document.getElementById('ic-cur');
+  if (!note) { note = document.createElement('div'); note.id = 'ic-cur'; note.className = 'ic-cur'; el.parentNode.insertBefore(note, el.nextSibling); }
+  note.textContent = '지금 테마: ' + curT.name + ' — ' + curT.desc;
 }
 function setIconTheme(k) {
   try { if (k === 'basic') localStorage.removeItem('rs_icon_theme'); else localStorage.setItem('rs_icon_theme', k); } catch (e) {}
@@ -17193,15 +17198,17 @@ function openIconPanel() { iconPanelRender(); document.getElementById('icon-pane
 function closeIconPanel() { document.getElementById('icon-panel').classList.remove('active'); }
 </script>
 <style id="icon-theme-css">
-#icon-panel .ic-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-#icon-panel .ic-card{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 4px 10px;border:1.5px solid #e1e7ef;border-radius:16px;background:#fff;cursor:pointer;font:inherit;-webkit-tap-highlight-color:transparent}
-#icon-panel .ic-card img{width:64px;height:64px;object-fit:contain;margin-bottom:4px}
-#icon-panel .ic-card .ic-name{font-size:13.5px;font-weight:900;color:#1b2b45}
-#icon-panel .ic-card small{font-size:10.5px;font-weight:600;color:#8a96a8;line-height:1.3;text-align:center;word-break:keep-all}
-#icon-panel .ic-card.on{border-color:#2f6fd6;background:#f2f7ff;box-shadow:0 0 0 3px rgba(47,111,214,.12)}
-#icon-panel .ic-ck{position:absolute;top:7px;right:7px;width:18px;height:18px;border-radius:50%;border:1.5px solid #c9d2de;box-sizing:border-box;background:#fff}
+/* 테마 칸은 작게: 한 줄에 여러 개, 아이콘 + 이름만 (설명은 길게 누르면 보이는 title로) */
+#icon-panel .ic-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:6px}
+#icon-panel .ic-card{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;padding:7px 2px 6px;border:1.5px solid #e1e7ef;border-radius:12px;background:#fff;cursor:pointer;font:inherit;-webkit-tap-highlight-color:transparent;min-width:0}
+#icon-panel .ic-card img{width:34px;height:34px;object-fit:contain;margin-bottom:2px}
+#icon-panel .ic-card .ic-name{font-size:10.5px;font-weight:800;color:#1b2b45;line-height:1.2;text-align:center;word-break:keep-all;max-width:100%;min-height:2.4em;display:flex;align-items:center;justify-content:center}
+#icon-panel .ic-card small{display:none}
+#icon-panel .ic-card.on{border-color:#2f6fd6;background:#f2f7ff;box-shadow:0 0 0 2px rgba(47,111,214,.12)}
+#icon-panel .ic-ck{position:absolute;top:3px;right:3px;width:13px;height:13px;border-radius:50%;border:1.5px solid #c9d2de;box-sizing:border-box;background:#fff}
 #icon-panel .ic-card.on .ic-ck{border-color:#2f6fd6;background:#2f6fd6}
-#icon-panel .ic-card.on .ic-ck::after{content:"";position:absolute;left:5px;top:2px;width:4px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+#icon-panel .ic-card.on .ic-ck::after{content:"";position:absolute;left:3px;top:1px;width:3px;height:6px;border:solid #fff;border-width:0 1.5px 1.5px 0;transform:rotate(45deg)}
+#icon-panel .ic-cur{margin:8px 2px 0;font-size:11.5px;font-weight:600;color:#6b778a;text-align:center;word-break:keep-all}
 /* 테마 아이콘은 다크 모드에서도 원래 색 그대로 */
 </style>
 <script id="route-plan-script">
