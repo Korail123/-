@@ -1296,7 +1296,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div id="mark-order-panel" class="dia-modal" onclick="if(event.target===this)closeMarkOrder()">
     <div class="dia-dialog ns-dialog">
       <div class="dia-dialog-title">달력 표시 순위</div>
-      <div class="ns-note" style="margin:0 2px 10px">한 날짜에 여러 표시가 있으면 달력 칸에는 순위가 가장 높은 것 하나만 보여요. 날짜를 누르면 상세 정보에는 모두 나와요.</div>
+      <div class="ns-note" style="margin:0 2px 10px">줄을 잡고 위아래로 끌어서 순위를 바꿔요. 한 날짜에 여러 표시가 있으면 달력 칸에는 순위가 가장 높은 것 하나만 보이고, 날짜를 누르면 상세 정보에는 모두 나와요.</div>
       <div id="mark-order-list" class="mo-list"></div>
       <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="rsMarkReset()">기본값</button><button type="button" class="dia-text-btn" onclick="closeMarkOrder()">취소</button><button type="button" class="dia-text-btn" onclick="saveMarkOrder()">저장</button></div>
     </div>
@@ -4935,11 +4935,39 @@ var rsMarkDraft = null;
 function openMarkOrder() { rsMarkDraft = rsMarkOrder(); rsMarkRender(); $('mark-order-panel').classList.add('active'); }
 function closeMarkOrder() { $('mark-order-panel').classList.remove('active'); }
 function rsMarkRender() {
-  $('mark-order-list').innerHTML = rsMarkDraft.map(function (k, i) {
-    return '<div class="mo-row"><b class="mo-n">' + (i + 1) + '순위</b><span class="mo-name">' + RS_MARK_NAME[k] + '</span>' +
-      '<button type="button" class="mo-mv" ' + (i === 0 ? 'disabled' : '') + ' onclick="rsMarkMove(' + i + ',-1)" aria-label="위로">▲</button>' +
-      '<button type="button" class="mo-mv" ' + (i === 2 ? 'disabled' : '') + ' onclick="rsMarkMove(' + i + ',1)" aria-label="아래로">▼</button></div>';
+  var box = $('mark-order-list');
+  box.innerHTML = rsMarkDraft.map(function (k, i) {
+    return '<div class="mo-row" data-k="' + k + '"><b class="mo-n">' + (i + 1) + '순위</b><span class="mo-name">' + RS_MARK_NAME[k] + '</span><span class="mo-grip" aria-hidden="true">≡</span></div>';
   }).join('');
+  [].forEach.call(box.querySelectorAll('.mo-row'), function (row) { row.addEventListener('pointerdown', rsMarkDragStart); });
+}
+/* 줄을 꾹 잡고 위아래로 끌어서 순위 바꾸기 (손가락 · 마우스 모두) */
+function rsMarkDragStart(e) {
+  var row = e.currentTarget, box = row.parentNode, rows = [].slice.call(box.children);
+  var startY = e.clientY, h = row.getBoundingClientRect().height + 8, from = rows.indexOf(row), to = from;
+  try { row.setPointerCapture(e.pointerId); } catch (er) {}
+  row.classList.add('dragging');
+  e.preventDefault();
+  function move(ev) {
+    var dy = Math.max(-from * h, Math.min((rows.length - 1 - from) * h, ev.clientY - startY));   /* 목록 밖으로는 안 나감 */
+    row.style.transform = 'translateY(' + dy + 'px)';
+    to = Math.max(0, Math.min(rows.length - 1, from + Math.round(dy / h)));
+    rows.forEach(function (r, i) {
+      if (r === row) return;
+      var shift = 0;
+      if (from < to && i > from && i <= to) shift = -h;
+      if (from > to && i < from && i >= to) shift = h;
+      r.style.transform = shift ? 'translateY(' + shift + 'px)' : '';
+    });
+  }
+  function up() {
+    row.removeEventListener('pointermove', move); row.removeEventListener('pointerup', up); row.removeEventListener('pointercancel', up);
+    rows.forEach(function (r) { r.style.transform = ''; });
+    row.classList.remove('dragging');
+    if (to !== from) { var k = rsMarkDraft.splice(from, 1)[0]; rsMarkDraft.splice(to, 0, k); try { navigator.vibrate && navigator.vibrate(15); } catch (er) {} }
+    rsMarkRender();
+  }
+  row.addEventListener('pointermove', move); row.addEventListener('pointerup', up); row.addEventListener('pointercancel', up);
 }
 function rsMarkMove(i, d) { var j = i + d; if (j < 0 || j > 2) return; var t = rsMarkDraft[i]; rsMarkDraft[i] = rsMarkDraft[j]; rsMarkDraft[j] = t; rsMarkRender(); }
 function rsMarkReset() { rsMarkDraft = RS_MARK_DEF.slice(); rsMarkRender(); }
@@ -16374,8 +16402,9 @@ html body #main-section .logout-btn, html body #main-section .logout-btn:hover{b
 .mo-row{display:flex;align-items:center;gap:8px;background:#f6f8fb;border:1px solid #e5ebf3;border-radius:12px;padding:10px 10px 10px 12px}
 .mo-n{flex:0 0 46px;font-size:13px;font-weight:900;color:#2f6fd6}
 .mo-name{flex:1;font-size:15px;font-weight:800;color:#1b2b45}
-.mo-mv{width:34px;height:32px;border:1px solid #d5dde8;background:#fff;border-radius:8px;color:#33415c;font-size:12px;cursor:pointer}
-.mo-mv:disabled{opacity:.3}
+.mo-row{touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;transition:transform .15s ease,box-shadow .15s ease;position:relative}
+.mo-row.dragging{transition:none;z-index:2;box-shadow:0 8px 20px rgba(20,40,80,.18);background:#fff;cursor:grabbing}
+.mo-grip{flex:0 0 auto;font-size:20px;line-height:1;color:#9aa6b8;padding:0 4px}
 html.ui-dark .mo-row{background:#1f242b!important;border-color:#2c323b!important}
 .sch-png-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:11px 14px;border:1.5px solid #c9dbf7;border-radius:999px;background:#fff;color:#2f6fd6;font-size:13px;font-weight:800;cursor:pointer}
 .sch-png-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
@@ -18768,6 +18797,37 @@ html.ui-dark body #settings-section .setting-grid .set-tile{color:#e9edf2!import
 html.ui-dark body #settings-section .setting-grid .set-tile:active{background:#262b33!important}
 html.ui-dark body #settings-section .settings-category+.settings-category{border-top-color:#2c323b!important}
 </style>
+
+<script>
+/* 환경설정 목록: 아이콘 그림이 칸 아래쪽에 붙어 그려져 있어 글자보다 내려가 보임 → 그림의 실제 가운데를 글자 줄 가운데에 맞춤 */
+var rsArtShift = {};
+function rsArtCenter(img) {
+  var src = img.currentSrc || img.src;
+  if (!src || /^data:image\/gif/.test(src)) return;
+  function apply(v) { img.style.transform = v ? 'translate(' + v[0].toFixed(2) + 'px,' + v[1].toFixed(2) + 'px)' : ''; }
+  var key = src.length + ':' + src.slice(-40);
+  if (rsArtShift[key] !== undefined) { var c0 = rsArtShift[key]; apply(c0 && [c0[0] * img.clientWidth, c0[1] * img.clientHeight]); return; }
+  function calc() {
+    try {
+      var n = 64, cv = document.createElement('canvas'); cv.width = n; cv.height = n;
+      var c = cv.getContext('2d'); c.drawImage(img, 0, 0, n, n);
+      var d = c.getImageData(0, 0, n, n).data, x0 = n, y0 = n, x1 = -1, y1 = -1;
+      for (var y = 0; y < n; y++) for (var x = 0; x < n; x++) if (d[(y * n + x) * 4 + 3] > 24) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      if (x1 < 0) { rsArtShift[key] = null; return; }
+      var r = [0.5 - (x0 + x1 + 1) / 2 / n, 0.5 - (y0 + y1 + 1) / 2 / n];
+      rsArtShift[key] = r; apply([r[0] * img.clientWidth, r[1] * img.clientHeight]);
+    } catch (e) { rsArtShift[key] = null; }
+  }
+  if (img.complete && img.naturalWidth) calc(); else img.addEventListener('load', calc, { once: true });
+}
+function rsCenterSetIcons() { [].forEach.call(document.querySelectorAll('#settings-section .set-art'), rsArtCenter); }
+(function () {
+  var orig = window.applyAppIcons;
+  if (typeof orig === 'function') window.applyAppIcons = function () { var r = orig.apply(this, arguments); try { setTimeout(rsCenterSetIcons, 0); } catch (e) {} return r; };
+  var sw = window.switchSection;
+  if (typeof sw === 'function') window.switchSection = function (id) { var r = sw.apply(this, arguments); if (id === 'settings-section') setTimeout(rsCenterSetIcons, 30); return r; };
+})();
+</script>
 <script>(function(){var a=document.querySelector('#pp-compose-scene .pc-tank:not(.t2)'),b=document.querySelector('#pp-compose-scene .pc-tank.t2');if(a&&b)b.src=a.src;})();</script>
 </body>
 </html>
