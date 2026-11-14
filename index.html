@@ -1964,7 +1964,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <details class="guide-sec" data-g="xrois"><summary>XROIS 연동 (마이페이지)</summary><div class="gd-stage" data-g="xrois"></div><ol>
       <li>하단 <b>마이페이지</b> › <b>CREW(XROIS) 연동</b>을 열어요.</li>
       <li>XROIS 비밀번호를 넣고 <b>저장</b>해요. 비밀번호는 <b>이 폰에만</b> 저장되고 서버에는 저장하지 않아요.</li>
-      <li><b>12시간마다</b> XROIS 당월승무근무표를 확인해서, 다이아가 바뀌었으면 근무표에 자동 반영하고 <b>팝업</b>으로 알려줘요.</li>
+      <li><b>12시간마다</b> XROIS 당월승무근무표를 확인해서, 철도비서 근무표와 다른 날이 있으면 <b>팝업으로 물어봐요</b>. [바꾸기]를 누르면 주간·야간과 본 근무·휴무충당·대기충당을 고를 수 있어요. 고르기 전에는 근무표가 바뀌지 않아요.</li>
       <li>근무표 상세에 <b>함께 타는 승무원</b>이 나오고, 미리보는 월급에는 <b>개인근무명세서</b>의 휴일 · 연장 · 야간 시간이 들어가요.</li>
       <li>메인화면 › <b>승무근무표 현황</b>에서 그 날 전체 다이아 표를 볼 수 있어요.</li></ol></details>
     <details class="guide-sec" data-g="theme"><summary>아이콘 테마 바꾸기</summary><div class="gd-stage" data-g="theme"></div><ol>
@@ -4105,7 +4105,7 @@ var GD_SCENES = {
     { cap: '② XROIS 비밀번호 넣고 저장 (이 폰에만 저장)', tap: [50, 86], sel: '.gd-btn', html:
       '<div class="gd-top">CREW(XROIS) 연동</div><div class="gd-lab">사번</div><div class="gd-in">199878</div><div class="gd-lab">XROIS 비밀번호</div><div class="gd-in">●●●●●●●<span class="gd-caret"></span></div>' +
       '<div class="gd-note">🔒 비밀번호는 이 폰에만 저장돼요</div><div class="gd-btn">저장</div>' },
-    { cap: '③ 12시간마다 확인 · 다이아가 바뀌면 팝업', tap: null, html: 'XR_POP' },
+    { cap: '③ 다른 날이 있으면 바꿀지 물어봐요', tap: null, html: 'XR_POP' },
     { cap: '④ 함께 타는 승무원 · 휴일/연장/야간 시간 반영', tap: null, html: 'XR_CREW' },
     { cap: '⑤ 메인화면 › 승무근무표 현황', tap: null, html: 'XR_BOARD' }
   ],
@@ -4196,8 +4196,8 @@ function gdScreenHtml(sc) {
   }
   if (sc.html === 'XR_ROUTE') return '<div class="gd-top">행로표 <small style="color:#c2410c">예상 행로표</small></div><div class="gd-route"><div class="gd-rs"><span>청량리</span><span>동두천</span></div>' +
     '<div class="gd-rl a"><i>15:30</i><b>(K)</b><i>16:30</i></div><div class="gd-rl b"><i>18:55</i><b>4656</b><i>18:03</i></div></div><div class="gd-toast">예상 행로표를 넣었어요</div>';
-  if (sc.html === 'XR_POP') return '<div class="gd-top">XROIS 근무 변경</div><div class="gd-card"><div class="gd-pt">XROIS 당월승무근무표와 달라서 근무표를 바꿨어요.</div>' +
-    '<div class="gd-chg"><span>11/14 (토)</span><s>12601</s><b>→ 12H88</b></div><div class="gd-chg"><span>11/15 (일)</span><s>휴</s><b>→ 비</b></div></div><div class="gd-btn sm">확인</div>';
+  if (sc.html === 'XR_POP') return '<div class="gd-top">XROIS 근무 변경 확인</div><div class="gd-card"><div class="gd-chg"><span>11/14 (토)</span><s>12601</s><b>→ 12H88</b></div>' +
+    '<div class="gd-pt">이 날 근무를 XROIS 다이아로 바꾸시겠어요?</div><div class="gd-st3"><i class="hl">주간</i><i>야간</i></div><div class="gd-st3"><i class="hl">본 근무</i><i>휴무충당</i><i>대기충당</i></div></div><div class="gd-btn sm">적용</div>';
   if (sc.html === 'XR_BOARD') return '<div class="gd-top">승무근무표 현황 <small>11월 13일</small></div><div class="gd-tb"><span>다이아</span><span>열차1</span><span>출근</span><span>승무원1</span>' +
     '<span class="me">12H88</span><span class="me">4656</span><span class="me">12:50</span><span class="me">*주영</span>' +
     '<span>12101</span><span>1673</span><span>07:30</span><span>*철수</span><span>12401</span><span>1501</span><span>08:10</span><span>*지훈</span><span>12601</span><span>1801</span><span>18:20</span><span>*상우</span></div>';
@@ -5870,8 +5870,13 @@ function renderDayDetail() {
     var train1Date = dateKeyForSelectedDay();
     var train2Date = train1Date;
     /* 야간 근무의 두 번째 열차는 다음 날 운행일로 NXLogis에서 조회 */
-    var isNightWork = info.label === '야' || /야간/.test(String(workType || ''));
-    if (isNightWork && (train2 || train3) && train1Date) {
+    var isNightWork = !info.nightCarryover && (info.label === '야' || info.type === '야' || /야간/.test(String(workType || '')));
+    if (info.nightCarryover && train1Date) {
+      /* 비번 날에 전날 야간 다이아를 이어서 보여줄 때: 첫 열차는 전날 운행, 두 번째 열차가 오늘 운행 */
+      var cp = train1Date.split('-').map(Number), pd = new Date(Date.UTC(cp[0], cp[1] - 1, cp[2] - 1));
+      train1Date = pd.getUTCFullYear() + '-' + String(pd.getUTCMonth() + 1).padStart(2, '0') + '-' + String(pd.getUTCDate()).padStart(2, '0');
+      train2Date = dateKeyForSelectedDay();
+    } else if (isNightWork && (train2 || train3) && train1Date) {
       var dateParts = train1Date.split('-').map(Number);
       var nextDate = new Date(Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2] + 1));
       train2Date = nextDate.getUTCFullYear() + '-' + String(nextDate.getUTCMonth() + 1).padStart(2, '0') + '-' + String(nextDate.getUTCDate()).padStart(2, '0');
@@ -6161,7 +6166,7 @@ function rsUseSharedDia(dia, dk, e, quiet) {
   var st = (xr && xr.start) || t.start || '', en = (xr && xr.end) || t.end || '';
   var t1 = (xr && xr.t1) || drv[0] || '', t2 = (xr && xr.t2) || drv[1] || '';
   try { var info = xrGet('info', {}); info[dk] = { dia: dia, start: st, end: en, trains: drv, t1: t1, t2: t2, src: 'shared' }; xrPut('info', info); } catch (er) {}
-  if (e.type === '야') { try { var u = getCurrentUser(); snapUpsertOverride(u.employeeId, snapShiftKey(dk, 1), 'auto-status', '', '비'); } catch (er) {} }
+  if (e.type === '야') { try { var u = getCurrentUser(); rsAutoNextOff(u.employeeId, snapShiftKey(dk, 1)); } catch (er) {} }
   if (quiet) return;
   try { loadMyMonth(); } catch (er) {}
   try { renderDayDetail(); } catch (er) {}
@@ -11831,16 +11836,24 @@ function passApplyRefresh(pages) {
   if (!$('pass-pop-panel').classList.contains('active')) return;   /* 그새 닫았으면 그대로 */
   if (!pages || !pages.length) { if (passRefreshByUser) showToast('최신 위치를 불러오지 못했어요.'); return; }
   var cur = passPopData ? (passPopData.date + '|' + passPopData.train) : '';
-  var idx = 0;
+  var idx = -1;
   pages.forEach(function (p, i) { if (p.date + '|' + p.train === cur) idx = i; });
+  if (cur && idx < 0) return;                 /* 지금 보고 있는 열차가 아닌 결과면 무시 */
+  if (idx < 0) idx = 0;
   passPages = pages; passPageIdx = idx;
   passSmooth = !passRefreshByUser;           /* 자동 갱신: 부드럽게 이동 / 직접 누름: 다시 달려 들어옴 */
   try { passShowPage(true); } finally { passSmooth = false; }
   passLiveLabel();
   if (passRefreshByUser) showToast('최신 위치로 새로고침했어요.');
 }
+var passRunSeq = 0;
 function passRunCheck(list, c, overviewOnly, opts) {
   opts = opts || {};
+  /* 늦게 도착한 예전 조회(다른 열차 · 다른 날짜)가 지금 연 팝업을 덮어쓰지 않게: 가장 마지막에 누른 조회만 표시 */
+  var mySeq = opts.refresh ? passRunSeq : ++passRunSeq;
+  var gShow = window.showPassPages, gApply = window.passApplyRefresh;
+  var showPassPages = function (p) { if (mySeq !== passRunSeq) return; gShow(p); };
+  var passApplyRefresh = function (p) { if (mySeq !== passRunSeq) { passRefreshBusy = false; return; } gApply(p); };
   if (!opts.refresh) passLastRun = { list: list.slice(), overviewOnly: !!overviewOnly };
   var noStationMode = overviewOnly || !Array.isArray(c.stations) || c.stations.length === 0;
   if (!opts.refresh && !opts.quietToast) showToast(list.map(function (x) { return x.train; }).join(', ') + '열차 NXLogis 현재 위치를 조회합니다...');
@@ -17864,13 +17877,33 @@ html.ui-dark #weekly-wx-panel .ww-close{background:#354f70;color:#e2f2ff}
 #xr-change .xr-ch s{color:#8a96a8;font-weight:700;margin-right:6px}
 #xr-change .xr-ch b{color:#2f6fd6}
 #xr-change .xr-w{font-size:12px;color:#5b6678}
+#xr-change .xr-man{font-size:11px;font-weight:800;color:#c2410c;background:#fff4e5;border-radius:999px;padding:1px 7px;margin-left:4px}
+#xr-change .xr-cmp{display:flex;align-items:center;gap:8px;margin:6px 0 2px}
+#xr-change .xr-cmp>div{flex:1;min-width:0;background:#fff;border:1px solid #e5ebf3;border-radius:10px;padding:6px 8px}
+#xr-change .xr-cmp>div.xr-arrow{flex:0 0 auto;border:0;background:none;padding:0;color:#8a96a8;font-weight:900}
+#xr-change .xr-cmp small{display:block;font-size:11px;color:#8a96a8;font-weight:700}
+#xr-change .xr-cmp s{display:block;font-size:14px;font-weight:800;color:#5b6678;text-decoration:none;word-break:keep-all}
+#xr-change .xr-cmp b{display:block;font-size:16px;font-weight:900;color:#2f6fd6}
+#xr-change .xr-q{font-size:13px;font-weight:700;color:#33415c;margin:8px 0 6px}
+#xr-change .xr-btns{display:flex;gap:6px;margin-top:8px}
+#xr-change .xr-btns button{flex:1 1 0;height:40px;border-radius:10px;border:0;font-size:14px;font-weight:800;cursor:pointer}
+#xr-change .xr-keep{background:#eef2f7;color:#33415c}
+#xr-change .xr-go{background:#2f6fd6;color:#fff}
+#xr-change .xr-opt{display:flex;align-items:center;gap:8px;margin-top:8px}
+#xr-change .xr-opt>span{flex:0 0 58px;font-size:12.5px;font-weight:800;color:#5b6678}
+#xr-change .xr-seg{flex:1;display:flex;background:#eef2f7;border-radius:10px;padding:3px;gap:3px}
+#xr-change .xr-seg button{flex:1 1 0;border:0;background:transparent;border-radius:8px;height:32px;font-size:13px;font-weight:800;color:#5b6678;cursor:pointer}
+#xr-change .xr-seg button.on{background:#fff;color:#2f6fd6;box-shadow:0 1px 3px rgba(20,40,80,.15)}
+html.ui-dark #xr-change .xr-go,html.ui-dark #xr-change .xr-seg button.on{background:#3182f6!important;color:#fff!important}
+html.ui-dark #xr-change .xr-keep{background:#2a3038!important;color:#e9edf2!important}
+
 </style>
 <div id="xr-change" class="dia-modal" onclick="if(event.target===this)xrCloseChanges()">
   <div class="dia-dialog ns-dialog">
-    <div class="dia-dialog-title">XROIS 다이아 변경 반영</div>
-    <div class="ns-note" style="margin:0 2px 8px">XROIS 승무근무표에서 바뀐 다이아를 철도비서 근무표에 자동으로 맞췄어요.</div>
+    <div class="dia-dialog-title">XROIS 근무 변경 확인</div>
+    <div class="ns-note" style="margin:0 2px 8px">XROIS 승무근무표와 철도비서 근무표가 다른 날이 있어요. 바꿀 날만 골라주세요. 고르기 전에는 철도비서 근무표가 그대로예요.</div>
     <div class="xr-list" id="xr-list"></div>
-    <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="xrCloseChanges();openSchedule()">근무표 보기</button><button type="button" class="dia-text-btn" onclick="xrCloseChanges()">확인</button></div>
+    <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="xrCloseChanges();openSchedule()">근무표 보기</button><button type="button" class="dia-text-btn" onclick="xrCloseChanges()">나중에</button></div>
   </div>
 </div>
 <script id="xrois-sync-script">
@@ -17978,6 +18011,11 @@ function xrMyDays(months, cb) {
 }
 
 /* 이 폰에 저장된 내 근무변경 기록 (자동으로 넣은 다음날 비번은 제외) */
+/* XROIS · 공유 행로표로 야간 다이아를 넣었을 때 다음 날 자동 비번: 사용자가 그 날을 직접 수정했으면 건드리지 않음 */
+function rsAutoNextOff(emp, nextKey) {
+  if (typeof xrMyOverride === 'function' && xrMyOverride(emp, nextKey)) return;
+  snapUpsertOverride(emp, nextKey, 'auto-status', '', '비');
+}
 function xrMyOverride(emp, dateKey) {
   try {
     var loc = ensureLocal(emp), rows = (loc && loc.overrides) || [];
@@ -18021,10 +18059,10 @@ function xrApply(days, manual, crewMap) {
       var my = mine[k] || {}, myDia = xrNorm(my.dia || '');
       if (myDia === dia) return;
       if (prev && prev === dia) return;                                /* XROIS 그대로 = 내가 직접 바꾼 것 존중 */
-      /* 내가 직접 넣은 기록 확인: 휴가·휴무 등 근무 상태만 넣은 날은 건드리지 않음 */
+      /* 바로 바꾸지 않고 사용자에게 물어봄 (직접 수정한 날도 물어보기만, 고르기 전엔 그대로) */
       var ov = xrMyOverride(emp, k);
-      if (ov && (ov[1] === 'status' || (ov[1] === 'combined' && !ov[2] && ov[7] && !/^(주|야|비|주간|야간|비번)$/.test(String(ov[7]).replace(/^\*/, ''))))) return;
-      changes.push({ date: k, from: my.dia || my.label || '', to: dia, start: x.start, end: x.end, trains: x.trains || [], keep: ov || null });
+      changes.push({ date: k, from: my.dia || my.label || '', fromPartner: ov ? String(ov[6] || '') : '', fromCredit: ov ? String(ov[3] || '') : '',
+        manual: !!ov, to: dia, start: x.start || '', end: x.end || '', trains: x.trains || [] });
     });
     /* 오래된 기록 정리 (60일 전) */
     var od = new Date(t.y, t.m - 2, t.d), old = getDateKey(od.getFullYear(), od.getMonth(), od.getDate());
@@ -18034,25 +18072,15 @@ function xrApply(days, manual, crewMap) {
     xrPut('seen', seen); xrPut('info', info); xrPut('roster', roster);
     var m2 = xrGet('meta', {}); m2.rosterAt = stampNow(); xrPut('meta', m2);
 
-    changes.forEach(function (c) {
-      var next = snapShiftKey(c.date, 1), known = diaByNumber(c.to);
-      removeAutoNextDayOff(emp, next);
-      /* 다이아만 XROIS 것으로 바꾸고, 내가 적어 둔 바꾼 사람 · 휴무충당/대기충당 · 근무 상태는 그대로 둠 */
-      var kp = c.keep, kStatus = kp ? String(kp[3] || '') : '', kPid = kp ? String(kp[5] || '') : '', kPname = kp ? String(kp[6] || '') : '', kDuty = kp ? String(kp[7] || '') : '';
-      var nType = 'dia';
-      if (kp && (kp[1] === 'combined' || kp[1] === 'status-credit' || kp[1] === 'dia-credit' || kStatus)) nType = 'combined';
-      snapUpsertOverride(emp, c.date, nType, c.to, kStatus, kPid, kPname, kDuty);
-      try { tdSet(c.date, known ? '' : c.to); } catch (e) {}
-      var type = String(known && known.type || '');
-      var night = type === '야' || type === '야간' || (!known && rpMin(c.end) != null && rpMin(c.start) != null && rpMin(c.end) < rpMin(c.start));
-      if (night) snapUpsertOverride(emp, next, 'auto-status', '', '비');
-    });
-    var mm = xrGet('meta', {}); mm.changed = changes.length; xrPut('meta', mm); xrRenderStatus();
-    try { loadMyMonth(); } catch (e) {}
+    /* 물어볼 목록에 쌓기 (고를 때까지 남아 있음, 지난 날짜는 뺌) */
+    var pend = xrGet('pending', []).filter(function (p) { return p.date >= today; });
+    changes.forEach(function (c) { pend = pend.filter(function (p) { return p.date !== c.date; }); pend.push(c); });
+    pend.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    xrPut('pending', pend);
+    var mm = xrGet('meta', {}); mm.changed = pend.length; xrPut('meta', mm); xrRenderStatus();
     try { renderDayDetail(); } catch (e) {}
-    if (!changes.length) { if (manual) showToast('XROIS와 철도비서 근무표가 같아요.'); return; }
-    xrShowChanges(changes);
-    xrMakePlans(changes);
+    if (!pend.length) { if (manual) showToast('XROIS와 철도비서 근무표가 같아요.'); return; }
+    xrShowChanges();
   });
 }
 
@@ -18070,7 +18098,7 @@ function xrMakePlans(changes) {
       var type = rpGuessType(rows);
       a[r.dia] = { rows: rows, at: Date.now(), type: type, src: 'xrois' };
       rpSetDate(r.date, r.dia); n++;
-      if (type === '야' && !diaByNumber(r.dia)) { try { snapUpsertOverride(emp, snapShiftKey(r.date, 1), 'auto-status', '', '비'); } catch (e) {} }
+      if (type === '야' && !diaByNumber(r.dia)) { try { rsAutoNextOff(emp, snapShiftKey(r.date, 1)); } catch (e) {} }
     });
     if (!n) return;
     rpSaveAll(a);
@@ -18080,13 +18108,69 @@ function xrMakePlans(changes) {
   });
 }
 
-function xrShowChanges(changes) {
-  $('xr-list').innerHTML = changes.map(function (c) {
+/* XROIS와 다른 날 물어보기: [그대로 두기] / [바꾸기] → 주간·야간, 본 근무·휴무충당·대기충당 고르고 [적용] */
+var xrAskOpen = {};
+function xrGuessNight(c) {
+  var known = diaByNumber(c.to), type = String(known && known.type || '');
+  if (type) return type === '야' || type === '야간';
+  return rpMin(c.end) != null && rpMin(c.start) != null && rpMin(c.end) < rpMin(c.start);
+}
+function xrShowChanges() {
+  var pend = xrGet('pending', []);
+  if (!pend.length) { xrCloseChanges(); return; }
+  $('xr-list').innerHTML = pend.map(function (c, i) {
     var w = [];
+    if (c.start || c.end) w.push('출근 ' + (c.start || '-') + ' · 퇴근 ' + (c.end || '-'));
     if (c.trains && c.trains.length) w.push('열차 ' + c.trains.join(' · '));
-    return '<div class="xr-item"><div class="xr-d">' + xrDateLabel(c.date) + '</div><div class="xr-ch">' + (c.from ? '<s>' + esc(c.from) + '</s>→ ' : '') + '<b>' + esc(c.to) + '</b></div>' + (w.length ? '<div class="xr-w">' + esc(w.join(' / ')) + '</div>' : '') + '</div>';
+    var fromTxt = (c.from || '-') + (c.fromPartner ? ' · ' + c.fromPartner + '님과 교환' : '') + (c.fromCredit ? ' · ' + c.fromCredit : '');
+    var o = xrAskOpen[c.date];
+    var html = '<div class="xr-item" data-i="' + i + '"><div class="xr-d">' + xrDateLabel(c.date) + (c.manual ? ' <small class="xr-man">직접 수정한 근무</small>' : '') + '</div>' +
+      '<div class="xr-cmp"><div><small>철도비서</small><s>' + esc(fromTxt) + '</s></div><div class="xr-arrow">→</div><div><small>XROIS</small><b>' + esc(c.to) + '</b></div></div>' +
+      (w.length ? '<div class="xr-w">' + esc(w.join(' / ')) + '</div>' : '');
+    if (!o) {
+      html += '<div class="xr-q">이 날 근무를 XROIS 다이아로 바꾸시겠어요?</div><div class="xr-btns"><button type="button" class="xr-keep" onclick="xrAskKeep(\'' + c.date + '\')">그대로 두기</button><button type="button" class="xr-go" onclick="xrAskOpenOpts(\'' + c.date + '\')">바꾸기</button></div>';
+    } else {
+      html += '<div class="xr-opt"><span>근무 구분</span><div class="xr-seg">' +
+        ['주간', '야간'].map(function (v) { return '<button type="button" class="' + (o.duty === v ? 'on' : '') + '" onclick="xrAskSet(\'' + c.date + '\',\'duty\',\'' + v + '\')">' + v + '</button>'; }).join('') + '</div></div>' +
+        '<div class="xr-opt"><span>충당 구분</span><div class="xr-seg three">' +
+        ['본 근무', '휴무충당', '대기충당'].map(function (v) { return '<button type="button" class="' + (o.credit === v ? 'on' : '') + '" onclick="xrAskSet(\'' + c.date + '\',\'credit\',\'' + v + '\')">' + v + '</button>'; }).join('') + '</div></div>' +
+        '<div class="xr-btns"><button type="button" class="xr-keep" onclick="xrAskCancel(\'' + c.date + '\')">취소</button><button type="button" class="xr-go" onclick="xrAskApply(\'' + c.date + '\')">적용</button></div>';
+    }
+    return html + '</div>';
   }).join('');
   $('xr-change').classList.add('active');
+}
+function xrAskFind(dk) { return xrGet('pending', []).filter(function (p) { return p.date === dk; })[0] || null; }
+function xrAskDone(dk) {
+  xrPut('pending', xrGet('pending', []).filter(function (p) { return p.date !== dk; }));
+  delete xrAskOpen[dk];
+  var mm = xrGet('meta', {}); mm.changed = xrGet('pending', []).length; xrPut('meta', mm); try { xrRenderStatus(); } catch (e) {}
+  if (!xrGet('pending', []).length) { xrCloseChanges(); return; }
+  xrShowChanges();
+}
+function xrAskKeep(dk) { xrAskDone(dk); showToast(xrDateLabel(dk) + ' 근무는 그대로 두었어요.'); }
+function xrAskOpenOpts(dk) {
+  var c = xrAskFind(dk); if (!c) return;
+  var cr = /휴무충당|대기충당/.test(c.fromCredit || '') ? c.fromCredit.match(/휴무충당|대기충당/)[0] : '본 근무';
+  xrAskOpen[dk] = { duty: xrGuessNight(c) ? '야간' : '주간', credit: cr };
+  xrShowChanges();
+}
+function xrAskSet(dk, k, v) { if (!xrAskOpen[dk]) return; xrAskOpen[dk][k] = v; xrShowChanges(); }
+function xrAskCancel(dk) { delete xrAskOpen[dk]; xrShowChanges(); }
+function xrAskApply(dk) {
+  var c = xrAskFind(dk), o = xrAskOpen[dk];
+  if (!c || !o) return;
+  var emp = getCurrentUser().employeeId, next = snapShiftKey(dk, 1), known = diaByNumber(c.to);
+  var duty = o.duty === '야간' ? '야' : '주', credit = o.credit === '본 근무' ? '' : o.credit;
+  removeAutoNextDayOff(emp, next);
+  snapUpsertOverride(emp, dk, 'combined', c.to, credit, '', '', duty);
+  try { tdSet(dk, known ? '' : c.to); } catch (e) {}
+  if (duty === '야') rsAutoNextOff(emp, next);
+  try { loadMyMonth(); } catch (e) {}
+  try { renderDayDetail(); } catch (e) {}
+  if (!known) { try { xrMakePlans([c]); } catch (e) {} }
+  showToast(xrDateLabel(dk) + ' ' + c.to + ' (' + o.duty + (credit ? ' · ' + credit : '') + ')으로 바꿨어요.');
+  xrAskDone(dk);
 }
 function xrCloseChanges() { $('xr-change').classList.remove('active'); }
 
@@ -18138,7 +18222,7 @@ function xrApplyDiaRes(dk, dia, r, quiet) {
   if (rows.length) { a[dia] = { rows: rows, at: Date.now(), type: type, src: 'xrois', xr: xrPart }; rpSaveAll(a); rpSetDate(dk, dia); }
   else if (start || end || t1) { var keep = a[dia] && a[dia].rows ? a[dia].rows : []; a[dia] = { rows: keep, at: Date.now(), type: type, src: 'xrois', xr: xrPart }; rpSaveAll(a); rpSetDate(dk, dia); }
   /* 목록에 없는 야간 다이아면 다음 날 비번 */
-  if (type === '야' && !diaByNumber(dia)) { try { snapUpsertOverride(getCurrentUser().employeeId, snapShiftKey(dk, 1), 'auto-status', '', '비'); } catch (e) {} }
+  if (type === '야' && !diaByNumber(dia)) { try { rsAutoNextOff(getCurrentUser().employeeId, snapShiftKey(dk, 1)); } catch (e) {} }
   if (!quiet) { try { loadMyMonth(); } catch (e) {} try { renderDayDetail(); } catch (e) {} }
   var head = xrDateLabel(dk) + ' ' + dia + ' · 출근 ' + (start || '-') + ' · 퇴근 ' + (end || '-') + ((t1 || t2) ? ' · 열차 ' + [t1, t2].filter(Boolean).join(', ') : '');
   var tail = rows.length ? ' · 예상 행로표를 넣었어요.' : ' · 승무다이아 내역은 아직 없어요.';
