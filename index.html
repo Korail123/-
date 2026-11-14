@@ -3177,6 +3177,16 @@ function computeLeaveUsage(year) {
   }
   return res;
 }
+/* 아무 날짜나 내 근무 정보 (근무표 달력과 같은 계산: 불러온 달이면 그대로, 아니면 스냅샷에서 바로 계산) */
+function rsDayInfo(dateKey) {
+  try {
+    var p = String(dateKey).split('-').map(Number), v = getInfo(p[0], p[1] - 1, p[2]);
+    if (v) return v;
+    if (!snapshot || !snapshot.raw || !snapshotUsable()) return null;
+    var myId = getCurrentUser().employeeId, mb = (snapshot.raw.members || []).filter(function (x) { return x.employeeId === myId; })[0];
+    return mb ? snapDayWithAuto(dateKey, mb, snapshot.raw.dia || [], snapshot.ovMap) : null;
+  } catch (e) { return null; }
+}
 function buildLocalRange(scope, startKey, endKey) {
   var raw = snapshot.raw;
   var dia = raw.dia || [];
@@ -3813,45 +3823,22 @@ function renderCalendar() {
     var creditStatus = rsCreditForDate(getDateKey(calendarYear, calendarMonth, d), info);
     if (info && (info.label || info.type || info.status)) {
       /* 달력에는 DIA 번호를 표시하지 않고 근무 구분만 표시합니다. */
-      var rawDuty = String(info.overrideType === 'status' ? (info.status || info.type || info.label || '')
-        : (info.dutyStatus || info.type || info.label || '')).trim();
-      rawDuty = rawDuty.replace(/^\*+/, '').trim();   /* 별표(*)는 근무변경한 날(info.manual)에만 붙임 */
-      var calendarDuty = '';
-      /* X는 DIA 이름이 아니라 기존 근무 구분이므로 주·야·비·휴와 함께 그대로 표시. */
-      if (/^X$/i.test(rawDuty)) calendarDuty = 'X';
-      else if (/^(주|주간|day)$/i.test(rawDuty)) calendarDuty = '주';
-      else if (/^(야|야간|night)$/i.test(rawDuty)) calendarDuty = '야';
-      else if (/^(비|비번)$/i.test(rawDuty)) calendarDuty = '비';
-      else if (info.overrideType === 'status' && rawDuty && !/^(대기충당|휴무충당)$/i.test(rawDuty)) calendarDuty = /^(휴|휴무|휴일)$/i.test(rawDuty) ? '휴' : rawDuty;
-      else if (/^(휴|휴무|휴일)$/i.test(rawDuty)) calendarDuty = '휴';
-      else if (/^(휴가|연차|반차|병가|공가|특별휴가|출산휴가|육아휴직|돌봄|돌봄휴가|휴직|경조휴가|대체휴무|보상휴가)$/i.test(rawDuty)) calendarDuty = rawDuty;
-      else if (info.label === '주' || info.label === '야' || info.label === '비' || info.label === '휴' || info.label === 'X') calendarDuty = info.label;
-      else if (info.overrideType === 'status') calendarDuty = '휴';
-      /* 비정상 DIA 문자열을 라벨로 출력하는 대신 해당 날짜의 기본 근무 구분을 사용합니다. */
-      if (!calendarDuty && typeof snapBaseDay === 'function') {
-        try {
-          var cu = getCurrentUser(), settings = cu && cu.settings;
-          var base = settings && settings.seq && settings.anchor
-            ? snapBaseDay(getDateKey(calendarYear, calendarMonth, d), settings.seq, settings.anchor, [], cu.name || '') : null;
-          var baseDuty = String((base && (base.type || base.label)) || '');
-          if (/^(주|야|비|휴|X)$/.test(baseDuty)) calendarDuty = baseDuty;
-        } catch (ignored) {}
-      }
+      var calendarDuty = rsCalDuty(info, getDateKey(calendarYear, calendarMonth, d), rsMySeqCtx());   /* 근무그룹 표와 같은 규칙 */
       if (calendarDuty) {
         var tone = toneOf(calendarDuty);
         var cls = tone === 'day' ? ' t-day' : tone === 'bi' ? ' t-bi' : tone === 'off' || (info.overrideType === 'status' && !/^(주|야|비|X)$/.test(calendarDuty)) ? ' t-off' : '';
         var shortDuty = rsDutyShort(calendarDuty);
         labelHtml = '<div class="cell-lbl' + cls + (shortDuty.length >= 2 ? ' rs-duty2' : '') + '">' + (info.manual ? '*' : '') + esc(shortDuty) + '</div>';
       }
-      if (info.swapPartnerName || info.swapPartnerId) {
-        var swapPn = String(info.swapPartnerName || info.swapPartnerId).trim();
-        labelHtml += '<div class="cell-swap" title="' + esc(swapPn) + '님과 근무 교환">⇄ ' + esc(swapPn) + '</div>';
-        cell.classList.add('swapped');
-      }
     }
-    /* 주·야·비·휴 아래: 교환 상대 이름표처럼 작은 빨간색 타원형 충당 배지만 표시. */
-    if (creditStatus) {
-      labelHtml += '<div class="cell-credit rs-credit-pill">' + esc(creditStatus) + '</div>';
+    /* 달력 칸에는 표시 하나만 (1순위 근무교환 상대 → 2순위 휴무충당 → 3순위 대기충당). 상세 근무 정보에는 모두 표시 */
+    var swapPn = info ? String(info.swapPartnerName || info.swapPartnerId || '').trim() : '';
+    if (swapPn) {
+      labelHtml += '<div class="cell-swap" title="' + esc(swapPn) + '님과 근무 교환">⇄ ' + esc(swapPn) + '</div>';
+      cell.classList.add('swapped');
+    } else if (creditStatus) {
+      var crTop = /휴무충당/.test(creditStatus) ? '휴무충당' : (/대기충당/.test(creditStatus) ? '대기충당' : creditStatus);
+      labelHtml += '<div class="cell-credit rs-credit-pill">' + esc(crTop) + '</div>';
     }
     cell.innerHTML =
       '<div class="cell-top"><span class="cell-num">' + d + '</span><span class="cell-side">' +
@@ -5572,7 +5559,7 @@ function rsBackfillTempDias(force) {
   var infoAll = xrGet('info', {}), plans = rpAll(), todo = [];
   for (var d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
     var dk = getDateKey(d.getFullYear(), d.getMonth(), d.getDate()), inf = null;
-    try { inf = getInfo(d.getFullYear(), d.getMonth(), d.getDate()); } catch (e) {}
+    inf = rsDayInfo(dk);
     if (!inf || !inf.manual || !inf.dia || inf.overrideType === 'status') continue;
     var dia = xrNorm(inf.dia), ds = String(inf.dutyStatus || '').replace(/^\*/, '');
     if (!dia || diaByNumber(dia)) continue;
@@ -5830,8 +5817,9 @@ function renderDayDetail() {
   try {
     var ddXi = (!isStatus && diaNo && typeof xrGet === 'function') ? xrGet('info', {})[dateKeyForSelectedDay()] : null;
     if (ddXi && xrNorm(ddXi.dia) === xrNorm(diaNo)) {
-      if (ddXi.start) { startTime = ddXi.start; rsStartEstimated = false; }
-      if (ddXi.end) { endTime = ddXi.end; rsEndEstimated = false; }
+      /* XROIS 출근·퇴근은 행로표로 계산한 시각보다 무조건 우선 */
+      if (ddXi.start) { startTime = ddXi.start; rsStartEstimated = !!ddXi.est; }
+      if (ddXi.end) { endTime = ddXi.end; rsEndEstimated = !!ddXi.est; }
       var xt1 = ddXi.t1 || (ddXi.trains || [])[0] || '', xt2 = ddXi.t2 || (ddXi.trains || [])[1] || '';
       if (xt1) train1 = xt1;
       if (xt2) train2 = xt2;
@@ -6261,11 +6249,14 @@ function saveScheduleEdit() {
     params.status = selectedDutyStatus;
   }
   /* 서버로 보내지 않고 이 폰에만 저장 (백업은 환경설정에서) */
-  snapUpsertOverride(user.employeeId, params.date, params.type, params.dia, params.status, '', partnerName, selectedDutyStatus);
+  /* 근무교환 상대: 이름을 지우지 않았으면 다른 다이아로 바꿔도 그대로 (교환 기능으로 넣은 상대 사번도 유지) */
+  var prevOvE = (typeof xrMyOverride === 'function') ? xrMyOverride(user.employeeId, params.date) : null;
+  var keepPid = prevOvE && partnerName && String(prevOvE[6] || '') === partnerName ? String(prevOvE[5] || '') : '';
+  snapUpsertOverride(user.employeeId, params.date, params.type, params.dia, params.status, keepPid, partnerName, selectedDutyStatus);
   try { tdSet(params.date, isTempDia ? dia : ''); } catch (e) {}
   /* 야간 근무를 넣으면 다음 날은 무조건 비번으로 설정합니다.
      (다음 날에 직접 변경 기록이 있더라도 비번으로 덮어씁니다.) */
-  if (isNightDia) {
+  if (isNightDia && !rsNextIsX(nextDateKey)) {   /* 야X: X 앞 야간이면 다음 날 X 그대로 */
     snapUpsertOverride(user.employeeId, nextDateKey, 'auto-status', '', '비');
   }
   closeScheduleEdit();
@@ -6423,30 +6414,41 @@ function rsDutyShort(label) {
   t = RS_DUTY_SHORT[t] || t;
   return star + Array.from(t).slice(0, 2).join('');
 }
-function rsGroupCalendarDuty(info) {
+/* 근무표 달력 · 근무그룹 표가 똑같이 쓰는 근무 글자 (근무그룹 = 각 사용자의 지금 근무표 그대로)
+   seqCtx: { seq, anchor, name } 가 있으면 글자를 못 정한 날 기본 근무 순서로 보완 */
+function rsCalDuty(info, dateKey, seqCtx) {
   if (!info || !(info.label || info.type || info.status)) return '';
-  var rawFull = String(info.overrideType === 'status'
-    ? (info.status || info.type || info.label || '')
-    : (info.dutyStatus || info.type || info.label || '')).trim();
-  var rawDuty = rawFull.replace(/^\*+/, '');
-  var label = '';
-  if (/^X$/i.test(rawDuty)) label = 'X';
-  else if (/^(주|주간|day)$/i.test(rawDuty)) label = '주';
-  else if (/^(야|야간|night)$/i.test(rawDuty)) label = '야';
-  else if (/^(비|비번)$/i.test(rawDuty)) label = '비';
-  else if (info.overrideType === 'status' && rawDuty && !/^(대기충당|휴무충당)$/i.test(rawDuty))
-    label = /^(휴|휴무|휴일)$/i.test(rawDuty) ? '휴' : rawDuty;
-  else if (/^(휴|휴무|휴일)$/i.test(rawDuty)) label = '휴';
-  else if (/^(휴가|연차|반차|병가|공가|특별휴가|출산휴가|육아휴직|돌봄|돌봄휴가|휴직|경조휴가|대체휴무|보상휴가)$/i.test(rawDuty)) label = rawDuty;
-  else if (/^(주|야|비|휴|X)$/.test(String(info.label || '').trim())) label = String(info.label).trim();
-  else if (info.overrideType === 'status') label = '휴';
-  /* 서버 레코드에서 상세 status만 남은 경우 근무표와 같은 방식으로 표시 */
-  if (!label && info.label) {
-    var fallback = String(info.label).trim().replace(/^\*/, '');
-    if (/^(주|야|비|휴|X|주간|야간|비번|휴무)$/.test(fallback)) {
-      label = ({'주간':'주','야간':'야','비번':'비','휴무':'휴'})[fallback] || fallback;
-    }
+  var rawDuty = String(info.overrideType === 'status' ? (info.status || info.type || info.label || '')
+    : (info.dutyStatus || info.type || info.label || '')).trim().replace(/^\*+/, '').trim();
+  var d = '';
+  if (/^X$/i.test(rawDuty)) d = 'X';
+  else if (/^(주|주간|day)$/i.test(rawDuty)) d = '주';
+  else if (/^(야|야간|night)$/i.test(rawDuty)) d = '야';
+  else if (/^(비|비번)$/i.test(rawDuty)) d = '비';
+  else if (info.overrideType === 'status' && rawDuty && !/^(대기충당|휴무충당)$/i.test(rawDuty)) d = /^(휴|휴무|휴일)$/i.test(rawDuty) ? '휴' : rawDuty;
+  else if (/^(휴|휴무|휴일)$/i.test(rawDuty)) d = '휴';
+  else if (/^(휴가|연차|반차|병가|공가|특별휴가|출산휴가|육아휴직|돌봄|돌봄휴가|휴직|경조휴가|대체휴무|보상휴가)$/i.test(rawDuty)) d = rawDuty;
+  else if (/^(주|야|비|휴|X)$/.test(String(info.label || '').trim())) d = String(info.label).trim();
+  else if (info.overrideType === 'status') d = '휴';
+  if (!d && info.label) {
+    var fb = String(info.label).trim().replace(/^\*/, '');
+    if (/^(주간|야간|비번|휴무)$/.test(fb)) d = ({ '주간': '주', '야간': '야', '비번': '비', '휴무': '휴' })[fb];
   }
+  /* 목록에 없는 다이아 등으로 글자를 못 정하면: 행로표 근무구분 → 기본 근무 순서 */
+  if (!d && info.dia) {
+    try { var pe = (typeof rpGet === 'function') ? rpGet(info.dia) : null; if (pe && /^(주|야)$/.test(pe.type || '')) d = pe.type; } catch (e) {}
+  }
+  if (!d && seqCtx && seqCtx.seq && seqCtx.anchor && dateKey && typeof snapBaseDay === 'function') {
+    try { var base = snapBaseDay(dateKey, seqCtx.seq, seqCtx.anchor, [], seqCtx.name || ''); var bd = String((base && (base.type || base.label)) || ''); if (/^(주|야|비|휴|X)$/.test(bd)) d = bd; } catch (e) {}
+  }
+  return d;
+}
+function rsMySeqCtx() { try { var cu = getCurrentUser(), st = cu && cu.settings; return st ? { seq: st.seq, anchor: st.anchor, name: cu.name || '' } : null; } catch (e) { return null; } }
+function rsGroupCalendarDuty(info, dateKey, mem) {
+  if (!info || !(info.label || info.type || info.status)) return '';
+  var ctx = null;
+  try { var me = getCurrentUser(); if (mem && me && String(mem.employeeId) === String(me.employeeId)) ctx = rsMySeqCtx(); else if (mem && (mem.seq || (mem.settings && mem.settings.seq))) ctx = { seq: mem.seq || mem.settings.seq, anchor: mem.anchor || mem.settings.anchor, name: mem.name || '' }; } catch (e) {}
+  var label = rsCalDuty(info, dateKey, ctx);
   /* 별표(*)는 근무변경한 날에만 */
   return label ? (info.manual ? '*' : '') + rsDutyShort(label) : '-';
 }
@@ -6555,16 +6557,20 @@ function renderGroupTable() {
   var localMine = ensureLocal(localUser.employeeId);
   var localOverrideMap = {};
   (localMine.overrides || []).forEach(function (r) { localOverrideMap[r[0]] = r; });
+  /* 내 줄은 근무표 달력과 '같은 자료'(getInfo)를 그대로 씀 → 근무표에서 바꾼 것이 근무그룹에 그대로 */
   for (var mi = 0; mi < members.length; mi++) {
-    if (members[mi].employeeId !== me || !members[mi].days) continue;
+    if (members[mi].employeeId !== me) continue;
+    if (!members[mi].days) members[mi].days = {};
     for (var di = 0; di < days.length; di++) {
-      var localRow = localOverrideMap[days[di].key];
-      if (!localRow) continue;
-      var localOv = {
-        type: localRow[1], dia: localRow[2], status: localRow[3], updatedAt: localRow[4],
-        partnerId: localRow[5] || '', partnerName: localRow[6] || ''
-      };
-      var localDay = snapBuildDay(days[di].key, localMine.seq, localMine.anchor, diaList, localOv, members[mi].name);
+      var localDay = rsDayInfo(days[di].key);
+      if (!localDay) {
+        var localRow = localOverrideMap[days[di].key];
+        if (!localRow) continue;
+        localDay = snapBuildDay(days[di].key, localMine.seq, localMine.anchor, diaList, {
+          type: localRow[1], dia: localRow[2], status: localRow[3], updatedAt: localRow[4],
+          partnerId: localRow[5] || '', partnerName: localRow[6] || '', dutyStatus: localRow[7] || ''
+        }, members[mi].name);
+      }
       members[mi].days[days[di].key] = localDay;
     }
   }
@@ -6582,7 +6588,7 @@ function renderGroupTable() {
       var cls = '';
       if (info && (info.label || info.type || info.status)) {
         /* 근무표와 동일: 주·야·비·휴·X 및 *연차·*육아휴직 등 실제 휴가 명칭 */
-        text = rsGroupCalendarDuty(info);
+        text = rsGroupCalendarDuty(info, days[j].key, mem);
         var groupDuty = text.replace(/^\*/, '');
         var groupOff = info.overrideType === 'status' && !/^(주|야|비|X)$/.test(groupDuty);
         cls = groupCellClass(groupDuty, groupOff);
@@ -7548,9 +7554,13 @@ function openGroupInfo(k, key) {
     var groupXi = null;
     try { var gMe = getCurrentUser(); if (gMe && String(mem.employeeId) === String(gMe.employeeId) && typeof xrGet === 'function') { var gx = xrGet('info', {})[key]; if (gx && xrNorm(gx.dia) === xrNorm(diaNo)) groupXi = gx; } } catch (e) {}
     if (!groupXi && groupPlan && groupPlan.xr) groupXi = groupPlan.xr;
-    if (groupXi) {
-      if (!start && groupXi.start) start = groupXi.start;
-      if (!end && groupXi.end) end = groupXi.end;
+    /* XROIS에서 가져온 그 날 그 다이아의 출근 · 퇴근은 무조건 XROIS 기준 (행로표로 계산한 시각보다 우선) */
+    if (groupXi && !groupXi.est) {
+      if (groupXi.start) start = groupXi.start;
+      if (groupXi.end) end = groupXi.end;
+    } else if (groupXi) {
+      if (!start && groupXi.start) { start = groupXi.start; groupStartEstimated = true; }
+      if (!end && groupXi.end) { end = groupXi.end; groupEndEstimated = true; }
     }
     if (!type && groupPlan && groupPlan.type) type = groupPlan.type;
     if (groupPlan) {
@@ -7573,8 +7583,9 @@ function openGroupInfo(k, key) {
     html += piRow('퇴근 시간', end ? end + (groupEndEstimated ? ' (예상)' : '') : '-');
     html += piRow('근무 시간', workDurationText(start, end));
     /* 근무표 상세정보와 동일하게 다이아의 열차번호를 표시하고 NXLogis 조회로 연결 */
-    var train1 = String(info.train1 || (meta && meta.train1) || (groupXi && (groupXi.t1 || (groupXi.trains || [])[0])) || (groupPlan && groupPlan.trains[0]) || '').trim();
-    var train2 = String(info.train2 || (meta && meta.train2) || (groupXi && (groupXi.t2 || (groupXi.trains || [])[1])) || (groupPlan && groupPlan.trains[1]) || '').trim();
+    var gxT1 = groupXi ? (groupXi.t1 || (groupXi.trains || [])[0] || '') : '', gxT2 = groupXi ? (groupXi.t2 || (groupXi.trains || [])[1] || '') : '';
+    var train1 = String(gxT1 || info.train1 || (meta && meta.train1) || (groupPlan && groupPlan.trains[0]) || '').trim();
+    var train2 = String((gxT1 ? gxT2 : '') || info.train2 || (meta && meta.train2) || (groupPlan && groupPlan.trains[1]) || '').trim();
     var train3 = String(info.train3 || (meta && meta.train3) || '').trim();
     var trainDateKey = infoFromNight && typeof prevKey !== 'undefined' ? prevKey : key;
     if ((type === '야' || infoFromNight) && (train2 || train3) && trainDateKey) {
@@ -18012,8 +18023,19 @@ function xrMyDays(months, cb) {
 
 /* 이 폰에 저장된 내 근무변경 기록 (자동으로 넣은 다음날 비번은 제외) */
 /* XROIS · 공유 행로표로 야간 다이아를 넣었을 때 다음 날 자동 비번: 사용자가 그 날을 직접 수정했으면 건드리지 않음 */
+/* 다음 날이 원래 X(근무 없음)면 야간 다음 날이어도 비번으로 바꾸지 않고 X 그대로 */
+function rsNextIsX(nextKey) {
+  /* 원래 근무 순서(사용자 수정 · 자동 비번 빼고)에서 그 날이 X인지 */
+  try {
+    var u = getCurrentUser(), myId = u.employeeId, raw = snapshot && snapshot.raw;
+    var mb = raw ? (raw.members || []).filter(function (x) { return x.employeeId === myId; })[0] : null;
+    if (mb && mb.seq && mb.anchor) { var bd = snapBaseDay(nextKey, mb.seq, mb.anchor, raw.dia || [], mb.name); return String(bd.type || '').toUpperCase() === 'X'; }
+    var ni = rsDayInfo(nextKey); return !!(ni && !ni.manual && (ni.label === 'X' || ni.type === 'X'));
+  } catch (e) { return false; }
+}
 function rsAutoNextOff(emp, nextKey) {
   if (typeof xrMyOverride === 'function' && xrMyOverride(emp, nextKey)) return;
+  if (rsNextIsX(nextKey)) return;
   snapUpsertOverride(emp, nextKey, 'auto-status', '', '비');
 }
 function xrMyOverride(emp, dateKey) {
@@ -18163,7 +18185,8 @@ function xrAskApply(dk) {
   var emp = getCurrentUser().employeeId, next = snapShiftKey(dk, 1), known = diaByNumber(c.to);
   var duty = o.duty === '야간' ? '야' : '주', credit = o.credit === '본 근무' ? '' : o.credit;
   removeAutoNextDayOff(emp, next);
-  snapUpsertOverride(emp, dk, 'combined', c.to, credit, '', '', duty);
+  var prevOv = xrMyOverride(emp, dk);   /* 누구랑 교환했는지는 다이아를 바꿔도 그대로 */
+  snapUpsertOverride(emp, dk, 'combined', c.to, credit, prevOv ? String(prevOv[5] || '') : '', prevOv ? String(prevOv[6] || '') : '', duty);
   try { tdSet(dk, known ? '' : c.to); } catch (e) {}
   if (duty === '야') rsAutoNextOff(emp, next);
   try { loadMyMonth(); } catch (e) {}
@@ -18206,19 +18229,22 @@ function xrApplyDiaRes(dk, dia, r, quiet) {
     t1 = cr.t1 || ''; t2 = cr.t2 || '';
     [cr.t1, cr.t2].forEach(function (t) { if (t && trains.indexOf(t) < 0) trains.push(t); });
   }
+  var est = false;
   if (rows.length) {
-    if (!start) start = rows[0].dep || rows[0].arr;
-    if (!end) end = rows[rows.length - 1].arr || rows[rows.length - 1].dep;
+    /* 당월승무근무표 · 승무근무표 현황에 출근/퇴근이 없을 때만: 승무다이아의 출근·퇴근 줄 → 없으면 첫·마지막 시각(예상) */
+    var rIn = rows.filter(function (x) { return /출근/.test(x.kind); })[0], rOut = rows.filter(function (x) { return /퇴근/.test(x.kind); }).slice(-1)[0];
+    if (!start) { if (rIn) start = rIn.dep || rIn.arr; else { start = rows[0].dep || rows[0].arr; est = true; } }
+    if (!end) { if (rOut) end = rOut.arr || rOut.dep; else { end = rows[rows.length - 1].arr || rows[rows.length - 1].dep; est = true; } }
     rows.forEach(function (x) { if (/운전/.test(x.kind) && x.train && x.train !== 'K' && trains.indexOf(x.train) < 0) trains.push(x.train); });
   }
   if (!t1) t1 = trains[0] || ''; if (!t2) t2 = trains[1] || '';
-  var info = xrGet('info', {}); info[dk] = { dia: dia, start: start, end: end, trains: trains, t1: t1, t2: t2 }; xrPut('info', info);
+  var info = xrGet('info', {}); info[dk] = { dia: dia, start: start, end: end, trains: trains, t1: t1, t2: t2, est: est }; xrPut('info', info);
   /* 그 날 승무원 (승무근무표 현황) */
   if (Array.isArray(r.crew)) { var ros = xrGet('roster', {}); ros[dk] = r.crew.map(function (x) { return { dia: xrNorm(x.dia), trains: x.trains || [], crew: x.crew || [] }; });   /* 승무원 찾기용 */ xrPut('roster', ros); var mt = xrGet('meta', {}); mt.rosterAt = stampNow(); xrPut('meta', mt); }
   /* 예상 행로표 저장 + 그 날에 넣기 (승무다이아 내역이 있을 때) */
   var type = rows.length ? rpGuessType(rows) : ((rpMin(end) != null && rpMin(start) != null && rpMin(end) < rpMin(start)) ? '야' : '주'), a = rpAll();
   /* 행로표 내역 + XROIS 출근·퇴근·열차번호를 함께 저장 → 근무그룹에서 다른 사람도 이 다이아 정보를 봄 (예상 행로표 공유) */
-  var xrPart = { start: start, end: end, t1: t1, t2: t2, date: dk };
+  var xrPart = { start: start, end: end, t1: t1, t2: t2, date: dk, est: est };
   if (rows.length) { a[dia] = { rows: rows, at: Date.now(), type: type, src: 'xrois', xr: xrPart }; rpSaveAll(a); rpSetDate(dk, dia); }
   else if (start || end || t1) { var keep = a[dia] && a[dia].rows ? a[dia].rows : []; a[dia] = { rows: keep, at: Date.now(), type: type, src: 'xrois', xr: xrPart }; rpSaveAll(a); rpSetDate(dk, dia); }
   /* 목록에 없는 야간 다이아면 다음 날 비번 */
