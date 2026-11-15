@@ -1207,6 +1207,10 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <input type="text" id="signup-name" placeholder="이름을 입력하세요" autocomplete="name" required>
     </div>
     <div class="input-group">
+      <label for="signup-team" class="ico-lab"><img class="lab-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무그룹" alt="" aria-hidden="true">조</label>
+      <select id="signup-team" class="signup-select"><option value="1종조">1종조</option><option value="디젤조">디젤조</option><option value="2종조">2종조</option><option value="부기관사조" selected>부기관사조</option><option value="지부조">지부조</option></select>
+    </div>
+    <div class="input-group">
       <label for="signup-code">인증번호</label>
       <div style="display:flex;gap:8px;align-items:stretch">
         <input type="password" id="signup-code" inputmode="numeric" maxlength="4" placeholder="4자리 인증번호" autocomplete="off" required style="flex:1;min-width:0">
@@ -1372,7 +1376,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <div id="vacation-section" class="page-view">
   <h1 class="screen-title"><span class="page-heading-icon" aria-hidden="true"><img class="heading-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="마이페이지" alt="" decoding="async"></span>마이페이지</h1>
   <div id="mypage-profile" class="mypage-profile"></div>
-  <div class="mp-sec" data-sec="join"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('join')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="입사직급" alt="" aria-hidden="true">입사일 · 직급 설정<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
+  <div class="mp-sec" data-sec="join"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('join')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="입사직급" alt="" aria-hidden="true">입사일 · 직급 · 조 설정<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
   <div class="mypage-box">
     <label class="mp-field"><span>입사일</span><input type="date" id="mp-join" onchange="saveMyProfileField()"></label>
     <div class="mp-field"><span>직급 · 호봉</span>
@@ -1380,6 +1384,9 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <select id="mp-grade" onchange="saveMyProfileField()"></select>
         <select id="mp-step" onchange="saveMyProfileField()"></select>
       </span>
+    </div>
+    <div class="mp-field"><span>조</span>
+      <span class="mp-selects"><select id="mp-team" onchange="saveMyTeam()"><option value="1종조">1종조</option><option value="디젤조">디젤조</option><option value="2종조">2종조</option><option value="부기관사조" selected>부기관사조</option><option value="지부조">지부조</option></select></span>
     </div>
     <div class="mp-note" style="margin-top:4px">※ 호봉은 매년 1월 1일에 자동으로 1호봉씩 올라갑니다.</div>
   </div>
@@ -8115,9 +8122,59 @@ function tenureText(joinDate) {
   var txt = (years > 0 ? years + '년 ' : '') + months + '개월';
   return txt + ' · ' + days.toLocaleString('ko-KR') + '일째';
 }
+/* ============ 조 (1종조 · 디젤조 · 2종조 · 부기관사조 · 지부조) ============
+   서버 members.crew_team · app_getteams(읽기) · app_setmyteam(내 조 바꾸기) */
+var RS_TEAMS = ['1종조', '디젤조', '2종조', '부기관사조', '지부조'];
+function teamKey() { return 'rs_team_' + (getCurrentUser().employeeId || ''); }
+function myTeam() { try { return LS.getItem(teamKey()) || ''; } catch (e) { return ''; } }
+function teamPut(t) { try { if (RS_TEAMS.indexOf(t) >= 0) LS.setItem(teamKey(), t); } catch (e) {} }
+var rsTeams = {};          /* 사번 → 조 (근무그룹 등에서 쓸 수 있게) */
+function teamLoad(cb) {
+  var u = getCurrentUser(); if (!u.token) { if (cb) cb(); return; }
+  api({ action: 'getteams', employeeId: u.employeeId, token: u.token }, function (r) {
+    if (r && r.success) { rsTeams = r.teams || {}; if (r.mine) teamPut(r.mine); }
+    if (cb) cb(r);
+  });
+}
+function teamSetRemote(team, cb) {
+  var u = getCurrentUser(); if (!u.token) return cb && cb(null);
+  api({ action: 'setmyteam', employeeId: u.employeeId, token: u.token, team: team }, function (r) { cb && cb(r); });
+}
+/* 로그인 직후: 가입할 때 고른 조가 남아 있으면 저장, 그다음 조 목록 읽기 */
+function teamAfterLogin() {
+  var u = getCurrentUser(), pk = 'rs_pending_team_' + u.employeeId, pend = '';
+  try { pend = LS.getItem(pk) || ''; } catch (e) {}
+  if (pend) {
+    teamSetRemote(pend, function (r) {
+      if (r && r.success) { try { LS.removeItem(pk); } catch (e) {} teamPut(pend); }
+      teamLoad(teamRenderMine);
+    });
+  } else teamLoad(teamRenderMine);
+}
+function teamRenderMine() {
+  var sel = $('mp-team'), t = myTeam() || '부기관사조';
+  if (sel && document.activeElement !== sel) sel.value = t;
+  try { renderMyPageProfile(); } catch (e) {}
+}
+function saveMyTeam() {
+  var sel = $('mp-team'); if (!sel) return;
+  var t = sel.value, before = myTeam() || '부기관사조';
+  if (t === before) return;
+  sel.disabled = true;
+  teamSetRemote(t, function (r) {
+    sel.disabled = false;
+    if (r && r.success) { teamPut(t); rsTeams[getCurrentUser().employeeId] = t; showToast(t + '로 바꿨어요.'); try { renderMyPageProfile(); } catch (e) {} }
+    else {
+      sel.value = before;
+      var m = (r && r.message) || '';
+      showToast(/function|does not exist|찾을 수/.test(m) || !m ? '서버에 조 분류 SQL을 먼저 실행해 주세요.' : m);
+    }
+  });
+}
 function myProfileBadge() {
   var pf = getMyProfile();
   var parts = [];
+  try { var tm = myTeam(); if (tm) parts.push(tm); } catch (e) {}
   if (pf.grade) parts.push(pf.grade + '급' + (pf.step ? ' ' + pf.step + '호봉' : ''));
   var tn = tenureText(pf.joinDate);
   if (tn && tn !== '입사 전') parts.push('근속 ' + tn);      /* 예: 근속 3년 7개월 · 1,341일째 */
@@ -8305,6 +8362,7 @@ function openMyPage() {
   switchSection('vacation-section');
   renderMyPageProfile();
   renderMyPageExtras();
+  try { teamRenderMine(); teamLoad(teamRenderMine); } catch (e) {}
   loadMeta(function () {
     renderMyPageProfile();
     renderMyPageExtras();
@@ -10295,6 +10353,7 @@ function doLogin(id, name, isAuto) {
     if ($('remember').checked) writeSavedLogin(id, name, true);
     else clearSavedLogin();
     setCurrentUser({ employeeId: r.employeeId, name: r.name, token: r.token });
+    try { teamAfterLogin(); } catch (e) {}
     nxStatus = {};
     nxLastFetch = 0;
     $('welcome-name').textContent = r.name;
@@ -10394,7 +10453,7 @@ function handleSignup(e) {
     return false;
   }
   // 사원번호가 회원 식별자이고, 로그인할 때 사원번호와 이름을 함께 확인합니다.
-  signupPending = { employeeId: empno, name: name };
+  signupPending = { employeeId: empno, name: name, team: ($('signup-team') && $('signup-team').value) || '부기관사조' };
   document.querySelectorAll('input[name="privacy-consent-choice"]').forEach(function (el) { el.checked = false; });
   $('privacy-consent-message').textContent = '';
   $('privacy-consent-panel').classList.add('active');
@@ -10440,6 +10499,8 @@ function submitPrivacyConsent() {
       return;
     }
     closePrivacyConsent();
+    /* 고른 조는 처음 로그인할 때 서버에 저장 (가입 단계에는 로그인 정보가 없어서) */
+    try { if (signupPending.team) LS.setItem('rs_pending_team_' + signupPending.employeeId, signupPending.team); } catch (e) {}
     signupPending = null;
     signupCodeVerified = false;
     $('signup-form').reset();
@@ -17404,6 +17465,9 @@ function setIconTheme(k) {
 function openIconPanel() { iconPanelRender(); document.getElementById('icon-panel').classList.add('active'); }
 function closeIconPanel() { document.getElementById('icon-panel').classList.remove('active'); }
 </script>
+<style id="team-css">
+.signup-select{width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:15px;background:#fff;color:#1b2b45;box-sizing:border-box;-webkit-appearance:none;appearance:none;background-image:linear-gradient(45deg,transparent 50%,#7a8799 50%),linear-gradient(135deg,#7a8799 50%,transparent 50%);background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat}
+</style>
 <style id="mid-alarm-css">
 .route-viewer{z-index:320}
 .brief-route{margin-top:10px}
