@@ -10461,13 +10461,33 @@ function renderDiaSelector() {
   var selRot = rotList();
   /* 근무패턴과 같이 20번째 항목의 3331 표시는 화면에서만 숨김 */
   var selHasSeq20 = selRot.some(function (x) { return String(x && x.seq || '').trim() === '20'; });
+  /* 근무 설정에는 1주일 중 가장 많이 적용되는 다이아로 보여줌 (예: 1종조 1번 → 월~금 12182)
+     나머지 요일에 바뀌는 다이아는 아래에 작게 (예: 토·일 12C82) */
+  var WK = ['일', '월', '화', '수', '목', '금', '토'];
+  selRot = selRot.map(function (it) {
+    var cnt = {}, byDia = {}, days = {};
+    for (var w = 0; w < 7; w++) {
+      var dk = getDateKey(2026, 10, 15 + w);            /* 2026-11-15(일) ~ 21(토): 요일 0~6 */
+      var x = applyWeekdayRule(it, dk, diaList || []) || it;
+      var d = String(x.dia || x.type || '');
+      cnt[d] = (cnt[d] || 0) + 1; byDia[d] = x; (days[d] = days[d] || []).push(w);
+    }
+    var baseKey = String(it.dia || it.type || ''), best = baseKey;
+    Object.keys(cnt).forEach(function (d) { if (cnt[d] > (cnt[best] || 0)) best = d; });
+    var pick = best === baseKey ? it : byDia[best];
+    var c = {}; for (var k in pick) if (Object.prototype.hasOwnProperty.call(pick, k)) c[k] = pick[k];
+    c.seq = it.seq;
+    var others = Object.keys(cnt).filter(function (d) { return d !== best; });
+    if (others.length) c.__otherNote = others.map(function (d) { return days[d].slice().sort(function (a, b) { return ((a + 6) % 7) - ((b + 6) % 7); }).map(function (w) { return WK[w]; }).join('·') + ' ' + d; }).join(' / ');
+    return c;
+  });
   selRot.forEach(function (it, selIdx) {
     var tone = toneOf(it.type);
     var lc = tone === 'day' ? ' l-day' : tone === 'bi' ? ' l-bi' : tone === 'off' ? ' l-off' : '';
     var selHide = (selHasSeq20 ? String(it.seq || '').trim() === '20' : selIdx === 19) ? { '3331': true } : null;
     var b = document.createElement('div');
     b.className = 'dia-item dia-name' + lc + (String(it.seq) === tempSeq ? ' selected' : '');
-    var currentRotation = rotList();
+    var currentRotation = selRot;   /* 1주일 중 가장 많은 다이아 기준 열차번호 */
     var trainLabels = diaTrainMarkup(it, currentRotation, currentRotation.findIndex(function (x) { return String(x.seq) === String(it.seq); }), selHide);
     /* 근무구분(주·야·비·휴) 대신 순서표의 다이아 이름으로: 비번은 '~', 휴무는 'S' */
     var selType = String(it.type || '').trim();
@@ -10475,7 +10495,8 @@ function renderDiaSelector() {
     if (selHide && selHide[selNumber.trim()]) selNumber = '';
     b.innerHTML = '<span class="dia-seq">' + esc(it.seq) + '</span>' +
                   '<span class="dia-number">' + esc(selNumber) + '</span>' +
-                  trainLabels;
+                  trainLabels +
+                  (it.__otherNote ? '<span class="dia-base-note">' + esc(it.__otherNote) + '</span>' : '');
     b.onclick = function () {
       tempSeq = String(it.seq);
       renderDiaSelector();
@@ -17684,6 +17705,8 @@ function openIconPanel() { iconPanelRender(); document.getElementById('icon-pane
 function closeIconPanel() { document.getElementById('icon-panel').classList.remove('active'); }
 </script>
 <style id="team-css">
+.dia-item .dia-base-note{display:block;font-size:9.5px;color:#b07a00;font-weight:700;margin-top:1px;white-space:nowrap}
+
 .swap-team-btn small.swap-team-mine{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;background:#e8f0fe;color:#1a73e8;font-size:11px;font-weight:700}
 .swap-team-btn.empty{opacity:.45}
 .swap-team-back{border:0;background:#eef3fb;color:#1a73e8;font:inherit;font-weight:700;font-size:12px;padding:3px 9px;border-radius:9px;margin-right:4px;cursor:pointer}
