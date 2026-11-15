@@ -2529,16 +2529,33 @@ function handleAuthExpired() {
   var m = document.getElementById('login-message');
   if (m) m.textContent = '로그인이 만료되었습니다. 다시 로그인해주세요.';
 }
+var boardTeamMissing = false;
 function rpcCall(params, timeoutMs, cb) {
+  /* app_teamboard가 아직 서버에 없으면(함수 없음) 한 번만 예전 app_board로 다시 */
+  if (BOARD_MAP[String(params.action || '')] && !boardTeamMissing && !params.__boardRetry) {
+    return rpcCallRaw(params, timeoutMs, function (r) {
+      if (r && !r.success && r.errorCode !== 'AUTH' && /app_teamboard|function|PGRST202|404/i.test(String(r.message || '') + String(r.errorCode || '') + String(r.code || ''))) {
+        boardTeamMissing = true;
+        var p2 = {}; for (var k in params) if (Object.prototype.hasOwnProperty.call(params, k)) p2[k] = params[k];
+        p2.__boardRetry = true;
+        return rpcCallRaw(p2, timeoutMs, cb);
+      }
+      cb(r);
+    });
+  }
+  return rpcCallRaw(params, timeoutMs, cb);
+}
+function rpcCallRaw(params, timeoutMs, cb) {
   var action = String(params.action || '');
   var p = {};
   for (var k in params) {
-    if (Object.prototype.hasOwnProperty.call(params, k) && k !== 'action') p[k] = params[k];
+    if (Object.prototype.hasOwnProperty.call(params, k) && k !== 'action' && k !== '__boardRetry') p[k] = params[k];
   }
   var fn;
   var board = BOARD_MAP[action];
   if (board) {
-    fn = 'app_board';
+    /* 조별 게시판: 다른 조 사람 글은 안 보임(관리자 글만). 서버에 조별 SQL이 없으면 예전 app_board */
+    fn = boardTeamMissing ? 'app_board' : 'app_teamboard';
     p.kind = board[0];
     p.op = board[1];
   } else {
@@ -2740,6 +2757,7 @@ function snapApply(owner, gen, r) {
   if (changed) onSnapshotUpdated();
   return true;
 }
+var snapTeamMissing = false;
 function snapVersionFor(owner) {
   return (snapshot && snapshot.owner === owner && snapshot.raw && snapshot.raw.version)
     ? String(snapshot.raw.version)
@@ -2763,7 +2781,16 @@ function refreshSnapshot(force, cb) {
   snapInflight = cb ? [cb] : [];
   var gen = snapGen;
   var owner = user.employeeId;
-  api({ action: 'getSnapshot', employeeId: owner, token: user.token, ver: snapVersionFor(owner) }, function (r) {
+  /* 조별 근무표: 내 조 사람 · 내 조 다이아만 (서버에 조별 SQL이 없으면 예전 방식으로) */
+  function snapFetch(cb2) {
+    if (snapTeamMissing) return api({ action: 'getSnapshot', employeeId: owner, token: user.token, ver: snapVersionFor(owner) }, cb2);
+    api({ action: 'getTeamSnapshot', employeeId: owner, token: user.token, ver: snapVersionFor(owner) }, function (r0) {
+      if (r0 && (r0.success || r0.errorCode === 'AUTH')) return cb2(r0);
+      snapTeamMissing = true;
+      api({ action: 'getSnapshot', employeeId: owner, token: user.token, ver: '' }, cb2);
+    });
+  }
+  snapFetch(function (r) {
     var list = snapInflight || [];
     snapInflight = null;
     var applied = snapApply(owner, gen, r);
@@ -2820,7 +2847,7 @@ function seqRuleDia(name, seq) {
     var r = seqRulesServer[i];
     if (String(r.name || '').trim() === nm && String(r.seq) === sq && r.dia) return String(r.dia).trim();
   }
-  if (SPECIAL_SEQ_USERS.indexOf(nm) >= 0 && SPECIAL_SEQ_DIA[sq]) return SPECIAL_SEQ_DIA[sq];
+  if (curTeam() === '부기관사조' && SPECIAL_SEQ_USERS.indexOf(nm) >= 0 && SPECIAL_SEQ_DIA[sq]) return SPECIAL_SEQ_DIA[sq];
   return '';
 }
 function loadSeqRules() {
@@ -2844,6 +2871,21 @@ var WEEKDAY_RULES = {
   '4':  [{ days: [6], dia: '12932' }, { days: [0], dia: '12B07' }],         // 12601 대용 (토 / 일)
   '14': [{ days: [4], dia: '12702' }]                                       // 12942 대용 (목)
 };
+/* 조별 요일 대용 다이아 (부기관사조는 위 WEEKDAY_RULES) */
+var TEAM_WEEKDAY_RULES = {
+  '디젤조': {
+    '1':  [{ days: [6, 0], dia: '12932' }],   // 12601 대용 (토·일)
+    '10': [{ days: [6, 0], dia: '12C81' }]    // 12181 대용 (토·일)
+  }
+};
+function curTeam() {
+  return (snapshot && snapshot.raw && snapshot.raw.team) || (typeof myTeam === 'function' && myTeam()) || '부기관사조';
+}
+function curWeekdayRules() {
+  var t = curTeam();
+  if (t === '부기관사조') return WEEKDAY_RULES;
+  return TEAM_WEEKDAY_RULES[t] || {};
+}
 function isExtraDia(it) {
   var n = parseInt(String(it.seq == null ? '' : it.seq).trim(), 10);
   return isNaN(n) || n < 1 || n > ROTATION_MAX_SEQ;
@@ -2908,7 +2950,7 @@ function findDiaIn(list, number) {
 }
 /* 순서표의 기본 다이아를 그 날짜의 요일에 맞는 다이아로 바꿈 */
 function applyWeekdayRule(it, dateKey, list) {
-  var rules = WEEKDAY_RULES[String(it.seq)];
+  var rules = curWeekdayRules()[String(it.seq)];
   if (!rules) return it;
   var wd = new Date(dateKeyToNum(dateKey)).getUTCDay();
   for (var i = 0; i < rules.length; i++) {
@@ -8146,7 +8188,7 @@ function teamAfterLogin() {
   try { pend = LS.getItem(pk) || ''; } catch (e) {}
   if (pend) {
     teamSetRemote(pend, function (r) {
-      if (r && r.success) { try { LS.removeItem(pk); } catch (e) {} teamPut(pend); }
+      if (r && r.success) { try { LS.removeItem(pk); } catch (e) {} teamPut(pend); try { refreshSnapshot(true); } catch (e) {} }
       teamLoad(teamRenderMine);
     });
   } else teamLoad(teamRenderMine);
@@ -8163,7 +8205,11 @@ function saveMyTeam() {
   sel.disabled = true;
   teamSetRemote(t, function (r) {
     sel.disabled = false;
-    if (r && r.success) { teamPut(t); rsTeams[getCurrentUser().employeeId] = t; showToast(t + '로 바꿨어요.'); try { renderMyPageProfile(); } catch (e) {} }
+    if (r && r.success) {
+      teamPut(t); rsTeams[getCurrentUser().employeeId] = t; showToast(t + '로 바꿨어요. 근무표·근무그룹을 ' + t + ' 기준으로 다시 불러와요.');
+      try { renderMyPageProfile(); } catch (e) {}
+      try { snapTeamMissing = false; groupData = null; myMonth = null; refreshSnapshot(true, function () { try { onSnapshotUpdated(); } catch (e) {} }); } catch (e) {}
+    }
     else {
       sel.value = before;
       var m = (r && r.message) || '';
@@ -8745,7 +8791,7 @@ function openPatternInfo(i) {
   html += row('출근 시간', start);
   html += row('퇴근 시간', end);
   html += row('근무 시간', dur);
-  var wRules = WEEKDAY_RULES[String(it.seq)];
+  var wRules = curWeekdayRules()[String(it.seq)];
   if (wRules && diaNo) {
     html += '<div class="pi-row" style="display:block"><span class="pi-k">근무표 요일별 적용 다이아</span></div>';
     var covered = [];
