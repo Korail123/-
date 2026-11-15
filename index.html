@@ -2883,6 +2883,8 @@ function snapEmptyDay() {
 /* 근무설정·근무패턴·순환 계산에는 쓰지 않고, 근무표에서만 나타나는 다이아 번호 */
 /* 근무설정·근무패턴·순환에는 1번부터 24번까지만 사용 (25~30번은 근무표 대용 다이아) */
 var ROTATION_MAX_SEQ = 24;
+/* 순환 길이: 부기관사조는 1~24번(25~30번은 대용 다이아), 다른 조는 순서표 길이 그대로 (2종조 36일 등) */
+function rotMaxSeq() { return (rsRulesTeamOverride || curTeam()) === '부기관사조' ? ROTATION_MAX_SEQ : 99; }
 /* 여자 사용자는 순서 16번이 12551(남자) 대신 12937(대기근무, 07:00~18:00)
    - 아래 목록은 기본값이며, Supabase seq_rules 표에 저장된 규칙이 있으면 그것도 함께 적용 */
 var SPECIAL_SEQ_USERS = ['민현주', '박유진', '워니', '이주원', '이보아', '임다빈'];
@@ -2893,13 +2895,24 @@ var DIA_FALLBACK = {
 };
 /* Supabase seq_rules 표의 규칙 [{ name, seq, dia }] (이 폰에 저장해 두고 로그인할 때 새로 받음) */
 var seqRulesServer = (function () { try { return JSON.parse(localStorage.getItem('seqRules') || '[]') || []; } catch (e) { return []; } })();
+/* 서버에서 받은 여자 순서 규칙 → 그 순서의 다이아 · 규칙이 없으면 '' · 서버 정보가 없으면 null */
+function rsFemaleRuleDia(nm, sq) {
+  var src = (rsRulesTeamOverride && typeof swapOther !== 'undefined' && swapOther && swapOther.team === rsRulesTeamOverride) ? swapOther
+    : (!rsRulesTeamOverride && snapshot && snapshot.raw) ? snapshot.raw : null;
+  if (!src || !src.femaleRules || !Array.isArray(src.females)) return null;
+  var isF = (src.members || []).some(function (m) { return String(m.name || '').trim() === nm && src.females.indexOf(String(m.employeeId)) >= 0; });
+  return isF && src.femaleRules[sq] ? String(src.femaleRules[sq]) : '';
+}
 function seqRuleDia(name, seq) {
   var nm = String(name || '').trim(), sq = String(seq);
   for (var i = 0; i < seqRulesServer.length; i++) {
     var r = seqRulesServer[i];
     if (String(r.name || '').trim() === nm && String(r.seq) === sq && r.dia) return String(r.dia).trim();
   }
-  if (curTeam() === '부기관사조' && SPECIAL_SEQ_USERS.indexOf(nm) >= 0 && SPECIAL_SEQ_DIA[sq]) return SPECIAL_SEQ_DIA[sq];
+  /* 여자 사용자 순서 대용: 서버(dia_female_rules · members.is_female)에서 받은 것 우선, 없으면 앱 안 명단 (부기관사조 16번 → 12937) */
+  var fr = rsFemaleRuleDia(nm, sq);
+  if (fr !== null) return fr;
+  if ((rsRulesTeamOverride || curTeam()) === '부기관사조' && SPECIAL_SEQ_USERS.indexOf(nm) >= 0 && SPECIAL_SEQ_DIA[sq]) return SPECIAL_SEQ_DIA[sq];
   return '';
 }
 function loadSeqRules() {
@@ -2925,6 +2938,17 @@ var WEEKDAY_RULES = {
 };
 /* 조별 요일 대용 다이아 (부기관사조는 위 WEEKDAY_RULES) */
 var TEAM_WEEKDAY_RULES = {
+  '2종조': {
+    '1':  [{ days: [0], dia: '12C82' }],      // 12182 대용 (일)
+    '2':  [{ days: [0], dia: '12942' }],      // 12305 대용 (일)
+    '3':  [{ days: [6, 0], dia: '12A06' }],   // 12006 대용 (토·일)
+    '20': [{ days: [6], dia: '12922' }],      // 12301 대용 (토)
+    '25': [{ days: [6, 0], dia: '12F93' }],   // 12293 대용 (토·일)
+    '28': [{ days: [0], dia: '12901' }]       // 12303 대용 (일)
+  },
+  '입환조': {
+    '1':  [{ days: [6], dia: '12931' }, { days: [0], dia: '12B07' }]   // 12603 대용 (토 / 일)
+  },
   '1종조': {
     '1':  [{ days: [6, 0], dia: '12C82' }],   // 12182 대용 (토·일)
     '2':  [{ days: [6], dia: '12902' }],      // 12404 대용 (토)
@@ -2941,13 +2965,16 @@ function curTeam() {
   return (snapshot && snapshot.raw && snapshot.raw.team) || (typeof myTeam === 'function' && myTeam()) || '부기관사조';
 }
 function curWeekdayRules() {
-  var t = curTeam();
+  /* 서버(dia_weekday_rules 표)에서 받은 요일 규칙이 있으면 그것을 우선 */
+  if (rsRulesTeamOverride) { if (swapOther && swapOther.team === rsRulesTeamOverride && swapOther.rules) return swapOther.rules; }
+  else if (snapshot && snapshot.raw && snapshot.raw.weekdayRules && typeof snapshot.raw.weekdayRules === 'object') return snapshot.raw.weekdayRules;
+  var t = rsRulesTeamOverride || curTeam();
   if (t === '부기관사조') return WEEKDAY_RULES;
   return TEAM_WEEKDAY_RULES[t] || {};
 }
 function isExtraDia(it) {
   var n = parseInt(String(it.seq == null ? '' : it.seq).trim(), 10);
-  return isNaN(n) || n < 1 || n > ROTATION_MAX_SEQ;
+  return isNaN(n) || n < 1 || n > rotMaxSeq();
 }
 function rotationOf(list) {
   var out = [];
@@ -2967,8 +2994,8 @@ function rotationOf(list) {
   out.sort(function (a, b) {
     var aSeq = parseInt(String(a && a.seq != null ? a.seq : ''), 10);
     var bSeq = parseInt(String(b && b.seq != null ? b.seq : ''), 10);
-    var aValid = !isNaN(aSeq) && aSeq >= 1 && aSeq <= ROTATION_MAX_SEQ && !seqSeen['a' + aSeq];
-    var bValid = !isNaN(bSeq) && bSeq >= 1 && bSeq <= ROTATION_MAX_SEQ && !seqSeen['b' + bSeq];
+    var aValid = !isNaN(aSeq) && aSeq >= 1 && aSeq <= rotMaxSeq() && !seqSeen['a' + aSeq];
+    var bValid = !isNaN(bSeq) && bSeq >= 1 && bSeq <= rotMaxSeq() && !seqSeen['b' + bSeq];
     if (aValid && bValid) return aSeq - bSeq;
     var ad = String(a && (a.dia || a.type) || '').trim().toUpperCase();
     var bd = String(b && (b.dia || b.type) || '').trim().toUpperCase();
@@ -7450,33 +7477,69 @@ function openGroupSwapSelector(mode) {
   swapSelectMode = mode === 'compare' ? 'compare' : 'swap';
   var cmp = swapSelectMode === 'compare';
   if ($('swap-select-title')) $('swap-select-title').textContent = cmp ? '누구와 비교할까요?' : '누구와 바꾸시겠습니까?';
-  if ($('swap-select-note')) $('swap-select-note').textContent = cmp ? '근무표를 비교할 그룹원을 선택해 주세요.' : '근무를 교환할 그룹원을 선택해 주세요.';
   if ($('swap-select-ico')) $('swap-select-ico').style.display = cmp ? 'none' : '';
   if (!snapshotUsable()) {
     showToast('근무표를 먼저 불러와 주세요.');
     return;
   }
-  var me = getCurrentUser();
-  var list = $('group-swap-user-list');
-  if (!list) return;
-  var members = (groupRows || []).filter(function (mem) {
-    return mem && String(mem.employeeId) !== String(me && me.employeeId);
-  }).slice().sort(function (a, b) {   /* 선택 팝업은 이름 가나다순 (근무그룹 표는 순서표 번호순) */
-    return String(a.name || a.employeeId).localeCompare(String(b.name || b.employeeId), 'ko');
-  });
-  swapSelectableMembers = members;
-  if (!members.length) {
-    list.innerHTML = '<div class="swap-note">선택할 수 있는 그룹원이 없습니다.</div>';
-  } else {
-    list.innerHTML = members.map(function (mem, index) {
-      var id = String(mem.employeeId || '');
-      var name = String(mem.name || id);
-      return '<button type="button" class="group-swap-user-btn" onclick="chooseGroupSwapTargetByIndex(' + index + ')"><span>' + esc(name) + '</span><span class="group-swap-user-id">' + esc(id) + '　›</span></button>';
-    }).join('');
-  }
   $('group-swap-select-panel').classList.add('active');
+  swapShowTeams();
+  try { teamLoad(function () { if ($('group-swap-select-panel').classList.contains('active') && swapSelStep === 'team') swapShowTeams(); }); } catch (e) {}
+}
+/* ① 조 고르기 → ② 그 조 사용자 고르기 */
+var swapSelStep = 'team', swapOther = null, rsRulesTeamOverride = '';
+function swapShowTeams() {
+  swapSelStep = 'team';
+  var cmp = swapSelectMode === 'compare', mine = curTeam();
+  if ($('swap-select-note')) $('swap-select-note').textContent = cmp ? '비교할 사람의 조를 먼저 골라주세요.' : '근무를 교환할 사람의 조를 먼저 골라주세요.';
+  var cnt = {}; Object.keys(rsTeams || {}).forEach(function (id) { var t = rsTeams[id] === '지' + '부조' ? '입환조' : rsTeams[id]; if (String(id) !== String(getCurrentUser().employeeId)) cnt[t] = (cnt[t] || 0) + 1; });
+  if (!Object.keys(rsTeams || {}).length) cnt[mine] = Math.max(0, (groupRows || []).length - 1);
+  var order = [mine].concat(RS_TEAMS.filter(function (t) { return t !== mine; }));
+  $('group-swap-user-list').innerHTML = order.map(function (t) {
+    var n = cnt[t] || 0;
+    return '<button type="button" class="group-swap-user-btn swap-team-btn' + (n ? '' : ' empty') + '" onclick="swapPickTeam(\'' + t + '\')"' + (n ? '' : ' disabled') + '>' +
+      '<span>' + esc(t) + (t === mine ? ' <small class="swap-team-mine">내 조</small>' : '') + '</span><span class="group-swap-user-id">' + n + '명　›</span></button>';
+  }).join('');
+}
+function swapPickTeam(team) {
+  var list = $('group-swap-user-list');
+  if (team === curTeam()) { swapOther = null; swapShowUsers(team, groupRows || []); return; }
+  list.innerHTML = '<div class="swap-note">' + esc(team) + ' 근무표를 불러오는 중...</div>';
+  var u = getCurrentUser();
+  api({ action: 'getTeamSnapshot', employeeId: u.employeeId, token: u.token, team: team }, function (r) {
+    if (swapSelStep !== 'team' || !$('group-swap-select-panel').classList.contains('active')) return;
+    if (!r || !r.success || !Array.isArray(r.members)) { list.innerHTML = '<div class="swap-note">' + esc((r && r.message) || '불러오지 못했어요.') + '</div>'; return; }
+    var ov = {};
+    (r.overrides || []).forEach(function (row) {
+      if (!row || row[9] === 'shadow' || row[8] === 'shadow') return;
+      var rType = String(row[2] == null ? '' : row[2]).trim(), rDia = row[3] == null ? '' : row[3], rStatus = row[4] == null ? '' : row[4];
+      if (rType === 'dia' && !rDia && rStatus) rType = 'status'; else if (rType === 'status' && !rStatus && rDia) rType = 'dia'; else if (!rType) rType = rDia ? 'dia' : (rStatus ? 'status' : '');
+      if (!rType) return;
+      ov[row[0] + '|' + String(row[1] || '').slice(0, 10)] = { type: rType, dia: rDia, status: rStatus, updatedAt: row[5], partnerId: row[6] || '', partnerName: row[7] || '', dutyStatus: row[8] || '' };
+    });
+    var dia = r.dia || []; try { fixDiaTypes(dia); rsKnownDiaRemember(team, dia); } catch (e) {}
+    swapOther = { team: team, members: r.members, dia: dia, ovMap: ov, rules: (r.weekdayRules && typeof r.weekdayRules === 'object') ? r.weekdayRules : null,
+                  femaleRules: r.femaleRules || null, females: Array.isArray(r.females) ? r.females.map(String) : null };
+    var rows = r.members.filter(function (m) { return String(m.employeeId) !== String(u.employeeId); });
+    swapShowUsers(team, rows);
+  });
+}
+function swapShowUsers(team, rows) {
+  swapSelStep = 'user';
+  var cmp = swapSelectMode === 'compare', me = getCurrentUser();
+  if ($('swap-select-note')) $('swap-select-note').innerHTML = '<button type="button" class="swap-team-back" onclick="swapShowTeams()">‹ 조 다시 고르기</button> <b>' + esc(team) + '</b> · ' + (cmp ? '비교할' : '교환할') + ' 사람을 골라주세요.';
+  var list = $('group-swap-user-list');
+  var members = (rows || []).filter(function (mem) { return mem && String(mem.employeeId) !== String(me && me.employeeId); })
+    .slice().sort(function (a, b) { return String(a.name || a.employeeId).localeCompare(String(b.name || b.employeeId), 'ko'); });
+  swapSelectableMembers = members;
+  if (!members.length) { list.innerHTML = '<div class="swap-note">이 조에 가입한 사람이 없습니다.</div>'; return; }
+  list.innerHTML = members.map(function (mem, index) {
+    var id = String(mem.employeeId || ''), name = String(mem.name || id);
+    return '<button type="button" class="group-swap-user-btn" onclick="chooseGroupSwapTargetByIndex(' + index + ')"><span>' + esc(name) + '</span><span class="group-swap-user-id">' + esc(id) + '　›</span></button>';
+  }).join('');
 }
 function closeGroupSwapSelector() {
+  swapSelStep = 'team';
   var panel = $('group-swap-select-panel');
   if (panel) panel.classList.remove('active');
 }
@@ -7662,6 +7725,17 @@ function swapMemberInfo(employeeId, key) {
   var members = snapshot.raw.members || [];
   var mb = null;
   for (var i = 0; i < members.length; i++) if (String(members[i].employeeId) === String(employeeId)) { mb = members[i]; break; }
+  if (!mb && swapOther) {
+    /* 다른 조 사람: 그 조의 다이아 · 요일 대용 규칙으로 계산 */
+    for (var j = 0; j < swapOther.members.length; j++) if (String(swapOther.members[j].employeeId) === String(employeeId)) { mb = swapOther.members[j]; break; }
+    if (!mb) return null;
+    var ovm = {}; for (var ok in swapOther.ovMap) ovm[ok] = swapOther.ovMap[ok];
+    /* 방금 교환해서 이 폰에 보관 중인 상대 기록이 있으면 그것을 우선 */
+    var pre = String(employeeId) + '|';
+    for (var sk in (snapshot.ovMap || {})) if (sk.indexOf(pre) === 0) ovm[sk] = snapshot.ovMap[sk];
+    rsRulesTeamOverride = swapOther.team;
+    try { return snapDayWithAuto(key, mb, swapOther.dia || [], ovm); } finally { rsRulesTeamOverride = ''; }
+  }
   if (!mb) return null;
   var ov = snapshot.ovMap ? snapshot.ovMap[employeeId + '|' + key] : null;
   return snapDayWithAuto(key, mb, snapshot.raw.dia || [], snapshot.ovMap || {});
@@ -17610,6 +17684,10 @@ function openIconPanel() { iconPanelRender(); document.getElementById('icon-pane
 function closeIconPanel() { document.getElementById('icon-panel').classList.remove('active'); }
 </script>
 <style id="team-css">
+.swap-team-btn small.swap-team-mine{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;background:#e8f0fe;color:#1a73e8;font-size:11px;font-weight:700}
+.swap-team-btn.empty{opacity:.45}
+.swap-team-back{border:0;background:#eef3fb;color:#1a73e8;font:inherit;font-weight:700;font-size:12px;padding:3px 9px;border-radius:9px;margin-right:4px;cursor:pointer}
+
 .signup-select{width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:15px;background:#fff;color:#1b2b45;box-sizing:border-box;-webkit-appearance:none;appearance:none;background-image:linear-gradient(45deg,transparent 50%,#7a8799 50%),linear-gradient(135deg,#7a8799 50%,transparent 50%);background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat}
 </style>
 <style id="mid-alarm-css">
