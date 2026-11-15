@@ -1297,7 +1297,15 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
     <div id="calendar-grid" class="sch-grid"></div>
   </div>
-  <div class="sch-tools"><button type="button" class="sch-png-btn sch-tool-sm" onclick="schSavePng()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>PNG 저장</button><button type="button" class="sch-png-btn sch-tool-sm" onclick="openMarkOrder()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h10M5 12h7M5 18h4M18 5v14m0 0l-3-3m3 3l3-3"/></svg>표시 순위</button></div>
+  <div class="sch-tools"><button type="button" class="sch-png-btn sch-tool-sm" onclick="schSavePng()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>PNG 저장</button><button type="button" class="sch-png-btn sch-tool-sm" onclick="openMarkOrder()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h10M5 12h7M5 18h4M18 5v14m0 0l-3-3m3 3l3-3"/></svg>표시 순위</button><button type="button" class="sch-png-btn sch-tool-sm" onclick="openLabelStyle()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h7M4 12h5M4 17h7M14 17l3-10 3 10M15.2 13.5h3.6"/></svg>표현 방식</button></div>
+  <div id="label-style-panel" class="dia-modal" onclick="if(event.target===this)closeLabelStyle()">
+    <div class="dia-dialog ns-dialog">
+      <div class="dia-dialog-title">근무 표현 방식</div>
+      <div class="ns-note" style="margin:0 2px 10px">근무표 달력 칸에 근무를 어떻게 적을지 골라요. 이 폰에만 저장돼요.</div>
+      <div id="label-style-list" class="ls-list"></div>
+      <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeLabelStyle()">닫기</button></div>
+    </div>
+  </div>
   <div id="mark-order-panel" class="dia-modal" onclick="if(event.target===this)closeMarkOrder()">
     <div class="dia-dialog ns-dialog">
       <div class="dia-dialog-title">달력 표시 순위</div>
@@ -4014,7 +4022,7 @@ function renderCalendar() {
       if (calendarDuty) {
         var tone = toneOf(calendarDuty);
         var cls = tone === 'day' ? ' t-day' : tone === 'bi' ? ' t-bi' : tone === 'off' || (info.overrideType === 'status' && !/^(주|야|비|X)$/.test(calendarDuty)) ? ' t-off' : '';
-        var shortDuty = rsDutyShort(calendarDuty);
+        var shortDuty = rsLabelStyled(rsDutyShort(calendarDuty));
         labelHtml = '<div class="cell-lbl' + cls + (shortDuty.length >= 2 ? ' rs-duty2' : '') + '">' + (info.manual ? '*' : '') + esc(shortDuty) + '</div>';
       }
     }
@@ -5173,6 +5181,35 @@ function schPngFallback(why) {
   /* 이 기기 브라우저가 화면을 그림으로 복사하지 못하면, 같은 내용을 직접 그려서 저장 */
   try { schSavePngDraw(); showToast('이 기기에서는 화면 그대로 저장이 안 돼서 근무표 모양으로 다시 만들어 저장해요. (' + why + ')'); }
   catch (e) { showToast('근무표 이미지를 만들지 못했어요. (' + why + ')'); }
+}
+/* ===== 근무 표현 방식: 주·야·비·휴 / 일근·박·가일·S (이 폰에만 저장) ===== */
+var RS_LABEL_STYLES = [
+  { k: 'basic', name: '주 · 야 · 비 · 휴', map: null },
+  { k: 'work',  name: '일근 · 박 · 가일 · S', map: { '주': '일근', '야': '박', '비': '가일', '휴': 'S' } }
+];
+function rsLabelStyleKey() { return 'rs_label_style_' + ((getCurrentUser() || {}).employeeId || ''); }
+function rsLabelStyle() { try { var v = localStorage.getItem(rsLabelStyleKey()); return v === 'work' ? 'work' : 'basic'; } catch (e) { return 'basic'; } }
+function rsLabelStyled(d) {
+  var st = RS_LABEL_STYLES.filter(function (x) { return x.k === rsLabelStyle(); })[0];
+  return st && st.map && st.map[d] ? st.map[d] : d;
+}
+function openLabelStyle() {
+  var cur = rsLabelStyle(), sample = ['주', '주', '야', '비', '휴', '휴'];
+  $('label-style-list').innerHTML = RS_LABEL_STYLES.map(function (st) {
+    var cells = sample.map(function (d) {
+      var t = st.map && st.map[d] ? st.map[d] : d, tone = toneOf(d);
+      return '<span class="ls-cell ' + (tone === 'day' ? 't-day' : tone === 'bi' ? 't-bi' : tone === 'off' ? 't-off' : 't-night') + (t.length >= 2 ? ' two' : '') + '">' + esc(t) + '</span>';
+    }).join('');
+    return '<button type="button" class="ls-opt' + (st.k === cur ? ' on' : '') + '" onclick="setLabelStyle(\'' + st.k + '\')"><b>' + esc(st.name) + '</b><span class="ls-row">' + cells + '</span><i class="ic-ck" aria-hidden="true"></i></button>';
+  }).join('') + '<div class="ns-note" style="margin:8px 2px 0">주간 = 일근 · 야간 = 박 · 비번 = 가일 · 휴무 = S (X · 휴가 등은 그대로)</div>';
+  $('label-style-panel').classList.add('active');
+}
+function closeLabelStyle() { $('label-style-panel').classList.remove('active'); }
+function setLabelStyle(k) {
+  try { if (k === 'basic') localStorage.removeItem(rsLabelStyleKey()); else localStorage.setItem(rsLabelStyleKey(), k); } catch (e) {}
+  openLabelStyle();
+  try { renderCalendar(); } catch (e) {}
+  showToast('근무 표현 방식을 바꿨어요.');
 }
 /* ===== 달력 칸 표시 순위: 누구랑 교환 · 대기충당 · 휴무충당 (기본: 교환 → 휴무충당 → 대기충당) ===== */
 var RS_MARK_DEF = ['swap', '휴무충당', '대기충당'];
@@ -17705,6 +17742,19 @@ function openIconPanel() { iconPanelRender(); document.getElementById('icon-pane
 function closeIconPanel() { document.getElementById('icon-panel').classList.remove('active'); }
 </script>
 <style id="team-css">
+.ls-list{display:flex;flex-direction:column;gap:8px}
+.ls-opt{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:12px 12px 12px;border:1.5px solid #e1e7ef;border-radius:14px;background:#fff;font:inherit;text-align:left;cursor:pointer}
+.ls-opt b{font-size:14px;color:#1b2b45}
+.ls-opt.on{border-color:#2f6fd6;background:#f2f7ff;box-shadow:0 0 0 3px rgba(47,111,214,.12)}
+.ls-row{display:flex;gap:4px;width:100%}
+.ls-cell{flex:1 1 0;display:flex;align-items:center;justify-content:center;height:34px;border-radius:8px;background:#f5f8fc;font-size:16px;font-weight:800;color:#1a73e8}
+.ls-cell.two{font-size:13px}
+.ls-cell.t-day{color:#e5a800}.ls-cell.t-bi{color:#1a73e8}.ls-cell.t-off{color:#e53935}.ls-cell.t-night{color:#1a73e8}
+.ls-opt .ic-ck{position:absolute;top:10px;right:10px;width:18px;height:18px;border-radius:50%;border:1.5px solid #c9d2de;box-sizing:border-box;background:#fff}
+.ls-opt.on .ic-ck{border-color:#2f6fd6;background:#2f6fd6}
+.ls-opt.on .ic-ck::after{content:"";position:absolute;left:5px;top:2px;width:4px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.sch-tools .sch-tool-sm{padding:8px 6px;font-size:12px;gap:4px}
+
 .dia-item .dia-base-note{display:block;font-size:9.5px;color:#b07a00;font-weight:700;margin-top:1px;white-space:nowrap}
 
 .swap-team-btn small.swap-team-mine{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;background:#e8f0fe;color:#1a73e8;font-size:11px;font-weight:700}
