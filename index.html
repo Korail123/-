@@ -2006,6 +2006,20 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <li>회원가입 후 로그인해요.</li>
       <li>환경설정 › <b>근무설정</b>에서 근무 패턴과 기준일을 정해요.</li>
       <li>메인화면 › <b>근무표</b>에서 이번 달 근무를 확인해요.</li></ol></details>
+    <details class="guide-sec" data-g="pwa_ios"><summary>아이폰: 바탕화면에 앱으로 추가</summary><div class="gd-stage" data-g="pwa_ios"></div><ol>
+      <li><b>사파리(Safari)</b>로 철도비서 주소(korail123.github.io/-/)를 열어요. (iOS 16.4 이상은 크롬에서도 돼요)</li>
+      <li>아래(또는 위) 주소창 옆 <b>공유 버튼(□↑)</b>을 눌러요.</li>
+      <li>목록을 아래로 내려 <b>홈 화면에 추가</b>를 눌러요.</li>
+      <li>이름이 '철도비서'인지 보고 오른쪽 위 <b>추가</b>를 눌러요.</li>
+      <li>바탕화면에 생긴 <b>철도비서 아이콘</b>으로 열면 주소창 없는 앱처럼 열려요. <b>출근 알람 · 운휴 알림 · 도중출무 알람은 이 아이콘으로 연 철도비서에서만</b> 받을 수 있어요.</li>
+      <li>※ 아이폰은 사파리와 홈 화면 앱의 저장 공간이 따로라서, 아이콘으로 처음 열면 <b>로그인과 CREW 연동 비밀번호를 한 번 더</b> 넣어야 해요.</li></ol></details>
+    <details class="guide-sec" data-g="pwa_and"><summary>갤럭시: 바탕화면에 앱으로 설치</summary><div class="gd-stage" data-g="pwa_and"></div><ol>
+      <li><b>크롬(Chrome)</b>으로 철도비서 주소(korail123.github.io/-/)를 열어요.</li>
+      <li>오른쪽 위 <b>⋮</b> 메뉴를 눌러요.</li>
+      <li><b>앱 설치</b>(또는 <b>홈 화면에 추가</b>)를 눌러요.</li>
+      <li>'철도비서' 설치 창에서 <b>설치</b>를 누르면 바탕화면에 아이콘이 생겨요.</li>
+      <li><b>삼성 인터넷</b>은 아래 <b>≡</b> 메뉴 › <b>현재 페이지 추가</b> › <b>홈 화면</b>을 누르면 돼요.</li>
+      <li>아이콘으로 열면 주소창 없는 앱처럼 열리고, 알림도 그대로 받아요. (배터리 › 백그라운드 사용 제한에서 브라우저를 <b>제한 없음</b>으로 해 두면 알림이 더 잘 와요)</li></ol></details>
     <details class="guide-sec" data-g="change"><summary>근무 변경 (XROIS 다이아 자동 반영)</summary><div class="gd-stage" data-g="change"></div><ol>
       <li><b>근무표</b>에서 바꿀 날짜를 <b>꾹(길게)</b> 눌러요.</li>
       <li>근무 변경 창에서 바꾼 사람 이름, <b>DIA 번호</b>(또는 대기충당 · 휴무충당), 휴가 · 근무 상태를 입력하고 <b>저장</b>해요.</li>
@@ -2497,11 +2511,13 @@ function mod(n, m) {
   return ((n % m) + m) % m;
 }
 /* 구분 글자 → 색상 클래스 (t-day 주 / 기본 파랑 야 / t-bi 비 / t-off 휴) */
+/* 근무 색 통일: 주간·일근 = 노랑 / 야간·비번·X·박·가일 = 파랑 / 휴무·S·휴가 = 빨강 */
 function toneOf(label) {
-  if (label === '주') return 'day';
-  if (label === '휴') return 'off';
-  if (label === '야' || label === '비' || label === 'X') return 'night';
-  return 'status';
+  var l = String(label == null ? '' : label).replace(/^\*+/, '').trim();
+  if (/^(주|주간|일근)$/.test(l)) return 'day';
+  if (/^(휴|휴무|S)$/i.test(l)) return 'off';
+  if (/^(야|야간|비|비번|X|박|가일)$/i.test(l)) return 'night';
+  return 'status';                       /* 휴가 · 연차 등 → 빨강 */
 }
 /* ============ 서버 통신 (Supabase) ============ */
 /* ───────── [A] 서버 통신 (Supabase RPC) — api / postApi 대체 ───────── */
@@ -4257,6 +4273,18 @@ function rsWidgetMonth(y, m, cb) {
    - 위젯 연결을 끄면 서버의 주소와 근무 요약을 지움 */
 /* ===== 철도비서 가이드 애니메이션: 항목마다 작은 휴대폰 화면 + 손가락이 눌러 보이는 장면을 차례로 재생 ===== */
 var GD_SCENES = {
+  pwa_ios: [
+    { cap: '① 사파리에서 공유 버튼(□↑)', tap: [50, 92], sel: '.gd-pwa-share', html: 'PWA_IOS1' },
+    { cap: '② 홈 화면에 추가', tap: [50, 70], sel: '.gd-sheet .hl', html: 'PWA_IOS2' },
+    { cap: '③ 오른쪽 위 [추가]', tap: [86, 12], sel: '.gd-pwa-add', html: 'PWA_IOS3' },
+    { cap: '④ 바탕화면 철도비서 아이콘으로 열기', tap: [30, 30], sel: '.gd-pwa-me', html: 'PWA_HOME' }
+  ],
+  pwa_and: [
+    { cap: '① 크롬 오른쪽 위 ⋮ 메뉴', tap: [90, 8], sel: '.gd-pwa-more', html: 'PWA_AND1' },
+    { cap: '② 앱 설치 (홈 화면에 추가)', tap: [70, 50], sel: '.gd-pwa-menu .hl', html: 'PWA_AND2' },
+    { cap: '③ [설치]', tap: [75, 62], sel: '.gd-pwa-dlg .hl', html: 'PWA_AND3' },
+    { cap: '④ 바탕화면 철도비서 아이콘으로 열기', tap: [30, 30], sel: '.gd-pwa-me', html: 'PWA_HOME' }
+  ],
   start: [
     { cap: '① 사번 · 비밀번호로 로그인', tap: [50, 78], html:
       '<div class="gd-top">철도비서</div><div class="gd-in">사번</div><div class="gd-in">비밀번호</div><div class="gd-btn">로그인</div>' },
@@ -4362,7 +4390,19 @@ function gdSetList(spec) {
   return h + '</div>';
 }
 var GD_THEME_LIST = [['basic', '기본'], ['cute', '귀여운 열차'], ['char', '철도'], ['pet', '강아지/고양이'], ['quokka', '쿼카/레서판다']];
+function gdPwaIco() { var l = document.querySelector('link[rel="apple-touch-icon"]'); return l ? l.href : ''; }
+function gdPwaPage() {
+  return '<div class="gd-top">철도비서</div><div class="gd-icos gd-pwa-icos">' + ['근무표', '근무그룹', '근무패턴', '휴가관리'].map(function (n) {
+    return '<i><img src="' + gdIco(n, 'basic') + '" alt=""><span>' + n + '</span></i>'; }).join('') + '</div>';
+}
 function gdScreenHtml(sc) {
+  if (sc.html === 'PWA_IOS1') return gdPwaPage() + '<div class="gd-pwa-sbar"><span class="gd-pwa-url">korail123.github.io</span></div><div class="gd-pwa-tool"><i>‹</i><i>›</i><b class="gd-pwa-share hl">□↑</b><i>▢</i><i>❐</i></div>';
+  if (sc.html === 'PWA_IOS2') return gdPwaPage() + '<div class="gd-sheet gd-pwa-sheet"><div class="gd-pwa-shead"><img src="' + gdPwaIco() + '" alt=""><span><b>철도비서</b><small>korail123.github.io</small></span></div><i>복사</i><i>읽기 목록에 추가</i><i class="hl">홈 화면에 추가 ⊞</i></div>';
+  if (sc.html === 'PWA_IOS3') return '<div class="gd-pwa-nav"><span>취소</span><b>홈 화면에 추가</b><span class="gd-pwa-add hl">추가</span></div><div class="gd-pwa-card"><img src="' + gdPwaIco() + '" alt=""><div><div class="gd-in">철도비서</div><small>korail123.github.io/-/</small></div></div><div class="gd-pt">홈 화면에 아이콘이 생기고, 앱처럼 열려요.</div>';
+  if (sc.html === 'PWA_AND1') return '<div class="gd-pwa-cbar"><span class="gd-pwa-url">korail123.github.io/-/</span><b class="gd-pwa-more hl">⋮</b></div>' + gdPwaPage();
+  if (sc.html === 'PWA_AND2') return '<div class="gd-pwa-cbar"><span class="gd-pwa-url">korail123.github.io/-/</span><b class="gd-pwa-more">⋮</b></div>' + gdPwaPage() + '<div class="gd-pwa-menu"><i>새 탭</i><i>북마크</i><i>방문 기록</i><i class="hl">앱 설치</i><i>설정</i></div>';
+  if (sc.html === 'PWA_AND3') return gdPwaPage() + '<div class="gd-pwa-dim"></div><div class="gd-pwa-dlg"><div class="gd-pwa-shead"><img src="' + gdPwaIco() + '" alt=""><span><b>앱을 설치할까요?</b><small>철도비서 · korail123.github.io</small></span></div><div class="gd-pwa-btns"><span>취소</span><span class="hl">설치</span></div></div>';
+  if (sc.html === 'PWA_HOME') return '<div class="gd-home"><div class="gd-pwa-grid"><i class="gd-pwa-me"><img src="' + gdPwaIco() + '" alt=""><span>철도비서</span></i><i><b></b><span>전화</span></i><i><b></b><span>카메라</span></i><i><b></b><span>설정</span></i><i><b></b><span>메시지</span></i><i><b></b><span>사진</span></i></div><div class="gd-toast">앱처럼 열려요</div></div>';
   if (/^SET:/.test(sc.html)) return gdSetList(sc.html.slice(4));
   if (sc.html === 'MP_LIST') return '<div class="gd-top">마이페이지</div><div class="gd-set"><em>내 정보</em><i>이름 · 사번</i><i>근무 통계</i><em>연동</em><i class="hl">CREW(XROIS) 연동</i><i>백업 · 동기화</i></div>';
   if (sc.html === 'XR_DETAIL' || sc.html === 'XR_CREW') {
@@ -8478,8 +8518,8 @@ function renderMyStats() {
   var leaveTxt = Object.keys(st.leaveKinds).map(function (k) { return k + ' ' + st.leaveKinds[k]; }).join(' · ');
   box.innerHTML =
     '<div class="mp-month">' + st.y + '년 ' + (st.m + 1) + '월</div>' +
-    '<div class="mp-chips">' + chip('주간', st.day, 'c-day') + chip('야간', st.night, 'c-night') + chip('비번', st.off, 'c-off') +
-      chip('휴무', st.rest, 'c-rest') + chip('휴가', st.leave, 'c-leave') + '</div>' +
+    '<div class="mp-chips">' + chip(rsLabelStyle() === 'work' ? '일근' : '주간', st.day, 'c-day') + chip(rsLabelStyle() === 'work' ? '박' : '야간', st.night, 'c-night') + chip(rsLabelStyle() === 'work' ? '가일' : '비번', st.off, 'c-off') +
+      chip(rsLabelStyle() === 'work' ? 'S' : '휴무', st.rest, 'c-rest') + chip('휴가', st.leave, 'c-leave') + '</div>' +
     '<div class="mp-row"><span>총 근무시간</span><b>' + h + '시간' + (mm ? ' ' + mm + '분' : '') + '</b></div>' +
     '<div class="mp-row"><span>근무 일수</span><b>' + (st.day + st.night) + '일</b></div>' +
     '<div class="mp-row"><span>근무교환</span><b>' + st.swaps + '회</b></div>' +
@@ -17742,6 +17782,38 @@ function openIconPanel() { iconPanelRender(); document.getElementById('icon-pane
 function closeIconPanel() { document.getElementById('icon-panel').classList.remove('active'); }
 </script>
 <style id="team-css">
+.gd-pwa-icos{margin-top:6px}
+.gd-pwa-sheet{position:absolute;left:6px;right:6px;bottom:8px;background:#fff;border-radius:14px;padding:9px;box-shadow:0 -4px 14px rgba(0,0,0,.12);animation:gdUp .4s ease both}
+.gd-pwa-sheet i{display:block;font-style:normal;font-weight:700;padding:7px 8px;border:1px solid #e1e7f1;border-radius:8px;margin-bottom:5px}
+.gd-pwa-sbar{position:absolute;left:8px;right:8px;bottom:34px;height:20px;border-radius:10px;background:#e9edf4;display:flex;align-items:center;justify-content:center}
+.gd-pwa-url{font-size:8.5px;color:#55627a;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gd-pwa-tool{position:absolute;left:0;right:0;bottom:6px;display:flex;justify-content:space-around;align-items:center;font-style:normal}
+.gd-pwa-tool i{font-style:normal;color:#2f6fd6;font-size:13px}
+.gd-pwa-tool b{font-size:11px;color:#2f6fd6;padding:2px 4px;border-radius:6px}
+.gd-pwa-shead{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.gd-pwa-shead img{width:26px;height:26px;border-radius:7px}
+.gd-pwa-shead span{display:flex;flex-direction:column;line-height:1.25}
+.gd-pwa-shead small{color:#7a879c;font-size:8px}
+.gd-pwa-nav{display:flex;justify-content:space-between;align-items:center;font-size:9.5px;padding:2px 0 10px;border-bottom:1px solid #e3e8f0;margin-bottom:10px}
+.gd-pwa-nav span{color:#2f6fd6;font-weight:700;padding:2px 5px;border-radius:6px}
+.gd-pwa-card{display:flex;gap:8px;align-items:center;background:#fff;border-radius:10px;padding:8px;margin-bottom:8px}
+.gd-pwa-card img{width:38px;height:38px;border-radius:9px}
+.gd-pwa-card small{color:#7a879c;font-size:8px}
+.gd-pwa-card .gd-in{margin:0 0 3px}
+.gd-pwa-cbar{display:flex;align-items:center;gap:6px;margin:-2px 0 8px}
+.gd-pwa-cbar .gd-pwa-url{flex:1;background:#e9edf4;border-radius:10px;padding:4px 8px}
+.gd-pwa-cbar b{font-size:14px;color:#3c4a62;padding:0 4px;border-radius:6px}
+.gd-pwa-menu{position:absolute;right:8px;top:30px;width:96px;background:#fff;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.18);padding:4px;animation:gdUp .35s ease both}
+.gd-pwa-menu i{display:block;font-style:normal;font-weight:600;padding:6px 7px;border-radius:7px}
+.gd-pwa-dim{position:absolute;inset:0;background:rgba(10,20,40,.35)}
+.gd-pwa-dlg{position:absolute;left:10px;right:10px;top:34%;background:#fff;border-radius:12px;padding:10px;animation:gdUp .35s ease both}
+.gd-pwa-btns{display:flex;justify-content:flex-end;gap:12px;font-weight:800;color:#2f6fd6}
+.gd-pwa-btns span{padding:3px 7px;border-radius:7px}
+.gd-pwa-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 6px;margin-top:8px}
+.gd-pwa-grid i{display:flex;flex-direction:column;align-items:center;gap:3px;font-style:normal;color:#fff;font-size:8px;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.3)}
+.gd-pwa-grid img,.gd-pwa-grid b{width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.75);display:block}
+.gd-pwa-grid .gd-pwa-me{border-radius:10px;padding:2px}
+
 .ls-list{display:flex;flex-direction:column;gap:8px}
 .ls-opt{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:12px 12px 12px;border:1.5px solid #e1e7ef;border-radius:14px;background:#fff;font:inherit;text-align:left;cursor:pointer}
 .ls-opt b{font-size:14px;color:#1b2b45}
@@ -19326,6 +19398,7 @@ function statsDayLabel(key) {
   if (t === '비번') t = '비';
   if (t === '휴무') t = '휴';
   var c = t === '주' ? 'l-d' : t === '야' ? 'l-n' : t === '비' ? 'l-o' : t === '휴' ? 'l-r' : t === 'X' ? 'l-x' : 'l-v';
+  if (typeof rsLabelStyled === 'function') t = rsLabelStyled(t);          /* 근무표 '표현 방식'과 같게 (일근 · 박 · 가일 · S) */
   return { t: t.length > 3 ? t.slice(0, 3) : t, c: c };
 }
 function schWeekRender() {
@@ -19776,5 +19849,24 @@ document.addEventListener('visibilitychange', function () { if (document.visibil
 html.ui-dark .ar-row{background:#1f242b!important;border-color:#2c323b!important}
 </style>
 <script>(function(){var a=document.querySelector('#pp-compose-scene .pc-tank:not(.t2)'),b=document.querySelector('#pp-compose-scene .pc-tank.t2');if(a&&b)b.src=a.src;})();</script>
+<style id="duty-color-unify">
+/* 근무 색 통일 (모든 화면): 주간·일근 노랑 / 야간·비번·X·박·가일 파랑 / 휴무·S·휴가 빨강 */
+:root{--duty-day:#e5a800;--duty-night:#1a73e8;--duty-off:#e53935}
+.t-day,.l-day,.duty-day,.cell-lbl.t-day{color:var(--duty-day)!important}
+.t-bi,.l-bi,.t-night,.duty-night,.cell-lbl.t-bi{color:var(--duty-night)!important}
+.t-off,.l-off,.t-status,.duty-off,.cell-lbl.t-off,.cell-lbl.t-status{color:var(--duty-off)!important}
+#stats-section .sc-l.l-d{color:var(--duty-day)!important}
+#stats-section .sc-l.l-n,#stats-section .sc-l.l-o,#stats-section .sc-l.l-x{color:var(--duty-night)!important}
+#stats-section .sc-l.l-r,#stats-section .sc-l.l-v,#stats-section .sc-l.l-cr{color:var(--duty-off)!important}
+.mp-chip.c-day b{color:var(--duty-day)!important}
+.mp-chip.c-night b,.mp-chip.c-off b{color:var(--duty-night)!important}
+.mp-chip.c-rest b,.mp-chip.c-leave b{color:var(--duty-off)!important}
+.group-table td.g-day{color:var(--duty-day)!important}
+.group-table td.g-night,.group-table td.g-bi{color:var(--duty-night)!important}
+.group-table td.g-off,.group-table td.g-status,.group-table td.g-leave{color:var(--duty-off)!important}
+.pl-day{color:var(--duty-day)!important}.pl-night,.pl-bi{color:var(--duty-night)!important}.pl-off,.pl-status{color:var(--duty-off)!important}
+.dia-item.l-day .dia-number{color:var(--duty-day)!important}.dia-item.l-bi .dia-number{color:var(--duty-night)!important}.dia-item.l-off .dia-number{color:var(--duty-off)!important}
+.dd-dia.t-day{color:var(--duty-day)!important}.dd-dia.t-bi{color:var(--duty-night)!important}.dd-dia.t-off{color:var(--duty-off)!important}
+</style>
 </body>
 </html>
