@@ -1208,7 +1208,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
     <div class="input-group">
       <label for="signup-team" class="ico-lab"><img class="lab-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무그룹" alt="" aria-hidden="true">조</label>
-      <select id="signup-team" class="signup-select"><option value="1종조">1종조</option><option value="디젤조">디젤조</option><option value="2종조">2종조</option><option value="부기관사조" selected>부기관사조</option><option value="지부조">지부조</option></select>
+      <select id="signup-team" class="signup-select"><option value="1종조">1종조</option><option value="디젤조">디젤조</option><option value="2종조">2종조</option><option value="부기관사조" selected>부기관사조</option><option value="입환조">입환조</option></select>
     </div>
     <div class="input-group">
       <label for="signup-code">인증번호</label>
@@ -1386,7 +1386,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       </span>
     </div>
     <div class="mp-field"><span>조</span>
-      <span class="mp-selects"><select id="mp-team" onchange="saveMyTeam()"><option value="1종조">1종조</option><option value="디젤조">디젤조</option><option value="2종조">2종조</option><option value="부기관사조" selected>부기관사조</option><option value="지부조">지부조</option></select></span>
+      <span class="mp-selects"><select id="mp-team" onchange="saveMyTeam()"><option value="1종조">1종조</option><option value="디젤조">디젤조</option><option value="2종조">2종조</option><option value="부기관사조" selected>부기관사조</option><option value="입환조">입환조</option></select></span>
     </div>
     <div class="mp-note" style="margin-top:4px">※ 호봉은 매년 1월 1일에 자동으로 1호봉씩 올라갑니다.</div>
   </div>
@@ -2647,7 +2647,59 @@ function buildSnapIndex() {
   if (snapshot.raw && snapshot.raw.dia && snapshot.raw.dia.length) {
     fixDiaTypes(snapshot.raw.dia);
     diaList = snapshot.raw.dia;
+    try { rsKnownDiaRemember(snapshot.raw.team || '부기관사조', snapshot.raw.dia); } catch (e) {}
   }
+}
+/* 조를 바꿔도 지난 근무의 출퇴근·열차가 보이도록, 지금까지 받은 조별 다이아를 이 폰에 기억 ('조|다이아' → 정보) */
+var rsKnownDiaCache = null;
+function rsKnownDiaKey() { return 'rs_dia_known_' + ((getCurrentUser() || {}).employeeId || ''); }
+function rsKnownDiaAll() {
+  if (rsKnownDiaCache) return rsKnownDiaCache;
+  try { rsKnownDiaCache = JSON.parse(LS.getItem(rsKnownDiaKey()) || '{}') || {}; } catch (e) { rsKnownDiaCache = {}; }
+  return rsKnownDiaCache;
+}
+function rsKnownDiaRemember(team, list) {
+  var all = rsKnownDiaAll(), changed = false;
+  (list || []).forEach(function (it) {
+    var d = String(it && it.dia || '').trim().toUpperCase(); if (!d) return;
+    var k = team + '|' + d, v = { dia: d, type: String(it.type || ''), start: String(it.start || ''), end: String(it.end || ''), train1: String(it.train1 || ''), train2: String(it.train2 || ''), train3: String(it.train3 || '') };
+    if (JSON.stringify(all[k]) !== JSON.stringify(v)) { all[k] = v; changed = true; }
+  });
+  if (changed) try { LS.setItem(rsKnownDiaKey(), JSON.stringify(all)); } catch (e) {}
+}
+function rsKnownDiaGet(team, dia) {
+  var d = String(dia || '').trim().toUpperCase(); if (!d) return null;
+  var all = rsKnownDiaAll(), v = team ? all[team + '|' + d] : null;
+  if (!v) for (var k in all) if (k.split('|')[1] === d) { v = all[k]; break; }
+  if (!v) return null;
+  var c = {}; for (var kk in v) c[kk] = v[kk]; return c;
+}
+/* 내 조 바뀐 기록 [{from:'YYYY-MM-DD', team, prev}] → 그 날짜에 내가 어느 조였는지 */
+function rsTeamHistKey() { return 'rs_team_hist_' + ((getCurrentUser() || {}).employeeId || ''); }
+function rsTeamHist() { try { return JSON.parse(LS.getItem(rsTeamHistKey()) || '[]') || []; } catch (e) { return []; } }
+function rsTeamHistAdd(from, team, prev) {
+  var h = rsTeamHist().filter(function (x) { return x.from < from; });
+  h.push({ from: from, team: team, prev: prev });
+  try { LS.setItem(rsTeamHistKey(), JSON.stringify(h)); } catch (e) {}
+}
+function rsTeamAt(dateKey) {
+  var h = rsTeamHist(); if (!h.length) return curTeam();
+  var t = h[0].prev || '부기관사조';
+  for (var i = 0; i < h.length; i++) if (dateKey >= h[i].from) t = h[i].team;
+  return t;
+}
+/* 내 지난 날짜의 다이아: 그때 조의 다이아 정보를 먼저 (같은 번호라도 조마다 시간이 다를 수 있음) */
+function rsPastDia(dateKey, name, dia) {
+  try {
+    if (String(name || '') !== String((getCurrentUser() || {}).name || '')) return null;
+    var t = rsTeamAt(dateKey);
+    return t !== curTeam() ? rsKnownDiaGet(t, dia) : null;
+  } catch (e) { return null; }
+}
+/* 고정된 지난 근무 'status' 칸: '고정:주' 또는 '고정:주@부기관사조' */
+function rsFrozenParse(st) {
+  var m = String(st || '').match(/^고정:?([^@]*)(?:@(.+))?$/);
+  return m ? { type: m[1] || '', team: m[2] || '' } : null;
 }
 function persistSnapshot() {
   try {
@@ -2873,6 +2925,13 @@ var WEEKDAY_RULES = {
 };
 /* 조별 요일 대용 다이아 (부기관사조는 위 WEEKDAY_RULES) */
 var TEAM_WEEKDAY_RULES = {
+  '1종조': {
+    '1':  [{ days: [6, 0], dia: '12C82' }],   // 12182 대용 (토·일)
+    '2':  [{ days: [6], dia: '12902' }],      // 12404 대용 (토)
+    '9':  [{ days: [5, 6], dia: '12A05' }],   // 12005 대용 (금·토)
+    '13': [{ days: [6, 0], dia: '12F92' }],   // 12292 대용 (토·일)
+    '22': [{ days: [6, 0], dia: '12C81' }]    // 12181 대용 (토·일)
+  },
   '디젤조': {
     '1':  [{ days: [6, 0], dia: '12932' }],   // 12601 대용 (토·일)
     '10': [{ days: [6, 0], dia: '12C81' }]    // 12181 대용 (토·일)
@@ -2995,7 +3054,10 @@ function snapBuildDay(dateKey, seq, anchor, dia, ov, name) {
           autoDia = dia[ai]; break;
         }
       }
-      var frozenType = /^고정/.test(String(ov.status || '')) ? String(ov.status).replace(/^고정:?/, '') : null;
+      var fz = rsFrozenParse(ov.status), frozenType = fz ? fz.type : null;
+      /* 다른 조일 때 고정한 날이면 그 조의 다이아 정보로 (같은 번호라도 조마다 시간이 다를 수 있음) */
+      if (fz && fz.team && fz.team !== curTeam()) { var kd = rsKnownDiaGet(fz.team, ov.dia); if (kd) autoDia = kd; }
+      if (!autoDia && fz) autoDia = rsKnownDiaGet('', ov.dia);
       if (autoDia) {
         d = {};
         for (var ak in autoDia) if (Object.prototype.hasOwnProperty.call(autoDia, ak)) d[ak] = autoDia[ak];
@@ -3026,6 +3088,9 @@ function snapBuildDay(dateKey, seq, anchor, dia, ov, name) {
           if (String(dia[ci].dia || '').trim().toUpperCase() === String(ov.dia || '').trim().toUpperCase()) { combinedFound = dia[ci]; break; }
         }
       }
+      var pastC = ov.dia ? rsPastDia(dateKey, name, ov.dia) : null;
+      if (pastC) combinedFound = pastC;
+      if (!combinedFound && ov.dia) combinedFound = rsKnownDiaGet('', ov.dia);
       if (combinedFound) {
         d = {};
         for (var ck in combinedFound) if (Object.prototype.hasOwnProperty.call(combinedFound, ck)) d[ck] = combinedFound[ck];
@@ -3048,6 +3113,9 @@ function snapBuildDay(dateKey, seq, anchor, dia, ov, name) {
       for (var i = 0; i < dia.length; i++) {
         if (String(dia[i].dia || '').trim().toUpperCase() === String(ov.dia || '').trim().toUpperCase()) { found = dia[i]; break; }
       }
+      var pastD = rsPastDia(dateKey, name, ov.dia);
+      if (pastD) found = pastD;
+      if (!found) found = rsKnownDiaGet('', ov.dia);
       if (found) {
         d = {};
         for (var k in found) {
@@ -8164,11 +8232,11 @@ function tenureText(joinDate) {
   var txt = (years > 0 ? years + '년 ' : '') + months + '개월';
   return txt + ' · ' + days.toLocaleString('ko-KR') + '일째';
 }
-/* ============ 조 (1종조 · 디젤조 · 2종조 · 부기관사조 · 지부조) ============
+/* ============ 조 (1종조 · 디젤조 · 2종조 · 부기관사조 · 입환조) ============
    서버 members.crew_team · app_getteams(읽기) · app_setmyteam(내 조 바꾸기) */
-var RS_TEAMS = ['1종조', '디젤조', '2종조', '부기관사조', '지부조'];
+var RS_TEAMS = ['1종조', '디젤조', '2종조', '부기관사조', '입환조'];
 function teamKey() { return 'rs_team_' + (getCurrentUser().employeeId || ''); }
-function myTeam() { try { return LS.getItem(teamKey()) || ''; } catch (e) { return ''; } }
+function myTeam() { try { var t = LS.getItem(teamKey()) || ''; return t === '지' + '부조' ? '입환조' : t; } catch (e) { return ''; } }
 function teamPut(t) { try { if (RS_TEAMS.indexOf(t) >= 0) LS.setItem(teamKey(), t); } catch (e) {} }
 var rsTeams = {};          /* 사번 → 조 (근무그룹 등에서 쓸 수 있게) */
 function teamLoad(cb) {
@@ -8198,17 +8266,40 @@ function teamRenderMine() {
   if (sel && document.activeElement !== sel) sel.value = t;
   try { renderMyPageProfile(); } catch (e) {}
 }
+/* 조를 바꾼 뒤: 그 조의 근무 순서표에서 오늘 근무 고르기 */
+function teamOpenSeqPicker(team) {
+  if (curTeam() !== team) { showToast(team + ' 근무표를 아직 받지 못했어요. 환경설정 › 근무설정에서 순서를 골라주세요.'); return; }
+  openDiaSelector();
+  tempSeq = '';
+  renderDiaSelector();
+  var w = $('dia-warning');
+  if (w) {
+    w.style.color = '#1a73e8'; w.style.whiteSpace = 'normal'; w.style.wordBreak = 'keep-all'; w.style.lineHeight = '1.45'; w.style.whiteSpace = 'pre-line';
+    w.textContent = rotList().length
+      ? team + ' 근무 순서표예요. 오늘 근무를 골라주세요.\n(오늘부터 근무표가 바뀌고, 지난 근무는 그대로예요)'
+      : '아직 ' + team + ' 다이아가 등록되지 않았어요. 관리자에게 알려주세요.';
+  }
+}
 function saveMyTeam() {
   var sel = $('mp-team'); if (!sel) return;
   var t = sel.value, before = myTeam() || '부기관사조';
   if (t === before) return;
+  if (!confirm(t + '로 바꿀까요?\n\n· 오늘 전까지의 근무는 지금(' + before + ') 그대로 남아요.\n· 바꾼 뒤 ' + t + ' 근무 순서표에서 오늘 근무를 고르면, 오늘부터 근무표가 바뀌어요.')) { sel.value = before; return; }
   sel.disabled = true;
   teamSetRemote(t, function (r) {
     sel.disabled = false;
     if (r && r.success) {
       teamPut(t); rsTeams[getCurrentUser().employeeId] = t; showToast(t + '로 바꿨어요. 근무표·근무그룹을 ' + t + ' 기준으로 다시 불러와요.');
       try { renderMyPageProfile(); } catch (e) {}
-      try { snapTeamMissing = false; groupData = null; myMonth = null; refreshSnapshot(true, function () { try { onSnapshotUpdated(); } catch (e) {} }); } catch (e) {}
+      /* 지난 근무 고정(2026-06-01 ~ 어제, 바꾸기 전 조 기준) → 새 조 근무표 받기 → 새 조 순서표 팝업 */
+      try { var tk = todayKST(), tdk = getDateKey(tk.y, tk.m, tk.d); rsTeamHistAdd(tdk, t, before); rsFreezePast(getCurrentUser().employeeId, tdk, '', { all: true, team: before, backup: true }); } catch (e) {}
+      try {
+        snapTeamMissing = false; groupData = null; myMonth = null;
+        refreshSnapshot(true, function () {
+          try { onSnapshotUpdated(); } catch (e) {}
+          teamOpenSeqPicker(t);
+        });
+      } catch (e) {}
     }
     else {
       sel.value = before;
@@ -10276,6 +10367,7 @@ function openDiaSelector() {
   var idx = patternIndexFor(getDateKey(t.y, t.m, t.d));
   tempSeq = idx >= 0 ? String(rotList()[idx].seq) : '';
   $('dia-warning').textContent = '';
+  $('dia-warning').style.color = ''; $('dia-warning').style.whiteSpace = '';
   renderDiaSelector();
   if (panel) panel.classList.add('active');
   if (!rotList().length) {
@@ -10303,7 +10395,9 @@ function renderDiaSelector() {
     b.className = 'dia-item dia-name' + lc + (String(it.seq) === tempSeq ? ' selected' : '');
     var currentRotation = rotList();
     var trainLabels = diaTrainMarkup(it, currentRotation, currentRotation.findIndex(function (x) { return String(x.seq) === String(it.seq); }), selHide);
-    var selNumber = String(it.dia || it.type || '-');
+    /* 근무구분(주·야·비·휴) 대신 순서표의 다이아 이름으로: 비번은 '~', 휴무는 'S' */
+    var selType = String(it.type || '').trim();
+    var selNumber = String(it.dia || (selType === '비' || selType === '비번' ? '~' : selType === '휴' || selType === '휴무' ? 'S' : selType) || '-');
     if (selHide && selHide[selNumber.trim()]) selNumber = '';
     b.innerHTML = '<span class="dia-seq">' + esc(it.seq) + '</span>' +
                   '<span class="dia-number">' + esc(selNumber) + '</span>' +
@@ -10319,7 +10413,8 @@ function closeDiaSelector() {
   var panel = $('dia-panel');
   if (panel) panel.classList.remove('active');
 }
-function rsFreezePast(empId, todayKey, newSeq) {
+function rsFreezePast(empId, todayKey, newSeq, opt) {
+  opt = opt || {};
   var loc = ensureLocal(empId);
   var oSeq = loc.seq || (mySettings && mySettings.seq) || '', oAnc = loc.anchor || (mySettings && mySettings.anchor) || '';
   if (!oSeq || !oAnc) return 0;                       /* 처음 설정하는 사람은 고정할 지난 근무 없음 */
@@ -10333,13 +10428,16 @@ function rsFreezePast(empId, todayKey, newSeq) {
     if (!have[k]) {
       var b = snapBaseDay(k, oSeq, oAnc, list, name);
       var ty = String(b.type || '').trim();
-      var nb = snapBaseDay(k, newSeq, todayKey, list, name);   /* 새 설정으로도 같은 근무인 날은 고정할 필요 없음 */
-      var same = String(nb.dia || '') === String(b.dia || '') && String(nb.type || '').trim() === ty;
-      if (!same && (ty || b.dia)) { loc.overrides.push([k, 'auto-dia', String(b.dia || ''), '고정:' + ty, stamp, '', '', '']); n++; }
+      var same = false;
+      if (!opt.all) {                                           /* 새 설정으로도 같은 근무인 날은 고정할 필요 없음 */
+        var nb = snapBaseDay(k, newSeq, todayKey, list, name);
+        same = String(nb.dia || '') === String(b.dia || '') && String(nb.type || '').trim() === ty;
+      }
+      if (!same && (ty || b.dia)) { loc.overrides.push([k, 'auto-dia', String(b.dia || ''), '고정:' + ty + (opt.team ? '@' + opt.team : ''), stamp, '', '', '']); n++; }
     }
     k = snapShiftKey(k, 1);
   }
-  if (n) writeLocal(empId, loc);
+  if (n) { if (opt.backup) saveLocalChange(empId, loc); else writeLocal(empId, loc); }
   return n;
 }
 function saveSelectedDia() {
