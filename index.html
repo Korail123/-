@@ -18306,9 +18306,11 @@ html body #main-container > #main-section.page-view.active > .menu-grid > button
     if (!force && TW.data && TW.src === src && Date.now() - TW.at < 15 * 60000) { draw(); return; }
     if (TW.busy) return;
     TW.busy = true;
+    /* 아직 날씨가 없으면 날씨 자리에 신호기 로딩 */
+    if (!TW.data) { var wl = document.getElementById('top-wx'); if (wl) { wl.innerHTML = '<i class="rs-sig" aria-hidden="true"><b></b><b></b><b></b></i><span class="tw-txt"><b class="tw-ld">날씨</b></span>'; wl.setAttribute('aria-label', '날씨 불러오는 중'); wl.hidden = false; } }
     var getLoc = (src === 'gps' && typeof briefGetLocation === 'function') ? briefGetLocation : function (cb) { cb(BRIEF_CR_LOC, 'fixed'); };
     getLoc(function (loc) {
-      if (!loc) { TW.busy = false; return; }
+      if (!loc) { TW.busy = false; draw(); return; }
       briefFetchWeather(loc, function (w) {
         TW.busy = false;
         if (!w) { draw(); return; }
@@ -21204,6 +21206,63 @@ function xrStampRouteTimes() {
     } catch (e) {}
     return r;
   };
+})();
+</script>
+<style id="rs-signal-loading">
+/* 로딩 신호기: 정지(빨강) → 주의(노랑) → 진행(초록) 반복. 글자 크기(em)에 맞춰 커지고 작아짐 */
+.rs-sig{display:inline-flex;flex-direction:column;align-items:center;justify-content:space-between;width:.62em;height:1.45em;padding:.13em 0;box-sizing:border-box;border-radius:.32em;background:#1f2733;vertical-align:middle;margin-right:.42em;flex:none;font-style:normal}
+.rs-ld{display:inline-flex;align-items:center;max-width:100%}
+.rs-ld > .rs-sig{margin-right:.45em}
+.rs-sig b{display:block;width:.34em;height:.34em;border-radius:50%;background:#3a4452}
+.rs-sig b:nth-child(1){animation:rsSigR 1.8s infinite}
+.rs-sig b:nth-child(2){animation:rsSigY 1.8s infinite}
+.rs-sig b:nth-child(3){animation:rsSigG 1.8s infinite}
+@keyframes rsSigR{0%,30%{background:#ff4d4f;box-shadow:0 0 .25em #ff4d4f}34%,100%{background:#3a4452;box-shadow:none}}
+@keyframes rsSigY{0%,33%{background:#3a4452;box-shadow:none}36%,62%{background:#ffc53d;box-shadow:0 0 .25em #ffc53d}66%,100%{background:#3a4452;box-shadow:none}}
+@keyframes rsSigG{0%,65%{background:#3a4452;box-shadow:none}68%,98%{background:#2fd06b;box-shadow:0 0 .25em #2fd06b}100%{background:#3a4452;box-shadow:none}}
+@media (prefers-reduced-motion:reduce){.rs-sig b{animation-duration:3.6s}}
+#main-container > .top-bar #top-wx .rs-sig{font-size:15px;margin-right:5px}
+#main-container > .top-bar #top-wx .tw-ld{font-weight:500!important;color:#8a96a8!important}
+</style>
+<script id="rs-signal-loading-script">
+/* '불러오는 중 · 가져오는 중 · 확인 중 · 조회 중 · 계산 중' 같은 로딩 문구 앞에 신호기를 자동으로 붙임 (글자 크기에 맞춰) */
+(function () {
+  var RX = /(불러오는|가져오는|확인하는|조회하는|계산하는|읽는|만드는)\s*중|(확인|조회|계산|로딩)\s*중/;
+  var SIG = '<i class="rs-sig" aria-hidden="true"><b></b><b></b><b></b></i>';
+  var SKIP = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, INPUT: 1, SELECT: 1, OPTION: 1, SVG: 1, CODE: 1 };
+  function own(el) { var t = ''; for (var n = el.firstChild; n; n = n.nextSibling) if (n.nodeType === 3) t += n.nodeValue; return t; }
+  function deco(el) {
+    if (!el || el.nodeType !== 1 || SKIP[el.tagName] || el.closest('.gd-stage,.rs-sig')) return;
+    if (el.classList.contains('rs-ld') || el.querySelector(':scope > .rs-ld, :scope > .rs-sig')) return;
+    if (el.childElementCount) return;                       /* 글자만 있는 칸에만 */
+    var t = own(el);
+    if (!t || t.length > 80 || !RX.test(t)) return;
+    /* 글자를 [신호기 + 글자] 한 줄 묶음으로 감싸서 가운데 정렬 (부모가 flex · grid여도 한 줄) */
+    var w = document.createElement('span'); w.className = 'rs-ld';
+    w.innerHTML = SIG.replace('rs-sig"', 'rs-sig auto"');
+    while (el.firstChild) w.appendChild(el.firstChild);
+    el.appendChild(w);
+  }
+  function scan(root) {
+    if (!root || root.nodeType !== 1) { if (root && root.nodeType === 3 && root.parentElement) deco(root.parentElement); return; }
+    deco(root);
+    var list = root.querySelectorAll('div,span,p,small,em,b,strong,li,td,button,label,h3,h4');
+    if (list.length > 400) return;
+    for (var i = 0; i < list.length; i++) deco(list[i]);
+  }
+  var q = [], pending = false;
+  function flush() { pending = false; var a = q; q = []; for (var i = 0; i < a.length; i++) scan(a[i]); }
+  function start() {
+    scan(document.body);
+    new MutationObserver(function (ms) {
+      ms.forEach(function (m) {
+        if (m.type === 'characterData') q.push(m.target);
+        else { q.push(m.target); for (var i = 0; i < m.addedNodes.length; i++) q.push(m.addedNodes[i]); }
+      });
+      if (!pending) { pending = true; requestAnimationFrame(flush); }
+    }).observe(document.body, { childList: true, subtree: true, characterData: true });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
 </script>
 </body>
