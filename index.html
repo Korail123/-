@@ -1317,8 +1317,21 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div id="cb-title" class="sch-title" onclick="cbToday()" style="cursor:pointer" title="누르면 오늘"></div>
     <button type="button" class="sch-nav" onclick="cbMove(1)" aria-label="다음날">▶</button>
   </div>
+  <div class="cb-find">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+    <input id="cb-find-in" type="search" maxlength="6" placeholder="동료 이름 (예: 홍길동)" autocomplete="off" enterkeyhint="search" onkeydown="if(event.key==='Enter')cbFind()">
+    <button type="button" onclick="cbFind()">동료찾기</button>
+  </div>
   <div id="cb-status" class="cb-status"></div>
   <div id="cb-list" class="cb-list"></div>
+</div>
+<div id="cb-find-panel" class="dia-modal" style="z-index:404" onclick="if(event.target===this)cbFindClose()">
+  <div class="dia-dialog ns-dialog cbf-dialog">
+    <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="승무근무표" alt="" aria-hidden="true"><span id="cbf-title">동료찾기</span></div>
+    <div id="cbf-sub" class="cbf-sub"></div>
+    <div id="cbf-out" class="cbf-out"></div>
+    <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="cbFindClose()">닫기</button></div>
+  </div>
 </div>
 <div id="schedule-section" class="page-view">
   <h1 class="screen-title"><span class="page-heading-icon" aria-hidden="true"><img class="heading-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무표" alt="" decoding="async"></span>근무표</h1>
@@ -2156,7 +2169,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="dia-dialog ns-dialog dst-dialog">
     <div class="dst-head">
       <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="편승열차조회" alt="" aria-hidden="true">편승열차 조회</div>
-      <div class="dst-head-btns"><button type="button" id="dst-save" class="dst-save" onclick="dstSaveToggle()" aria-label="메인화면에 저장"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z"/></svg><span>저장</span></button>
+      <div class="dst-head-btns"><button type="button" id="dst-save" class="dst-save" onclick="dstSaveToggle()" aria-label="메인화면에 고정"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3.5h6l-.8 6.2 3.3 3.3H6.5l3.3-3.3z"/><path d="M12 13v7.5"/></svg><span>고정</span></button>
       <button type="button" class="dst-refresh" onclick="dstQuery()" aria-label="새로고침"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4.5h-4.5"/></svg></button></div>
     </div>
     <div id="dst-dests" class="dst-dests"></div>
@@ -12602,28 +12615,27 @@ function dstXferOne(t, x, i, cls) {
     + (x.estimated ? '<span class="x-info">갈아탈 열차 시각은 예상이에요</span>' : '<span class="x-info">' + dstEsc(x.terminus || '') + '행 ' + dstEsc(x.depart || '') + ' 출발' + (x.waitMin != null ? ' · 대기 ' + x.waitMin + '분' : '') + '</span>') + '</div>';
 }
 function dstXferStations(t) { return dstXfers(t).map(function (x) { return x.station; }).join(' · '); }
-/* 경로도: 출발 → (환승역) → 도착을 노선 색 선으로 잇고 지나는 역을 함께 보여줌 */
+/* 경로도: 출발 → (환승역) → 도착을 노선 색 선으로 잇고, 구간마다 타는 시간만 간단히 */
+function dstHmMin(a, b) { var m1 = /^(\d{1,2}):(\d{2})/.exec(a || ''), m2 = /^(\d{1,2}):(\d{2})/.exec(b || ''); if (!m1 || !m2) return null; var d = ((+m2[1]) * 60 + (+m2[2]) - (+m1[1]) * 60 - (+m1[2]) + 1440) % 1440; return d > 300 ? null : d; }
 function dstRouteHtml(f, d) {
   var R = f && f.route; if (!R || !R.length) return '';
   var xs = dstXfers(f), ln = function (x) { return String(x || '').replace(/\s*\(.*\)$/, ''); };
   var h = '<div class="dst-rt">';
   R.forEach(function (g, i) {
-    var lc = dstEsc(g.color || '#667085'), x = i > 0 ? xs[i - 1] : null;
-    var meta = g.estimated ? '갈아탈 열차 시각은 예상이에요'
-      : (g.terminus ? dstEsc(g.terminus) + '행 ' : '') + (g.depart ? dstEsc(g.depart) + ' 출발' : '') + (x && x.waitMin != null ? ' · 대기 ' + x.waitMin + '분' : '');
+    var lc = dstEsc(g.color || '#667085'), x = i > 0 ? xs[i - 1] : null, prev = i > 0 ? R[i - 1] : null;
+    var meta = '';
+    if (i > 0 && prev && prev.arrive) meta += dstEsc(prev.arrive) + ' 도착 → ';
+    meta += g.estimated ? '갈아탈 열차 시각은 예상이에요' : (g.terminus ? dstEsc(g.terminus) + '행 ' : '') + (g.depart ? '<b>' + dstEsc(g.depart) + '</b> 출발' : '') + (x && x.waitMin != null ? ' · 대기 ' + x.waitMin + '분' : '');
+    var door = x && x.fastDoor ? '<span class="rt-door">빠른환승 ' + dstEsc(x.fastDoor) + '</span>' : (i === 0 && f.fastDoor ? '<span class="rt-door">빠른환승 ' + dstEsc(f.fastDoor) + '</span>' : '');
     h += '<div class="rt-n" style="--lc:' + lc + '"><i class="rt-d ' + (i ? 'x' : 's') + '"></i><div class="rt-tx">'
-      + '<span class="rt-st"><b>' + dstEsc(g.from) + '</b><em class="rt-tag' + (i ? ' x' : '') + '">' + (i ? '환승' : '출발') + '</em><i class="dst-chip sm" style="--lc:' + lc + '">' + dstEsc(ln(g.line)) + '</i></span>'
-      + (meta ? '<span class="rt-meta">' + meta + '</span>' : '') + '</div></div>';
-    var st = (g.stations || []).slice(1, -1), n = st.length, list;
-    if (!n) list = '바로 다음 역';
-    else if (n <= 5) list = st.map(dstEsc).join(' · ');
-    else list = '<span class="short">' + dstEsc(st[0]) + ' · ' + dstEsc(st[1]) + ' ··· ' + dstEsc(st[n - 1]) + ' <u>모두 보기</u></span><span class="full">' + st.map(dstEsc).join(' · ') + '</span>';
-    h += '<div class="rt-s" style="--lc:' + lc + '"><div class="rt-mid' + (n > 5 ? ' more' : '') + '"' + (n > 5 ? ' onclick="this.classList.toggle(\'open\')"' : '') + '>'
-      + '<span class="rt-cnt">' + (n + 1) + '개 역' + (g.arrive ? ' · ' + dstEsc(g.to) + ' ' + dstEsc(g.arrive) + ' 도착' : '') + '</span>' + list + '</div></div>';
+      + '<span class="rt-st"><b>' + dstEsc(g.from) + '</b><em class="rt-tag' + (i ? ' x' : '') + '">' + (i ? '환승' : '출발') + '</em><i class="dst-chip sm" style="--lc:' + lc + '">' + dstEsc(ln(g.line)) + '</i>' + door + '</span>'
+      + '<span class="rt-meta">' + meta + '</span></div></div>';
+    var mins = dstHmMin(g.depart, g.arrive);
+    h += '<div class="rt-s" style="--lc:' + lc + '"><span class="rt-ride">' + (mins != null ? mins + '분' : '') + '</span></div>';
   });
   var last = R[R.length - 1];
   h += '<div class="rt-n end"><i class="rt-d e"></i><div class="rt-tx"><span class="rt-st"><b>' + dstEsc(d.dest) + '</b><em class="rt-tag end">도착</em></span>'
-    + '<span class="rt-meta">' + dstEsc(f.destArrive || last.arrive || '--:--') + ' 도착 예정</span></div></div></div>';
+    + '<span class="rt-meta">' + (f.rideEstimated ? '약 ' : '') + '<b>' + dstEsc(f.destArrive || last.arrive || '--:--') + '</b> 도착' + (f.rideEstimated ? ' 예상' : '') + '</span></div></div></div>';
   return h;
 }
 function dstDraw() {
@@ -12643,7 +12655,7 @@ function dstDraw() {
       + '<div class="dst-hero-top"><i class="dst-chip">' + dstEsc(dstLine(f)) + '</i><b>' + dstEsc(f.terminus || '?') + '행</b>' + (f.express ? '<em class="dst-tag exp">급행</em>' : '') + (f.delaySec >= 60 ? '<em class="dst-tag late">' + Math.round(f.delaySec / 60) + '분 지연</em>' : '') + '</div>'
       + '<div class="dst-hero-mid"><span class="dst-hero-eta">' + etaHtml + '</span><span class="dst-hero-arr"><small>' + dstEsc(d.dest) + ' 도착' + (f.rideEstimated ? ' 예상' : '') + '</small><b>' + (f.rideEstimated ? '<em class="dst-approx">약</em>' : '') + dstEsc(f.destArrive || '--:--') + '</b></span></div>'
       + (f.route && f.route.length ? dstRouteHtml(f, d) : (isX ? dstXferHtml(f, 'dst-hero-x') : ''))
-      + '<div class="dst-hero-now">' + dstEsc(String(f.now || '').replace(/^\S+열차\s*/, '')) + (fr != null ? ' · 총 ' + fr + '분' : '') + (f.stops ? ' · ' + f.stops + '개 역' : '') + '</div></div>';
+      + '<div class="dst-hero-now">' + dstEsc(String(f.now || '').replace(/^\S+열차\s*/, '')) + (fr != null ? ' · 총 ' + fr + '분' : '') + '</div></div>';
     if (isX && f.transfer) { var fx = dstXfers(f); html = '<div class="dst-xbadge">' + (fx.length === 1
       ? '환승 1회 · ' + dstEsc(fx[0].station) + '에서 ' + dstEsc(String(fx[0].line || '').replace(/\s*\(.*\)$/, '')) + '으로 갈아타요'
       : '최소 환승 ' + fx.length + '회 · ' + fx.map(function (x) { return dstEsc(x.station); }).join(' → ') + '에서 갈아타요') + '</div>' + html; }
@@ -12671,13 +12683,13 @@ function dstDraw() {
 /* ---- 메인화면 편승열차 (저장하면 환영 카드 아래에 다음 열차를 애니메이션으로) ---- */
 var dstPinData = null, dstPinErr = '', dstPinBusy = false;
 function dstPinned() { try { return localStorage.getItem('dstPin') === '1'; } catch (e) { return false; } }
-function dstPinBtn() { var b = document.getElementById('dst-save'); if (!b) return; var on = dstPinned(); b.classList.toggle('on', on); b.querySelector('span').textContent = on ? '저장됨' : '저장'; }
+function dstPinBtn() { var b = document.getElementById('dst-save'); if (!b) return; var on = dstPinned(); b.classList.toggle('on', on); b.querySelector('span').textContent = on ? '고정됨' : '고정'; }
 function dstSaveToggle() {
   var on = !dstPinned();
   try { if (on) localStorage.setItem('dstPin', '1'); else localStorage.removeItem('dstPin'); } catch (e) {}
   dstPinBtn();
   if (on && dstLast && dstLast.dest === dstCfg().dest) dstPinData = dstLast;
-  if (typeof showToast === 'function') showToast(on ? '메인화면에 편승열차를 보여줄게요' : '메인화면에서 편승열차를 뺐어요');
+  if (typeof showToast === 'function') showToast(on ? '메인화면에 편승열차를 고정했어요' : '메인화면 고정을 풀었어요');
   dstPinLoop(true);
 }
 function dstMainVisible() { var m = document.getElementById('main-section'); return !!(m && m.offsetParent !== null) && !document.hidden; }
@@ -17496,7 +17508,10 @@ height: calc(90px + env(safe-area-inset-bottom));
 #dst-panel .rt-tag.x{background:#fff4e5;color:#b54708}
 #dst-panel .rt-tag.end{background:#fdeceb;color:#d92d20}
 #dst-panel .rt-meta{display:block;margin-top:1px;font-size:11.5px;font-weight:700;color:#536279}
-#dst-panel .rt-s{margin:0 0 0 5px;padding:5px 0 8px 16px;border-left:4px solid var(--lc);min-height:16px}
+#dst-panel .rt-s{margin:0 0 0 5px;padding:3px 0 5px 16px;border-left:4px solid var(--lc);min-height:14px}
+#dst-panel .rt-ride{font-size:11px;font-weight:800;color:#8a94a6}
+#dst-panel .rt-meta b{color:#1b2b45}
+#dst-panel .rt-door{padding:1px 7px;border-radius:6px;background:#e7f6ec;color:#067647;font-size:10.5px;font-weight:800}
 #dst-panel .rt-n:not(.end){padding-bottom:2px}
 #dst-panel .rt-n:not(.end)::before{content:"";position:absolute;left:5px;top:10px;bottom:0;width:4px;background:var(--lc)}
 #dst-panel .rt-n.end .rt-d{margin-top:2px}
@@ -20089,6 +20104,54 @@ function routeArLoad(img) {
 #crewboard-section .cb-status{min-height:20px;font-size:12.5px;color:#6b7684;display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 4px 8px;text-align:left}
 #crewboard-section .cb-status button{border:0;background:#e8f1ff;color:#1b64da;font-weight:700;font-size:12.5px;border-radius:999px;padding:6px 11px;cursor:pointer;white-space:nowrap}
 #crewboard-section .cb-status button:disabled{opacity:.55}
+#crewboard-section .cb-find{display:flex;align-items:center;gap:8px;margin:2px 0 10px;padding:6px 6px 6px 12px;border:1px solid #dfe3ea;border-radius:14px;background:#fff}
+#crewboard-section .cb-find svg{flex:none;width:18px;height:18px;fill:none;stroke:#8b95a1;stroke-width:2.2;stroke-linecap:round}
+#crewboard-section .cb-find input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:15px;padding:6px 0;color:#191f28}
+#crewboard-section .cb-find button{flex:none;border:0;border-radius:10px;background:#3182f6;color:#fff;font-weight:800;font-size:14px;padding:9px 14px;cursor:pointer}
+#cb-find-panel .cbf-dialog{max-height:86vh;display:flex;flex-direction:column}
+#cb-find-panel .cbf-sub{margin:-2px 2px 10px;font-size:12.5px;color:#6b7684;line-height:1.5}
+#cb-find-panel .cbf-out{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px}
+#cb-find-panel .cbf-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+#cb-find-panel .cbf-sum div{padding:9px 6px;border-radius:12px;background:#f2f6fc;text-align:center}
+#cb-find-panel .cbf-sum b{display:block;font-size:19px;color:#1b2b45}
+#cb-find-panel .cbf-sum small{font-size:11.5px;color:#6b7684;font-weight:700}
+#cb-find-panel .cbf-day{display:grid;grid-template-columns:62px minmax(0,1fr);gap:10px;align-items:center;padding:10px 4px;border-bottom:1px solid #eef0f3}
+#cb-find-panel .cbf-day:last-child{border-bottom:0}
+#cb-find-panel .cbf-day.today{background:#f2f7ff;border-radius:10px}
+#cb-find-panel .cbf-date{font-size:13px;font-weight:800;color:#344054;line-height:1.25}
+#cb-find-panel .cbf-date small{display:block;font-size:11px;font-weight:700;color:#8b95a1}
+#cb-find-panel .cbf-date.sun{color:#e03131}#cb-find-panel .cbf-date.sat{color:#1b64da}
+#cb-find-panel .cbf-main{min-width:0}
+#cb-find-panel .cbf-top{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+#cb-find-panel .cbf-dia{padding:2px 9px;border-radius:8px;background:#1b64da;color:#fff;font-weight:800;font-size:13.5px}
+#cb-find-panel .cbf-time{font-size:13.5px;font-weight:800;color:#191f28}
+#cb-find-panel .cbf-trn{font-size:12px;color:#6b7684}
+#cb-find-panel .cbf-with{margin-top:3px;font-size:13px;color:#344054}
+#cb-find-panel .cbf-with b{color:#1b64da}
+#cb-find-panel .cbf-off{font-size:13px;color:#98a2b3;font-weight:700}
+#cb-find-panel .cbc{margin-bottom:10px}
+#cb-find-panel .cbc-wk{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:4px;text-align:center;font-size:12px;font-weight:800;color:#6b7684}
+#cb-find-panel .cbc-wk .sun{color:#e03131}#cb-find-panel .cbc-wk .sat{color:#1b64da}
+#cb-find-panel .cbc-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+#cb-find-panel .cbc-cell{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1px;min-width:0;height:58px;padding:4px 1px 3px;border:1px solid #e6eaf0;border-radius:10px;background:#fff;font:inherit;color:#191f28;cursor:pointer;overflow:hidden}
+#cb-find-panel .cbc-cell.blank{border:0;background:none;cursor:default}
+#cb-find-panel .cbc-cell.past{background:#f7f8fa;border-color:#f0f2f5;cursor:default;opacity:.55}
+#cb-find-panel .cbc-d{font-size:11.5px;font-weight:800;line-height:1.1;color:#344054}
+#cb-find-panel .cbc-cell.sun .cbc-d{color:#e03131}#cb-find-panel .cbc-cell.sat .cbc-d{color:#1b64da}
+#cb-find-panel .cbc-cell.today{border-color:#3182f6;box-shadow:inset 0 0 0 1px #3182f6}
+#cb-find-panel .cbc-cell.sel{background:#e8f1ff;border-color:#3182f6}
+#cb-find-panel .cbc-dia{max-width:100%;padding:1px 4px;border-radius:6px;background:#1b64da;color:#fff;font-size:11.5px;font-weight:800;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cb-find-panel .cbc-more{position:absolute;top:2px;right:3px;font-style:normal;font-size:9.5px;font-weight:800;color:#e8590c}
+#cb-find-panel .cbc-t{font-size:10px;font-weight:700;color:#536279;line-height:1.2}
+#cb-find-panel .cbc-off{margin-top:4px;font-size:11.5px;font-weight:800;color:#98a2b3}
+#cb-find-panel .cbc-x{margin-top:4px;font-size:12px;color:#c4cad3}
+#cb-find-panel .cbf-detail{margin-top:2px;padding:10px 12px;border-radius:12px;background:#f7f9fc;border:1px solid #e6eaf0}
+#cb-find-panel .cbf-dh{margin-bottom:6px;font-size:13px;font-weight:800;color:#344054}
+#cb-find-panel .cbf-card+.cbf-card{margin-top:8px;padding-top:8px;border-top:1px dashed #dfe3ea}
+#cb-find-panel .cbf-note{margin-top:10px;padding:9px 11px;border-radius:10px;background:#fff8e6;color:#8a5a00;font-size:12px;line-height:1.55}
+#cb-find-panel .cbf-load{padding:30px 10px;text-align:center;color:#6b7684;font-size:14px;line-height:1.7}
+html.ui-dark #crewboard-section .cb-find{background:#1b1f26!important;border-color:#2c323b!important}
+html.ui-dark #crewboard-section .cb-find input{color:#e9edf2!important}
 #crewboard-section .cb-list{padding-bottom:20px}
 #crewboard-section .cb-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid #dfe3ea;border-radius:12px;background:#fff}
 #crewboard-section table.cb-table{width:100%;border-collapse:collapse;table-layout:auto;font-size:clamp(11px,3.4vw,14px);letter-spacing:-.2px}
@@ -20208,6 +20271,122 @@ function cbRender() {
   }).join('');
   list.innerHTML = '<div class="cb-wrap"><table class="cb-table"><thead><tr><th>다이아</th><th>열차1</th><th>열차2</th><th>출근</th><th>퇴근</th><th>승무원1</th><th>승무원2</th></tr></thead><tbody>' +
     (body || '<tr><td colspan="7" style="padding:20px;color:#8b95a1">내용이 없어요</td></tr>') + '</tbody></table></div>';
+}
+/* ============ 승무근무표 현황 › 동료찾기 ============
+   이름을 넣으면 오늘부터 이번 달 말까지 그 사람이 타는 다이아 · 출퇴근 · 함께 승무하는 사람을 보여줌
+   · XROIS 이름은 첫 글자가 가려져 와서(*길동) 가운데·끝 글자로 맞춤 → 같은 이름이 여러 명일 수 있음
+   · 이번 달 표는 이 폰에만 저장(12시간), 그 안에 다시 찾으면 XROIS에 접속하지 않음 */
+var cbfBusy = false;
+function cbfDates() {
+  var t = todayKST(), out = [], last = new Date(t.y, t.m + 1, 0).getDate();
+  for (var d = t.d; d <= last; d++) out.push(t.y + '-' + String(t.m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0'));
+  return out;
+}
+function cbfStore() { var o = xrGet('boardMonth', null); var t = todayKST(), ym = t.y + '-' + String(t.m + 1).padStart(2, '0'); return o && o.ym === ym ? o : { ym: ym, at: 0, board: {}, stopAt: '' }; }
+function cbfMatch(n, q) {
+  n = String(n || '').trim(); q = String(q || '').replace(/\s+/g, '');
+  if (!n || !q) return false;
+  if (n === q || crewIsMe(n, q)) return true;
+  var tail = n.replace(/^[*＊]+/, '');               /* "*길동" → "길동" */
+  return q.length < n.length && tail.length >= q.length && tail.slice(-q.length) === q;   /* "길동"만 넣어도 */
+}
+function cbFindClose() { $('cb-find-panel').classList.remove('active'); }
+function cbFind() {
+  var q = String($('cb-find-in').value || '').replace(/\s+/g, '');
+  if (!/^[가-힣]{2,5}$/.test(q)) { showToast('동료 이름을 한글 2~5자로 넣어주세요.'); return; }
+  if (typeof crewLinked === 'function' && !crewLinked()) { showToast('XROIS(CREW) 연동을 하면 동료를 찾을 수 있어요.'); return; }
+  try { $('cb-find-in').blur(); } catch (e) {}
+  $('cb-find-panel').classList.add('active');
+  try { applyAppIcons(); } catch (e) {}
+  $('cbf-title').textContent = '동료찾기 · ' + q;
+  var dates = cbfDates(), st = cbfStore(), day = cbStore();
+  /* 최근 10일 저장본(승무현황 화면에서 본 날)도 같이 씀 */
+  dates.forEach(function (k) { if (!st.board[k] && day[k] && day[k].rows && Date.now() - (day[k].at || 0) < XR_EVERY) st.board[k] = day[k].rows; });
+  var fresh = st.at && Date.now() - st.at < XR_EVERY;
+  var need = dates.filter(function (k) { return !st.board[k] && !(st.stopAt && k >= st.stopAt); });
+  if (fresh && !need.length) { cbfRender(q, st, dates); return; }
+  if (cbfBusy) return;
+  cbfBusy = true;
+  $('cbf-sub').textContent = '';
+  $('cbf-out').innerHTML = '<div class="cbf-load"><div class="cb-skel" style="height:120px;margin-bottom:14px"></div>XROIS에서 이번 달 승무근무표를 가져오는 중이에요…<br><small>처음 한 번은 30초쯤 걸릴 수 있어요</small></div>';
+  var ask = fresh ? need : dates;
+  xrCall({ action: 'xrBoardRange', dates: ask.map(function (k) { return k.replace(/-/g, ''); }) }, function (err, d) {
+    cbfBusy = false;
+    if (err) { $('cbf-out').innerHTML = '<div class="cbf-load" style="color:#e03131">' + esc(err.message || 'XROIS에서 가져오지 못했어요.') + '</div>'; return; }
+    var b = (d && d.board) || {};
+    Object.keys(b).forEach(function (k) { st.board[k] = b[k] || []; });
+    var got = Object.keys(b).sort(), lastGot = got[got.length - 1] || '';
+    st.stopAt = '';
+    if (d && d.stopped === 'empty' && lastGot) { var miss = ask.filter(function (k) { return k > lastGot; }); st.stopAt = miss[0] || ''; }
+    st.at = Date.now();
+    xrPut('boardMonth', st);
+    cbfRender(q, st, dates);
+  });
+}
+var cbfLast = null; /* 마지막 결과 (날짜 눌러서 자세히 볼 때) */
+function cbfDayHits(rows, q) {
+  var hits = [];
+  (rows || []).forEach(function (r) {
+    var names = cbNames(r).filter(Boolean);
+    var me = names.filter(function (n) { return cbfMatch(n, q); });
+    if (me.length) hits.push({ r: r, who: me[0], with: names.filter(function (n) { return n !== me[0]; }) });
+  });
+  return hits;
+}
+function cbfRender(q, st, dates) {
+  var t = todayKST(), todayK = t.y + '-' + String(t.m + 1).padStart(2, '0') + '-' + String(t.d).padStart(2, '0');
+  var y = t.y, m = t.m, first = new Date(y, m, 1).getDay(), last = new Date(y, m + 1, 0).getDate();
+  var work = 0, off = 0, noData = 0, dup = false, firstWork = '';
+  var cells = '';
+  /* 이번 주(일요일)부터 월말까지만 — 지난주들은 빈칸이라 뺌 */
+  var startD = Math.max(1, t.d - new Date(y, m, t.d).getDay());
+  var lead = (first + startD - 1) % 7;
+  for (var i = 0; i < lead; i++) cells += '<div class="cbc-cell blank"></div>';
+  for (var d = startD; d <= last; d++) {
+    var k = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    var wd = (first + d - 1) % 7, cls = 'cbc-cell' + (wd === 0 ? ' sun' : wd === 6 ? ' sat' : '') + (k === todayK ? ' today' : '');
+    var inner = '<span class="cbc-d">' + d + '</span>';
+    if (k < todayK) { cells += '<div class="' + cls + ' past">' + inner + '</div>'; continue; }
+    var rows = st.board[k];
+    if (!rows) { noData++; cells += '<button type="button" class="' + cls + ' nodata" onclick="cbfPick(\'' + k + '\')">' + inner + '<span class="cbc-x">-</span></button>'; continue; }
+    var hits = cbfDayHits(rows, q);
+    if (!hits.length) { off++; cells += '<button type="button" class="' + cls + ' off" onclick="cbfPick(\'' + k + '\')">' + inner + '<span class="cbc-off">휴</span></button>'; continue; }
+    work++; if (!firstWork) firstWork = k; if (hits.length > 1) dup = true;
+    var h0 = hits[0].r;
+    cells += '<button type="button" class="' + cls + ' work" onclick="cbfPick(\'' + k + '\')">' + inner
+      + (hits.length > 1 ? '<i class="cbc-more">+' + (hits.length - 1) + '</i>' : '') + '<span class="cbc-dia">' + esc(h0.dia || '-') + '</span>'
+      + '<span class="cbc-t">' + esc(h0.start || '') + '</span></button>';
+  }
+  var when = st.at ? new Date(st.at) : null;
+  $('cbf-sub').textContent = (m + 1) + '월 · 오늘부터 월말까지 · XROIS 승무근무표 현황' + (when ? ' · ' + (when.getMonth() + 1) + '/' + when.getDate() + ' ' + String(when.getHours()).padStart(2, '0') + ':' + String(when.getMinutes()).padStart(2, '0') + ' 기준' : '');
+  var sum = '<div class="cbf-sum"><div><b>' + work + '</b><small>승무하는 날</small></div><div><b>' + off + '</b><small>승무 없는 날</small></div><div><b>' + noData + '</b><small>아직 안 올라온 날</small></div></div>';
+  var cal = '<div class="cbc"><div class="cbc-wk"><span class="sun">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span class="sat">토</span></div><div class="cbc-grid">' + cells + '</div></div>';
+  var notes = [];
+  if (!work) notes.push('이번 달 남은 날 중에 <b>' + esc(q) + '</b>님 이름이 승무근무표에 없어요. 이름을 다시 확인해 주세요.');
+  if (dup) notes.push('XROIS는 이름 첫 글자를 가려서 보내줘서, 끝 글자가 같은 다른 사람이 함께 나올 수 있어요. (+1 표시)');
+  if (noData) notes.push('"-" 표시는 XROIS에 승무근무표가 아직 올라오지 않은 날이에요.');
+  $('cbf-out').innerHTML = sum + cal + '<div id="cbf-detail" class="cbf-detail"></div>' + (notes.length ? '<div class="cbf-note">' + notes.join('<br>') + '</div>' : '');
+  cbfLast = { q: q, st: st, todayK: todayK };
+  cbfPick(st.board[todayK] && cbfDayHits(st.board[todayK], q).length ? todayK : (firstWork || todayK));
+}
+/* 달력에서 날짜를 누르면 그날 자세히 */
+function cbfPick(k) {
+  if (!cbfLast) return;
+  [].forEach.call(document.querySelectorAll('#cbf-out .cbc-cell.sel'), function (el) { el.classList.remove('sel'); });
+  var btns = document.querySelectorAll('#cbf-out .cbc-cell'), dd = +k.split('-')[2];
+  [].forEach.call(btns, function (el) { var n = el.querySelector('.cbc-d'); if (n && +n.textContent === dd && !el.classList.contains('blank')) el.classList.add('sel'); });
+  var p = k.split('-'), wd = '일월화수목금토'.charAt(new Date(+p[0], +p[1] - 1, +p[2]).getDay());
+  var head = '<div class="cbf-dh">' + (+p[1]) + '월 ' + (+p[2]) + '일 (' + wd + ')' + (k === cbfLast.todayK ? ' · 오늘' : '') + '</div>';
+  var rows = cbfLast.st.board[k], box = $('cbf-detail'); if (!box) return;
+  if (!rows) { box.innerHTML = head + '<div class="cbf-off">XROIS에 아직 승무근무표가 올라오지 않았어요.</div>'; return; }
+  var hits = cbfDayHits(rows, cbfLast.q);
+  if (!hits.length) { box.innerHTML = head + '<div class="cbf-off">승무 없음 (휴무 · 교육 등)</div>'; return; }
+  box.innerHTML = head + hits.map(function (h) {
+    var r = h.r, t1 = r.t1 != null ? r.t1 : ((r.trains || [])[0] || ''), t2 = r.t2 != null ? r.t2 : ((r.trains || [])[1] || '');
+    var trn = [t1, t2].filter(Boolean).join(' · ');
+    return '<div class="cbf-card"><div class="cbf-top"><span class="cbf-dia">' + esc(r.dia || '-') + '</span><span class="cbf-time">' + esc(r.start || '') + (r.start || r.end ? ' ~ ' : '') + esc(r.end || '') + '</span>' + (trn ? '<span class="cbf-trn">열차 ' + esc(trn) + '</span>' : '') + '</div>'
+      + '<div class="cbf-with">' + (h.with.length ? '함께 승무 <b>' + h.with.map(esc).join(', ') + '</b>' : '함께 승무하는 사람 없음') + (hits.length > 1 ? ' <span class="cbf-trn">(' + esc(h.who) + ')</span>' : '') + '</div></div>';
+  }).join('');
 }
 </script>
 
