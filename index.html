@@ -21052,5 +21052,15 @@ html.ui-ios body #main-container > div.top-bar{background:rgba(255,255,255,.6)!i
   window.addEventListener('load', mount);
 })();
 </script>
+<style id="bottom-nav-compact-divider">
+/* 플로팅 메뉴바: 아이콘 · 글자 약 8% 작게 + 칸 사이 세로선 */
+html body #bottom-nav.bottom-nav .bn-btn .bn-ico{width:40px!important;height:30px!important;min-height:30px!important}
+html body #bottom-nav.bottom-nav .bn-btn .nav-art{width:40px!important;height:40px!important}
+html body #bottom-nav.bottom-nav .bn-btn{position:relative!important;font-size:10px!important}
+html body #bottom-nav.bottom-nav .bn-btn+.bn-btn::before{content:"";position:absolute;left:0;top:22%;bottom:22%;width:1px;background:#e1e6ed;border-radius:1px;pointer-events:none}
+html.ui-dark body #bottom-nav.bottom-nav .bn-btn+.bn-btn::before{background:rgba(255,255,255,.12)}
+html body #bottom-nav.bottom-nav .bn-btn.active::before,html body #bottom-nav.bottom-nav .bn-btn.active+.bn-btn::before{opacity:0}
+@media(max-width:359px){html body #bottom-nav.bottom-nav .bn-btn .bn-ico{width:36px!important;height:27px!important;min-height:27px!important}html body #bottom-nav.bottom-nav .bn-btn .nav-art{width:36px!important;height:36px!important}}
+</style>
 </body>
 </html>
