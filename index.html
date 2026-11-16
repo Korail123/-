@@ -2252,6 +2252,16 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closePngPanel()">닫기</button><button type="button" class="dia-text-btn png-save" onclick="pngDownload()">저장</button></div>
   </div>
 </div>
+<div id="kl-panel" class="dia-modal" style="z-index:413" onclick="if(event.target===this)klClose()">
+  <div class="dia-dialog kl-dialog" role="dialog" aria-labelledby="kl-title">
+    <div class="kl-kicker"><span class="pp-live-dot"></span> 편승 안내</div>
+    <div id="kl-title" class="kl-title"></div>
+    <div id="kl-sub" class="kl-sub"></div>
+    <div id="kl-list" class="kl-list"></div>
+    <div id="kl-note" class="kl-note"></div>
+    <div class="kl-btns"><button type="button" class="kl-re" onclick="klLoad(true)">새로고침</button><button type="button" class="kl-ok" onclick="klClose()">확인</button></div>
+  </div>
+</div>
 <div id="pass-pop-panel" class="dia-modal" style="z-index:412" onclick="if(event.target===this)closePassPop()">
   <div class="dia-dialog pp-dialog">
     <div class="pp-head">
@@ -2513,7 +2523,7 @@ document.addEventListener('DOMContentLoaded', function () {
   window.lcRefresh = tick;   /* 로그인 · 로그아웃 때 시계 아래 이름을 바로 바꿈 */
 })();
 /* 시계 아래 이름: 로그인 이름으로 바로 (로그아웃이면 비움) */
-function lcSetName(name) { var el = document.getElementById('welcome-name'); if (el) el.textContent = name || ''; try { if (window.lcRefresh) window.lcRefresh(); } catch (e) {} }
+function lcSetName(name) { var el = document.getElementById('welcome-name'); if (el) el.textContent = name || ''; try { if (window.lcRefresh) window.lcRefresh(); } catch (e) {} if (name) setTimeout(function () { try { if (typeof klKick === 'function') klKick(); } catch (e) {} }, 800); }   /* 로그인하자마자 편승 안내도 확인 */
 /* 서버 보관함에 있는 근무 교환 내용을 이 폰에 반영
    (자동 새로고침·백업 직전·화면 복귀 때도 호출되므로 보관함부터 바로 확인한다) */
 function syncPending(done) {
@@ -11468,6 +11478,11 @@ function alarmBeep() {
     /* 처음 화면을 눌렀을 때 준비해 둔 소리 장치를 사용 (새로 만들면 브라우저가 소리를 막을 수 있음) */
     var np = getNotiPrefs();
     if (!np.sound || np.vol <= 0) return;                    /* 사용자가 소리를 껐으면 울리지 않음 */
+    appAudioSession();
+    var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (ios && !navigator.audioSession && appBeepEl) {   /* 옛 아이폰: 미디어 재생은 무음 스위치를 무시 */
+      try { appBeepEl.volume = Math.max(0.05, np.vol / 100); appBeepEl.currentTime = 0; var pp = appBeepEl.play(); if (pp && pp.catch) pp.catch(function () {}); return; } catch (e) {}
+    }
     var peak = Math.max(0.01, 0.6 * np.vol / 100);           /* 볼륨 0~100% */
     var shared = appAudioCtx && appAudioCtx.state !== 'closed';
     var ctx = shared ? appAudioCtx : new AC();
@@ -12418,6 +12433,79 @@ function passMonitorTick() {
     });
   });
 }
+
+/* ===== 편승 안내: 근무표에 3262 열차가 있는 날, logis(NXLogis) 기준 팔당 도착이 찍히면
+   경의중앙선 팔당 → 청량리 가장 빨리 오는 열차 4개를 팝업으로 ===== */
+var KL_RULES = [{ train: '3262', station: '팔당', to: '청량리', toLine: 1063, line: '경의중앙선' }];
+var klState = null, klBusy = false, klTimer = null, klWake = {};   /* klWake: 이번에 켠 동안 이미 보여준 것 (화면을 끄거나 앱을 나가면 초기화) */
+var KL_SHOW_MIN = 60;   /* 팔당 도착 뒤 이 시간(분) 안에 앱을 켜면 띄움 */
+function klMyRules() {
+  var t = todayKST(), today = getDateKey(t.y, t.m, t.d), mine = {};
+  try { nxCollectTrains(1).forEach(function (x) { if (!x.link && x.date === today) mine[String(x.train).replace(/^[A-Z]+/, '')] = 1; }); } catch (e) {}
+  return KL_RULES.filter(function (r) { return mine[r.train]; }).map(function (r) { return Object.assign({ date: today }, r); });
+}
+function klTick() {
+  if (klBusy || document.visibilityState !== 'visible') return;
+  var u = null; try { u = getCurrentUser(); } catch (e) {}
+  if (!u || !u.token || (typeof passAllowed === 'function' && !passAllowed())) return;
+  var rules = klMyRules(); if (!rules.length) return;
+  klBusy = true; var left = rules.length;
+  rules.forEach(function (r) {
+    passRoute(r.train, r.date, false, function (route) {
+      try {
+        if (route && route.success && Array.isArray(route.stations)) {
+          var idx = route.stations.findIndex(function (x) { return passSame(x.name, r.station); });
+          var ev = idx >= 0 ? passEval(route, { idx: idx, station: r.station, lead: 0 }, Date.now()) : null;
+          var arr = ev && (ev.act || ev.expect) || null, wk = r.date + '|' + r.train;
+          if (ev && ev.passed && (!arr || Date.now() - arr < KL_SHOW_MIN * 60000) && !klWake[wk] && !$('kl-panel').classList.contains('active')) { klWake[wk] = 1; klOpen(r, arr || Date.now(), ev.delay); }
+        }
+      } catch (e) {}
+      if (--left === 0) klBusy = false;
+    });
+  });
+}
+function klHm(ms) { var d = new Date(ms + (new Date(ms).getTimezoneOffset() + 540) * 60000); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+function klOpen(rule, arrMs, delay) {
+  klState = { rule: rule, arr: arrMs, delay: delay || 0 };
+  $('kl-title').textContent = rule.train + '열차 ' + rule.station + ' 도착';
+  $('kl-sub').innerHTML = '<b>' + klHm(arrMs) + '</b> 도착' + (delay > 0 ? ' · ' + delay + '분 지연' : '') + ' <span>· logis 기준</span><br>' + dstEsc(rule.line) + ' ' + dstEsc(rule.station) + ' → ' + dstEsc(rule.to) + ' 빨리 오는 열차';
+  $('kl-panel').classList.add('active');
+  try { alarmBeep(); } catch (e) {} try { appVibrate([400, 200, 400, 200, 600]); } catch (e) {}
+  klLoad(false);
+}
+function klClose() { $('kl-panel').classList.remove('active'); }
+function klLoad(force) {
+  if (!klState) return;
+  var r = klState.rule, box = $('kl-list'), k = new Date(klState.arr + (new Date().getTimezoneOffset() + 540) * 60000);
+  var kn = new Date(Date.now() + (new Date().getTimezoneOffset() + 540) * 60000), nowMin = kn.getHours() * 60 + kn.getMinutes() + (kn.getHours() * 60 + kn.getMinutes() < k.getHours() * 60 + k.getMinutes() - 600 ? 1440 : 0);
+  var at = Math.max(k.getHours() * 60 + k.getMinutes(), nowMin);   /* 도착 시각과 지금 중 늦은 때부터 (이미 떠난 열차는 빼고) */
+  box.innerHTML = '<div class="kl-load">시각표 불러오는 중…</div>'; $('kl-note').textContent = '';
+  dstRequest({ plan: { from: r.station, to: r.to, limit: 12, pref: 'time', fromLine: 0, toLine: r.toLine, at: at } }, function (d) {
+    if (!d || !d.success) { box.innerHTML = '<div class="kl-load">' + dstEsc((d && d.message) || '시각표를 못 불러왔어요.') + '</div>'; return; }
+    var base = dstPlanBase(d.now);
+    var now0 = Date.now(), rows = (d.trips || []).filter(function (t) { return t.legs && t.legs.length === 1 && t.dep >= at && base + t.dep * 60000 >= now0 - 60000; })
+      .sort(function (a, b) { return a.dep - b.dep; }).slice(0, 4);   /* 바로 가는 열차만 · 이미 떠난 열차 빼고 4개 */
+    if (!rows.length) { box.innerHTML = '<div class="kl-load">' + dstEsc(r.station) + ' → ' + dstEsc(r.to) + ' 바로 가는 열차가 시각표에 없어요.</div>'; return; }
+    var now = Date.now();
+    box.innerHTML = rows.map(function (t, i) {
+      var g = t.legs[0], depMs = base + t.dep * 60000, mn = Math.ceil((depMs - now) / 60000);
+      var left = mn > 1 ? mn + '분 후' : '곧 출발';
+      var dl = t.delaySec >= 60 ? '<em class="kl-dl">' + Math.floor(t.delaySec / 60) + '분' + (t.delaySec % 60 ? ' ' + t.delaySec % 60 + '초' : '') + ' 지연</em>' : '';
+      return '<div class="kl-row' + (i === 0 ? ' first' : '') + '"><div class="kl-t"><b>' + dstEsc(t.depart || g.depart || '') + '</b><i>' + left + '</i></div>' +
+        '<div class="kl-m"><span class="kl-ln" style="--c:' + dstEsc(g.color || '#77C4A3') + '">' + dstEsc(g.terminus ? g.terminus + '행' : g.line) + (g.express ? ' 급행' : '') + '</span>' + dl +
+        '<small>' + dstEsc(r.to) + ' ' + dstEsc(t.arrive || g.arrive || '') + ' 도착 · ' + t.min + '분</small></div></div>';
+    }).join('');
+    $('kl-note').textContent = '도착 시각 이후 시각표 기준 · 지연은 실시간 확인된 열차만';
+  });
+}
+function klTest() { klOpen(Object.assign({ date: todayKeyKST() }, KL_RULES[0]), Date.now() - 2 * 60000, 3); }
+/* 앱을 켜는 순간 · 휴대폰 화면을 켜서 앱이 다시 보이는 순간 바로 확인 (근무표가 아직 안 읽혔으면 읽힐 때까지 몇 번 더) */
+function klKick() { klBusy = false; var n = 0; (function go() { if (klMyRules().length || n >= 12) { klTick(); return; } n++; setTimeout(go, 1000); })(); }
+function klStart() { if (klTimer) clearInterval(klTimer); klTimer = setInterval(klTick, 60000); klKick(); }
+klStart();
+document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { try { appAudioSession(); if (appAudioCtx && appAudioCtx.state === 'suspended') appAudioCtx.resume(); } catch (e) {} klKick(); } else klWake = {}; });
+window.addEventListener('pageshow', function () { klKick(); });
+window.addEventListener('focus', function () { if (document.visibilityState === 'visible') klTick(); });
 function passMonitorStart() {
   if (passMonitorTimer) clearInterval(passMonitorTimer);
   passMonitorTimer = setInterval(passMonitorTick, 60000);
@@ -15807,7 +15895,21 @@ function notiPrefsVolume() {
    - 진동·소리는 별도 권한 창이 없어서, 버튼을 누를 때 소리·진동을 한 번 울려 사용 준비(잠금 해제)를 함
    - 아이폰은 홈 화면에 추가한 철도비서에서만 알림 권한을 받을 수 있음 */
 var appAudioCtx = null;
+/* 무음(벨소리 끔) 모드에서도 소리: 아이폰은 오디오 세션을 '재생'으로 (iOS 16.4+ · 홈 화면 앱 포함), 안드로이드는 미디어 음량으로 재생 */
+function appAudioSession() { try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {} }
+var appBeepEl = null;
+function appBeepWav() {   /* 880Hz 띵 4번 (WAV) — 오디오 세션이 없는 옛 아이폰용 미디어 재생 */
+  if (appBeepWav.url) return appBeepWav.url;
+  var sr = 22050, len = Math.round(sr * 1.6), d = new DataView(new ArrayBuffer(44 + len * 2)), w = function (o, t) { for (var i = 0; i < t.length; i++) d.setUint8(o + i, t.charCodeAt(i)); };
+  w(0, 'RIFF'); d.setUint32(4, 36 + len * 2, true); w(8, 'WAVEfmt '); d.setUint32(16, 16, true); d.setUint16(20, 1, true); d.setUint16(22, 1, true); d.setUint32(24, sr, true); d.setUint32(28, sr * 2, true); d.setUint16(32, 2, true); d.setUint16(34, 16, true); w(36, 'data'); d.setUint32(40, len * 2, true);
+  for (var i = 0; i < len; i++) { var t = i / sr, k = t % 0.4, a = k < 0.3 ? Math.min(1, k / 0.02) * Math.exp(-k * 9) : 0; d.setInt16(44 + i * 2, Math.round(Math.sin(2 * Math.PI * 880 * t) * a * 26000), true); }
+  var b = new Uint8Array(d.buffer), bin = ''; for (var j = 0; j < b.length; j += 8192) bin += String.fromCharCode.apply(null, b.subarray(j, j + 8192));
+  return appBeepWav.url = 'data:audio/wav;base64,' + btoa(bin);
+}
 function appAudioUnlock() {
+  appAudioSession();
+  try { if (!appBeepEl) { appBeepEl = new Audio(appBeepWav()); appBeepEl.preload = 'auto'; appBeepEl.setAttribute('playsinline', ''); }
+    if (!appAudioUnlock.media) { appAudioUnlock.media = 1; appBeepEl.muted = true; var pr = appBeepEl.play(); if (pr && pr.then) pr.then(function () { appBeepEl.pause(); appBeepEl.currentTime = 0; appBeepEl.muted = false; }).catch(function () { appBeepEl.muted = false; appAudioUnlock.media = 0; }); } } catch (e) {}
   try {
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
@@ -23379,6 +23481,33 @@ html.ui-dark .geo .geo-land,html.ui-dark .dnm-geo .geo-land{fill:#1f232a!importa
 html.ui-dark .geo .geo-pv,html.ui-dark .dnm-geo .geo-pv{fill:#1a1f27!important;stroke:#2e3540}
 html.ui-dark .geo-riv.sub{stroke:#24486b!important}
 html.ui-dark .geo-riv{stroke:#1f3a57}
+</style>
+<style id="kl-style">
+/* 편승 안내 팝업 (3262 팔당 도착 → 경의중앙선 청량리) */
+#kl-panel .kl-dialog{max-width:380px;width:calc(100% - 32px);border-radius:20px;padding:20px 18px 16px}
+#kl-panel .kl-kicker{font-size:12.5px;font-weight:800;color:#2f6fd6;display:flex;align-items:center;gap:6px}
+#kl-panel .kl-title{font-size:21px;font-weight:900;color:#101828;margin-top:6px;letter-spacing:-.3px}
+#kl-panel .kl-sub{font-size:13.5px;color:#475467;margin-top:4px;line-height:1.5}
+#kl-panel .kl-sub b{color:#101828}#kl-panel .kl-sub span{color:#98a2b3}
+#kl-panel .kl-list{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+#kl-panel .kl-row{display:grid;grid-template-columns:72px 1fr;align-items:center;gap:10px;padding:11px 12px;border-radius:14px;background:#f6f8fb}
+#kl-panel .kl-row.first{background:#eef6f1;box-shadow:inset 0 0 0 1.5px #77C4A3}
+#kl-panel .kl-row.gone{opacity:.45}
+#kl-panel .kl-t b{display:block;font-size:20px;font-weight:900;color:#101828;font-variant-numeric:tabular-nums}
+#kl-panel .kl-t i{font-style:normal;font-size:12px;font-weight:800;color:#e5484d}
+#kl-panel .kl-m{min-width:0}
+#kl-panel .kl-ln{display:inline-flex;align-items:center;gap:5px;font-size:14px;font-weight:800;color:#101828}
+#kl-panel .kl-ln:before{content:'';width:9px;height:9px;border-radius:50%;background:var(--c)}
+#kl-panel .kl-dl{font-style:normal;font-size:11.5px;font-weight:800;color:#b54708;margin-left:6px}
+#kl-panel .kl-m small{display:block;font-size:12.5px;color:#667085;margin-top:2px}
+#kl-panel .kl-load{padding:18px 6px;text-align:center;color:#667085;font-size:13.5px}
+#kl-panel .kl-note{font-size:11.5px;color:#98a2b3;margin-top:10px;text-align:center}
+#kl-panel .kl-btns{display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:12px}
+#kl-panel .kl-btns button{height:46px;border-radius:12px;border:0;font:inherit;font-size:15px;font-weight:800;cursor:pointer}
+#kl-panel .kl-re{background:#f1f3f6;color:#344054}#kl-panel .kl-ok{background:#2f6fd6;color:#fff}
+html.ui-dark #kl-panel .kl-title,html.ui-dark #kl-panel .kl-t b,html.ui-dark #kl-panel .kl-ln,html.ui-dark #kl-panel .kl-sub b{color:#f2f4f7}
+html.ui-dark #kl-panel .kl-row{background:#1d2430}html.ui-dark #kl-panel .kl-row.first{background:#17312a}
+html.ui-dark #kl-panel .kl-re{background:#232a35;color:#e4e7ec}
 </style>
 </body>
 </html>
