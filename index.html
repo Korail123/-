@@ -3462,8 +3462,22 @@ function snapApplyNightCarry(d, dateKey, seq, anchor, name, dia, po) {
   c.label = carry;
   return c;
 }
+/* 자동으로 넣은 비번(*비) · 휴(*휴)가 지금 근무와 안 맞으면(전날이 더 이상 야간이 아니거나, 원래 비번이 아닌 날) 무시 */
+function snapAutoValid(ov, dateKey, mb, dia, ovMap) {
+  if (!ov || ov.type !== 'auto-status') return true;
+  var st = String(ov.status || '비').trim(), nt = function (t) { t = String(t || '').trim().replace(/^\*/, ''); return ({ '주간': '주', '야간': '야', '비번': '비', '휴무': '휴' })[t] || t; };
+  try {
+    if (st === '휴') return nt(snapBaseDay(dateKey, mb.seq, mb.anchor, dia, mb.name).type) === '비';
+    if (st === '비') { var pk = snapShiftKey(dateKey, -1), pov = ovMap[mb.employeeId + '|' + pk];
+      if (pov && pov.type === 'auto-status') return false;
+      var pd = snapBuildDay(pk, mb.seq, mb.anchor, dia, pov, mb.name); return nt(pd.dutyStatus || pd.type) === '야'; }
+  } catch (e) {}
+  return true;
+}
 function snapDayWithAuto(dateKey, mb, dia, ovMap) {
-  var d = snapBuildDay(dateKey, mb.seq, mb.anchor, dia, ovMap[mb.employeeId + '|' + dateKey], mb.name);
+  var ov0 = ovMap[mb.employeeId + '|' + dateKey];
+  if (ov0 && !snapAutoValid(ov0, dateKey, mb, dia, ovMap)) ov0 = null;
+  var d = snapBuildDay(dateKey, mb.seq, mb.anchor, dia, ov0, mb.name);
   return snapApplyNightCarry(d, dateKey, mb.seq, mb.anchor, mb.name, dia,
     ovMap[mb.employeeId + '|' + snapShiftKey(dateKey, -1)]);
 }
@@ -4171,7 +4185,7 @@ function renderCalendar() {
       var calendarDuty = rsCalDuty(info, getDateKey(calendarYear, calendarMonth, d), rsMySeqCtx());   /* 근무그룹 표와 같은 규칙 */
       if (calendarDuty) {
         var tone = toneOf(calendarDuty);
-        var cls = tone === 'day' ? ' t-day' : tone === 'bi' ? ' t-bi' : tone === 'off' || (info.overrideType === 'status' && !/^(주|야|비|X)$/.test(calendarDuty)) ? ' t-off' : '';
+        var cls = rsDutyCls(calendarDuty, 't');   /* 근무그룹 표와 같은 색 규칙 */
         var shortDuty = rsLabelStyled(rsDutyShort(calendarDuty));
         labelHtml = '<div class="cell-lbl' + cls + (shortDuty.length >= 2 ? ' rs-duty2' : '') + '">' + (info.manual ? '*' : '') + esc(shortDuty) + '</div>';
       }
@@ -7034,9 +7048,17 @@ function rsDutyShort(label) {
    seqCtx: { seq, anchor, name } 가 있으면 글자를 못 정한 날 기본 근무 순서로 보완 */
 function rsCalDuty(info, dateKey, seqCtx) {
   if (!info || !(info.label || info.type || info.status)) return '';
+  /* 근무구분 이름은 표현 방식과 상관없이 같은 뜻: 주간=일근=일 · 야간=박 · 비번=가일=가 · 휴무=S */
+  var dutyOf = function (v) { v = String(v || '').trim().replace(/^\*+/, '').trim();
+    if (/^(주|주간|일|일근|day)$/i.test(v)) return '주'; if (/^(야|야간|박|night)$/i.test(v)) return '야';
+    if (/^(비|비번|가|가일)$/.test(v)) return '비'; if (/^(휴|휴무|휴일|S)$/i.test(v)) return '휴'; if (/^X$/i.test(v)) return 'X'; return ''; };
+  /* 근무변경 때 고른 근무구분(주간 · 야간)이 있으면 그게 우선 */
+  var dsDuty = dutyOf(info.dutyStatus);
+  if (dsDuty) return dsDuty;
   var rawDuty = String(info.overrideType === 'status' ? (info.status || info.type || info.label || '')
     : (info.dutyStatus || info.type || info.label || '')).trim().replace(/^\*+/, '').trim();
-  var d = '';
+  var d = dutyOf(rawDuty);
+  if (d) return d;
   if (/^X$/i.test(rawDuty)) d = 'X';
   else if (/^(주|주간|day)$/i.test(rawDuty)) d = '주';
   else if (/^(야|야간|night)$/i.test(rawDuty)) d = '야';
@@ -7045,7 +7067,7 @@ function rsCalDuty(info, dateKey, seqCtx) {
   else if (/^(휴|휴무|휴일)$/i.test(rawDuty)) d = '휴';
   else if (/^(휴가|연차|반차|병가|공가|특별휴가|출산휴가|육아휴직|돌봄|돌봄휴가|휴직|경조휴가|대체휴무|보상휴가)$/i.test(rawDuty)) d = rawDuty;
   else if (/^(주|야|비|휴|X)$/.test(String(info.label || '').trim())) d = String(info.label).trim();
-  else if (info.overrideType === 'status') d = '휴';
+  else if (info.overrideType === 'status') d = dutyOf(info.type) || dutyOf(info.label) || '';
   if (!d && info.label) {
     var fb = String(info.label).trim().replace(/^\*/, '');
     if (/^(주간|야간|비번|휴무)$/.test(fb)) d = ({ '주간': '주', '야간': '야', '비번': '비', '휴무': '휴' })[fb];
@@ -7058,6 +7080,20 @@ function rsCalDuty(info, dateKey, seqCtx) {
     try { var base = snapBaseDay(dateKey, seqCtx.seq, seqCtx.anchor, [], seqCtx.name || ''); var bd = String((base && (base.type || base.label)) || ''); if (/^(주|야|비|휴|X)$/.test(bd)) d = bd; } catch (e) {}
   }
   return d;
+}
+/* 근무구분 색 (근무표 달력 · 근무그룹 공통): 주간=노랑 · 야간/비번/X=파랑 · 휴무/휴가류=빨강 */
+function rsDutyCls(code, pre) {
+  var c = String(code || '').replace(/^\*+/, '').trim(); if (!c || c === '-') return '';
+  var t = toneOf(c);
+  if (t === 'day') return ' ' + pre + '-day';
+  if (t === 'night') return pre === 't' ? '' : ' g-night';
+  if (t === 'off') return ' ' + pre + '-off';
+  return pre === 't' ? ' t-off' : ' g-status';   /* 연차 · 공가 등 */
+}
+function rsGroupCode(info, dateKey, mem) {
+  var ctx = null;
+  try { var me = getCurrentUser(); if (mem && me && String(mem.employeeId) === String(me.employeeId)) ctx = rsMySeqCtx(); else if (mem && (mem.seq || (mem.settings && mem.settings.seq))) ctx = { seq: mem.seq || mem.settings.seq, anchor: mem.anchor || (mem.settings && mem.settings.anchor), name: mem.name || '' }; } catch (e) {}
+  return rsCalDuty(info, dateKey, ctx);
 }
 function rsMySeqCtx() { try { var cu = getCurrentUser(), st = cu && cu.settings; return st ? { seq: st.seq, anchor: st.anchor, name: cu.name || '' } : null; } catch (e) { return null; } }
 function rsGroupCalendarDuty(info, dateKey, mem) {
@@ -7207,9 +7243,7 @@ function renderGroupTable() {
         /* 근무표와 동일: 주·야·비·휴·X 및 *연차·*육아휴직 등 실제 휴가 명칭 */
         text = rsGroupCalendarDuty(info, days[j].key, mem);
         var groupDuty = text.replace(/^\*/, '');
-        var groupOff = info.overrideType === 'status' && !/^(주|야|비|X|일|일근|박|가|가일)$/.test(groupDuty);
-        cls = groupCellClass(groupDuty, groupOff);
-        if (!cls && groupDuty !== '-') cls = 'g-status';
+        cls = rsDutyCls(rsGroupCode(info, days[j].key, mem), 'g').trim();   /* 색도 각자 근무표 달력과 똑같이 */
         if (groupDuty.length >= 2) cls += ' g-duty2';   /* 공가·연차 등 2글자는 한 단계 작게 */
       }
       if (isLeaveInfo(info)) {
