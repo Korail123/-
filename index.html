@@ -4852,10 +4852,12 @@ function wgZip(entries) {
 }
 /* KWGT 비트맵 수식: 달력 그림 주소 + 보고 있는 달(mo) + 버전(v)
    v = 작은 '버전' 주소의 값 → 근무표가 바뀌어 그림이 새로 올라갈 때만 바뀌므로, 그때만 그림을 새로 받음 */
-function wgBitmapFormula() {
-  /* v: 10분마다 바뀌는 값 + 달력을 누를 때마다 커지는 rf → 주소가 바뀌어 KWGT가 그림을 새로 받음
-     (KWGT의 $wg()$ 버전 확인은 KWGT가 오래 저장해 둬서 바로 안 바뀌는 경우가 있어 시간 방식으로 변경) */
-  return window.wgPngNow + '&m=$gv(mo)$&v=$df(dHHmm)$-$gv(rf)$';   /* 1분마다 주소가 바뀌어 새 그림을 받음 */
+/* 달 넘기기 즉시: 주소의 v를 1분마다가 아니라 10분 단위로 바꿔서, 한 번 받은 달 그림은 KWGT가 저장해 둔 것을 바로 보여줌
+   + 앞 · 뒤 달 그림을 보이지 않게(1px) 미리 받아 둠 → ‹ › 를 누르면 기다리지 않고 바로 넘어감
+   (근무표가 바뀌면 10분 안에 새 그림, 달력을 누르면 rf가 커져서 바로 새로 받음) */
+var WG_VER = '$df(yyMMddHH)$$mu(floor, df(mm)/10)$-$gv(rf)$';
+function wgBitmapFormula(monthExpr) {
+  return window.wgPngNow + '&m=' + (monthExpr || '$gv(mo)$') + '&v=' + WG_VER;
 }
 function wgKwgtPreset(imgUrl) {
   var S = '$mu(min, si(rwidth), si(rheight))$';
@@ -4870,6 +4872,14 @@ function wgKwgtPreset(imgUrl) {
   f(cal, 'position_padding_left', '$' + ox + '$'); f(cal, 'position_padding_top', '$' + oy + '$');
   /* 달력을 누르면 rf가 1씩 커짐 → 주소가 바뀌어 그림을 바로 새로 받음 */
   cal.internal_events = [{ type: 'SINGLE_TAP', action: 'SWITCH_GLOBAL', 'switch': 'rf', switch_text: '$gv(rf)+1$' }];
+  /* 보이지 않는 1px 그림: 앞 · 뒤 달을 미리 받아 KWGT 저장소에 넣어 둠 */
+  function pre(title, monthExpr) {
+    var m = base('BitmapModule', title);
+    m.bitmap_scale_mode = 'FIT_CENTER';
+    f(m, 'bitmap_bitmap', wgBitmapFormula(monthExpr));
+    f(m, 'bitmap_width', '1'); f(m, 'bitmap_height', '1');
+    return m;
+  }
   function tap(title, cx, val) {
     var m = base('ShapeModule', title);
     m.shape_type = 'RECT';
@@ -4888,7 +4898,7 @@ function wgKwgtPreset(imgUrl) {
         mo: { index: 1, type: 'TEXT', title: 'mo', description: '보고 있는 달 (0 = 이번 달)', global_formula: '', value: '0' },
         rf: { index: 2, type: 'TEXT', title: 'rf', description: '달력을 누를 때마다 1씩 커짐 (새로고침)', global_formula: '', value: '0' }
       },
-      viewgroup_items: [cal, tap('이전 달', 0.321, '$mu(max, gv(mo)-1, -6)$'), tap('다음 달', 0.679, '$mu(min, gv(mo)+1, 6)$')]
+      viewgroup_items: [pre('앞 달 미리 받기', '$mu(max, gv(mo)-1, -6)$'), pre('뒷 달 미리 받기', '$mu(min, gv(mo)+1, 6)$'), cal, tap('이전 달', 0.321, '$mu(max, gv(mo)-1, -6)$'), tap('다음 달', 0.679, '$mu(min, gv(mo)+1, 6)$')]
     }
   };
 }
