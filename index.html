@@ -1284,19 +1284,22 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     저장 공간을 쓸 수 없어 매번 새로 불러옵니다.
   </div>
   <div class="menu-grid">
-    <button type="button" class="menu-btn" onclick="openSchedule()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무표" alt="" aria-hidden="true" decoding="async"><span>근무표</span></button>
+    <div class="menu-cat menu-cat-work" role="heading" aria-level="2"><span>근무</span></div>
     <button type="button" class="menu-btn" onclick="openGroupSection()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무그룹" alt="" aria-hidden="true" decoding="async"><span>근무그룹</span></button>
     <button type="button" class="menu-btn" onclick="openPattern()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무패턴" alt="" aria-hidden="true" decoding="async"><span>근무패턴</span></button>
-    <button type="button" class="menu-btn" onclick="openVacation()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="휴가관리" alt="" aria-hidden="true" decoding="async"><span>휴가관리</span></button>
-    <button type="button" class="menu-btn" onclick="openCrewBoard()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="승무근무표" alt="" aria-hidden="true" decoding="async"><span>승무근무표 현황</span></button>
-    <button type="button" class="menu-btn" onclick="openStats()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무통계" alt="" aria-hidden="true" decoding="async"><span>내 근무 통계</span></button>
-    <button type="button" class="menu-btn" onclick="openTrainQuery()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차운행조회" alt="" aria-hidden="true" decoding="async"><span>열차운행<br>정보 조회</span></button>
-    <button type="button" class="menu-btn" onclick="openDstPanel()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="편승열차조회" alt="" aria-hidden="true" decoding="async"><span>편승열차<br>조회</span></button>
-    <button type="button" class="menu-btn" onclick="openSitesPanel()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="사이트" alt="" aria-hidden="true" decoding="async"><span>사이트</span></button>
+    <button type="button" class="menu-btn" onclick="openSchedule()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무표" alt="" aria-hidden="true" decoding="async"><span>근무표</span></button>
+    <div class="menu-cat menu-cat-conv" role="heading" aria-level="2"><span>편의</span></div>
     <button type="button" class="menu-btn menu-dev" onclick="openPayslipPreview()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="예상월급명세서" alt="" aria-hidden="true" decoding="async"><span><b class="menu-one-line">미리보는 월급</b><small class="dev-badge" id="payslip-dev-badge">개발 중</small></span></button>
+    <button type="button" class="menu-btn" onclick="openSitesPanel()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="사이트" alt="" aria-hidden="true" decoding="async"><span>사이트</span></button>
+    <button type="button" class="menu-btn" onclick="openCrewBoard()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="승무근무표" alt="" aria-hidden="true" decoding="async"><span>승무근무표 현황</span></button>
+    <button type="button" class="menu-btn" onclick="openTrainQuery()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차운행조회" alt="" aria-hidden="true" decoding="async"><span>열차운행<br>정보 조회</span></button>
     <button type="button" class="menu-btn" onclick="showBriefing(true)"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="오늘의브리핑" alt="" aria-hidden="true" decoding="async"><span>오늘의 브리핑</span></button>
+    <button type="button" class="menu-btn" onclick="openDstPanel()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="편승열차조회" alt="" aria-hidden="true" decoding="async"><span>편승열차<br>조회</span></button>
+    <div class="menu-cat menu-cat-manage" role="heading" aria-level="2"><span>관리</span></div>
+    <button type="button" class="menu-btn" onclick="openStats()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무통계" alt="" aria-hidden="true" decoding="async"><span>내 근무 통계</span></button>
     <button type="button" class="menu-btn" onclick="openMyPage()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="마이페이지" alt="" aria-hidden="true" decoding="async"><span>마이페이지</span></button>
     <button type="button" class="menu-btn" onclick="openSettings()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="환경설정" alt="" aria-hidden="true" decoding="async"><span>환경설정</span></button>
+    <button type="button" class="menu-btn" onclick="openVacation()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="휴가관리" alt="" aria-hidden="true" decoding="async"><span>휴가관리</span></button>
   </div>
   <button type="button" class="logout-btn" onclick="logout()">로그아웃</button>
 </div>
@@ -1773,6 +1776,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <input type="range" id="mid-range" class="alarm-range ns-range" min="0" max="5" step="1" value="0" oninput="midUiUpdate()" onchange="midAutoSave(false)">
         <div class="alarm-scale"><span>1시간 전</span><span>10분 전</span></div>
         <div id="mid-list" class="mid-list"></div>
+        <div class="mid-acts"><button type="button" id="mid-fetch" onclick="midFetchNow(true)">지금 가져오기</button><button type="button" id="mid-diag" onclick="midCopyDiag()" hidden>진단 내용 복사</button></div>
       </div>
       <div class="ns-row">
         <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="팝업알림" alt="" aria-hidden="true"><span><b class="ns-t">휴대폰 팝업</b><small>상단 팝업·잠금화면 · 앱 꺼짐 알림 포함</small></span></span>
@@ -1806,6 +1810,16 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <div id="icon-panel" class="dia-modal" onclick="if(event.target===this)closeIconPanel()">
   <div class="dia-dialog ns-dialog ic-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="아이콘설정" alt="" aria-hidden="true">아이콘 설정</div>
+    <div class="ic-arr">
+      <div class="ic-arr-h">아이콘 배열</div>
+      <div class="ic-arr-row"><span>메인화면</span><div class="ic-seg" id="ic-arr-main">
+        <button type="button" data-v="grid" onclick="iconArrSet('main','grid')"><i class="ic-pv grid"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></i><em>바둑판</em></button>
+        <button type="button" data-v="list" onclick="iconArrSet('main','list')"><i class="ic-pv list"><b></b><b></b><b></b><b></b></i><em>세로</em></button></div></div>
+      <div class="ic-arr-row"><span>환경설정</span><div class="ic-seg" id="ic-arr-set">
+        <button type="button" data-v="grid" onclick="iconArrSet('set','grid')"><i class="ic-pv grid"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></i><em>바둑판</em></button>
+        <button type="button" data-v="list" onclick="iconArrSet('set','list')"><i class="ic-pv list"><b></b><b></b><b></b><b></b></i><em>세로</em></button></div></div>
+    </div>
+    <div class="ic-arr-h" style="margin:4px 2px 6px">아이콘 테마</div>
     <div class="ns-note" style="margin:0 2px 10px">테마를 고르면 메인화면 · 환경설정 · 아래 메뉴 아이콘이 모두 바뀌어요. 이 폰에만 저장돼요.</div>
     <div class="ic-list" id="ic-list"></div>
     <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeIconPanel()">닫기</button></div>
@@ -2100,6 +2114,12 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <details class="guide-sec" data-g="train"><summary>열차운행정보 조회 (열차조회)</summary><div class="gd-stage" data-g="train"></div><ol>
       <li>메인화면 › <b>열차운행정보 조회</b>에서 날짜와 열차번호를 넣어요.</li>
       <li>열차를 누르면 바로 새로고침되고, 30초마다 자동으로 갱신돼요.</li></ol></details>
+    <details class="guide-sec" data-g="dst"><summary>편승열차 조회</summary><div class="gd-stage" data-g="dst"></div><ol>
+      <li>메인화면 › <b>편의</b> › <b>편승열차 조회</b>를 눌러요. (위치 권한을 허용해 주세요)</li>
+      <li>지금 위치에서 <b>가장 가까운 역</b>을 찾아요. 위의 목적지(청량리 · 용산 · 서울 · 수색 · 의정부 등)를 골라요.</li>
+      <li>그 역에서 <b>가장 빨리 오는 열차</b>와 도착 시각, 갈아타야 하면 <b>최소 환승</b> 경로를 노선도로 보여줘요.</li>
+      <li><b>고정</b>을 누르면 메인화면에 편승열차 칸이 생기고 2분마다 새로 고쳐져요. 다시 누르면 고정이 풀려요.</li>
+      <li>서울시 실시간 도착정보를 쓰기 때문에, 서울시 밖의 역은 실시간 정보가 안 나올 수 있어요.</li></ol></details>
     <details class="guide-sec" data-g="pass"><summary>열차통과/도착 알림</summary><div class="gd-stage" data-g="pass"></div><ol>
       <li>환경설정 › <b>열차통과/도착 알림</b>을 열어요.</li>
       <li><b>열차</b>에 알림 받을 열차번호를 추가해요. 파란색은 오늘 근무표 열차예요.</li>
@@ -2446,10 +2466,17 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!el) return;
     var now = new Date();
     var k = new Date(now.getTime() + now.getTimezoneOffset() * 60000 + 9 * 3600000);
-    el.textContent =
-      k.getFullYear() + '.' + p(k.getMonth() + 1) + '.' + p(k.getDate()) +
-      ' (' + days[k.getDay()] + ') ' +
-      p(k.getHours()) + ':' + p(k.getMinutes()) + ':' + p(k.getSeconds());
+    /* 큰 시계(시:분 + 작은 초) 아래에 날짜 · 요일 */
+    var dk = k.getFullYear() + '-' + k.getMonth() + '-' + k.getDate();
+    if (el.getAttribute('data-d') !== dk || !el.querySelector('.lc-t')) {
+      var we = k.getDay() === 0 ? ' sun' : (k.getDay() === 6 ? ' sat' : '');
+      el.innerHTML = '<span class="lc-t"><b class="lc-hm"></b><em class="lc-s"></em></span>' +
+        '<span class="lc-d">' + k.getFullYear() + '년 ' + (k.getMonth() + 1) + '월 ' + k.getDate() + '일 <i class="lc-w' + we + '">' + days[k.getDay()] + '요일</i></span>';
+      el.setAttribute('data-d', dk);
+    }
+    el.querySelector('.lc-hm').textContent = p(k.getHours()) + ':' + p(k.getMinutes());
+    el.querySelector('.lc-s').textContent = p(k.getSeconds());
+    el.setAttribute('aria-label', k.getFullYear() + '년 ' + (k.getMonth() + 1) + '월 ' + k.getDate() + '일 ' + days[k.getDay()] + '요일 ' + k.getHours() + '시 ' + k.getMinutes() + '분');
   }
   tick();
   setInterval(tick, 1000);
@@ -4395,7 +4422,8 @@ var GD_SCENES = {
   theme: [
     { cap: '① 환경설정 › 아이콘 설정', tap: [50, 40], sel: '.gd-set .hl', html: 'SET:테마|화면 설정,*아이콘 설정,즐겨찾기 메뉴|근무|근무설정,열차통과/도착 알림' },
     { cap: '② 마음에 드는 테마를 눌러요', tap: [50, 60], sel: '.gd-themes .hl', html: 'THEMES' },
-    { cap: '③ 아이콘이 바로 그 테마로 바뀌어요', tap: null, html: 'THEME_MAIN' }
+    { cap: '③ 아이콘이 바로 그 테마로 바뀌어요', tap: null, html: 'THEME_MAIN' },
+    { cap: '④ 아이콘 배열: 바둑판 또는 세로', tap: [78, 34], sel: '.gd-seg .hl', html: '<div class="gd-top">아이콘 설정</div><div class="gd-arr"><div class="gd-lab">아이콘 배열</div><p><span>메인화면</span><em class="gd-seg"><i>바둑판</i><i class="hl">세로</i></em></p><p><span>환경설정</span><em class="gd-seg"><i class="hl">바둑판</i><i>세로</i></em></p></div><div class="gd-mlist"><i>근무그룹</i><i>근무패턴</i><i>근무표</i></div>' }
   ],
   swap: [
     { cap: '① 근무그룹 › 근무교환 버튼', tap: [70, 18], sel: '.gd-pill.hl', html:
@@ -4408,11 +4436,18 @@ var GD_SCENES = {
   ],
   train: [
     { cap: '① 메인화면 › 열차운행정보 조회', tap: [76, 52], html:
-      '<div class="gd-top">메인화면</div><div class="gd-grid"><i>근무표</i><i>휴가관리</i><i class="hl">열차운행</i><i>승무현황</i><i>근무통계</i><i>환경설정</i></div>' },
+      '<div class="gd-top">메인화면</div><div class="gd-mcat">편의</div><div class="gd-grid"><i>월급</i><i>승무현황</i><i class="hl">열차운행</i><i>브리핑</i><i>편승열차</i><i>사이트</i></div>' },
     { cap: '② 날짜와 열차번호 넣고 조회', tap: [50, 84], html:
       '<div class="gd-top">열차운행정보 조회</div><div class="gd-in">2026-11-06</div><div class="gd-in">1001<span class="gd-caret"></span></div><div class="gd-btn">조회</div>' },
     { cap: '③ 지금 위치가 애니메이션으로 보여요', tap: null, html: 'TRACK' },
     { cap: '④ 열차를 누르면 바로 새로고침 (30초마다 자동)', tap: [50, 40], sel: '.gd-train', html: 'TRACK' }
+  ],
+  dst: [
+    { cap: '① 메인화면 › 편의 › 편승열차 조회', tap: [50, 50], html: '<div class="gd-top">메인화면</div><div class="gd-mcat">편의</div><div class="gd-grid"><i>월급</i><i>승무현황</i><i>열차운행</i><i>브리핑</i><i class="hl">편승열차</i><i>사이트</i></div>' },
+    { cap: '② 가까운 역을 찾고, 갈 곳을 골라요', tap: [50, 60], sel: '.gd-dto .hl', html: '<div class="gd-top">편승열차 조회</div><div class="gd-dpos">📍 지금 위치 <b>회기</b>역</div><div class="gd-dto"><i>청량리</i><i>용산</i><i class="hl">서울</i><i>수색</i><i>의정부</i></div>' },
+    { cap: '③ 가장 빨리 오는 열차 · 환승 경로', tap: null, html: '<div class="gd-top">편승열차 조회 <small>회기 → 서울</small></div><div class="gd-dhero"><b>3분 뒤</b> 도착 <span>최소 환승 1회</span></div><div class="gd-droute"><p><i style="background:#0052a4"></i><b>회기</b><em>14:21</em></p><p class="seg" style="--c:#0052a4"><span>1호선 · 7분</span></p><p><i style="background:#0052a4;border-color:#00a84d"></i><b>청량리</b><em>환승</em></p><p class="seg" style="--c:#77c4a3"><span>경의중앙 · 14분</span></p><p><i style="background:#77c4a3"></i><b>서울</b><em>14:44</em></p></div>' },
+    { cap: '④ [고정]을 누르면 메인화면에 떠요', tap: [80, 90], sel: '.gd-dpin', html: '<div class="gd-top">편승열차 조회 <small>회기 → 서울</small></div><div class="gd-dhero"><b>3분 뒤</b> 도착 <span>최소 환승 1회</span></div><div class="gd-droute"><p><i style="background:#0052a4"></i><b>회기</b><em>14:21</em></p><p class="seg" style="--c:#0052a4"><span>1호선 · 7분</span></p><p><i style="background:#0052a4;border-color:#00a84d"></i><b>청량리</b><em>환승</em></p><p class="seg" style="--c:#77c4a3"><span>경의중앙 · 14분</span></p><p><i style="background:#77c4a3"></i><b>서울</b><em>14:44</em></p></div><div class="gd-dpin">📌 고정</div>' },
+    { cap: '⑤ 메인화면에서 바로 확인 (2분마다 갱신)', tap: null, html: '<div class="gd-top">메인화면</div><div class="gd-dwid"><b>편승 · 회기 → 서울</b><span>3분 뒤 · 환승 1회 · 14:44 도착</span></div><div class="gd-mcat">편의</div><div class="gd-grid"><i>월급</i><i>승무현황</i><i>열차운행</i><i>브리핑</i><i>편승열차</i><i>사이트</i></div>' }
   ],
   pass: [
     { cap: '① 환경설정 › 열차통과/도착 알림', tap: [50, 50], sel: '.gd-set .hl', html: 'SET:근무|근무설정,*열차통과/도착 알림,열차운행정보 조회방식,출근/출무 알림 설정,열차 운휴 알림' },
@@ -11482,6 +11517,7 @@ function midUiUpdate() {
       var p = it.at.split(' '), d = p[0].split('-');
       return '· ' + (+d[1]) + '/' + (+d[2]) + ' <b>' + p[1] + '</b> 도중출무' + (it.info ? ' (' + esc(it.info) + ')' : '') + ' → 알람 ' + alarmClockText(+p[1].slice(0, 2) * 60 + +p[1].slice(3) - min);
     }).join('<br>');
+    var dg = $('mid-diag'); if (dg) dg.hidden = !(meta.err || (!items.length && xrGet('midWhy', null)));
     lst.innerHTML = (h || '<span class="mid-none">가져온 도중출무 예정이 없어요.</span>') +
       (meta.stamp ? '<br><span class="mid-none">XROIS 확인 ' + esc(meta.stamp) + (meta.err ? ' · ' + esc(meta.err) : '') + ' · 12시간마다 자동</span>' : '');
   }
@@ -11517,14 +11553,31 @@ function midStore(d) {
   try { pushSyncAlarms(false); } catch (e) {}
 }
 var midFetching = false;
-function midFetchNow() {
+function midFetchNow(manual) {
   if (midFetching || typeof xrCall !== 'function') return;
+  if (manual && !getCrewPw()) { showToast('마이페이지에서 CREW(XROIS) 연동을 먼저 해주세요.'); return; }
   midFetching = true;
+  var b = $('mid-fetch'); if (b) { b.disabled = true; b.textContent = '가져오는 중…'; }
   xrCall({ action: 'xrMid' }, function (err, d) {
     midFetching = false;
-    if (err) { xrPut('midMeta', { at: Date.now(), stamp: stampNow().slice(5, 16), err: err.message }); try { midUiUpdate(); } catch (e) {} return; }
+    if (b) { b.disabled = false; b.textContent = '지금 가져오기'; }
+    if (err) {
+      xrPut('midMeta', { at: Date.now(), stamp: stampNow().slice(5, 16), err: err.message });
+      xrPut('midWhy', { why: err.message, code: err.code });
+      try { midUiUpdate(); } catch (e) {}
+      if (manual) showToast('도중출무를 가져오지 못했어요: ' + err.message);
+      return;
+    }
     midStore(d);
+    if (manual) { var n = midItems().length; showToast(n ? '도중출무 예정 ' + n + '건을 가져왔어요' : ((xrGet('midMeta', {}).err) || '앞으로 31일 안에 도중출무 예정이 없어요')); }
   });
+}
+/* 도중출무를 못 읽을 때: 서버가 본 화면 모양(이름은 가림)을 복사해서 관리자에게 보내기 */
+function midCopyDiag() {
+  var w = xrGet('midWhy', null), m = xrGet('midMeta', {});
+  var t = JSON.stringify({ meta: m, why: w }, null, 1);
+  var done = function () { showToast('진단 내용을 복사했어요. 채팅에 붙여 넣어 주세요.'); };
+  try { navigator.clipboard.writeText(t).then(done, function () { prompt('아래 내용을 복사해 주세요', t); }); } catch (e) { prompt('아래 내용을 복사해 주세요', t); }
 }
 /* 도중출무 알람 시각 목록 (앱이 열려 있을 때 · 푸시 공용) */
 function midAlarmList(cfg) {
@@ -18401,6 +18454,12 @@ function closeIconPanel() { document.getElementById('icon-panel').classList.remo
 .mid-list{margin:8px 2px 2px;font-size:12px;color:#5b6785;line-height:1.55;word-break:keep-all}
 .mid-list b{color:#1a73e8}
 .mid-list .mid-none{color:#8a96a8}
+.mid-acts{display:flex;gap:6px;margin:8px 2px 2px;flex-wrap:wrap}
+.mid-acts button{flex:1;min-width:120px;padding:9px 10px;border-radius:10px;border:1px solid #d6e2f5;background:#eef4ff;color:#1b64da;font-weight:700;font-size:13px;cursor:pointer}
+.mid-acts button:disabled{opacity:.6}
+.mid-acts #mid-diag{background:#fff;color:#536279;border-color:#e1e7ef}
+html.ui-dark .mid-acts button{background:#1f2a3c!important;border-color:#2f3d55!important;color:#8cb8ff!important}
+html.ui-dark .mid-acts #mid-diag{background:#20252d!important;color:#a7b1c0!important}
 </style>
 <style id="icon-theme-css">
 /* 테마 칸은 작게: 한 줄에 여러 개, 아이콘 + 이름만 (설명은 길게 누르면 보이는 title로) */
@@ -20400,6 +20459,39 @@ function cbfPick(k) {
 }
 </script>
 
+<style id="main-menu-categories">
+/* 메인화면 분류(근무 · 편의 · 관리): 제목이 한 줄을 다 차지해서 분류마다 새 줄에서 시작 → 오·열 정렬 유지 */
+html body #main-section .menu-grid > .menu-cat{grid-column:1/-1!important;display:flex;align-items:center;gap:8px;margin:6px 2px -2px;padding:0;font-size:13px;font-weight:800;color:#8b95a1;letter-spacing:-.2px;text-align:left}
+html body #main-section .menu-grid > .menu-cat:first-child{margin-top:0}
+html body #main-section .menu-grid > .menu-cat::after{content:"";flex:1;height:1px;background:#edf0f3}
+html.ui-dark body #main-section .menu-grid > .menu-cat{color:#8f99a8!important}
+html.ui-dark body #main-section .menu-grid > .menu-cat::after{background:#2c323b!important}
+/* ---- 아이콘 배열: 메인화면을 세로 목록으로 ---- */
+html.menu-list body #main-container > #main-section.page-view.active > .menu-grid,html.menu-list body #main-section .menu-grid{display:flex!important;flex-direction:column!important;gap:0!important;grid-auto-rows:auto!important}
+html.menu-list body #main-container > #main-section.page-view.active > .menu-grid > button.menu-btn,html.menu-list body #main-section .menu-grid > button.menu-btn{position:relative!important;display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;gap:14px!important;width:100%!important;min-height:56px!important;height:auto!important;padding:8px 34px 8px 4px!important;border-radius:12px!important;text-align:left!important}
+html.menu-list body #main-container > #main-section.page-view.active > .menu-grid > button.menu-btn img.menu-art,html.menu-list body #main-section .menu-grid > button.menu-btn img.menu-art{width:34px!important;height:34px!important;flex:0 0 34px!important;margin:0!important;object-position:center!important}
+html.menu-list body #main-container > #main-section.page-view.active > .menu-grid > button.menu-btn > span,html.menu-list body #main-section .menu-grid > button.menu-btn > span{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;gap:6px!important;min-height:0!important;margin:0!important;font-size:16.5px!important;font-weight:500!important;line-height:1.3!important;text-align:left!important;white-space:nowrap!important;color:#191f28!important}
+html.menu-list body #main-section .menu-grid > button.menu-btn > span br{display:none}
+html.menu-list body #main-section .menu-grid > button.menu-btn .menu-one-line,html.menu-list body #main-container > #main-section.page-view.active > .menu-grid > button.menu-btn .menu-one-line{font-size:16.5px!important;font-weight:500!important}
+html.menu-list body #main-section .menu-grid > button.menu-btn .dev-badge{margin:0!important}
+html.menu-list body #main-section .menu-grid > button.menu-btn::after{content:"";position:absolute;right:12px;top:50%;width:9px;height:9px;border-top:2px solid #8b95a1;border-right:2px solid #8b95a1;transform:translateY(-50%) rotate(45deg)}
+html.menu-list body #main-section .menu-grid > .menu-cat{margin:12px 4px 2px}
+html.menu-list.ui-dark body #main-section .menu-grid > button.menu-btn > span{color:#e9edf2!important}
+/* ---- 아이콘 배열: 환경설정 바둑판 (분류 없이 가나다순 · 메인화면과 같은 모양) ---- */
+#set-flat{display:none}
+html.set-grid body #settings-section > .settings-category{display:none!important}
+html.set-grid body #settings-section > #set-flat{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px 6px;margin:12px 0 8px}
+html.set-grid body #settings-section #set-flat .set-tile{position:relative!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;gap:6px!important;width:100%!important;min-height:100px!important;margin:0!important;padding:8px 2px 4px!important;border:0!important;border-radius:14px!important;background:transparent!important;box-shadow:none!important;text-align:center!important;color:#0b2a5b!important;cursor:pointer}
+html.set-grid body #settings-section #set-flat .set-tile:active{background:#f2f4f6!important}
+html.set-grid body #settings-section #set-flat .set-tile::after{display:none!important;content:none!important}
+html.set-grid body #settings-section #set-flat .set-tile .set-art{width:54px!important;height:54px!important;flex:0 0 54px!important;transform:none!important;margin:0!important;object-fit:contain!important}
+html.set-grid body #settings-section #set-flat .set-tile>span,html.set-grid body #settings-section #set-flat .set-tile .set-label{display:block!important;flex:0 0 auto!important;width:100%!important;text-align:center!important;font-size:12.5px!important;font-weight:700!important;line-height:1.22!important;white-space:normal!important;word-break:keep-all!important;overflow:visible!important;color:inherit!important}
+html.set-grid body #settings-section #set-flat .set-tile .set-sub,html.set-grid body #settings-section #set-flat .set-tile .set-badge,html.set-grid body #settings-section #set-flat .set-tile small{display:none!important}
+html.set-grid body #settings-section #set-flat .set-tile.danger{color:#d93a3a!important}
+html.set-grid.ui-dark body #settings-section #set-flat .set-tile{color:#e9edf2!important}
+html.set-grid.ui-dark body #settings-section #set-flat .set-tile:active{background:#232933!important}
+html.set-grid.ui-dark body #settings-section #set-flat .set-tile.danger{color:#ff7b7f!important}
+</style>
 <style id="settings-list-style">
 /* ===== 하단 고정바 아이콘: 51px에서 15% 더 작게 (→ 43px) ===== */
 html body #bottom-nav .bn-btn .bn-ico{width:43px!important;height:33px!important;min-height:33px!important}
@@ -20596,6 +20688,149 @@ html.ui-dark .ar-row{background:#1f242b!important;border-color:#2c323b!important
 .pl-day{color:var(--duty-day)!important}.pl-night,.pl-bi{color:var(--duty-night)!important}.pl-off,.pl-status{color:var(--duty-off)!important}
 .dia-item.l-day .dia-number{color:var(--duty-day)!important}.dia-item.l-bi .dia-number{color:var(--duty-night)!important}.dia-item.l-off .dia-number{color:var(--duty-off)!important}
 .dd-dia.t-day{color:var(--duty-day)!important}.dd-dia.t-bi{color:var(--duty-night)!important}.dd-dia.t-off{color:var(--duty-off)!important}
+
+/* 가이드: 편승열차 · 메인 분류 · 아이콘 배열 */
+#guide-panel .gd-mcat{font-size:8.5px;font-weight:800;color:#6b7a90;margin:-3px 2px 5px;padding-bottom:3px;border-bottom:1px solid #e1e7f1}
+#guide-panel .gd-dpos{font-size:10px;margin:0 2px 8px;color:#536279}
+#guide-panel .gd-dpos b{color:#1b64da}
+#guide-panel .gd-dto{display:flex;flex-wrap:wrap;gap:5px}
+#guide-panel .gd-dto i{font-style:normal;padding:5px 9px;border-radius:12px;background:#fff;border:1px solid #e1e7f1;font-weight:700;font-size:9.5px}
+#guide-panel .gd-dto i.hl,#guide-panel .gd-dto i.on{background:#1b64da;color:#fff;border-color:#1b64da}
+#guide-panel .gd-dhero{background:#fff;border:1px solid #e1e7f1;border-radius:10px;padding:7px 8px;margin-bottom:7px;font-size:10px}
+#guide-panel .gd-dhero b{font-size:14px;color:#1b64da}
+#guide-panel .gd-dhero span{display:block;margin-top:3px;font-size:8.5px;font-weight:700;color:#e8590c}
+#guide-panel .gd-droute{background:#fff;border:1px solid #e1e7f1;border-radius:10px;padding:6px 8px}
+#guide-panel .gd-droute p{display:flex;align-items:center;gap:6px;margin:0;font-size:9.5px;min-height:15px}
+#guide-panel .gd-droute p i{width:9px;height:9px;border-radius:50%;border:2px solid transparent;box-sizing:border-box;flex:none}
+#guide-panel .gd-droute p b{flex:1}
+#guide-panel .gd-droute p em{font-style:normal;color:#6b7a90;font-size:8.5px}
+#guide-panel .gd-droute p.seg{min-height:17px;margin-left:3px;border-left:3px solid var(--c);padding-left:9px}
+#guide-panel .gd-droute p.seg span{font-size:8.5px;color:#536279;font-weight:700}
+#guide-panel .gd-dpin{position:absolute;right:10px;bottom:10px;padding:5px 10px;border-radius:10px;background:#1b64da;color:#fff;font-weight:800;font-size:9.5px}
+#guide-panel .gd-dwid{background:#fff;border:1.5px solid #1b64da;border-radius:10px;padding:6px 8px;margin-bottom:7px}
+#guide-panel .gd-dwid b{display:block;font-size:9.5px;color:#1b64da}
+#guide-panel .gd-dwid span{font-size:8.5px;color:#536279}
+#guide-panel .gd-arr{background:#fff;border:1px solid #e1e7f1;border-radius:10px;padding:6px 8px;margin-bottom:8px}
+#guide-panel .gd-arr p{display:flex;align-items:center;justify-content:space-between;margin:4px 0 0;font-weight:700;font-size:9.5px}
+#guide-panel .gd-seg{display:flex;font-style:normal;background:#e6eaf0;border-radius:7px;padding:2px}
+#guide-panel .gd-seg i{font-style:normal;padding:3px 7px;border-radius:5px;font-size:8.5px;color:#536279}
+#guide-panel .gd-seg i.hl,#guide-panel .gd-seg i.on{background:#fff;color:#1b64da}
+#guide-panel .gd-mlist i{display:flex;align-items:center;gap:6px;font-style:normal;background:#fff;border:1px solid #e1e7f1;border-radius:8px;padding:5px 7px;margin-bottom:4px;font-weight:700;font-size:9.5px}
+#guide-panel .gd-mlist i::before{content:'';width:14px;height:14px;border-radius:4px;background:#dbe8fb}
+</style>
+<script id="icon-arrange-script">
+/* 아이콘 배열 (환경설정 › 아이콘 설정): 메인화면 · 환경설정 아이콘을 오·열(바둑판) 또는 세로 목록으로. 이 폰에만 저장 */
+function iconArrGet() { var o = null; try { o = JSON.parse(localStorage.getItem('rs_iconArr') || 'null'); } catch (e) {} o = o || {}; return { main: o.main === 'list' ? 'list' : 'grid', set: o.set === 'grid' ? 'grid' : 'list' }; }
+function iconArrApply() {
+  var a = iconArrGet(), r = document.documentElement;
+  r.classList.toggle('menu-list', a.main === 'list');
+  r.classList.toggle('set-grid', a.set === 'grid');
+  try { if (typeof setFlatBuild === 'function') setFlatBuild(); } catch (e) {}
+  [['ic-arr-main', a.main], ['ic-arr-set', a.set]].forEach(function (x) {
+    var el = document.getElementById(x[0]); if (!el) return;
+    [].forEach.call(el.querySelectorAll('button'), function (b) { b.classList.toggle('on', b.getAttribute('data-v') === x[1]); });
+  });
+}
+function iconArrSet(which, v) {
+  var a = iconArrGet(); a[which] = v;
+  try { localStorage.setItem('rs_iconArr', JSON.stringify(a)); } catch (e) {}
+  iconArrApply();
+  if (typeof showToast === 'function') showToast((which === 'main' ? '메인화면' : '환경설정') + ' 아이콘을 ' + (v === 'list' ? '세로 목록으로' : '바둑판으로') + ' 보여줄게요');
+}
+/* 환경설정 바둑판: 분류 없이 모든 칸을 가나다순으로 한 판에 (메인화면처럼). 원래 칸은 그대로 두고 복사본을 보여줌 */
+function setFlatBuild() {
+  var sec = document.getElementById('settings-section'); if (!sec) return;
+  var flat = document.getElementById('set-flat');
+  if (!document.documentElement.classList.contains('set-grid')) { if (flat) flat.innerHTML = ''; return; }
+  var first = sec.querySelector('.settings-category'); if (!first) return;
+  if (!flat) { flat = document.createElement('div'); flat.id = 'set-flat'; flat.className = 'set-flat'; first.parentNode.insertBefore(flat, first); }
+  var tiles = [].slice.call(sec.querySelectorAll('.settings-category .set-tile')).filter(function (t) { return !t.hidden && t.style.display !== 'none'; });
+  var name = function (t) { var l = t.querySelector('.set-label') || t.querySelector('span'); return ((l && l.textContent) || t.textContent || '').trim(); };
+  tiles.sort(function (a, b) {
+    var da = a.classList.contains('danger') ? 1 : 0, db = b.classList.contains('danger') ? 1 : 0;   /* 초기화 · 탈퇴는 맨 뒤 */
+    return da - db || name(a).localeCompare(name(b), 'ko');
+  });
+  flat.innerHTML = '';
+  tiles.forEach(function (t) {
+    var c = t.cloneNode(true); c.removeAttribute('id');
+    [].forEach.call(c.querySelectorAll('[id]'), function (x) { x.removeAttribute('id'); });
+    var oi = t.querySelector('img.set-art'), ci = c.querySelector('img.set-art'); if (oi && ci) ci.src = oi.src;
+    flat.appendChild(c);
+  });
+}
+iconArrApply();
+try { document.addEventListener('DOMContentLoaded', iconArrApply); window.addEventListener('load', setFlatBuild); } catch (e) {}
+(function () {
+  ['openSettings', 'closeIconPanel'].forEach(function (fn) {
+    var o = window[fn]; if (typeof o !== 'function') return;
+    window[fn] = function () { var r = o.apply(this, arguments); try { setFlatBuild(); setTimeout(setFlatBuild, 400); } catch (e) {} return r; };
+  });
+})();
+(function () { var o = window.openIconPanel; if (typeof o === 'function') window.openIconPanel = function () { var r = o.apply(this, arguments); iconArrApply(); return r; }; })();
+</script>
+<style id="main-menu-categories-rows">
+/* 분류 머리글 줄은 아이콘 줄 높이(108px)를 따라가지 않게 */
+html body #main-container > #main-section.page-view.active > .menu-grid,html body #main-section .menu-grid{grid-auto-rows:auto!important;grid-template-rows:none!important;align-content:start!important}
+html body #main-section .menu-grid > .menu-cat{min-height:0!important;height:auto!important;margin:8px 2px 0!important;padding:0!important}
+html body #main-section .menu-grid > .menu-cat:first-child{margin-top:0!important}
+</style>
+<style id="icon-arrange-style">
+#icon-panel .ic-arr{margin:0 0 12px;padding:10px 12px;border-radius:14px;background:#f5f7fa}
+#icon-panel .ic-arr-h{font-size:13px;font-weight:800;color:#536279;margin-bottom:6px}
+#icon-panel .ic-arr-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0}
+#icon-panel .ic-arr-row>span{font-size:14.5px;font-weight:600;color:#191f28}
+#icon-panel .ic-seg{display:flex;padding:3px;border-radius:10px;background:#e6eaf0}
+#icon-panel .ic-seg button{min-width:62px;padding:7px 10px;border:0;border-radius:8px;background:transparent;color:#536279;font-weight:700;font-size:13px;cursor:pointer}
+#icon-panel .ic-seg button.on{background:#fff;color:#1b64da;box-shadow:0 1px 2px rgba(16,24,40,.12)}
+html.ui-dark #icon-panel .ic-arr{background:#1f242c!important}
+html.ui-dark #icon-panel .ic-seg{background:#2c323b!important}
+html.ui-dark #icon-panel .ic-seg button.on{background:#3a414c!important;color:#8cb8ff!important}
+html.ui-dark #icon-panel .ic-arr-row>span{color:#e9edf2!important}
+
+#icon-panel .ic-arr-row{align-items:center}
+#icon-panel .ic-seg{gap:6px;padding:0;background:transparent}
+#icon-panel .ic-seg button{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;width:70px;padding:7px 6px 6px;border:1.5px solid #e1e7ef;border-radius:12px;background:#fff;box-shadow:none}
+#icon-panel .ic-seg button em{font-style:normal;font-size:11.5px;font-weight:800;color:#536279}
+#icon-panel .ic-seg button.on{border-color:#1b64da;background:#eef4ff;box-shadow:none}
+#icon-panel .ic-seg button.on em{color:#1b64da}
+#icon-panel .ic-pv{display:grid;width:52px;height:38px;padding:4px;box-sizing:border-box;border-radius:7px;background:#f2f5fa}
+#icon-panel .ic-pv.grid{grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);gap:3px}
+#icon-panel .ic-pv.grid b{border-radius:3px;background:#9dbdf7}
+#icon-panel .ic-pv.list{grid-template-rows:repeat(4,1fr);gap:3px}
+#icon-panel .ic-pv.list b{position:relative;border-radius:2px;background:linear-gradient(90deg,#9dbdf7 0 6px,transparent 6px 9px,#cfdbee 9px)}
+#icon-panel .ic-seg button.on .ic-pv b{background-color:transparent}
+#icon-panel .ic-seg button.on .ic-pv.grid b{background:#1b64da}
+#icon-panel .ic-seg button.on .ic-pv.list b{background:linear-gradient(90deg,#1b64da 0 6px,transparent 6px 9px,#9dbdf7 9px)}
+html.ui-dark #icon-panel .ic-seg{background:transparent!important}
+html.ui-dark #icon-panel .ic-seg button{background:#232933!important;border-color:#343b47!important}
+html.ui-dark #icon-panel .ic-seg button.on{background:#1f2a3c!important;border-color:#5b8def!important}
+html.ui-dark #icon-panel .ic-pv{background:#2c323b}
+</style>
+<style id="top-header-redesign">
+/* 상단 헤더: [새로고침] [로고] [날씨] / 큰 시계 + 날짜 */
+html body #main-container > div.top-bar{display:grid!important;grid-template-columns:86px minmax(0,1fr) 86px!important;grid-template-rows:auto auto!important;align-items:center!important;column-gap:6px!important;row-gap:10px!important;position:relative!important;height:auto!important;min-height:0!important;margin:0 0 4px!important;padding:8px 0 6px!important;box-sizing:border-box!important;width:100%!important;max-width:none!important}
+html body #main-container > div.top-bar > .refresh-btn{grid-column:1!important;grid-row:1!important;justify-self:start!important;align-self:center!important;position:static!important;transform:none!important;margin:0!important;width:40px!important;height:40px!important;min-width:40px!important;padding:8px!important;border-radius:50%!important;background:#f2f5fa!important;border:1px solid #e3e8f0!important;box-shadow:none!important;display:flex!important;align-items:center!important;justify-content:center!important}
+html body #main-container > div.top-bar > .refresh-btn svg{width:22px!important;height:22px!important}
+html body #main-container > div.top-bar > .refresh-btn:active svg{transform:rotate(-180deg);transition:transform .35s}
+html body #main-container > div.top-bar > #railwayLogo,html body #main-container > div.top-bar > #railwayLogoFallback:not([hidden]){grid-column:2!important;grid-row:1!important;justify-self:center!important;align-self:center!important;position:static!important;transform:none!important;margin:0!important;height:40px!important;width:auto!important;max-width:100%!important;object-fit:contain!important}
+html body #main-container > div.top-bar > #top-wx{grid-column:3!important;grid-row:1!important;justify-self:end!important;align-self:center!important;position:static!important;top:auto!important;right:auto!important;transform:none!important;margin:0!important;height:40px!important;box-sizing:border-box!important}
+html body #main-container > div.top-bar > #top-wx[hidden]{display:none!important}
+html body #main-container > div.top-bar > #liveClock{grid-column:1/-1!important;grid-row:2!important;position:static!important;transform:none!important;margin:0!important;padding:12px 10px 10px!important;width:100%!important;box-sizing:border-box!important;display:flex!important;flex-direction:column!important;align-items:center!important;gap:3px!important;border-radius:18px!important;background:linear-gradient(135deg,#eef4ff 0%,#f7f9fc 100%)!important;border:1px solid #e3ebf8!important;font-size:14px!important;line-height:1!important;color:#191f28!important;text-align:center!important;white-space:nowrap!important}
+html body #main-container > div.top-bar > #liveClock .lc-t{display:flex;align-items:baseline;gap:3px;font-variant-numeric:tabular-nums}
+html body #main-container > div.top-bar > #liveClock .lc-hm{font-size:38px;font-weight:800;letter-spacing:-.5px;color:#0b2a5b}
+html body #main-container > div.top-bar > #liveClock .lc-s{font-style:normal;font-size:18px;font-weight:700;color:#1b64da;min-width:1.3em;text-align:left}
+html body #main-container > div.top-bar > #liveClock .lc-d{font-size:13.5px;font-weight:600;color:#536279;letter-spacing:-.2px}
+html body #main-container > div.top-bar > #liveClock .lc-w{font-style:normal;color:#536279}
+html body #main-container > div.top-bar > #liveClock .lc-w.sun{color:#e5484d}
+html body #main-container > div.top-bar > #liveClock .lc-w.sat{color:#1b64da}
+html.ui-dark body #main-container > div.top-bar > .refresh-btn{background:#232933!important;border-color:#343b47!important}
+html.ui-dark body #main-container > div.top-bar > #liveClock{background:linear-gradient(135deg,#1c2433 0%,#1a1e25 100%)!important;border-color:#2c3442!important;color:#e9edf2!important}
+html.ui-dark body #main-container > div.top-bar > #liveClock .lc-hm{color:#eef3fb}
+html.ui-dark body #main-container > div.top-bar > #liveClock .lc-s{color:#8cb8ff}
+html.ui-dark body #main-container > div.top-bar > #liveClock .lc-d,html.ui-dark body #main-container > div.top-bar > #liveClock .lc-w{color:#a7b1c0}
+html.ui-dark body #main-container > div.top-bar > #liveClock .lc-w.sun{color:#ff7b7f}
+html.ui-dark body #main-container > div.top-bar > #liveClock .lc-w.sat{color:#8cb8ff}
+@media(max-width:359px){html body #main-container > div.top-bar{grid-template-columns:72px minmax(0,1fr) 72px!important}html body #main-container > div.top-bar > #liveClock .lc-hm{font-size:32px}}
 </style>
 </body>
 </html>
