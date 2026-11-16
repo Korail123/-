@@ -21085,5 +21085,12 @@ html body #bottom-nav.bottom-nav .bn-btn.active::before,html body #bottom-nav.bo
 /* 메인화면 바둑판: 분류 제목 없이 가나다순 한 판 */
 html:not(.menu-list) body #main-section .menu-grid > .menu-cat{display:none!important}
 </style>
+<style id="top-header-no-brand">
+/* 맨 위 '철도비서' 글자 없앰 → 시계 · 인사를 맨 위로 (새로고침 · 날씨는 양쪽 모서리) */
+html body #main-container > div.top-bar > .tb-brand{display:none!important}
+html body #main-container > div.top-bar{grid-template-rows:auto!important;padding-top:6px!important}
+html body #main-container > div.top-bar > .refresh-btn,html body #main-container > div.top-bar > #top-wx{grid-row:1!important;align-self:start!important;position:relative!important;top:0!important;bottom:auto!important;margin:0!important;transform:none!important;z-index:2}
+html body #main-container > div.top-bar > #liveClock{grid-row:1!important;grid-column:1/-1!important;padding:8px 0 0!important}
+</style>
 </body>
 </html>
