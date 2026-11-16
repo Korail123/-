@@ -2133,7 +2133,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <div id="trainq-panel" class="dia-modal" style="z-index:405" onclick="if(event.target===this)closeTrainQuery()">
   <div class="dia-dialog ns-dialog tq-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차운행조회" alt="" aria-hidden="true">열차운행정보 조회</div>
-    <div class="tq-sub">날짜와 열차번호를 넣으면 NXLogis에서 열차의 <b>운행 위치</b>를 불러와 보여줘요.</div>
+    <div class="tq-sub" style="word-break:keep-all">날짜와 열차번호를 넣으면 열차의 <b>운행 위치</b>를 불러와 보여줘요.<br>화물열차는 <b>Logis.Korail</b>, 그 외 열차는 <b>NXLogis</b>에서 가져와요.</div>
     <div class="tq-sec">
       <label class="tq-lab" for="tq-day">날짜</label>
       <input id="tq-day" type="hidden">
@@ -2149,7 +2149,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <div id="tq-msg" class="tq-msg"></div>
       <button type="button" class="tq-main" onclick="trainQueryInput()">조회</button>
     </div>
-    <button type="button" class="tq-dst" onclick="closeTrainQuery();openDstPanel()"><b>편승열차 조회</b><small>내 위치에서 청량리 · 용산 · 서울 · 수색 · 의정부까지 지금 탈 수 있는 전철</small><i aria-hidden="true">›</i></button>
     <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeTrainQuery()">닫기</button></div>
   </div>
 </div>
@@ -11858,6 +11857,20 @@ function pushClearOnLogout() {
    - 앱이 열려 있으면 열차가 달려가는 애니메이션 팝업
    - 모든 로그인 사용자가 개인별 설정으로 이용 */
 var PASS_FN = 'smart-handler';        /* nx-check 함수 주소 */
+/* 운행 정보 출처 이름: 화물열차(3000번대)는 Logis.Korail(철도물류정보서비스), 그 외는 NXLogis.
+   서버 응답에 source가 있으면 실제로 가져온 곳을 따름 (logis가 안 될 때 NXLogis로 대신 확인한 경우 등) */
+function infoSrc(train, j) {
+  var src = j && j.source ? String(j.source) : '';
+  if (/^logis/i.test(src)) return 'Logis.Korail';
+  if (/^nxlogis/i.test(src)) return 'NXLogis';
+  return /^3\d{3}$/.test(String(parseInt(String(train || '').replace(/\D/g, ''), 10) || '')) ? 'Logis.Korail' : 'NXLogis';
+}
+/* 여러 열차를 한 번에 조회할 때: 출처가 섞이면 둘 다 표시 */
+function infoSrcList(trains) {
+  var a = [];
+  (trains || []).forEach(function (t) { var n = infoSrc(t); if (a.indexOf(n) < 0) a.push(n); });
+  return a.length ? a.join('·') : 'NXLogis';
+}
 function passAllowed() {
   var u = getCurrentUser();
   return !!(u && u.employeeId && String(u.employeeId) !== 'guest');
@@ -12236,7 +12249,7 @@ function passMonitorTick() {
             else if (!ev.passed && ev.approaching && moving && c.soon) kind = 'soon';
             if (!kind || !passMonitorCanShow(it.date, it.train, station, kind)) return;
             pages.push(Object.assign({ kind: kind, train: it.train, station: route.stations[idx].name, date: it.date,
-              note: 'NXLogis 운행기록 기준 · 마지막 확인 위치로 계산' }, ev));
+              note: infoSrc(it.train, route) + ' 운행기록 기준 · 마지막 확인 위치로 계산' }, ev));
           });
         }
       } catch (e) {}
@@ -12442,7 +12455,7 @@ function passCheckCancelled(train, dateKey, cb) {
     var state = found && ['cancel', 'ok', 'unknown'].indexOf(found.state) >= 0
       ? found.state : 'unknown';
     cb(state, state === 'unknown'
-      ? ((found && (found.message || found.reason || found.error)) || 'NXLogis에서 운휴 여부를 확인하지 못했습니다.')
+      ? ((found && (found.message || found.reason || found.error)) || (infoSrc(train, found) + '에서 운휴 여부를 확인하지 못했습니다.'))
       : '');
   });
 }
@@ -12580,12 +12593,16 @@ function dstPickIdx(tr, wsec, transfer) {
   if (!transfer) return ok[0];
   return ok.reduce(function (b, q) { return dstArrMin(tr[q]) < dstArrMin(tr[b]) ? q : b; }, ok[0]);
 }
-function dstXferHtml(t, cls) { /* 환승 안내 한 줄: 왕십리 22:41 도착 → [경의중앙선] 용문행 22:57 출발 · 대기 11분 */
-  var x = t.transfer; if (!x) return '';
-  return '<div class="' + cls + '"><span class="x-stn"><b>' + dstEsc(x.station) + '</b> ' + dstEsc(t.transferArrive || '') + ' 도착</span><span class="x-arrow">환승</span>'
+function dstXfers(t) { return t && Array.isArray(t.transfers) && t.transfers.length ? t.transfers : (t && t.transfer ? [t.transfer] : []); }
+function dstXferHtml(t, cls) { /* 환승 안내: 환승마다 한 줄씩 — 왕십리 22:41 도착 → [경의중앙선] 용문행 22:57 출발 · 대기 11분 */
+  return dstXfers(t).map(function (x, i) { return dstXferOne(t, x, i, cls); }).join('');
+}
+function dstXferOne(t, x, i, cls) {
+  return '<div class="' + cls + '"><span class="x-stn"><b>' + dstEsc(x.station) + '</b> ' + dstEsc(x.arrive || (i === 0 ? t.transferArrive : '') || '') + ' 도착</span><span class="x-arrow">환승</span>'
     + '<i class="dst-chip sm" style="--lc:' + dstEsc(x.color || '#667085') + '">' + dstEsc(String(x.line || '').replace(/\s*\(.*\)$/, '')) + '</i>'
     + (x.estimated ? '<span class="x-info">갈아탈 열차 시각은 예상이에요</span>' : '<span class="x-info">' + dstEsc(x.terminus || '') + '행 ' + dstEsc(x.depart || '') + ' 출발' + (x.waitMin != null ? ' · 대기 ' + x.waitMin + '분' : '') + '</span>') + '</div>';
 }
+function dstXferStations(t) { return dstXfers(t).map(function (x) { return x.station; }).join(' · '); }
 function dstDraw() {
   var d = dstLast; if (!d) return;
   var el = (Date.now() - d._got) / 1000;
@@ -12604,7 +12621,9 @@ function dstDraw() {
       + '<div class="dst-hero-mid"><span class="dst-hero-eta">' + etaHtml + '</span><span class="dst-hero-arr"><small>' + dstEsc(d.dest) + ' 도착</small><b>' + dstEsc(f.destArrive || '--:--') + '</b></span></div>'
       + (isX ? dstXferHtml(f, 'dst-hero-x') : '')
       + '<div class="dst-hero-now">' + dstEsc(String(f.now || '').replace(/^\S+열차\s*/, '')) + (fr != null ? ' · 총 ' + fr + '분' : '') + (f.stops ? ' · ' + f.stops + '개 역' : '') + '</div></div>';
-    if (isX && f.transfer) html = '<div class="dst-xbadge">환승 1회 · ' + dstEsc(f.transfer.station) + '에서 ' + dstEsc(String(f.transfer.line || '').replace(/\s*\(.*\)$/, '')) + '으로 갈아타요</div>' + html;
+    if (isX && f.transfer) { var fx = dstXfers(f); html = '<div class="dst-xbadge">' + (fx.length === 1
+      ? '환승 1회 · ' + dstEsc(fx[0].station) + '에서 ' + dstEsc(String(fx[0].line || '').replace(/\s*\(.*\)$/, '')) + '으로 갈아타요'
+      : '최소 환승 ' + fx.length + '회 · ' + fx.map(function (x) { return dstEsc(x.station); }).join(' → ') + '에서 갈아타요') + '</div>' + html; }
     var missed = 0; for (var q2 = 0; q2 < tr.length; q2++) if (wsec && tr[q2].eta != null && tr[q2].eta < wsec) missed++;
     if (missed) html += '<div class="dst-hero-note">더 빨리 오는 열차 ' + missed + '대는 걸어가면 놓쳐요</div>';
     if (rest.length) html += '<div class="dst-sub-h">' + (isX ? '다른 경로' : '다른 열차') + '</div><div class="dst-table"><div class="dst-thead"><span></span><span>노선</span><span>행선지</span><span>도착까지</span><span>소요</span><span>도착</span></div>'
@@ -12618,7 +12637,7 @@ function dstDraw() {
         if (miss) dl = '<em class="dst-tag miss">놓침</em>';
         return '<div class="dst-row' + (miss ? ' miss' : '') + '" style="--lc:' + c + '"><i class="bar"></i><span class="ln">' + dstEsc(dstLine(t)) + '</span>'
           + '<span class="term"><span class="tm"><b>' + dstEsc(t.terminus || '?') + '행</b>' + (t.express ? '<em class="dst-tag exp">급행</em>' : '') + dl + '</span>'
-          + (t.transfer ? '<small class="tx"><i style="background:' + dstEsc(t.transfer.color || '#98a2b3') + '"></i>' + dstEsc(t.transfer.station) + ' 환승</small>' : '') + '</span>'
+          + (t.transfer ? '<small class="tx"><i style="background:' + dstEsc(t.transfer.color || '#98a2b3') + '"></i>' + dstEsc(dstXferStations(t)) + ' 환승</small>' : '') + '</span>'
           + '<span class="eta">' + e + '</span><span class="ride">' + (r == null ? '-' : r + '분') + '</span><span class="arr">' + dstEsc(t.destArrive || '--:--') + '</span></div>';
       }).join('') + '</div>';
     $('dst-out').innerHTML = html + '<div class="dst-note"></div>';
@@ -12669,7 +12688,7 @@ function dstPinRender() {
   var d = dstPinData, c = dstCfg();
   if (d && d.dest !== c.dest) d = dstPinData = null;
   var b = d ? dstBest(d) : null;
-  $('dst-pin-route').textContent = (d ? d.station + '역' : '현재 위치') + ' → ' + c.dest + (b && b.f && b.f.transfer ? ' · ' + b.f.transfer.station + ' 환승' : '') + (b && b.walk != null ? ' · 도보 ' + b.walk + '분' : '');
+  $('dst-pin-route').textContent = (d ? d.station + '역' : '현재 위치') + ' → ' + c.dest + (b && b.f && b.f.transfer ? ' · ' + dstXferStations(b.f) + ' 환승' : '') + (b && b.walk != null ? ' · 도보 ' + b.walk + '분' : '');
   if (!d || !b.f) {
     el.className = 'dst-pin msg';
     $('dst-pin-msg').textContent = d ? '지금 ' + c.dest + '까지 가는 전철이 없어요' : (dstPinErr || '편승열차 정보를 불러오는 중…');
@@ -12775,7 +12794,7 @@ function passShowTrainAnim(train, dateKey) {
   var t = todayKST();
   var key = d.length === 8 ? d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8) : getDateKey(t.y, t.m, t.d);
   var tno = String(train).toUpperCase();
-  try { showPassPopup({ kind: 'err', loading: true, train: tno, date: key, msg: 'NXLogis에서 운행 정보를 불러오는 중…' }, true); } catch (e) {}
+  try { showPassPopup({ kind: 'err', loading: true, train: tno, date: key, msg: infoSrc(tno) + '에서 운행 정보를 불러오는 중…' }, true); } catch (e) {}
   passRunCheck([{ date: key, train: tno }], passCfg || passCfgLocal() || passCfgDefault(), true, { quietToast: true });
 }
 /* ============ 열차 종류별 그림 (NXLogis trn_kind) ============
@@ -13048,7 +13067,7 @@ function passRunCheck(list, c, overviewOnly, opts) {
   var passApplyRefresh = function (p) { if (mySeq !== passRunSeq) { passRefreshBusy = false; return; } gApply(p); };
   if (!opts.refresh) passLastRun = { list: list.slice(), overviewOnly: !!overviewOnly };
   var noStationMode = overviewOnly || !Array.isArray(c.stations) || c.stations.length === 0;
-  if (!opts.refresh && !opts.quietToast) showToast(list.map(function (x) { return x.train; }).join(', ') + '열차 NXLogis 현재 위치를 조회합니다...');
+  if (!opts.refresh && !opts.quietToast) showToast(list.map(function (x) { return x.train; }).join(', ') + '열차 ' + infoSrcList(list.map(function (x) { return x.train; })) + ' 현재 위치를 조회합니다...');
   var pages = [], left = list.length;
 
   list.forEach(function (it, n) {
@@ -13057,7 +13076,7 @@ function passRunCheck(list, c, overviewOnly, opts) {
       if (cancelState === 'cancel') {
         pages[n] = {
           kind: 'cancel', train: it.train, date: it.date,
-          msg: 'NXLogis에서 열차 운휴로 확인했습니다.'
+          msg: infoSrc(it.train, pre) + '에서 열차 운휴로 확인했습니다.'
         };
         if (--left === 0) {
           pages = pages.filter(Boolean);
@@ -13090,7 +13109,7 @@ function passRunCheck(list, c, overviewOnly, opts) {
       if (j && /(?:열차\s*)?운휴|운행\s*중지|운행중지/.test(routeStateText)) {
         page = {
           kind: 'cancel', train: it.train, date: it.date,
-          msg: 'NXLogis ZONE에서 열차운휴가 확인되었습니다.'
+          msg: infoSrc(it.train, j) + '에서 열차운휴가 확인되었습니다.'
         };
       } else if (j && j.success && Array.isArray(j.stations) && j.stations.length) {
         if (noStationMode) {
@@ -13181,7 +13200,7 @@ function passRunCheck(list, c, overviewOnly, opts) {
           } else {
             page = {
               kind: 'err', train: it.train, date: it.date,
-              msg: 'NXLogis 응답에서 현재 정차역 또는 운행구간을 판별하지 못했습니다.'
+              msg: infoSrc(it.train, j) + ' 응답에서 현재 정차역 또는 운행구간을 판별하지 못했습니다.'
             };
           }
         } else {
@@ -13197,7 +13216,7 @@ function passRunCheck(list, c, overviewOnly, opts) {
             } else {
               page = {
                 kind: 'err', train: it.train, date: it.date,
-                msg: 'NXLogis에서 현재 위치를 확인하지 못했습니다. 현재 역이 확인되면 5개 역으로 표시됩니다.'
+                msg: infoSrc(it.train, j) + '에서 현재 위치를 확인하지 못했습니다. 현재 역이 확인되면 5개 역으로 표시됩니다.'
               };
             }
           }
@@ -13205,7 +13224,7 @@ function passRunCheck(list, c, overviewOnly, opts) {
       } else {
         page = {
           kind: 'err', train: it.train, date: it.date,
-          msg: ((j && j.message) || 'NXLogis 운행정보를 조회하지 못했습니다.') + ' 아래 NXLogis 버튼으로 바로 확인할 수 있어요.'
+          msg: ((j && j.message) || (infoSrc(it.train, j) + ' 운행정보를 조회하지 못했습니다.')) + (infoSrc(it.train, j) === 'NXLogis' ? ' 아래 NXLogis 버튼으로 바로 확인할 수 있어요.' : '')
         };
       }
 
@@ -13364,7 +13383,7 @@ function passDraw(d, quiet) {
     $('pp-info').innerHTML =
       '<div class="pp-row"><span>운행 상태</span><b style="color:#c62828">열차운휴</b></div>' +
       '<div class="pp-row"><span>알림 내용</span><b>' + esc((d.date ? nxShortDateText(d.date) + ' ' : '') + d.train + '열차 운휴') + '</b></div>';
-    $('pp-zone').textContent = d.msg || 'NXLogis에서 해당 열차의 운휴가 확인되었습니다.';
+    $('pp-zone').textContent = d.msg || (infoSrc(d.train) + '에서 해당 열차의 운휴가 확인되었습니다.');
     if (passPopAnim) { try { passPopAnim.cancel(); } catch (e) {} passPopAnim = null; }
     passPopTimers.forEach(clearTimeout); passPopTimers = [];
     $('pass-pop-panel').classList.add('active');
@@ -13965,7 +13984,7 @@ function nxRefresh(force, done, silent) {
         why: !found
           ? '서버 응답에 해당 열차 정보가 없습니다'
           : map[key] === 'unknown'
-            ? 'NXLogis에서 운행 정보를 확인하지 못했습니다'
+            ? infoSrc(it.train) + '에서 운행 정보를 확인하지 못했습니다'
             : ''
       };
     });
@@ -14090,7 +14109,7 @@ function nxLoginRender(list, opts) {
       body.innerHTML = '<div class="pp-info nxr-info"><div class="pp-row nxr-row"><span>운행 상태</span><b class="nxr-ok">열차 운휴 없음</b></div>' +
         (list.length ? '<div class="pp-row nxr-row"><span>확인한 열차</span><b>오늘·내일·모레 ' + list.length + '건</b></div>' : '') + '</div>' +
         '<div class="pp-zone nxr-note">' + (list.length
-          ? (s.unknown ? s.unknown + '건은 확인하지 못했어요.' : '내 근무표 열차를 NXLogis에서 확인했어요.')
+          ? (s.unknown ? s.unknown + '건은 확인하지 못했어요.' : '내 근무표 열차를 ' + infoSrcList(list.map(function (x) { return x.train; })) + '에서 확인했어요.')
           : '오늘·내일·모레 조회할 열차(주간·야간 근무)가 없습니다.') + '</div>';
     }
     nxLoginShownSig = sig;
