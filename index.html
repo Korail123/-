@@ -2510,7 +2510,10 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   tick();
   setInterval(tick, 1000);
+  window.lcRefresh = tick;   /* 로그인 · 로그아웃 때 시계 아래 이름을 바로 바꿈 */
 })();
+/* 시계 아래 이름: 로그인 이름으로 바로 (로그아웃이면 비움) */
+function lcSetName(name) { var el = document.getElementById('welcome-name'); if (el) el.textContent = name || ''; try { if (window.lcRefresh) window.lcRefresh(); } catch (e) {} }
 /* 서버 보관함에 있는 근무 교환 내용을 이 폰에 반영
    (자동 새로고침·백업 직전·화면 복귀 때도 호출되므로 보관함부터 바로 확인한다) */
 function syncPending(done) {
@@ -10872,7 +10875,7 @@ function doLogin(id, name, isAuto) {
     try { teamAfterLogin(); } catch (e) {}
     nxStatus = {};
     nxLastFetch = 0;
-    $('welcome-name').textContent = r.name;
+    lcSetName(r.name);
     myMonth = null;
     groupData = null;
     mySettings = { seq: '', anchor: '' };
@@ -11118,6 +11121,7 @@ function logout() {
   clearDataCache();
   LS.removeItem(USER_KEY);
   SS.removeItem(USER_KEY);
+  lcSetName('');   /* 시계 아래 이전 사용자 이름 바로 지우기 */
   var saved = readSavedLogin();
   if (saved) {
     writeSavedLogin(saved.id, saved.name, false);
@@ -11162,7 +11166,7 @@ function logout() {
     api({ action: 'login', employeeId: u.employeeId, name: u.name || '', ver: snapVersionFor(u.employeeId) }, function (r) {
       if (r && r.success) {
         setCurrentUser({ employeeId: r.employeeId, name: r.name, token: r.token });
-        $('welcome-name').textContent = r.name;
+        lcSetName(r.name);
         if (r.snapshot) snapApply(r.employeeId, snapGen, r.snapshot);
         else refreshSnapshot(true, null);
         syncPending();
@@ -11178,7 +11182,7 @@ function logout() {
   /* 새로고침 시: 저장된 토큰이 있으면 로그인 화면으로 떨어지지 않고 직전 상태를 복구 */
   var u = getCurrentUser();
   if (u.token && u.employeeId && u.employeeId !== 'guest') {
-    $('welcome-name').textContent = u.name || '';
+    lcSetName(u.name || '');
     restoreLastSection();
     softRevalidate(u);
     return;
