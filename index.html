@@ -2471,10 +2471,15 @@ document.addEventListener('DOMContentLoaded', function () {
     var dk = k.getFullYear() + '-' + k.getMonth() + '-' + k.getDate();
     if (el.getAttribute('data-d') !== dk || !el.querySelector('.lc-t')) {
       var we = k.getDay() === 0 ? ' sun' : (k.getDay() === 6 ? ' sat' : '');
-      el.innerHTML = '<span class="lc-t"><b class="lc-hm"></b><em class="lc-s"></em></span>' +
-        '<span class="lc-d">' + k.getFullYear() + '년 ' + (k.getMonth() + 1) + '월 ' + k.getDate() + '일 <i class="lc-w' + we + '">' + days[k.getDay()] + '요일</i></span>';
+      /* 잠금화면형: 날짜 → 큰 시각 → 인사 */
+      el.innerHTML = '<span class="lc-d">' + (k.getMonth() + 1) + '월 ' + k.getDate() + '일 <i class="lc-w' + we + '">' + days[k.getDay()] + '요일</i></span>' +
+        '<span class="lc-t"><b class="lc-hm"></b><em class="lc-s"></em></span><span class="lc-g"></span>';
       el.setAttribute('data-d', dk);
     }
+    var hh = k.getHours(), nmEl = document.getElementById('welcome-name'), nm = (nmEl && nmEl.textContent || '').trim();
+    var gt = hh >= 5 && hh < 12 ? '좋은 오전입니다' : hh >= 12 && hh < 18 ? '좋은 오후입니다' : hh >= 18 && hh < 22 ? '좋은 저녁입니다' : '편안한 밤입니다';
+    var gEl = el.querySelector('.lc-g'), gh = nm ? '<b>' + nm.replace(/[<>&]/g, '') + '</b>님, ' + gt : '';
+    if (gEl && gEl.getAttribute('data-g') !== gh) { gEl.innerHTML = gh; gEl.setAttribute('data-g', gh); gEl.hidden = !gh; }
     el.querySelector('.lc-hm').textContent = p(k.getHours()) + ':' + p(k.getMinutes());
     el.querySelector('.lc-s').textContent = p(k.getSeconds());
     el.setAttribute('aria-label', k.getFullYear() + '년 ' + (k.getMonth() + 1) + '월 ' + k.getDate() + '일 ' + days[k.getDay()] + '요일 ' + k.getHours() + '시 ' + k.getMinutes() + '분');
@@ -7561,7 +7566,7 @@ function showBriefing(fromSettings) {
   var dow = new Date(Date.UTC(t.y, t.m, t.d)).getUTCDay();
   $('brief-date').textContent = (t.m + 1) + '월 ' + t.d + '일 (' + W[dow] + ')';
   var u = getCurrentUser();
-  $('brief-hello').textContent = (u.name ? u.name + '님, ' : '') + '좋은 하루 보내세요!';
+  $('brief-hello').textContent = '';
   /* 오늘의 근무 */
   var duty = briefTodayDuty();
   var dh;
@@ -16649,6 +16654,7 @@ min-height:76px;padding:10px 6px!important;border-radius:16px!important;text-ali
 .brief-head b{display:block;font-size:18px;color:#0b376d}
 .brief-head small{font-size:12.5px;color:#7a8696;font-weight:600}
 .brief-hello{margin:8px 2px 10px;font-size:13px;color:#56657a}
+.brief-hello:empty{display:none}
 .brief-weather{padding:12px 14px;border-radius:16px;background:linear-gradient(135deg,#e6f1ff,#eef7ff);border:1px solid #d6e6fa;margin-bottom:10px}
 .brief-w-main{display:flex;align-items:center;gap:10px}
 .brief-w-emoji{width:52px;height:52px;flex:none}
@@ -20977,6 +20983,73 @@ html body #main-container{padding-bottom:calc(var(--bn-h,72px) + 24px + env(safe
 (function () {
   function fit() { var n = document.getElementById('bottom-nav'); if (!n || !n.offsetHeight) return; document.documentElement.style.setProperty('--bn-h', n.offsetHeight + 'px'); }
   window.addEventListener('load', fit); window.addEventListener('resize', fit); setTimeout(fit, 1500); setTimeout(fit, 4000);
+})();
+</script>
+<style id="top-header-lockscreen">
+/* 헤더 1번 잠금화면형: 카드 없이 큰 시계 하나 (날짜 → 시각 → 인사) */
+html body #main-container > div.top-bar{row-gap:4px!important;padding:6px 0 4px!important;margin:0 0 8px!important}
+html body #main-container > div.top-bar > #railwayLogo,html body #main-container > div.top-bar > #railwayLogoFallback:not([hidden]){height:30px!important}
+html body #main-container > div.top-bar > .refresh-btn{width:36px!important;height:36px!important;min-width:36px!important;padding:7px!important}
+html body #main-container > div.top-bar > #top-wx{height:36px!important}
+html body #main-container > div.top-bar > #liveClock{background:transparent!important;border:0!important;box-shadow:none!important;padding:14px 0 6px!important;gap:2px!important;border-radius:0!important}
+html body #main-container > div.top-bar > #liveClock .lc-d{order:1;font-size:15px;font-weight:600;color:#3c4a60;letter-spacing:-.2px}
+html body #main-container > div.top-bar > #liveClock .lc-w{color:inherit}
+html body #main-container > div.top-bar > #liveClock .lc-t{order:2;line-height:1}
+html body #main-container > div.top-bar > #liveClock .lc-hm{font-size:72px;font-weight:300;letter-spacing:-3px;color:#0b2a5b;line-height:1.02}
+html body #main-container > div.top-bar > #liveClock .lc-s{display:none}
+html body #main-container > div.top-bar > #liveClock .lc-g{order:3;margin-top:6px;font-size:15px;font-weight:500;color:#3c4a60}
+html body #main-container > div.top-bar > #liveClock .lc-g b{font-weight:700;color:#1b64da}
+html body #main-container > div.top-bar > #liveClock .lc-g[hidden]{display:none}
+html body #main-container > #main-section > #welcome-card.login-success-card{display:none!important}
+html.ui-dark body #main-container > div.top-bar > #liveClock{background:transparent!important}
+html.ui-dark body #main-container > div.top-bar > #liveClock .lc-d,html.ui-dark body #main-container > div.top-bar > #liveClock .lc-g{color:#b8c2d0}
+html.ui-dark body #main-container > div.top-bar > #liveClock .lc-hm{color:#f2f5fa}
+html.ui-dark body #main-container > div.top-bar > #liveClock .lc-g b{color:#8cb8ff}
+html.ui-ios body #main-container > div.top-bar > #liveClock{background:transparent!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none;backdrop-filter:none}
+html.ui-ios body #main-container > div.top-bar > #liveClock .lc-hm{font-size:76px;font-weight:200}
+@media(max-width:359px){html body #main-container > div.top-bar > #liveClock .lc-hm{font-size:60px}}
+</style>
+<style id="top-header-lock-card">
+/* 헤더: 흰 카드 한 장 안에 [새로고침] 철도비서 [날씨] / 날짜 · 큰 시각 · 인사 (첨부 시안) */
+html body #main-container > div.top-bar{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:18px!important;padding:12px 14px 16px!important;margin:4px 0 12px!important;row-gap:2px!important;grid-template-columns:72px minmax(0,1fr) 72px!important}
+html body #main-container > div.top-bar > #railwayLogo,html body #main-container > div.top-bar > #railwayLogoFallback{display:none!important}
+html body #main-container > div.top-bar > .tb-brand{grid-column:2;grid-row:1;justify-self:center;align-self:center;font-size:17px;font-weight:600;color:#1b4f9c;letter-spacing:-.3px;white-space:nowrap}
+html body #main-container > div.top-bar > .refresh-btn{width:34px!important;height:34px!important;min-width:34px!important;padding:7px!important;background:#fff!important;border:1px solid #e3e7ec!important}
+html body #main-container > div.top-bar > .refresh-btn{color:#5a6472!important}
+html body #main-container > div.top-bar > .refresh-btn svg{width:18px!important;height:18px!important;filter:none!important}
+html body #main-container > div.top-bar > #top-wx{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;height:34px!important;gap:4px!important;justify-content:flex-end!important}
+html body #main-container > div.top-bar > #top-wx img{width:18px!important;height:18px!important;filter:grayscale(1) brightness(.6)}
+html body #main-container > div.top-bar > #top-wx .tw-txt{display:block!important}
+html body #main-container > div.top-bar > #top-wx .tw-txt b{font-size:14px!important;font-weight:500!important;color:#4a5568!important}
+html body #main-container > div.top-bar > #top-wx .tw-txt em,html body #main-container > div.top-bar > #top-wx .tw-txt small{display:none!important}
+html body #main-container > div.top-bar > #liveClock{padding:12px 0 0!important}
+html body #main-container > div.top-bar > #liveClock .lc-d{font-size:14px;font-weight:400;color:#5a6472}
+html body #main-container > div.top-bar > #liveClock .lc-w.sun,html body #main-container > div.top-bar > #liveClock .lc-w.sat{color:inherit}
+html body #main-container > div.top-bar > #liveClock .lc-hm{font-size:64px;font-weight:300;letter-spacing:-2px;color:#111418}
+html body #main-container > div.top-bar > #liveClock .lc-g{font-size:14px;font-weight:400;color:#5a6472;margin-top:8px}
+html body #main-container > div.top-bar > #liveClock .lc-g b{font-weight:500;color:#1b4f9c}
+html.ui-dark body #main-container > div.top-bar{background:transparent!important;border:0!important}
+html.ui-dark body #main-container > div.top-bar > .tb-brand,html.ui-dark body #main-container > div.top-bar > #liveClock .lc-g b{color:#8cb8ff}
+html.ui-dark body #main-container > div.top-bar > .refresh-btn{background:transparent!important;border-color:#343b47!important}
+html.ui-dark body #main-container > div.top-bar > .refresh-btn{color:#c4ccd8!important}
+html.ui-dark body #main-container > div.top-bar > #top-wx img{filter:grayscale(1) brightness(1.6)}
+html.ui-dark body #main-container > div.top-bar > #top-wx .tw-txt b{color:#c4ccd8!important}
+html.ui-dark body #main-container > div.top-bar > #liveClock .lc-hm{color:#f2f5fa}
+html.ui-dark body #main-container > div.top-bar > #liveClock .lc-d,html.ui-dark body #main-container > div.top-bar > #liveClock .lc-g{color:#a7b1c0}
+html.ui-ios body #main-container > div.top-bar{background:rgba(255,255,255,.6)!important;-webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px)}
+</style>
+<script id="top-header-lock-card-script">
+(function () {
+  function mount() {
+    var bar = document.querySelector('#main-container > .top-bar'); if (!bar || bar.querySelector('.tb-brand')) return;
+    var b = document.createElement('span'); b.className = 'tb-brand'; b.textContent = '철도비서';
+    var ck = document.getElementById('liveClock'); bar.insertBefore(b, ck || null);
+    /* 새로고침: 선 하나짜리 둥근 화살표 아이콘 */
+    var rf = bar.querySelector('.refresh-btn');
+    if (rf) rf.innerHTML = '<svg class="tb-rf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></svg>';
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount); else mount();
+  window.addEventListener('load', mount);
 })();
 </script>
 </body>
