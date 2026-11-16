@@ -1390,6 +1390,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div style="display:flex;justify-content:flex-start;gap:8px;margin:8px 0 10px;">
     <button type="button" class="group-swap-open-btn" onclick="openGroupSwapSelector()"><img class="cmp-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무교환" data-ic-center alt="" aria-hidden="true" decoding="async"><span>근무 교환</span></button>
     <button type="button" class="group-swap-open-btn group-cmp-open-btn" onclick="openGroupCompareSelector()"><img class="cmp-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="비교하기" data-ic-center alt="" aria-hidden="true" decoding="async"><span>비교하기</span></button>
+    <button type="button" class="group-swap-open-btn gf-open-btn" onclick="openGroupFolders()"><img class="cmp-ico" src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M6 18a5 5 0 0 1 5-5h13l5 6h24a5 5 0 0 1 5 5v26a5 5 0 0 1-5 5H11a5 5 0 0 1-5-5z' fill='%23e8f1ff' stroke='%230f3d75' stroke-width='3' stroke-linejoin='round'/%3E%3Ccircle cx='26' cy='34' r='5' fill='%231769d2'/%3E%3Cpath d='M17 48c1-6 5-9 9-9s8 3 9 9' fill='%231769d2'/%3E%3Ccircle cx='41' cy='32' r='4.2' fill='%2378b0ff'/%3E%3Cpath d='M34 47c1-5 4-8 7-8s6 3 7 8' fill='%2378b0ff'/%3E%3Ccircle cx='51' cy='15' r='8' fill='%23f59e0b'/%3E%3Cpath d='M51 11v8M47 15h8' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E" alt="" aria-hidden="true" decoding="async"><span>그룹 탭</span></button>
   </div>
   <div id="group-table-card" class="group-table-container">
     <table class="group-table" id="group-schedule-table">
@@ -12568,7 +12569,7 @@ function openDstPanel() {
   dstDrawDests(); dstFrom(); dstPinBtn();
   $('dst-panel').classList.add('active');
   var hit = dstCache[c.dest] || (dstPinData && dstPinData.dest === c.dest ? dstPinData : null);
-  if (hit && Date.now() - hit._got < 5 * 60000) { dstLast = hit; dstCredit(true); dstFrom(hit); dstDraw(); if (!dstTick) dstTick = setInterval(dstDraw, 5000); }
+  if (hit && Date.now() - hit._got < 10 * 60000) { dstLast = hit; dstCredit(true); dstFrom(hit); dstDraw(); if (!dstTick) dstTick = setInterval(dstDraw, 5000); }
   else { dstLast = null; $('dst-out').innerHTML = dstSkeleton(); $('dst-time').textContent = ''; dstCredit(false); }
   dstQuery();
 }
@@ -12596,7 +12597,7 @@ function dstFrom(d) {
 function dstPick(d) {
   var c = dstCfg(); c.dest = d; dstSave(c); dstDrawDests();
   var hit = dstCache[d];
-  if (hit && Date.now() - hit._got < 5 * 60000) { dstLast = hit; dstFrom(hit); dstDraw(); } else { dstLast = null; $('dst-out').innerHTML = dstSkeleton(); }
+  if (hit && Date.now() - hit._got < 10 * 60000) { dstLast = hit; dstFrom(hit); dstDraw(); } else { dstLast = null; $('dst-out').innerHTML = dstSkeleton(); }
   dstQuery();
 }
 function dstMsg(html, cls) { $('dst-out').innerHTML = '<div class="dst-msg ' + (cls || '') + '">' + html + '</div>'; }
@@ -12971,7 +12972,7 @@ function dstPinRender() {
   el.style.setProperty('--lc', f.color || '#2f6fd6');
   $('dst-pin-chip').textContent = dstLine(f);
   $('dst-pin-term').innerHTML = dstEsc(f.terminus || '?') + '행' + (f.express ? '<em class="dst-tag exp">급행</em>' : '') + (f.delaySec >= 60 ? '<em class="dst-tag late">' + Math.round(f.delaySec / 60) + '분 지연</em>' : '');
-  $('dst-pin-eta').innerHTML = eta == null ? '-' : (eta <= 30 ? '<b>곧</b>' : '<b>' + Math.round(eta / 60) + '</b><small>분 후</small>');
+  $('dst-pin-eta').innerHTML = eta == null ? '-' : (eta <= 30 ? '<b>곧</b>' : '<b>' + Math.round(eta / 60) + '</b><small>분 후 도착</small>');
   $('dst-pin-arr').textContent = c.dest + ' ' + (f.destArrive || '--:--') + ' 도착';
   /* 15분 안쪽이면 역(오른쪽 동그라미)으로 다가오는 위치 */
   var pr = eta == null ? 0 : 1 - Math.min(1, eta / 900);
@@ -21459,5 +21460,336 @@ html.ui-dark #dst-panel .dst-hero-walk{color:#5fd39a}
   var o = window.runLoginPopups; if (typeof o === 'function') window.runLoginPopups = function () { var r = o.apply(this, arguments); setTimeout(go, 600); return r; };
 })();
 </script>
+<div id="gf-panel" class="dia-modal" onclick="if(event.target===this)closeGroupFolders()">
+  <div class="dia-dialog gf-dialog">
+    <div class="gf-head"><b id="gf-title">그룹 탭</b><button type="button" class="gf-x" onclick="closeGroupFolders()" aria-label="닫기">×</button></div>
+    <div id="gf-body"></div>
+  </div>
+</div>
+<style id="gf-style">
+#gf-panel .gf-dialog{max-width:420px;width:calc(100% - 24px);max-height:calc(100dvh - 40px);overflow-y:auto;padding:16px 16px 14px;border-radius:20px}
+#gf-panel .gf-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+#gf-panel .gf-head b{font-size:17px;font-weight:800;color:#0f2a4f}
+#gf-panel .gf-x{width:34px;height:34px;border:0;border-radius:50%;background:#eef2f7;font-size:20px;color:#3c4a60;cursor:pointer}
+#gf-panel .gf-note{font-size:12.5px;color:#667085;line-height:1.5;margin:0 2px 10px;word-break:keep-all}
+#gf-panel .gf-new{display:flex;gap:6px;margin-bottom:12px}
+#gf-panel .gf-new input,#gf-panel .gf-search{flex:1;min-width:0;width:100%;height:42px;padding:0 12px;border:1px solid #d6dde6;border-radius:12px;font-size:15px;box-sizing:border-box}
+#gf-panel .gf-btn{height:42px;padding:0 14px;border:0;border-radius:12px;background:#1769d2;color:#fff;font-weight:800;font-size:14px;cursor:pointer;white-space:nowrap}
+#gf-panel .gf-btn.ghost{background:#eef2f7;color:#334155}
+#gf-panel .gf-btn.red{background:#fdecec;color:#c62828}
+#gf-panel .gf-list{display:flex;flex-direction:column;gap:8px}
+#gf-panel .gf-folder{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #e3e8ef;border-radius:14px;background:#fff;cursor:pointer;text-align:left;width:100%;font:inherit;color:#667085}
+#gf-panel .gf-folder .gf-fi{width:34px;height:34px;flex:none}
+#gf-panel .gf-folder b{display:block;font-size:15px;color:#0f2a4f}
+#gf-panel .gf-folder small{display:block;font-size:12px;color:#667085;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#gf-panel .gf-folder .gf-tx{flex:1;min-width:0}
+#gf-panel .gf-folder.on{border-color:#1769d2;background:#f2f7ff}
+#gf-panel .gf-empty{padding:18px 8px;text-align:center;color:#8a96a8;font-size:13px}
+#gf-panel .gf-row{display:flex;align-items:center;gap:8px;padding:9px 10px;border-bottom:1px solid #eef1f5}
+#gf-panel .gf-row b{flex:1;font-size:15px;color:#191f28}
+#gf-panel .gf-row small{font-size:12px;color:#667085}
+#gf-panel .gf-row button{border:0;background:#f2f4f7;border-radius:9px;padding:6px 10px;font-weight:700;font-size:12.5px;color:#475467;cursor:pointer}
+#gf-panel .gf-row button.add{background:#1769d2;color:#fff}
+#gf-panel .gf-sec{font-size:12.5px;font-weight:800;color:#536279;margin:14px 2px 6px}
+#gf-panel .gf-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+#gf-panel .gf-acts .gf-btn{flex:1}
+#group-section .group-swap-open-btn{flex:1 1 0!important;min-width:0!important;justify-content:center!important;padding-left:6px!important;padding-right:6px!important;gap:4px!important}
+#group-section .group-swap-open-btn > span{white-space:nowrap}
+#group-section .gf-banner{display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:9px 12px;border-radius:12px;background:#f2f7ff;border:1px solid #cfe0fb;font-size:13.5px;color:#0f3d75;font-weight:700}
+#group-section .gf-banner span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#group-section .gf-banner button{background:#fff;border:1px solid #cfe0fb;border-radius:9px;padding:6px 10px;font-weight:800;font-size:12.5px;color:#1769d2;cursor:pointer;white-space:nowrap}
+html.ui-dark #gf-panel .gf-head b,html.ui-dark #gf-panel .gf-folder b,html.ui-dark #gf-panel .gf-row b{color:#e9edf2}
+html.ui-dark #gf-panel .gf-folder{background:#1e232b;border-color:#2f3640}
+html.ui-dark #gf-panel .gf-folder.on{background:#1b2a40;border-color:#3b74c9}
+html.ui-dark #gf-panel .gf-x,html.ui-dark #gf-panel .gf-btn.ghost,html.ui-dark #gf-panel .gf-row button{background:#2a3039;color:#d0d7e2}
+html.ui-dark #gf-panel .gf-new input,html.ui-dark #gf-panel .gf-search{background:#1b2027;border-color:#353c47;color:#e9edf2}
+html.ui-dark #gf-panel .gf-row{border-color:#2a3039}
+html.ui-dark #group-section .gf-banner{background:#1b2a40;border-color:#2f4a70;color:#cfe0ff}
+html.ui-dark #group-section .gf-banner button{background:#1e232b;border-color:#2f4a70;color:#8cb8ff}
+</style>
+<script id="gf-script">
+/* ===== 근무그룹 › 그룹 탭: 내가 고른 동료들로 폴더를 만들어 근무그룹 표로 비교 (이 폰에만 저장) ===== */
+var GF_ICON = "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M6 18a5 5 0 0 1 5-5h13l5 6h24a5 5 0 0 1 5 5v26a5 5 0 0 1-5 5H11a5 5 0 0 1-5-5z' fill='%23e8f1ff' stroke='%230f3d75' stroke-width='3' stroke-linejoin='round'/%3E%3Ccircle cx='26' cy='34' r='5' fill='%231769d2'/%3E%3Cpath d='M17 48c1-6 5-9 9-9s8 3 9 9' fill='%231769d2'/%3E%3Ccircle cx='41' cy='32' r='4.2' fill='%2378b0ff'/%3E%3Cpath d='M34 47c1-5 4-8 7-8s6 3 7 8' fill='%2378b0ff'/%3E%3Ccircle cx='51' cy='15' r='8' fill='%23f59e0b'/%3E%3Cpath d='M51 11v8M47 15h8' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E";
+var gfActive = null, gfOpenId = null, gfTeams = {}, gfLoading = {};
+function gfKey() { return 'rs_gfolders_' + ((getCurrentUser() || {}).employeeId || ''); }
+function gfAll() { try { var a = JSON.parse(localStorage.getItem(gfKey()) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function gfSave(a) { try { localStorage.setItem(gfKey(), JSON.stringify(a)); } catch (e) {} }
+function gfGet(id) { return gfAll().filter(function (f) { return f.id === id; })[0] || null; }
+function gfPut(f) { var a = gfAll(), i = -1; a.forEach(function (x, k) { if (x.id === f.id) i = k; }); if (i >= 0) a[i] = f; else a.push(f); gfSave(a); }
+/* 다른 조 근무표 받기 (근무 교환 '조 고르기'와 같은 자료) */
+function gfParseTeam(team, r) {
+  var ov = {};
+  (r.overrides || []).forEach(function (row) {
+    if (!row || row[9] === 'shadow' || row[8] === 'shadow') return;
+    var rType = String(row[2] == null ? '' : row[2]).trim(), rDia = row[3] == null ? '' : row[3], rStatus = row[4] == null ? '' : row[4];
+    if (rType === 'dia' && !rDia && rStatus) rType = 'status'; else if (rType === 'status' && !rStatus && rDia) rType = 'dia'; else if (!rType) rType = rDia ? 'dia' : (rStatus ? 'status' : '');
+    if (!rType) return;
+    ov[row[0] + '|' + String(row[1] || '').slice(0, 10)] = { type: rType, dia: rDia, status: rStatus, updatedAt: row[5], partnerId: row[6] || '', partnerName: row[7] || '', dutyStatus: row[8] || '' };
+  });
+  var dia = r.dia || []; try { fixDiaTypes(dia); } catch (e) {}
+  return { team: team, members: r.members || [], dia: dia, ovMap: ov, rules: (r.weekdayRules && typeof r.weekdayRules === 'object') ? r.weekdayRules : null,
+           femaleRules: r.femaleRules || null, females: Array.isArray(r.females) ? r.females.map(String) : null, at: Date.now() };
+}
+function gfLoadTeam(team, cb) {
+  var c = gfTeams[team]; if (c && Date.now() - c.at < 10 * 60000) { cb(c); return; }
+  (gfLoading[team] = gfLoading[team] || []).push(cb);
+  if (gfLoading[team].length > 1) return;
+  var u = getCurrentUser();
+  api({ action: 'getTeamSnapshot', employeeId: u.employeeId, token: u.token, team: team }, function (r) {
+    var t = (r && r.success && Array.isArray(r.members)) ? (gfTeams[team] = gfParseTeam(team, r)) : null;
+    var l = gfLoading[team] || []; gfLoading[team] = null; l.forEach(function (f) { try { f(t); } catch (e) {} });
+  });
+}
+function gfLoadAll(cb) { var left = RS_TEAMS.length; RS_TEAMS.forEach(function (t) { gfLoadTeam(t, function () { if (--left === 0) cb(); }); }); }
+/* 폴더 사람의 그 날 근무: 내 조 사람이면 내 근무표 자료, 다른 조면 그 조 다이아 · 요일 규칙으로 */
+function gfDay(m, key) {
+  try {
+    var mine = snapshot && snapshot.raw ? (snapshot.raw.members || []).filter(function (x) { return String(x.employeeId) === String(m.employeeId); })[0] : null;
+    if (mine) return snapDayWithAuto(key, mine, snapshot.raw.dia || [], snapshot.ovMap || {});
+    var T = gfTeams[m.team]; if (!T) return null;
+    var mb = T.members.filter(function (x) { return String(x.employeeId) === String(m.employeeId); })[0]; if (!mb) return null;
+    var keep = swapOther; swapOther = T; rsRulesTeamOverride = T.team;
+    try { return snapDayWithAuto(key, mb, T.dia || [], T.ovMap || {}); } finally { rsRulesTeamOverride = ''; swapOther = keep; }
+  } catch (e) { return null; }
+}
+function gfBuild(f, days) {
+  var u = getCurrentUser(), out = [{ employeeId: u.employeeId, name: u.name || '나', days: {} }];
+  (f.members || []).forEach(function (m) {
+    if (String(m.employeeId) === String(u.employeeId)) return;
+    var inMine = snapshot && snapshot.raw && (snapshot.raw.members || []).some(function (x) { return String(x.employeeId) === String(m.employeeId); });
+    if (!inMine && !gfTeams[m.team]) gfLoadTeam(m.team, function () { if (gfActive === f.id) renderGroupTable(); });
+    var d = {}; days.forEach(function (x) { d[x.key] = gfDay(m, x.key); });
+    out.push({ employeeId: m.employeeId, name: m.name, settings: {}, days: d });
+  });
+  return { success: true, members: out, folder: true };
+}
+(function () {
+  var orig = window.renderGroupTable; if (typeof orig !== 'function') return;
+  window.renderGroupTable = function () {
+    var f = gfActive ? gfGet(gfActive) : null;
+    gfBanner(f);
+    if (!f) { gfActive = null; return orig.apply(this, arguments); }
+    if (!groupWeekStart) groupWeekStart = thisWeekStart();
+    var keep = groupData; groupData = gfBuild(f, groupWeekDays());
+    try { return orig.apply(this, arguments); } finally { groupData = keep; }
+  };
+})();
+function gfBanner(f) {
+  var host = document.getElementById('group-table-card'); if (!host) return;
+  var b = document.getElementById('gf-banner');
+  if (!f) { if (b) b.remove(); return; }
+  if (!b) { b = document.createElement('div'); b.id = 'gf-banner'; b.className = 'gf-banner'; host.parentNode.insertBefore(b, host); }
+  b.innerHTML = '<img src="' + GF_ICON + '" alt="" width="22" height="22"><span>' + esc(f.name) + ' · ' + ((f.members || []).length + 1) + '명</span><button type="button" onclick="gfShow(null)">원래 근무그룹</button>';
+}
+function gfShow(id) { gfActive = id; try { renderGroupTable(); } catch (e) {} closeGroupFolders(); }
+function openGroupFolders() { gfOpenId = null; gfRenderList(); $('gf-panel').classList.add('active'); }
+function closeGroupFolders() { var p = $('gf-panel'); if (p) p.classList.remove('active'); }
+function gfRenderList() {
+  $('gf-title').textContent = '그룹 탭';
+  var a = gfAll();
+  $('gf-body').innerHTML = '<div class="gf-note">원하는 동료들로 폴더를 만들고, 근무그룹 표에서 함께 비교해요. 이 폰에만 저장돼요.</div>'
+    + '<div class="gf-new"><input id="gf-new-name" maxlength="20" placeholder="새 폴더 이름 (예: 같이 타는 동기)" onkeydown="if(event.key===\'Enter\')gfCreate()"><button type="button" class="gf-btn" onclick="gfCreate()">+ 만들기</button></div>'
+    + '<div class="gf-list">' + (a.length ? a.map(function (f) {
+        var nm = (f.members || []).map(function (m) { return m.name; }).join(', ');
+        return '<button type="button" class="gf-folder' + (f.id === gfActive ? ' on' : '') + '" onclick="gfOpen(\'' + f.id + '\')"><img class="gf-fi" src="' + GF_ICON + '" alt=""><span class="gf-tx"><b>' + esc(f.name) + '</b><small>' + ((f.members || []).length ? esc(nm) : '아직 아무도 없어요 · 눌러서 동료 추가') + '</small></span><span>›</span></button>';
+      }).join('') : '<div class="gf-empty">아직 만든 폴더가 없어요.</div>') + '</div>'
+    + (gfActive ? '<div class="gf-acts"><button type="button" class="gf-btn ghost" onclick="gfShow(null)">원래 근무그룹 보기</button></div>' : '');
+}
+function gfCreate() {
+  var el = $('gf-new-name'), name = (el && el.value || '').trim();
+  if (!name) { showToast('폴더 이름을 적어 주세요.'); if (el) el.focus(); return; }
+  var a = gfAll(); if (a.length >= 20) { showToast('폴더는 20개까지 만들 수 있어요.'); return; }
+  var f = { id: 'f' + Date.now().toString(36), name: name, members: [] }; a.push(f); gfSave(a);
+  gfOpen(f.id);
+}
+function gfOpen(id) {
+  var f = gfGet(id); if (!f) { gfRenderList(); return; }
+  gfOpenId = id; $('gf-title').textContent = f.name;
+  $('gf-body').innerHTML = '<div class="gf-note">이름을 검색해서 동료를 이 폴더에 넣어요. 모든 조에서 찾아요.</div>'
+    + '<input id="gf-q" class="gf-search" placeholder="동료 이름 검색 (예: 홍길동)" oninput="gfSearch()" autocomplete="off">'
+    + '<div id="gf-res"></div>'
+    + '<div class="gf-sec">폴더 사람 ' + (f.members || []).length + '명 · 나는 항상 맨 위</div>'
+    + '<div id="gf-mem">' + ((f.members || []).length ? f.members.map(function (m, i) {
+        return '<div class="gf-row"><b>' + esc(m.name) + '</b><small>' + esc(m.team || '') + '</small><button type="button" onclick="gfRemove(' + i + ')">빼기</button></div>';
+      }).join('') : '<div class="gf-empty">위에서 이름을 검색해 넣어 주세요.</div>') + '</div>'
+    + '<div class="gf-acts"><button type="button" class="gf-btn" onclick="gfShow(\'' + id + '\')">근무그룹에서 보기</button></div>'
+    + '<div class="gf-acts"><button type="button" class="gf-btn ghost" onclick="gfRenderList()">‹ 폴더 목록</button><button type="button" class="gf-btn ghost" onclick="gfRename()">이름 바꾸기</button><button type="button" class="gf-btn red" onclick="gfDelete()">삭제</button></div>';
+}
+function gfSearch() {
+  var qel = $('gf-q'), box = $('gf-res'); if (!qel || !box) return;
+  var q = (qel.value || '').trim();
+  if (!q) { box.innerHTML = ''; return; }
+  var f = gfGet(gfOpenId), have = {}; ((f && f.members) || []).forEach(function (m) { have[m.employeeId] = 1; });
+  var me = String(getCurrentUser().employeeId);
+  function draw() {
+    var qe = $('gf-q'); if (!qe || (qe.value || '').trim() !== q) return;
+    var hits = [], seen = {};
+    RS_TEAMS.forEach(function (t) { var T = gfTeams[t]; if (!T) return; T.members.forEach(function (m) {
+      var id = String(m.employeeId), nm = String(m.name || ''); if (id === me || seen[id] || nm.indexOf(q) < 0) return; seen[id] = 1; hits.push({ employeeId: id, name: nm, team: t });
+    }); });
+    hits.sort(function (a, b) { return a.name.localeCompare(b.name, 'ko'); });
+    var loading = RS_TEAMS.some(function (t) { return !gfTeams[t]; });
+    gfHits = hits;
+    box.innerHTML = hits.slice(0, 30).map(function (h, i) {
+      return '<div class="gf-row"><b>' + esc(h.name) + '</b><small>' + esc(h.team) + '</small>' + (have[h.employeeId] ? '<button type="button" disabled>넣음</button>' : '<button type="button" class="add" onclick="gfAdd(' + i + ')">넣기</button>') + '</div>';
+    }).join('') + (loading ? '<div class="gf-empty">조별 명단을 불러오는 중…</div>' : (hits.length ? '' : '<div class="gf-empty">"' + esc(q) + '" 이름의 동료를 찾지 못했어요. (철도비서에 가입한 사람만 보여요)</div>'));
+  }
+  draw(); gfLoadAll(draw);
+}
+var gfHits = [];
+function gfAdd(i) {
+  var h = gfHits[i], f = gfGet(gfOpenId); if (!h || !f) return;
+  if ((f.members || []).some(function (m) { return String(m.employeeId) === String(h.employeeId); })) return;
+  if ((f.members || []).length >= 30) { showToast('한 폴더에는 30명까지 넣을 수 있어요.'); return; }
+  f.members = (f.members || []).concat([{ employeeId: h.employeeId, name: h.name, team: h.team }]); gfPut(f);
+  var q = ($('gf-q') || {}).value || ''; gfOpen(f.id); if ($('gf-q')) { $('gf-q').value = q; gfSearch(); }
+  showToast(h.name + '님을 ' + f.name + '에 넣었어요.');
+  if (gfActive === f.id) try { renderGroupTable(); } catch (e) {}
+}
+function gfRemove(i) { var f = gfGet(gfOpenId); if (!f) return; f.members.splice(i, 1); gfPut(f); gfOpen(f.id); if (gfActive === f.id) try { renderGroupTable(); } catch (e) {} }
+function gfRename() { var f = gfGet(gfOpenId); if (!f) return; var n = prompt('새 폴더 이름', f.name); if (n == null) return; n = n.trim().slice(0, 20); if (!n) return; f.name = n; gfPut(f); gfOpen(f.id); if (gfActive === f.id) try { renderGroupTable(); } catch (e) {} }
+function gfDelete() { var f = gfGet(gfOpenId); if (!f || !confirm('"' + f.name + '" 폴더를 지울까요? (동료 근무표는 그대로예요)')) return; gfSave(gfAll().filter(function (x) { return x.id !== f.id; })); if (gfActive === f.id) gfShow(null); gfRenderList(); $('gf-panel').classList.add('active'); }
+</script>
+<style id="dst-pin-scene-style">
+/* 메인화면 편승열차: 전광판 + 실제 철도 장면 (자갈 · 침목 · 레일 · 승강장 · 역명판 · 전동차) */
+.dst-pin .dst-pin-track{display:none!important}
+.dst-pin.msg .dps,.dst-pin.load .dps{display:none}
+.dps{margin-top:8px}
+.dps-led{position:relative;border-radius:8px;background:#0b0d10;padding:6px 9px;overflow:hidden;box-shadow:inset 0 0 0 1px #23262c,inset 0 2px 6px rgba(0,0,0,.6)}
+.dps-led::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;background:radial-gradient(circle,rgba(0,0,0,0) 55%,rgba(0,0,0,.35) 56%) 0 0/3px 3px}
+.dps-row{display:flex;align-items:center;gap:6px;height:19px;font-family:"DotGothic16","D2Coding",ui-monospace,Menlo,Consolas,monospace;font-size:13px;font-weight:700;letter-spacing:.5px;color:#ffb21f;text-shadow:0 0 4px rgba(255,170,30,.75);white-space:nowrap}
+.dps-row + .dps-row{border-top:1px dashed #262a31;margin-top:3px;padding-top:3px;height:19px}
+.dps-row .ln{position:relative;z-index:2;flex:none;padding:0 5px;border-radius:4px;background:var(--c,#2f6fd6);color:#fff;text-shadow:none;font-family:inherit;font-size:11px;line-height:16px;letter-spacing:0}
+.dps-row .tx{flex:1;min-width:0;overflow:hidden}
+.dps-row .tx span{display:inline-block}
+.dps-row .tx.run span{animation:dpsRun 9s linear infinite;padding-left:100%}
+.dps-row .et{flex:none;color:#ff5a3c;text-shadow:0 0 4px rgba(255,80,50,.8)}
+.dps-row.x{color:#7fd4ff;text-shadow:0 0 4px rgba(90,190,255,.7)}
+.dps-row.x .et{color:#7fd4ff;text-shadow:0 0 4px rgba(90,190,255,.7)}
+.dst-pin.soon .dps-row:first-child .et{animation:dpsBlink 1s steps(1) infinite}
+
+.dps-row.dps-ann{color:#ff5a3c;text-shadow:0 0 4px rgba(255,80,50,.75)}
+.dps-row.dps-ann .tx span{animation:dpsRun 14s linear infinite;padding-left:100%;white-space:nowrap}
+@keyframes dpsRun{to{transform:translateX(-100%)}}
+@keyframes dpsBlink{50%{opacity:.15}}
+.dps-scene{position:relative;height:58px;margin-top:7px;border-radius:9px;overflow:hidden;background:linear-gradient(#dfe9f5 0 44%,#cfd6de 44%)}
+.dps-sky{position:absolute;left:0;right:0;top:0;height:44%;background:linear-gradient(#cfe2f7,#eaf2fb)}
+.dps-pole{position:absolute;top:2px;width:2px;height:24px;background:#8a96a6}
+.dps-wire{position:absolute;left:0;right:0;top:5px;height:1px;background:#8a96a6;opacity:.7}
+.dps-bed{position:absolute;left:0;right:0;bottom:6px;height:15px;background:repeating-linear-gradient(90deg,#7a5a3c 0 4px,transparent 4px 13px),linear-gradient(#9aa1aa,#7f8791)}
+.dps-rail{position:absolute;left:0;right:0;height:2px;background:linear-gradient(#e8ecf0,#8d97a3)}
+.dps-rail.a{bottom:17px}.dps-rail.b{bottom:9px}
+.dps-plat{position:absolute;right:0;bottom:0;width:23%;height:26px;background:linear-gradient(#c3c9d1,#a9b0ba);border-top:3px solid #f6c445;box-shadow:inset 0 3px 0 #fff3}
+.dps-plat::before{content:"";position:absolute;left:0;right:0;top:-3px;height:3px;background:repeating-linear-gradient(90deg,#f6c445 0 6px,#2b2f36 6px 9px)}
+.dps-sign{position:absolute;right:6px;top:3px;padding:1px 6px;border-radius:3px;background:#fff;border:1.5px solid var(--lc,#2f6fd6);font-size:9.5px;font-weight:800;color:#1d2939;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.dps-sign::after{content:"";position:absolute;left:50%;top:100%;width:2px;height:9px;margin-left:-1px;background:#6b7380}
+.dps-train{position:absolute;bottom:18px;left:calc(2% + (73% - 92px) * var(--p,0));width:92px;height:24px;transition:left 1.6s cubic-bezier(.3,.1,.3,1)}
+.dps-train svg{display:block;width:92px;height:24px;filter:drop-shadow(0 2px 1px rgba(0,0,0,.25))}
+.dst-pin:not(.soon) .dps-train{animation:dpsSway 1.2s ease-in-out infinite}
+@keyframes dpsSway{50%{transform:translateY(-.6px)}}
+.dps-arr{position:absolute;left:6px;top:3px;font-size:9.5px;font-weight:800;color:#3c4a60}
+html.ui-dark .dps-scene{background:linear-gradient(#1b2433 0 44%,#262c35 44%)}
+html.ui-dark .dps-sky{background:linear-gradient(#0f1a2b,#1d2a3e)}
+html.ui-dark .dps-bed{background:repeating-linear-gradient(90deg,#4a3a2a 0 4px,transparent 4px 13px),linear-gradient(#4b525c,#3a4049)}
+html.ui-dark .dps-plat{background:linear-gradient(#4a525d,#3b424c)}
+html.ui-dark .dps-arr{color:#b8c2d0}
+@media (prefers-reduced-motion:reduce){.dps-train,.dps-row .tx.run span,.dst-pin.soon .dps-row:first-child .et{animation:none}}
+</style>
+<script id="dst-pin-scene-script">
+/* 전동차 옆모습 (노선 색 띠 · 창문 · 출입문 · 운전실) */
+function dpsTrainSvg(c) {
+  c = c || '#2f6fd6';
+  var car = function (x, cab) {
+    var d = '<rect x="' + x + '" y="2" width="44" height="18" rx="' + (cab ? 3 : 2) + '" fill="#eef1f4" stroke="#7d8794" stroke-width=".8"/>'
+      + '<rect x="' + x + '" y="13" width="44" height="2.6" fill="' + c + '"/>'
+      + '<rect x="' + (x + 5) + '" y="5" width="6" height="7" rx="1" fill="#2b3a4f"/><rect x="' + (x + 24) + '" y="5" width="6" height="7" rx="1" fill="#2b3a4f"/>'
+      + '<rect x="' + (x + 14) + '" y="4.5" width="7" height="13" rx=".8" fill="#cfd5dc" stroke="#7d8794" stroke-width=".6"/><rect x="' + (x + 33) + '" y="4.5" width="7" height="13" rx=".8" fill="#cfd5dc" stroke="#7d8794" stroke-width=".6"/>'
+      + '<circle cx="' + (x + 8) + '" cy="21.5" r="2" fill="#3a3f46"/><circle cx="' + (x + 36) + '" cy="21.5" r="2" fill="#3a3f46"/>';
+    if (cab) d += '<path d="M' + (x + 44) + ' 2 h1.5 q2.5 0 2.5 4 v10 q0 4 -2.5 4 h-1.5 z" fill="#e3e7ec" stroke="#7d8794" stroke-width=".8"/><rect x="' + (x + 40) + '" y="4.5" width="6" height="6" rx="1.2" fill="#1d2a3a"/><circle cx="' + (x + 46) + '" cy="15.5" r="1" fill="#ffd34d"/>';
+    return d;
+  };
+  return '<svg viewBox="0 0 92 24" aria-hidden="true">' + car(0, false) + car(45.5, true) + '<rect x="44" y="9" width="1.5" height="6" fill="#59616b"/></svg>';
+}
+function dpsRender(d, b, c) {
+  var el = document.getElementById('dst-pin'); if (!el) return;
+  var sc = document.getElementById('dps'); if (!sc) { sc = document.createElement('div'); sc.id = 'dps'; sc.className = 'dps'; el.appendChild(sc); }
+  if (!d || !b || !b.f) { sc.innerHTML = ''; return; }
+  var f = b.f, eta = f.eta, E = dstEsc;
+  var etaTx = eta == null ? '-' : (eta <= 30 ? '곧 도착' : Math.round(eta / 60) + '분 후 도착');
+  /* 7번 스타일: 윗줄 고정(노선 · 행선지 · 몇 분 후 도착), 아랫줄은 안내 방송처럼 흐르는 글씨 (환승 열차 · 도착 예정 이어서) */
+  var top = '<div class="dps-row" style="--c:' + E(f.color || '#2f6fd6') + '"><i class="ln">' + E(dstLine(f)) + '</i><span class="tx"><span>' + E(f.terminus || '?') + '행' + (f.express ? ' 급행' : '') + ' · ' + etaTx + '</span></span></div>';
+  var msg = [];
+  if (eta != null && eta <= 90) msg.push('열차가 들어오고 있습니다', '안전선 밖으로 한 걸음 물러서 주시기 바랍니다');
+  dstXfers(f).forEach(function (x) {
+    var ln = String(x.line || '').replace(/\s*\(.*\)$/, '');
+    msg.push(x.station + '에서 ' + ln + (x.estimated ? ' 환승 (열차 시각 예상)' : ' ' + (x.terminus ? x.terminus + '행 ' : '') + (x.depart ? x.depart + ' ' : '') + '환승' + (x.waitMin != null ? ' · 대기 ' + x.waitMin + '분' : '')));
+  });
+  msg.push(c.dest + ' ' + (f.destArrive || '--:--') + ' 도착 예정');
+  if (b.walk != null) msg.push(d.station + '역까지 걸어서 약 ' + b.walk + '분');
+  var rows = top + '<div class="dps-row dps-ann"><span class="tx run"><span>' + E(msg.join('   ·   ')) + '</span></span></div>';
+  /* 10번 미니멀 노선: 열차가 역 점 사이를 한 칸씩 내 역으로 다가오고, 몇 정거장 남았는지 표시. 내 역 다음은 타고 갈 역들 */
+  var nowTx = String(f.now || ''), away;
+  var mm = /\[(\d+)\]\s*번째/.exec(nowTx);
+  if (mm) away = +mm[1]; else if (/당역|진입/.test(nowTx) && !/전역/.test(nowTx)) away = 0; else if (/전역/.test(nowTx)) away = 1; else away = eta == null ? 2 : Math.round(eta / 120);
+  away = Math.max(0, Math.min(5, away));
+  var k = Math.max(away, 1), myX = 58, nodes = '', labels = '';
+  for (var i = 0; i <= k; i++) {
+    var x = 4 + (myX - 4) * i / k, mine = i === k;
+    nodes += '<i class="m10-st' + (mine ? ' me' : '') + '" style="left:' + x.toFixed(1) + '%"></i>';
+    if (!mine && k - i <= 3) labels += '<span class="m10-lb dim" style="left:' + x.toFixed(1) + '%">' + (k - i) + '전</span>';
+  }
+  labels += '<span class="m10-lb me" style="left:' + myX + '%">' + E(d.station) + '</span>';
+  var R0 = (f.route && f.route[0]) || null, ahead = R0 && Array.isArray(R0.stations) ? R0.stations.slice(1, 3) : [];
+  ahead.forEach(function (n, i) { var x = myX + 13 * (i + 1); nodes += '<i class="m10-st ahead" style="left:' + x + '%"></i>'; labels += '<span class="m10-lb dim" style="left:' + x + '%">' + E(typeof n === 'string' ? n : (n && n.name) || '') + '</span>'; });
+  var tx = 4 + (myX - 4) * (k - away) / k;
+  var bub = away === 0 ? (eta != null && eta <= 30 ? '곧 도착' : '진입 중') : away + '정거장 전' + (eta != null ? ' · ' + Math.max(1, Math.round(eta / 60)) + '분' : '');
+  var lc = E(f.color || '#2f6fd6');
+  sc.innerHTML = '<div class="dps-led">' + rows + '</div>'
+    + '<div class="m10" style="--lc:' + lc + '"><i class="m10-line"></i><i class="m10-line ahead" style="left:' + myX + '%"></i>' + nodes
+    + '<div class="m10-tr' + (away === 0 ? ' arr' : '') + (tx < 16 ? ' l' : '') + '" style="left:' + tx.toFixed(1) + '%"><b class="m10-bub">' + bub + '</b><i class="m10-car"></i></div>' + labels + '</div>';
+  /* 글자가 칸보다 길면 흐르게 */
+  [].forEach.call(sc.querySelectorAll('.dps-row:not(.dps-ann) .tx'), function (t) { var s = t.firstChild; if (s && s.scrollWidth > t.clientWidth + 2) t.classList.add('run'); });
+  var an = sc.querySelector('.dps-ann .tx span'); if (an) an.style.animationDuration = Math.max(8, Math.round(an.textContent.length * 0.32)) + 's';
+}
+(function () {
+  var o = window.dstPinRender; if (typeof o !== 'function') return;
+  window.dstPinRender = function () {
+    var r = o.apply(this, arguments);
+    try { var d = dstPinData, c = dstCfg(); if (d && d.dest !== c.dest) d = null; dpsRender(d, d ? dstBest(d) : null, c); } catch (e) {}
+    return r;
+  };
+})();
+</script>
+<style id="dps-m10-style">
+/* 편승열차 장면 10번: 미니멀 노선 + 남은 정거장 */
+.m10{position:relative;height:66px;margin-top:7px;border-radius:9px;background:#f6f8fb;border:1px solid #e6eaf0;overflow:hidden}
+.m10-line{position:absolute;left:4%;width:54%;top:34px;height:4px;border-radius:2px;background:var(--lc)}
+.m10-line.ahead{width:38%;background:var(--lc);opacity:.28}
+.m10-st{position:absolute;top:30px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:#fff;border:2.5px solid var(--lc);box-sizing:border-box;z-index:1}
+.m10-st.me{width:16px;height:16px;margin-left:-8px;border-width:3.5px;top:28px;box-shadow:0 0 0 4px color-mix(in srgb,var(--lc) 22%,transparent)}
+.m10-st.ahead{opacity:.45}
+.m10-lb{position:absolute;top:48px;transform:translateX(-50%);font-size:10px;font-weight:700;color:#475467;white-space:nowrap}
+.m10-lb.dim{color:#98a2b3;font-weight:600}
+.m10-lb.me{color:#101828;font-weight:800;font-size:11px}
+.m10-end{position:absolute;right:6px;top:4px;font-size:10px;font-weight:800;color:#475467}
+.m10-tr{position:absolute;top:2px;transform:translateX(-50%);transition:left 1.2s cubic-bezier(.3,.1,.3,1);z-index:2;display:flex;flex-direction:column;align-items:center;gap:2px}
+.m10-bub{padding:1px 6px;border-radius:8px;background:var(--lc);color:#fff;font-size:9.5px;font-weight:800;white-space:nowrap}
+.m10-car{display:block;width:22px;height:10px;border-radius:3px 6px 6px 3px;background:var(--lc);box-shadow:inset 0 -2px 0 rgba(0,0,0,.18)}
+.m10-car::after{content:"";display:block;margin:2px 0 0 4px;width:12px;height:3px;background:repeating-linear-gradient(90deg,#fff 0 3px,transparent 3px 5px);opacity:.9}
+.m10-tr.l{transform:translateX(-11px);align-items:flex-start}
+.m10-tr:not(.arr) .m10-car{animation:m10b 1s ease-in-out infinite}
+.m10-tr.arr .m10-bub{animation:dpsBlink 1s steps(1) infinite}
+@keyframes m10b{50%{transform:translateX(2px)}}
+html.ui-dark .m10{background:#1b2029;border-color:#2c333e}
+html.ui-dark .m10-st{background:#1b2029}
+html.ui-dark .m10-lb{color:#b8c2d0}html.ui-dark .m10-lb.me{color:#f2f5fa}html.ui-dark .m10-end{color:#b8c2d0}
+@media (prefers-reduced-motion:reduce){.m10-car,.m10-tr.arr .m10-bub{animation:none!important}}
+</style>
+<style id="dst-pin-only-board">
+/* 메인화면 편승열차: 전광판 + 열차 오는 그림만 (위쪽 안내 문구 · 큰 '몇 분 후 도착'은 숨김, 불러오는 중 · 안내 메시지는 그대로) */
+.dst-pin:not(.msg):not(.load) .dst-pin-grid{display:none!important}
+.dst-pin:not(.msg):not(.load) .dps{margin-top:0}
+.dst-pin:not(.msg):not(.load){padding-top:10px!important}
+</style>
 </body>
 </html>
