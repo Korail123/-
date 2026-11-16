@@ -20148,6 +20148,7 @@ function routeArLoad(img) {
 #cb-find-panel .cbf-detail{margin-top:2px;padding:10px 12px;border-radius:12px;background:#f7f9fc;border:1px solid #e6eaf0}
 #cb-find-panel .cbf-dh{margin-bottom:6px;font-size:13px;font-weight:800;color:#344054}
 #cb-find-panel .cbf-card+.cbf-card{margin-top:8px;padding-top:8px;border-top:1px dashed #dfe3ea}
+#cb-find-panel .cbf-re{display:block;width:100%;margin-top:10px;padding:10px;border:0;border-radius:12px;background:#e8f1ff;color:#1b64da;font-weight:800;font-size:13.5px;cursor:pointer}
 #cb-find-panel .cbf-note{margin-top:10px;padding:9px 11px;border-radius:10px;background:#fff8e6;color:#8a5a00;font-size:12px;line-height:1.55}
 #cb-find-panel .cbf-load{padding:30px 10px;text-align:center;color:#6b7684;font-size:14px;line-height:1.7}
 html.ui-dark #crewboard-section .cb-find{background:#1b1f26!important;border-color:#2c323b!important}
@@ -20282,7 +20283,7 @@ function cbfDates() {
   for (var d = t.d; d <= last; d++) out.push(t.y + '-' + String(t.m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0'));
   return out;
 }
-function cbfStore() { var o = xrGet('boardMonth', null); var t = todayKST(), ym = t.y + '-' + String(t.m + 1).padStart(2, '0'); return o && o.ym === ym ? o : { ym: ym, at: 0, board: {}, stopAt: '' }; }
+function cbfStore() { var o = xrGet('boardMonth2', null); var t = todayKST(), ym = t.y + '-' + String(t.m + 1).padStart(2, '0'); return o && o.ym === ym ? o : { ym: ym, at: 0, board: {}, stopAt: '' }; }
 function cbfMatch(n, q) {
   n = String(n || '').trim(); q = String(q || '').replace(/\s+/g, '');
   if (!n || !q) return false;
@@ -20291,7 +20292,7 @@ function cbfMatch(n, q) {
   return q.length < n.length && tail.length >= q.length && tail.slice(-q.length) === q;   /* "길동"만 넣어도 */
 }
 function cbFindClose() { $('cb-find-panel').classList.remove('active'); }
-function cbFind() {
+function cbFind(force) {
   var q = String($('cb-find-in').value || '').replace(/\s+/g, '');
   if (!/^[가-힣]{2,5}$/.test(q)) { showToast('동료 이름을 한글 2~5자로 넣어주세요.'); return; }
   if (typeof crewLinked === 'function' && !crewLinked()) { showToast('XROIS(CREW) 연동을 하면 동료를 찾을 수 있어요.'); return; }
@@ -20302,7 +20303,8 @@ function cbFind() {
   var dates = cbfDates(), st = cbfStore(), day = cbStore();
   /* 최근 10일 저장본(승무현황 화면에서 본 날)도 같이 씀 */
   dates.forEach(function (k) { if (!st.board[k] && day[k] && day[k].rows && Date.now() - (day[k].at || 0) < XR_EVERY) st.board[k] = day[k].rows; });
-  var fresh = st.at && Date.now() - st.at < XR_EVERY;
+  var fresh = !force && st.at && Date.now() - st.at < XR_EVERY;
+  if (force) st.stopAt = '';
   var need = dates.filter(function (k) { return !st.board[k] && !(st.stopAt && k >= st.stopAt); });
   if (fresh && !need.length) { cbfRender(q, st, dates); return; }
   if (cbfBusy) return;
@@ -20313,13 +20315,19 @@ function cbFind() {
   xrCall({ action: 'xrBoardRange', dates: ask.map(function (k) { return k.replace(/-/g, ''); }) }, function (err, d) {
     cbfBusy = false;
     if (err) { $('cbf-out').innerHTML = '<div class="cbf-load" style="color:#e03131">' + esc(err.message || 'XROIS에서 가져오지 못했어요.') + '</div>'; return; }
-    var b = (d && d.board) || {};
+    var b = (d && d.board) || null;
+    if (!b || !Object.keys(b).length) {
+      $('cbf-out').innerHTML = '<div class="cbf-load" style="color:#e03131">이번 달 승무근무표를 받지 못했어요.<br><small>서버의 XROIS 함수(clever-action)가 새 버전으로 배포됐는지 확인해 주세요.</small></div>';
+      return;
+    }
     Object.keys(b).forEach(function (k) { st.board[k] = b[k] || []; });
     var got = Object.keys(b).sort(), lastGot = got[got.length - 1] || '';
     st.stopAt = '';
+    /* 'empty' = 그 뒤 날짜는 XROIS에 아직 없음 → 12시간 동안 다시 묻지 않음 / 'time' = 시간이 모자라 일부만 → 다음에 나머지를 가져옴 */
     if (d && d.stopped === 'empty' && lastGot) { var miss = ask.filter(function (k) { return k > lastGot; }); st.stopAt = miss[0] || ''; }
+    st.partial = !!(d && d.stopped === 'time');
     st.at = Date.now();
-    xrPut('boardMonth', st);
+    xrPut('boardMonth2', st);
     cbfRender(q, st, dates);
   });
 }
@@ -20365,7 +20373,9 @@ function cbfRender(q, st, dates) {
   if (!work) notes.push('이번 달 남은 날 중에 <b>' + esc(q) + '</b>님 이름이 승무근무표에 없어요. 이름을 다시 확인해 주세요.');
   if (dup) notes.push('XROIS는 이름 첫 글자를 가려서 보내줘서, 끝 글자가 같은 다른 사람이 함께 나올 수 있어요. (+1 표시)');
   if (noData) notes.push('"-" 표시는 XROIS에 승무근무표가 아직 올라오지 않은 날이에요.');
-  $('cbf-out').innerHTML = sum + cal + '<div id="cbf-detail" class="cbf-detail"></div>' + (notes.length ? '<div class="cbf-note">' + notes.join('<br>') + '</div>' : '');
+  if (st.partial) notes.push('시간이 오래 걸려 일부 날짜만 가져왔어요. 아래 <b>다시 가져오기</b>를 누르면 나머지를 가져와요.');
+  $('cbf-out').innerHTML = sum + cal + '<div id="cbf-detail" class="cbf-detail"></div>' + (notes.length ? '<div class="cbf-note">' + notes.join('<br>') + '</div>' : '')
+    + '<button type="button" class="cbf-re" onclick="cbFind(true)">XROIS에서 다시 가져오기</button>';
   cbfLast = { q: q, st: st, todayK: todayK };
   cbfPick(st.board[todayK] && cbfDayHits(st.board[todayK], q).length ? todayK : (firstWork || todayK));
 }
