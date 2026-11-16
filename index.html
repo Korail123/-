@@ -2624,9 +2624,9 @@ function mod(n, m) {
 /* 근무 색 통일: 주간·일근 = 노랑 / 야간·비번·X·박·가일 = 파랑 / 휴무·S·휴가 = 빨강 */
 function toneOf(label) {
   var l = String(label == null ? '' : label).replace(/^\*+/, '').trim();
-  if (/^(주|주간|일근)$/.test(l)) return 'day';
+  if (/^(주|주간|일근|일)$/.test(l)) return 'day';
   if (/^(휴|휴무|S)$/i.test(l)) return 'off';
-  if (/^(야|야간|비|비번|X|박|가일)$/i.test(l)) return 'night';
+  if (/^(야|야간|비|비번|X|박|가일|가)$/i.test(l)) return 'night';
   return 'status';                       /* 휴가 · 연차 등 → 빨강 */
 }
 /* ============ 서버 통신 (Supabase) ============ */
@@ -5343,7 +5343,7 @@ function schPngFallback(why) {
 /* ===== 근무 표현 방식: 주·야·비·휴 / 일근·박·가일·S (이 폰에만 저장) ===== */
 var RS_LABEL_STYLES = [
   { k: 'basic', name: '주 · 야 · 비 · 휴', map: null },
-  { k: 'work',  name: '일근 · 박 · 가일 · S', map: { '주': '일근', '야': '박', '비': '가일', '휴': 'S' } }
+  { k: 'work',  name: '일근 · 박 · 가일 · S', map: { '주': '일', '야': '박', '비': '가', '휴': 'S' } }   /* 근무표 칸에는 한 글자로 (일 · 박 · 가 · S) */
 ];
 function rsLabelStyleKey() { return 'rs_label_style_' + ((getCurrentUser() || {}).employeeId || ''); }
 function rsLabelStyle() { try { var v = localStorage.getItem(rsLabelStyleKey()); return v === 'work' ? 'work' : 'basic'; } catch (e) { return 'basic'; } }
@@ -5355,11 +5355,12 @@ function openLabelStyle() {
   var cur = rsLabelStyle(), sample = ['주', '주', '야', '비', '휴', '휴'];
   $('label-style-list').innerHTML = RS_LABEL_STYLES.map(function (st) {
     var cells = sample.map(function (d) {
-      var t = st.map && st.map[d] ? st.map[d] : d, tone = toneOf(d);
+      var full = { '주': '일근', '야': '박', '비': '가일', '휴': 'S' };   /* 고르는 화면에는 원래 이름으로 */
+      var t = st.map && st.map[d] ? (full[d] || st.map[d]) : d, tone = toneOf(d);
       return '<span class="ls-cell ' + (tone === 'day' ? 't-day' : tone === 'bi' ? 't-bi' : tone === 'off' ? 't-off' : 't-night') + (t.length >= 2 ? ' two' : '') + '">' + esc(t) + '</span>';
     }).join('');
     return '<button type="button" class="ls-opt' + (st.k === cur ? ' on' : '') + '" onclick="setLabelStyle(\'' + st.k + '\')"><b>' + esc(st.name) + '</b><span class="ls-row">' + cells + '</span><i class="ic-ck" aria-hidden="true"></i></button>';
-  }).join('') + '<div class="ns-note" style="margin:8px 2px 0">주간 = 일근 · 야간 = 박 · 비번 = 가일 · 휴무 = S (X · 휴가 등은 그대로)</div>';
+  }).join('') + '<div class="ns-note" style="margin:8px 2px 0">주간 = 일근(일) · 야간 = 박 · 비번 = 가일(가) · 휴무 = S — 근무표 칸에는 한 글자(일 · 박 · 가 · S)로 보여요. X · 휴가 등은 그대로.</div>';
   $('label-style-panel').classList.add('active');
 }
 function closeLabelStyle() { $('label-style-panel').classList.remove('active'); }
@@ -5367,7 +5368,8 @@ function setLabelStyle(k) {
   try { if (k === 'basic') localStorage.removeItem(rsLabelStyleKey()); else localStorage.setItem(rsLabelStyleKey(), k); } catch (e) {}
   openLabelStyle();
   try { renderCalendar(); } catch (e) {}
-  showToast('근무 표현 방식을 바꿨어요.');
+  try { if (typeof renderGroupTable === 'function') renderGroupTable(); else if (typeof renderGroup === 'function') renderGroup(); } catch (e) {}
+  showToast('근무 표현 방식을 바꿨어요. 근무표 · 근무그룹에 같이 적용돼요.');
 }
 /* ===== 달력 칸 표시 순위: 누구랑 교환 · 대기충당 · 휴무충당 (기본: 교환 → 휴무충당 → 대기충당) ===== */
 var RS_MARK_DEF = ['swap', '휴무충당', '대기충당'];
@@ -7024,7 +7026,8 @@ function rsGroupCalendarDuty(info, dateKey, mem) {
   try { var me = getCurrentUser(); if (mem && me && String(mem.employeeId) === String(me.employeeId)) ctx = rsMySeqCtx(); else if (mem && (mem.seq || (mem.settings && mem.settings.seq))) ctx = { seq: mem.seq || mem.settings.seq, anchor: mem.anchor || mem.settings.anchor, name: mem.name || '' }; } catch (e) {}
   var label = rsCalDuty(info, dateKey, ctx);
   /* 별표(*)는 근무변경한 날에만 */
-  return label ? (info.manual ? '*' : '') + rsDutyShort(label) : '-';
+  /* 근무표 '표현 방식'과 똑같이 (일 · 박 · 가 · S) */
+  return label ? (info.manual ? '*' : '') + rsLabelStyled(rsDutyShort(label)) : '-';
 }
 function isLeaveInfo(info) {
   return !!(info && info.label && (info.overrideType === 'status' || info.label === '휴' || info.label === 'X'));
