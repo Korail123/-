@@ -12836,6 +12836,14 @@ function dstFetch(q, auto, my) {
 function dstOnData(d, my) {
   if (my !== dstSeq || !$('dst-panel').classList.contains('active')) return;
   if (!d || !d.success) {
+    var pf = dstOrigin() || (d && d.nearest) || ''; if (!pf) { var nl0 = dstNearGet(); pf = nl0 && nl0.list && nl0.list[0] ? nl0.list[0].name : ''; }
+    var cdst = dstCfg().dest, msg0 = (d && d.message) || '';
+    if (pf && pf !== cdst) dstPlanLoad(pf, cdst, function (P) {
+      if (my !== dstSeq || !P || !P.trips || !P.trips.length) return;
+      var nl1 = dstNearGet(), nh = nl1 && nl1.list ? nl1.list.filter(function (n) { return n.name === pf; })[0] : null;
+      dstLast = { station: pf, dest: cdst, _got: Date.now(), _from: dstOrigin(), near: nh ? [nh] : [], trains: [], mode: 'direct' };
+      dstCredit(true); dstFrom(dstLast); dstDraw(); if (!dstTick) dstTick = setInterval(dstDraw, 5000);
+    });
     dstLast = null; dstCredit(false); $('dst-time').textContent = '';
     dstMsg(dstEsc((d && d.message) || '조회하지 못했어요.') + (d && d.nearest ? '<small>가장 가까운 역: ' + dstEsc(d.nearest) + '</small>' : '') + '<small>위의 출발역 · 도착역을 눌러 바꿀 수 있어요</small>', 'warn');
     dstStop(); return;
@@ -12905,6 +12913,19 @@ function dstXY(n) { n = String(n || '').replace(/역$/, '').replace(/\s*\(.*\)$/
 /* 바탕에 깔 지역 이름 (수도권 · 서울 주요 지역) */
 var DST_AREA = [['종로', 37.5735, 126.9790], ['신촌', 37.5590, 126.9370], ['여의도', 37.5250, 126.9240], ['용산', 37.5320, 126.9900], ['강남', 37.4990, 127.0330], ['잠실', 37.5120, 127.0990], ['청량리', 37.5830, 127.0450], ['구로', 37.4950, 126.8870], ['노원', 37.6550, 127.0700], ['마포', 37.5600, 126.9100], ['성수', 37.5440, 127.0560], ['상암', 37.5780, 126.8900],
   ['경기 고양', 37.6580, 126.8320], ['경기 의정부', 37.7380, 127.0340], ['경기 구리', 37.5990, 127.1380], ['경기 성남', 37.4200, 127.1270], ['경기 과천', 37.4290, 126.9880], ['경기 광명', 37.4400, 126.8650], ['경기 부천', 37.5030, 126.7660], ['경기 하남', 37.5400, 127.2060], ['경기 안양', 37.3940, 126.9570]];
+/* 출발역과 도착역 사이 '주요역'만 고르기: 고르게 나눈 자리 근처에서 환승역 · 큰 역을 먼저 */
+var DST_XFER = {}; '서울역 서울 시청 종각 종로3가 동대문 동대문역사문화공원 신설동 청량리 회기 왕십리 성수 건대입구 잠실 선릉 강남 교대 사당 신림 신도림 영등포 당산 합정 홍대입구 공덕 용산 이촌 옥수 고속터미널 양재 노량진 여의도 김포공항 디지털미디어시티 가좌 충무로 을지로3가 을지로4가 약수 삼각지 금정 수원 상봉 망우 도봉산 창동 노원 석계 태릉입구 군자 천호 가락시장 복정 모란 정자 판교 수서 도곡 선정릉 종합운동장 삼성 봉은사 이수 총신대입구 대림 가산디지털단지 구로 온수 부평 주안 인천 효창공원앞 대곡 연신내 불광 응암 마곡나루 계양 검암 김포공항 동묘앞 신당 청구 까치산 영등포구청 신길 대방 보라매 석촌 오금 강동 미사 상일동 중앙보훈병원 선릉 한티 광운대 별내 구리 양평 문산 일산'.split(' ').forEach(function (n) { DST_XFER[n] = 1; });
+function dstMajor(names, n) {
+  names = (names || []).map(function (x) { return typeof x === 'string' ? x : (x && x.name) || ''; });
+  var mid = names.slice(1, -1); if (n <= 0 || !mid.length) return []; if (mid.length <= n) return mid.slice();
+  var used = {}, out = [];
+  for (var q = 1; q <= n; q++) {
+    var ideal = Math.round(q * (mid.length + 1) / (n + 1)) - 1, best = -1, bs = -1e9;
+    for (var dd = -2; dd <= 2; dd++) { var i = ideal + dd; if (i < 0 || i >= mid.length || used[i]) continue; var sc = (DST_XFER[mid[i]] ? 3 : 0) + (DST_XY[mid[i]] ? 1 : 0) - Math.abs(dd) * 0.6; if (sc > bs) { bs = sc; best = i; } }
+    if (best >= 0) { used[best] = 1; out.push(best); }
+  }
+  return out.sort(function (a, b) { return a - b; }).map(function (i) { return mid[i]; });
+}
 function dstSeoulBg(proj, W, H, avoid) {
   var pts = function (a) { return a.map(function (p) { var q = proj(p); return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join(' '); };
   var h = '<clipPath id="dstMapClip"><rect x="0.5" y="0.5" width="' + (W - 1) + '" height="' + (H - 1) + '" rx="14"/></clipPath><g clip-path="url(#dstMapClip)">';
@@ -12948,9 +12969,13 @@ function dstMapSvg(f, d) {
   });
   if (useGeo && segs.some(function (sg) { return sg.geo.some(function (p) { return !p; }); })) useGeo = false;
   /* 지나가는 역은 출발 · 환승 · 도착 사이마다 고르게 2~3개만 */
+  /* 지나가는 주요역은 경로 전체에서 2~3개만 (환승역은 따로 표시) */
+  var totMid = segs.reduce(function (a, sg) { return a + Math.max(0, sg.names.length - 2); }, 0), budget = totMid >= 6 ? 3 : Math.min(2, totMid), given = 0;
+  var order = segs.map(function (sg, i) { return i; }).sort(function (a, b) { return segs[b].names.length - segs[a].names.length; });
+  segs.forEach(function (sg) { sg.want = 0; });
+  for (var bq = 0; bq < budget; bq++) { var bi = order[bq % order.length]; if (segs[bi].names.length - 2 > segs[bi].want) { segs[bi].want++; given++; } }
   segs.forEach(function (sg) {
-    var n = sg.names.length - 2, pick = {};
-    if (n > 0) { var want = n <= 3 ? n : (n <= 6 ? 2 : 3); for (var q = 1; q <= want; q++) pick[Math.round(q * (n + 1) / (want + 1))] = 1; }
+    var pick = {}; dstMajor(sg.names, sg.want).forEach(function (nm) { var ix = sg.names.indexOf(nm); if (ix > 0) pick[ix] = 1; });
     sg.show = pick;
   });
   var W = 320, padX = 46, padY = 40, H = 120;
@@ -13104,6 +13129,17 @@ function openDstTT(which) {
   dstTTSt = { st: st, w: dstWeekTag(), li: 0, di: 0, which: which || 'from' };
   document.getElementById('dst-tt-panel').classList.add('active'); dstTTDraw();
 }
+/* 관리자: 시각표 API 키 확인 (서버가 KRIC · 공공데이터포털에 물어본 결과를 그대로 보여줌, 키 값은 서버 밖으로 안 나감) */
+function dstTTAdmin() { var u = null; try { u = getCurrentUser(); } catch (e) {} return u && String(u.employeeId) === '199878' ? '<div class="tt-admin"><button type="button" onclick="dstTTKeyCheck()">API 키 확인 (관리자)</button><pre id="tt-admin-out" hidden></pre></div>' : ''; }
+function dstTTKeyCheck() {
+  var o = document.getElementById('tt-admin-out'); if (!o) return; o.hidden = false; o.textContent = '확인 중…';
+  dstRequest({ diag: 'ttkey' }, function (d) {
+    var t = JSON.stringify(d, null, 1); o.textContent = t;
+    var ok = d && ((d.kricTimetable && d.kricTimetable.ok) || (d.gyeonguiCheongnyangni && d.gyeonguiCheongnyangni.rows));
+    o.insertAdjacentHTML('beforebegin', '<div class="tt-admin-r ' + (ok ? 'ok' : 'no') + '">' + (ok ? '경의중앙선 시각표 받기 성공 (KRIC_KEY)' : 'KRIC 시각표를 받지 못했어요 · 아래 내용을 복사해서 알려 주세요') + '</div>');
+    try { navigator.clipboard.writeText(t).then(function () { showToast('결과를 복사했어요'); }, function () {}); } catch (e) {}
+  });
+}
 function closeDstTT() { document.getElementById('dst-tt-panel').classList.remove('active'); }
 function dstTTSet(k, v) { dstTTSt[k] = v; if (k === 'w' || k === 'which') { dstTTSt.li = 0; dstTTSt.di = 0; } if (k === 'li') dstTTSt.di = 0; if (k === 'which') { var c = dstCfg(); dstTTSt.st = v === 'to' ? c.dest : ((dstLast && dstLast.station) || c.from || ''); } dstTTDraw(); }
 function dstTTDraw() {
@@ -13114,7 +13150,7 @@ function dstTTDraw() {
   box.innerHTML = head + '<div class="tt-load"><div class="rs-ld"></div>시각표 불러오는 중…</div>';
   dstTTGet(S.st, S.w, function (tt) {
     if (S !== dstTTSt) return;
-    if (!tt || tt.error || !tt.lines || !tt.lines.length) { box.innerHTML = head + '<div class="tt-load">' + E((tt && tt.error) || '시각표가 없어요.') + '</div>'; return; }
+    if (!tt || tt.error || !tt.lines || !tt.lines.length) { box.innerHTML = head + '<div class="tt-load">' + E((tt && tt.error) || '시각표가 없어요.') + '</div>' + dstTTAdmin(); return; }
     var L = tt.lines[Math.min(S.li, tt.lines.length - 1)], D = L.dirs[Math.min(S.di, L.dirs.length - 1)];
     var h = head + '<div class="tt-lines">' + tt.lines.map(function (l, i) { return '<button type="button" class="' + (i === S.li ? 'on' : '') + '" style="--c:' + E(l.color) + '" onclick="dstTTSet(\'li\',' + i + ')">' + E(l.name) + '</button>'; }).join('') + '</div>'
       + '<div class="tt-dirs">' + L.dirs.map(function (x, i) { return '<button type="button" class="' + (i === S.di ? 'on' : '') + '" onclick="dstTTSet(\'di\',' + i + ')">' + E(x.label || (x.tag === 1 ? '상행' : '하행')) + ' 방면</button>'; }).join('') + '</div>';
@@ -13126,27 +13162,62 @@ function dstTTDraw() {
         var past = today && x.v < nm, nx = today && !past && !nextDone; if (nx) nextDone = true;
         return '<i class="' + (past ? 'past' : '') + (nx ? ' next' : '') + (x.r.exp ? ' exp' : '') + '" title="' + E(x.r.to) + '행">' + String(x.m).padStart(2, '0') + (x.r.to && x.r.to !== (D.label || '').split(' · ')[0] ? '<small>' + E(x.r.to.slice(0, 3)) + '</small>' : '') + '</i>';
       }).join('') + '</span></div>';
-    }).join('') + '</div></div><div class="tt-note"><i class="exp">급행</i> 빨간 글씨 · 작은 글씨는 다른 행선지 · 서울시 시각표 기준</div>';
+    }).join('') + '</div></div><div class="tt-note"><i class="exp">급행</i> 빨간 글씨 · 작은 글씨는 다른 행선지 · 서울시 · 레일포털 시각표 기준</div>' + dstTTAdmin();
     box.innerHTML = h;
     var cur = box.querySelector('.tt-row.cur'), sc = box.querySelector('.tt-scroll'); if (cur && sc) setTimeout(function () { sc.scrollTop = Math.max(0, cur.offsetTop - sc.offsetTop - 40); }, 30);
+  });
+}
+/* ---- 시각표 길찾기 (서버 subway v10 plan): 출발역 → 도착역 최소 환승, 시각에 맞는 열차들 ---- */
+var dstPlans = {}, dstPlanBusy = {};
+function dstPlanBase(nowM) { var z = new Date(); return Date.now() - ((nowM * 60) + z.getSeconds()) * 1000 - z.getMilliseconds(); }
+function dstPlanLoad(from, to, cb, more) {
+  if (!from || !to || typeof dstRequest !== 'function') return;
+  var k = from + '|' + to, P = dstPlans[k];
+  if (P && !more && Date.now() - P.t < (P.err ? 5 * 60000 : 60000)) { if (cb) cb(P); return; }
+  if (dstPlanBusy[k]) return; dstPlanBusy[k] = 1;
+  var q = { from: from, to: to, limit: 40 }; if (more && P && P.trips.length) q.at = P.trips[P.trips.length - 1].dep + 1;
+  dstRequest({ plan: q }, function (d) {
+    delete dstPlanBusy[k];
+    if (d && d.success) {
+      var base = dstPlanBase(d.now), trips = (d.trips || []).map(function (t) { t.depMs = base + t.dep * 60000; return t; });
+      if (more && P) { var seen = {}; P.trips.forEach(function (t) { seen[t.depart + '|' + t.legs[0].trainNo] = 1; }); trips.forEach(function (t) { if (!seen[t.depart + '|' + t.legs[0].trainNo]) P.trips.push(t); }); P.end = !trips.length; }
+      else P = dstPlans[k] = { t: Date.now(), trips: trips, transferCount: d.transferCount };
+    } else if (!more) P = dstPlans[k] = { t: Date.now(), trips: [], err: (d && d.message) || '시각표 길찾기를 못 했어요.' };
+    else if (P) P.end = true;
+    if (cb) try { cb(P); } catch (e) {}
+  });
+}
+function dstPlanTrains(P, got) {
+  return P.trips.map(function (t) {
+    var g0 = t.legs[0];
+    return { _plan: true, line: g0.line, lineId: g0.lineId, color: g0.color, terminus: g0.terminus, trainNo: g0.trainNo, express: g0.express,
+      etaSec: (t.depMs - got) / 1000, destArrive: t.arrive, rideMin: t.min, rideEstimated: t.estimated, now: '시간표 기준', delaySec: t.delaySec || 0, live: !!t.live,
+      transfer: t.legs.length > 1 ? { station: t.legs[1].from, line: t.legs[1].line, color: t.legs[1].color } : null,
+      transfers: t.legs.slice(1).map(function (g) { return { station: g.from, line: g.line, color: g.color, depart: g.depart, terminus: g.terminus }; }),
+      route: t.legs.map(function (g) { return { line: g.line, lineId: g.lineId, trainNo: g.trainNo, color: g.color, from: g.from, to: g.to, terminus: g.terminus, depart: g.depart, arrive: g.arrive, estimated: g.estimated, stations: g.stations }; }) };
   });
 }
 function dstOpen(k) { window.dstOpenKey = window.dstOpenKey === k ? '' : k; try { dstDraw(); } catch (e) {} }
 function dstShift(n) { var L = window.dstList || [], i = Math.max(0, Math.min(L.length - 1, (window.dstSelIdx || 0) + n)); window.dstSel = L[i] || ''; window.dstOff = 0; try { dstDraw(); } catch (e) {} }
 function dstDraw() {
   var d = dstLast; if (!d) return;
+  /* 시각표 길찾기 결과가 있으면 그 열차들로 (출발 · 도착 시각, 최소 환승) */
+  var PK = d.station + '|' + d.dest, P = dstPlans[PK];
+  if ((!P || (!P.err && Date.now() - P.t > 60000)) && !dstPlanBusy[PK]) dstPlanLoad(d.station, d.dest, function () { try { if ($('dst-panel').classList.contains('active') && dstLast && dstLast.station + '|' + dstLast.dest === PK) dstDraw(); } catch (e) {} });
+  if (P && P.trips && P.trips.length) { var d2 = {}; for (var dk in d) d2[dk] = d[dk]; d2.trains = dstPlanTrains(P, d._got); d2.mode = P.trips.some(function (t) { return t.transfers; }) ? 'transfer' : 'direct'; d2._plan = PK; d = d2; }
+  else if (!(d.trains || []).length && dstPlanBusy[PK]) { $('dst-out').innerHTML = dstSkeleton(); return; }
   var el = (Date.now() - d._got) / 1000;
   /* 이미 지나간 열차(내 역을 떠났거나 도착 예정이 30초 넘게 지난 것)는 빼고, 빨리 오는 순서대로 */
-  var tr = (d.trains || []).filter(function (t) { if (/당역\s*출발/.test(String(t.now || ''))) return false; return t.etaSec == null || (t.etaSec - el) > -30; })
-    .map(function (t) { var o = {}; for (var k in t) o[k] = t[k]; o.eta = t.etaSec == null ? null : Math.max(0, t.etaSec - el); return o; })
-    .sort(function (a, b) { return (a.eta == null ? 9e9 : a.eta) - (b.eta == null ? 9e9 : b.eta); });
+  var tr = (d.trains || []).filter(function (t) { if (/당역\s*출발/.test(String(t.now || ''))) return false; return t.etaSec == null || (t.etaSec - el) > (d._plan ? -1800 : -30); })
+    .map(function (t) { var o = {}; for (var k in t) o[k] = t[k]; o.eta = t.etaSec == null ? null : Math.max(0, t.etaSec - el); if (t.etaSec != null && t.etaSec - el < -30) o._gone = true; o._raw = t.etaSec == null ? 9e9 : t.etaSec - el; return o; })
+    .sort(function (a, b) { return a._raw - b._raw; });
   if (!tr.length) {
     $('dst-out').innerHTML = '<div class="dst-msg">지금 <b>' + dstEsc(d.station) + '</b>에서 <b>' + dstEsc(d.dest) + '</b>까지 가는 전철이 보이지 않아요.<small>막차가 끝났거나, 곧 출발할 열차가 아직 잡히지 않았을 수 있어요.</small></div>';
   } else {
     var walk = dstWalkMin(d.near && d.near[0] ? d.near[0].m : null), wsec = walk == null ? 0 : (walk + 1) * 60;   /* 걸어가는 시간 + 여유 1분 */
     var isX = d.mode === 'transfer';
     /* 걸어가서 여유 있게 탈 수 있는 열차만 */
-    var trAll = tr.slice(), allN = tr.length; tr = tr.filter(function (t) { return t.eta == null || t.eta >= wsec; });
+    var trAll = tr.slice(), allN = tr.length; tr = tr.filter(function (t) { return !t._gone && (t.eta == null || t.eta >= wsec); });
     if (!tr.length) {
       $('dst-out').innerHTML = '<div class="dst-msg">지금 오는 열차는 걸어가면 놓쳐요.<small>' + dstEsc(d.station) + '역까지 걸어서 약 ' + walk + '분 · 다음 열차 정보가 들어오면 바로 보여줄게요. (' + allN + '대 놓침)</small></div>';
       var t0 = new Date(d._got); $('dst-time').textContent = String(t0.getHours()).padStart(2, '0') + ':' + String(t0.getMinutes()).padStart(2, '0') + ' 기준 · 1분마다 갱신'; return;
@@ -13157,27 +13228,28 @@ function dstDraw() {
     var toMs = function (s) { var m = /^(\d{1,2}):(\d{2})/.exec(s || ''); if (!m) return null; var z = new Date(nowMs); z.setHours(+m[1], +m[2], 0, 0); var v = z.getTime(); if (v < nowMs - 3 * 3600000) v += 86400000; return v; };
     var rec = tr.reduce(function (b, t) { var x = dstArrMin(t), y = dstArrMin(b); return x < y || (x === y && (t.eta || 0) < (b.eta || 0)) ? t : b; }, tr[0]);
     /* 실시간 열차 뒤로는 시각표 열차를 이어 붙여서 '다음열차'를 막차까지 계속 */
-    var ext = []; try { ext = dstTTExtend(d, tr, nowMs); } catch (e) {}
-    if (!ext.length) try { ext = dstHeadwayExtend(tr, nowMs); } catch (e) {}
+    var ext = [];
+    if (!d._plan) { try { ext = dstTTExtend(d, tr, nowMs); } catch (e) {} if (!ext.length) try { ext = dstHeadwayExtend(tr, nowMs); } catch (e) {} }
     /* 이전열차: 걸어가면 놓칠 수 있는 더 이른 열차까지 */
-    var missL = trAll.filter(function (t) { return tr.indexOf(t) < 0 && t.eta != null; }).map(function (t) { var o = {}; for (var q in t) o[q] = t[q]; o._miss = true; return o; }).sort(function (a, b) { return a.eta - b.eta; });
+    var missL = trAll.filter(function (t) { return tr.indexOf(t) < 0 && t.eta != null; }).map(function (t) { var o = {}; for (var q in t) o[q] = t[q]; o._miss = true; return o; }).sort(function (a, b) { return a._raw - b._raw; });
     tr = missL.concat(tr, ext);
-    if (!dstTTCached(d.station) && d.station && !dstTTFail[d.station + ':' + dstWeekTag()]) dstTTGet(d.station, 0, function (v) { try { if (v && !v.error && $('dst-panel').classList.contains('active')) dstDraw(); } catch (e) {} });
+    if (!d._plan && !dstTTCached(d.station) && d.station && !dstTTFail[d.station + ':' + dstWeekTag()]) dstTTGet(d.station, 0, function (v) { try { if (v && !v.error && $('dst-panel').classList.contains('active')) dstDraw(); } catch (e) {} });
     var tkey = function (t) { return t._miss ? 'ms|' + (t.trainNo || '') + '|' + dstLine(t) + '|' + (t.destArrive || '') : t._tt ? 'tt|' + dstLine(t) + '|' + hm(nowMs + t.eta * 1000) : 'rt|' + (t.trainNo || '') + '|' + dstLine(t) + '|' + (t.terminus || '') + '|' + (t.destArrive || ''); };
     window.dstList = tr.map(tkey);
     var ri = tr.indexOf(rec), si = window.dstSel ? window.dstList.indexOf(window.dstSel) : -1;
     if (si < 0) { si = ri; window.dstSel = ''; }
     window.dstSelIdx = si;
-    var f = tr[si], dep = f.eta == null ? null : nowMs + f.eta * 1000, arr = toMs(f.destArrive);
+    if (d._plan && si >= tr.length - 3 && dstPlans[d._plan] && !dstPlans[d._plan].end) { var pp = d._plan.split('|'); dstPlanLoad(pp[0], pp[1], function () { try { dstDraw(); } catch (e) {} }, true); }
+    var f = tr[si], dep = f.eta == null ? null : nowMs + (f._gone ? f._raw : f.eta) * 1000, arr = toMs(f.destArrive);
     dstHero = { f: f, d: d };
     var html = '<div class="nv-nav"><button type="button" onclick="dstShift(-1)"' + (si <= 0 ? ' disabled' : '') + '>이전열차</button>'
-      + '<button type="button" class="mid" onclick="window.dstSel=\'\';dstDraw()">' + (dep ? '<b>' + hm(dep) + ' 출발</b>' : '<b>곧 출발</b>') + (f === rec ? '<em>추천</em>' : f._miss ? '<em class="miss">놓침주의</em>' : f._hw ? '<em class="tt">예상</em>' : f._tt ? '<em class="tt">시간표</em>' : '') + '</button>'
+      + '<button type="button" class="mid" onclick="window.dstSel=\'\';dstDraw()">' + (dep ? '<b>' + hm(dep) + ' 출발</b>' : '<b>곧 출발</b>') + (f === rec ? '<em>추천</em>' : f._gone ? '<em class="tt">지나감</em>' : f._miss ? '<em class="miss">놓침주의</em>' : f._hw ? '<em class="tt">예상</em>' : f._tt ? '<em class="tt">시간표</em>' : '') + '</button>'
       + '<button type="button" onclick="dstShift(1)"' + (si >= tr.length - 1 ? ' disabled' : '') + '>다음열차</button></div>';
     html = html.replace('>이전열차<', '>' + dsIcon('chev', 'flip') + '이전열차<').replace('>다음열차<', '>다음열차' + dsIcon('chev') + '<');
     /* 구간: 걸어가기 · 기다리기 · 타는 구간(노선색) · 갈아타기 */
     var parts = [], R = f.route && f.route.length ? f.route : [{ line: f.line, color: f.color, from: d.station, to: d.dest, arrive: f.destArrive }];
     /* 나서는 시각: 열차 출발 - 걸어가는 시간 (지금보다 이르면 지금) */
-    var leave = dep && walk != null ? Math.max(nowMs, dep - walk * 60000) : nowMs, later = leave - nowMs > 60000;
+    var leave = dep ? (f._gone ? dep - (walk || 0) * 60000 : Math.max(nowMs, dep - (walk || 0) * 60000)) : nowMs, later = leave - nowMs > 60000;
     if (walk != null) parts.push({ k: 'walk', min: walk });
     if (walk != null && f.eta != null && !later) { var w0 = Math.round(f.eta / 60) - walk; if (w0 > 0) parts.push({ k: 'wait', min: w0 }); }
     var prevEnd = dep;
@@ -13204,14 +13276,15 @@ function dstDraw() {
       }
     });
     html += '<div class="nv-sum"><div class="nv-big">' + (totalMin != null ? totalMin + '<small>분</small>' : (f.eta != null ? Math.round(f.eta / 60) + '<small>분 후 출발</small>' : '-')) + '</div>'
-      + '<div class="nv-range">' + (walk != null ? (later ? hm(leave) + ' 나서기 ' : '지금 나서기 ') : (dep ? hm(dep) + ' 출발 ' : '')) + '- ' + (arr ? hm(arr) : '--:--') + ' ' + E(d.dest) + ' 도착' + (f.rideEstimated ? ' (예상)' : '') + '</div>'
-      + '<div class="nv-tl"><div class="nv-top">' + top + '</div><div class="nv-bar">' + bar + '</div><div class="nv-lab">' + lab + '</div></div>'
+      
+      + (f.delaySec >= 30 ? '<div class="nv-delay">' + dsIcon('sig') + '<b>' + (f.delaySec >= 60 ? Math.floor(f.delaySec / 60) + '분 ' : '') + (f.delaySec % 60) + '초 지연</b> 운행 중<small>시각은 시각표 기준이에요</small></div>' : (f.live && f._plan ? '<div class="nv-delay ok">' + dsIcon('sig') + '<b>정시 운행</b><small>실시간 확인</small></div>' : ''))
+      + '<div class="nv-tl"><div class="nv-top">' + top + '<b class="nv-end">' + (arr ? hm(arr) : '') + '</b></div><div class="nv-bar">' + bar + '</div><div class="nv-lab">' + lab + '<b class="nv-end">' + E(d.dest) + '</b></div></div>'
       + (dstRideGet() ? '' : '<button type="button" class="dst-ride-btn nv-go" style="--lc:' + E(f.color || '#1769d2') + '" onclick="dstRideStart()">' + dsIcon('train') + '이 열차 탈게요</button>') + '</div>';
     if (f.route && f.route.length) html += dstMapSvg(f, d);
     $('dst-out').innerHTML = html;
   }
   var t = new Date(d._got);
-  $('dst-time').textContent = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') + ' 기준 · 지연 반영 · 1분마다 갱신';
+  $('dst-time').textContent = d._plan ? '시각표 기준 · ' + (dstPlans[d._plan] && dstPlans[d._plan].transferCount ? '최소 환승 ' + dstPlans[d._plan].transferCount + '회' : '갈아타지 않음') : String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') + ' 기준 · 지연 반영 · 1분마다 갱신';
 }
 /* ---- 메인화면 편승열차 (저장하면 환영 카드 아래에 다음 열차를 애니메이션으로) ---- */
 var dstPinData = null, dstPinErr = '', dstPinBusy = false;
@@ -22054,15 +22127,19 @@ function dpsRender(d, b, c) {
   var mm = /\[(\d+)\]\s*번째/.exec(nowTx);
   if (mm) away = +mm[1]; else if (/당역|진입/.test(nowTx) && !/전역/.test(nowTx)) away = 0; else if (/전역/.test(nowTx)) away = 1; else away = eta == null ? 2 : Math.round(eta / 120);
   away = Math.max(0, Math.min(5, away));
-  var k = Math.max(away, 1), myX = 58, nodes = '', labels = '';
+  var k = Math.max(away, 1), myX = 46, nodes = '', labels = '';
   for (var i = 0; i <= k; i++) {
     var x = 4 + (myX - 4) * i / k, mine = i === k;
     nodes += '<i class="m10-st' + (mine ? ' me' : '') + '" style="left:' + x.toFixed(1) + '%"></i>';
     if (!mine && k - i <= 3) labels += '<span class="m10-lb dim" style="left:' + x.toFixed(1) + '%">' + (k - i) + '전</span>';
   }
   labels += '<span class="m10-lb me" style="left:' + myX + '%">' + E(d.station) + '</span>';
-  var R0 = (f.route && f.route[0]) || null, ahead = R0 && Array.isArray(R0.stations) ? R0.stations.slice(1, 3) : [];
-  ahead.forEach(function (n, i) { var x = myX + 13 * (i + 1); nodes += '<i class="m10-st ahead" style="left:' + x + '%"></i>'; labels += '<span class="m10-lb dim" style="left:' + x + '%">' + E(typeof n === 'string' ? n : (n && n.name) || '') + '</span>'; });
+  /* 내 역 → 도착역 사이는 주요역 2개만, 끝에 도착역 */
+  var allSt = []; (f.route || []).forEach(function (g) { (g.stations || []).forEach(function (n) { n = typeof n === 'string' ? n : (n && n.name) || ''; if (n && allSt[allSt.length - 1] !== n) allSt.push(n); }); });
+  if (!allSt.length) allSt = [d.station, c.dest]; if (allSt[allSt.length - 1] !== c.dest) allSt.push(c.dest);
+  var ahead = dstMajor(allSt, 2), slot = (94 - myX) / (ahead.length + 1);
+  ahead.forEach(function (n, i) { var x = myX + slot * (i + 1); nodes += '<i class="m10-st ahead" style="left:' + x.toFixed(1) + '%"></i>'; labels += '<span class="m10-lb dim" style="left:' + x.toFixed(1) + '%">' + E(n) + '</span>'; });
+  nodes += '<i class="m10-st ahead end" style="left:94%"></i>'; labels += '<span class="m10-lb end" style="left:94%">' + E(c.dest) + '</span>';
   var tx = 4 + (myX - 4) * (k - away) / k;
   var bub = away === 0 ? (eta != null && eta <= 30 ? '곧 도착' : '진입 중') : away + '정거장 전' + (eta != null ? ' · ' + Math.max(1, Math.round(eta / 60)) + '분' : '');
   var lc = E(f.color || '#2f6fd6');
@@ -22103,6 +22180,8 @@ function dpsRender(d, b, c) {
 .m10-st{position:absolute;top:30px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:#fff;border:2.5px solid var(--lc);box-sizing:border-box;z-index:1}
 .m10-st.me{width:16px;height:16px;margin-left:-8px;border-width:3.5px;top:28px;box-shadow:0 0 0 4px color-mix(in srgb,var(--lc) 22%,transparent)}
 .m10-st.ahead{opacity:.45}
+.m10-st.ahead.end{opacity:1;border-color:#e5484d;width:13px;height:13px;margin-left:-6.5px}
+.m10-lb.end{color:#e5484d;font-weight:900;font-size:11px;transform:translateX(-75%)}
 .m10-lb{position:absolute;top:48px;transform:translateX(-50%);font-size:10px;font-weight:700;color:#475467;white-space:nowrap}
 .m10-lb.dim{color:#98a2b3;font-weight:600}
 .m10-lb.me{color:#101828;font-weight:800;font-size:11px}
@@ -22233,16 +22312,18 @@ function dstRideHtml(compact) {
     + '<div class="rd-now">' + nowTx + '</div>';
   r.segs.forEach(function (g, k) {
     if (compact && k !== si) return;   /* 메인화면: 지금 타고 있는(탈) 열차 구간만 */
-    if (k > 0 && (!compact || k === si)) { var px = r.segs[k - 1]; h += '<div class="rd-x">🔁 ' + E(g.from) + ' 환승 › ' + E(g.line) + ' ' + E(g.terminus ? g.terminus + '행 ' : '') + E(g.depart || '') + (g.estimated ? ' (예상)' : '') + '</div>'; }
+    if (k > 0 && (!compact || k === si)) { var px = r.segs[k - 1]; h += '<div class="rd-x">' + dsIcon('swap') + ' ' + E(g.from) + ' 환승 › ' + E(g.line) + ' ' + E(g.terminus ? g.terminus + '행 ' : '') + E(g.depart || '') + (g.estimated ? ' (예상)' : '') + '</div>'; }
     var n = g.stations.length, idx = k < si ? n - 1 : (k > si ? -1 : pos.i), step = n > 1 ? 100 / (n - 1) : 0;
     var pct = function (i) { return 'calc(6px + (100% - 12px) * ' + (i / Math.max(1, n - 1)).toFixed(4) + ')'; };
     h += '<div class="rd-seg' + (k > si ? ' wait' : '') + '" style="--c:' + E(g.color) + '"><span class="rd-tag">' + E(g.line) + (g.terminus ? ' · ' + E(g.terminus) + '행' : '') + '</span><i class="rd-line"></i>'
       + '<i class="rd-fill" style="width:' + (idx > 0 ? 'calc((100% - 12px) * ' + (idx / Math.max(1, n - 1)).toFixed(4) + ')' : '0') + '"></i>';
-    var every = n > 14 ? 4 : n > 9 ? 3 : n > 6 ? 2 : 1;
+    var mj = {}; dstMajor(g.stations, compact ? 2 : 3).forEach(function (x) { mj[x] = 1; });
     g.stations.forEach(function (nm, i) {
+      var key = i === 0 || i === n - 1 || (k === si && i === idx) || mj[nm];
+      if (!key) return;   /* 출발 · 도착 · 지금 위치 · 주요역 2~3개만 */
       var cls = 'rd-dot' + (i <= idx ? ' done' : '') + (i === 0 || i === n - 1 ? ' end' : '');
       h += '<i class="' + cls + '" style="left:' + pct(i) + '"></i>';
-      var show = i === 0 || i === n - 1 || (k === si && i === idx) || (!compact && i % every === 0 && Math.abs(i - idx) > 1 && i > 1 && i < n - 2);
+      var show = i === 0 || i === n - 1 || (k === si && i === idx) || (mj[nm] && Math.abs(i - idx) > 1);
       if (show) h += '<span class="rd-lb' + (k === si && i === idx ? ' cur' : '') + (i === 0 ? ' first' : i === n - 1 ? ' last' : '') + '" style="left:' + pct(i) + '">' + E(nm) + '</span>';
     });
     if (k === si && idx >= 0) h += '<div class="rd-tr' + (idx / Math.max(1, n - 1) < .12 ? ' l' : idx / Math.max(1, n - 1) > .88 ? ' r' : '') + '" style="left:' + pct(idx) + '"><b>' + (pos.live ? '지금 여기' : '여기쯤') + '</b><i></i></div>';
@@ -22400,9 +22481,22 @@ html.ui-dark #dst-panel .dst-nav span{color:#a7b1c0}
 #dst-panel .nv-big small{font-size:20px;font-weight:700;margin-left:2px;letter-spacing:0}
 #dst-panel .nv-range{margin-top:8px;font-size:16px;color:#344054;font-weight:600}
 #dst-panel .nv-tl{margin-top:16px}
+#dst-panel .nv-delay{display:flex;align-items:center;gap:6px;margin-top:10px;padding:8px 11px;border-radius:10px;background:#fff4e5;color:#b45309;font-size:13.5px;font-weight:700}
+#dst-panel .nv-delay b{font-weight:900}
+#dst-panel .nv-delay small{margin-left:auto;font-size:11px;font-weight:700;opacity:.75}
+#dst-panel .nv-delay .dsi{stroke:#d97706;width:17px;height:17px}
+#dst-panel .nv-delay.ok{background:#ecfdf3;color:#067647}
+#dst-panel .nv-delay.ok .dsi{stroke:#12b76a}
+html.ui-dark #dst-panel .nv-delay{background:#3a2a12;color:#f5b25b}
+html.ui-dark #dst-panel .nv-delay.ok{background:#0f2e1f;color:#6ce9a6}
 #dst-panel .nv-top,#dst-panel .nv-lab{display:flex;gap:3px;font-size:12.5px;font-weight:700;color:#475467;min-height:16px}
 #dst-panel .nv-top span,#dst-panel .nv-lab span{min-width:0;white-space:nowrap;overflow:visible}
 #dst-panel .nv-lab{margin-top:6px;font-size:13.5px;font-weight:800}
+#dst-panel .nv-top,#dst-panel .nv-lab{position:relative;padding-right:0}
+#dst-panel .nv-end{position:absolute;right:0;top:0;font-weight:900;background:var(--bg-card,#fff);padding-left:4px}
+#dst-panel .nv-lab .nv-end{color:#e5484d}
+#dst-panel .nv-top .nv-end{color:#101828}
+html.ui-dark #dst-panel .nv-end{background:#1a1f27}html.ui-dark #dst-panel .nv-top .nv-end{color:#f2f4f7}
 #dst-panel .nv-bar{display:flex;gap:3px;margin-top:4px;height:26px}
 #dst-panel .nv-sg{min-width:0;display:flex;align-items:center;justify-content:center;border-radius:13px;font-size:12.5px;font-weight:800;white-space:nowrap;overflow:hidden}
 #dst-panel .nv-sg small{font-size:10px;margin-left:1px}
@@ -22436,7 +22530,7 @@ html[data-ictheme="cute"]{--dsi:#ec5f9a;--dsi-bg:#fdeef5}
 html[data-ictheme="pet"]{--dsi:#e8820c;--dsi-bg:#fff3e4}
 html[data-ictheme="quokka"]{--dsi:#a86b2d;--dsi-bg:#f8efe4}
 html[data-ictheme="ios"]{--dsi:#007aff;--dsi-bg:#eaf3ff}
-#dst-panel .dsi,#dst-tt-panel .dsi{width:18px;height:18px;flex:none;fill:none;stroke:var(--dsi);stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px}
+.rd .dsi,#dst-panel .dsi,#dst-tt-panel .dsi{width:18px;height:18px;flex:none;fill:none;stroke:var(--dsi);stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px}
 #dst-panel .dsi.flip{transform:scaleX(-1)}
 html[data-ictheme="ios"] #dst-panel .dst-head-btns .dsi{stroke-width:2.4}
 #dst-panel .dst-save{color:var(--dsi);border-color:color-mix(in srgb,var(--dsi) 35%,#fff)}
@@ -22502,6 +22596,11 @@ html[data-ictheme="ios"] #dst-panel .dst-head-btns .dsi{stroke-width:2.4}
 #dst-tt-panel .tt-row i.next{background:var(--c);color:#fff;border-radius:6px;padding:0 5px}
 #dst-tt-panel .tt-load{display:flex;flex-direction:column;align-items:center;gap:8px;padding:30px 0;color:#98a2b3;font-weight:700;font-size:13px;text-align:center}
 #dst-tt-panel .tt-note{font-size:11.5px;color:#98a2b3;padding:8px 2px}
+#dst-tt-panel .tt-admin{padding:4px 0 6px}
+#dst-tt-panel .tt-admin button{width:100%;height:36px;border:1px dashed #98a2b3;border-radius:10px;background:none;color:#475467;font-weight:800;font-size:12.5px}
+#dst-tt-panel .tt-admin pre{max-height:160px;overflow:auto;font-size:10px;background:#f5f7fb;border-radius:8px;padding:8px;white-space:pre-wrap;word-break:break-all}
+#dst-tt-panel .tt-admin-r{margin-top:6px;font-size:12.5px;font-weight:800}
+#dst-tt-panel .tt-admin-r.ok{color:#067647}#dst-tt-panel .tt-admin-r.no{color:#b42318}
 html.ui-dark #dst-tt-panel .tt-seg button,html.ui-dark #dst-tt-panel .tt-week button,html.ui-dark #dst-tt-panel .tt-dirs button,html.ui-dark #dst-tt-panel .tt-lines button{background:#1a1f27;color:#c0c6d0;border-color:#323a46}
 html.ui-dark #dst-tt-panel .tt-lines button.on{background:var(--c);color:#fff}
 html.ui-dark #dst-tt-panel .tt-row > b{background:#1e232c;color:#d0d5dd}
