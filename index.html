@@ -2192,14 +2192,15 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="dia-dialog ns-dialog dst-dialog">
     <div class="dst-head">
       <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="편승열차조회" alt="" aria-hidden="true">편승열차 조회</div>
-      <div class="dst-head-btns"><button type="button" id="dst-save" class="dst-save" onclick="dstSaveToggle()" aria-label="메인화면에 고정"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3.5h6l-.8 6.2 3.3 3.3H6.5l3.3-3.3z"/><path d="M12 13v7.5"/></svg><span>고정</span></button>
-      <button type="button" class="dst-refresh" onclick="dstQuery()" aria-label="새로고침"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4.5h-4.5"/></svg></button></div>
+      <div class="dst-head-btns"><button type="button" id="dst-save" class="dst-save" onclick="dstSaveToggle()" aria-label="메인화면에 고정"><svg class="dsi" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3.5h6l-.6 5.4 3.4 3.6H6.2l3.4-3.6z"/><path d="M12 12.5V21"/></svg><span>고정</span></button>
+      <button type="button" class="dst-ttbtn" onclick="openDstTT('from')" aria-label="역별 시각표"><svg class="dsi" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/><path d="M8 13h2M12 13h2M16 13h.5M8 16.5h2M12 16.5h2"/></svg><span>시각표</span></button>
+      <button type="button" class="dst-refresh" onclick="dstQuery()" aria-label="새로고침"><svg class="dsi" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/></svg></button></div>
     </div>
     <div class="dst-route">
       <button type="button" class="dst-od from" onclick="dstSheet('from')"><i class="dst-od-dot g"></i><span class="dst-od-tx"><small id="dst-from-lb">출발역</small><b id="dst-from-name">위치 확인 중…</b></span><span id="dst-walk" class="dst-walk"></span></button>
       <button type="button" class="dst-od to" onclick="dstSheet('to')"><i class="dst-od-dot r"></i><span class="dst-od-tx"><small>도착역</small><b id="dst-to-name">-</b></span></button>
       <i class="dst-od-link"></i>
-      <button type="button" class="dst-swap" onclick="dstSwap()" aria-label="출발역과 도착역 바꾸기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v15M8 4 4.5 7.5M8 4l3.5 3.5M16 20V5m0 15-3.5-3.5M16 20l3.5-3.5"/></svg></button>
+      <button type="button" class="dst-swap" onclick="dstSwap()" aria-label="출발역과 도착역 바꾸기"><svg class="dsi" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v15M4.5 7.5 8 4l3.5 3.5"/><path d="M16 20V5M12.5 16.5 16 20l3.5-3.5"/></svg></button>
     </div>
     <div id="dst-sheet" class="dst-sheet" hidden></div>
     <div id="dst-dests" class="dst-dests" hidden></div><div id="dst-origins" hidden></div>
@@ -2208,6 +2209,12 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <span class="dst-foot-l"><span id="dst-time"></span><small class="dst-src">자료: 서울시 열린데이터광장 (지하철 실시간 도착정보 · 지하철역 정보)</small></span>
     </div>
     <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeDstPanel()">닫기</button></div>
+  </div>
+</div>
+<div id="dst-tt-panel" class="dia-modal" style="z-index:408" onclick="if(event.target===this)closeDstTT()">
+  <div class="dia-dialog ns-dialog dst-dialog tt-dialog">
+    <div class="tt-head"><b><svg class="dsi" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/><path d="M8 13h2M12 13h2M16 13h.5M8 16.5h2M12 16.5h2"/></svg>역별 열차 시각표</b><button type="button" class="dia-text-btn" onclick="closeDstTT()">닫기</button></div>
+    <div id="dst-tt-body"></div>
   </div>
 </div>
 <div id="anim-panel" class="dia-modal" style="z-index:405" onclick="if(event.target===this)closeAnimSettings()">
@@ -12660,7 +12667,7 @@ function dstSheet(kind) {
   var form = function (ph, fn) { return '<form class="dst-org-in" onsubmit="event.preventDefault();dstSugSubmit(this,\'' + fn + '\')"><input name="q" placeholder="' + ph + '" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="20" enterkeyhint="search" oninput="dstSug(this,\'' + fn + '\')"><button type="submit">확인</button></form><div class="dst-sug"></div>'; };
   if (kind === 'from') {
     box.innerHTML = '<div class="dst-sh-h">출발역 입력</div>' + form('출발역 · 초성도 돼요 (예: ㅎㅈ)', 'dstSetOrigin') + '<div class="dst-sh-h">내 위치에서 가까운 역</div><div class="dst-org-row" id="dst-near3"><span class="dst-sh-wait">가까운 역 찾는 중…</span></div>'
-      + '<div class="dst-org-row"><button type="button" class="' + (c.from ? '' : 'on') + '" onclick="dstSetOrigin(\'\')">📍 늘 가장 가까운 역으로 (자동)</button></div>';
+      + '<div class="dst-org-row"><button type="button" class="' + (c.from ? '' : 'on') + '" onclick="dstSetOrigin(\'\')">' + dsIcon('loc') + '늘 가장 가까운 역으로 (자동)</button></div>';
     dstNear3(function (list) {
       var row = document.getElementById('dst-near3'); if (!row || dstSheetOn !== 'from') return;
       if (!list) { row.innerHTML = '<span class="dst-sh-wait">위치를 확인하지 못했어요 · 아래에 역 이름을 적어 주세요</span>'; return; }
@@ -12682,11 +12689,11 @@ function dstSwap() {
   var c = dstCfg(), from = c.from || (dstLast && dstLast.station) || '';
   if (!from) { showToast('출발역을 확인하는 중이에요. 잠시 뒤 눌러 주세요.'); return; }
   var to = c.dest; c.dest = from; c.from = to; dstSave(c); dstDestRemember(from);
-  dstSheetClose(); window.dstOff = 0; dstDrawOrigins(); dstLast = null; dstFrom(null); $('dst-out').innerHTML = dstSkeleton(); dstQuery();
+  dstSheetClose(); window.dstOff = 0; window.dstSel = ''; dstDrawOrigins(); dstLast = null; dstFrom(null); $('dst-out').innerHTML = dstSkeleton(); dstQuery();
 }
 function dstSetOrigin(name) {
   var c = dstCfg(); c.from = name || ''; if (!c.from) delete c.from; dstSave(c);
-  dstSheetClose(); window.dstOff = 0; dstDrawOrigins();
+  dstSheetClose(); window.dstOff = 0; window.dstSel = ''; dstDrawOrigins();
   var hit = dstCache[c.dest];
   if (dstHitOk(hit)) { dstLast = hit; dstFrom(hit); dstDraw(); } else { dstLast = null; dstFrom(null); $('dst-out').innerHTML = dstSkeleton(); }
   dstQuery();
@@ -12698,7 +12705,7 @@ function dstHomeSub() {
   el.textContent = (c.from ? c.from + '역' : '현재 위치') + ' → ' + c.dest + ' · 지금 탈 수 있는 전철';
 }
 function openDstPanel() {
-  window.dstOff = 0;
+  window.dstOff = 0; window.dstSel = '';
   if (typeof passAllowed === 'function' && !passAllowed()) { alert('로그인 후 이용할 수 있습니다.'); return; }
   var c = dstCfg();
   dstDrawDests(); dstDrawOrigins(); dstFrom(); dstPinBtn();
@@ -12727,12 +12734,12 @@ function dstFrom(d) {
     var m = d.near && d.near[0] ? d.near[0].m : null;
     $('dst-from-name').innerHTML = dstEsc(d.station) + '역' + (m != null ? '<em>' + (m < 1000 ? m + 'm' : (m / 1000).toFixed(1) + 'km') + '</em>' : '');
     var w = dstWalkMin(m);
-    $('dst-walk').innerHTML = w == null ? '' : '<small>걸어서</small><b>' + w + '분</b>';
+    $('dst-walk').innerHTML = w == null ? '' : '<small>걸어서</small><b>' + dsIcon('walk') + w + '분</b>';
   } else { $('dst-from-name').textContent = dstOrigin() ? dstOrigin() + '역 · 불러오는 중…' : '위치 확인 중…'; $('dst-walk').innerHTML = ''; }
 }
 function dstPick(d) {
   var c = dstCfg(); c.dest = d; dstSave(c); dstDestRemember(d); dstSheetClose(); dstDrawDests(); dstDrawOrigins();
-  var hit = dstCache[d]; window.dstOff = 0;
+  var hit = dstCache[d]; window.dstOff = 0; window.dstSel = '';
   if (dstHitOk(hit)) { dstLast = hit; dstFrom(hit); dstDraw(); } else { dstLast = null; $('dst-out').innerHTML = dstSkeleton(); }
   dstQuery();
 }
@@ -13013,8 +13020,98 @@ function dstMapSvg(f, d) {
   out.push('<circle cx="' + z[0].toFixed(1) + '" cy="' + z[1].toFixed(1) + '" r="5" fill="#fff" stroke="#e5484d" stroke-width="2.4"/>');
   return '<svg class="dst-map" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + E(R[0].from + '에서 ' + d.dest + '까지 노선도') + '">' + out.join('') + tags.join('') + '</svg>';
 }
+/* ---- 편승열차 창 아이콘 (철도 · 신호 느낌, 아이콘 테마 색을 따라감) ---- */
+var DS_IC = {
+  pin: '<path d="M9 3.5h6l-.6 5.4 3.4 3.6H6.2l3.4-3.6z"/><path d="M12 12.5V21"/>',
+  refresh: '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/>',
+  swap: '<path d="M8 4v15M4.5 7.5 8 4l3.5 3.5"/><path d="M16 20V5M12.5 16.5 16 20l3.5-3.5"/>',
+  clock: '<rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/><path d="M8 13h2M12 13h2M16 13h.5M8 16.5h2M12 16.5h2"/>',
+  walk: '<circle cx="13" cy="4.6" r="1.9"/><path d="M10.2 21l2-6.2 2.6 2.4V21M8 12.2l2.6-4.4 3.4.4 2.4 3.4 2.6.6M12.2 14.8l-1.6-4.6"/>',
+  train: '<rect x="5" y="3" width="14" height="14" rx="4"/><path d="M5 10.5h14M9 20l-2 1.5M15 20l2 1.5M8.5 17l-1.5 3M15.5 17l1.5 3"/><circle cx="9" cy="13.6" r=".9"/><circle cx="15" cy="13.6" r=".9"/>',
+  loc: '<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>',
+  dep: '<circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="1.8"/>',
+  arr: '<path d="M6 21V4M6 4h11l-2.5 3.5L17 11H6"/>',
+  chev: '<path d="M9.5 5.5 16 12l-6.5 6.5"/>',
+  sig: '<rect x="8" y="2.5" width="8" height="14" rx="4"/><circle cx="12" cy="6.5" r="1.6"/><circle cx="12" cy="12.4" r="1.6"/><path d="M12 16.5V21M8.5 21h7"/>'
+};
+function dsIcon(n, cls) { return '<svg class="dsi' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" aria-hidden="true">' + (DS_IC[n] || '') + '</svg>'; }
+function dsThemeSync() { var t = 'basic'; try { t = localStorage.getItem('rs_icon_theme') || 'basic'; } catch (e) {} document.documentElement.setAttribute('data-ictheme', t); }
+dsThemeSync();
+document.addEventListener('DOMContentLoaded', function () { var o = window.setIconTheme; if (typeof o === 'function') window.setIconTheme = function () { var r = o.apply(this, arguments); try { dsThemeSync(); } catch (e) {} return r; }; });
+/* ---- 역별 시각표: 서버(subway)에 받아 하루 동안 폰에 저장 ---- */
+function dstWeekTag() { var w = new Date().getDay(); return w === 6 ? 2 : w === 0 ? 3 : 1; }
+function dstTTKey(st, w) { var z = new Date(); return 'dstTT:' + st + ':' + w + ':' + z.getFullYear() + (z.getMonth() + 1) + z.getDate(); }
+var dstTTMem = {}, dstTTBusy = {};
+function dstTTCached(st, w) { w = w || dstWeekTag(); var k = dstTTKey(st, w); if (dstTTMem[k]) return dstTTMem[k]; try { var v = JSON.parse(localStorage.getItem(k) || 'null'); if (v) dstTTMem[k] = v; return v; } catch (e) { return null; } }
+function dstTTGet(st, w, cb) {
+  w = w || dstWeekTag(); var hit = dstTTCached(st, w); if (hit) { cb(hit); return; }
+  var k = dstTTKey(st, w); if (dstTTBusy[k]) { dstTTBusy[k].push(cb); return; } dstTTBusy[k] = [cb];
+  dstRequest({ timetable: { station: st, week: w } }, function (d) {
+    var v = d && d.success ? { lines: d.lines || [] } : { error: (d && d.message) || '시각표를 받지 못했어요.' };
+    if (d && d.success) { dstTTMem[k] = v; try { var day = k.split(':').pop(); Object.keys(localStorage).forEach(function (x) { if (/^dstTT:/.test(x) && x.split(':').pop() !== day) localStorage.removeItem(x); }); localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+    var l = dstTTBusy[k] || []; delete dstTTBusy[k]; l.forEach(function (f) { try { f(v); } catch (e) {} });
+  });
+}
+/* 실시간으로 잡힌 열차 다음부터는 시각표로 이어 붙이기 (같은 노선 · 같은 방향 · 걸리는 시간은 마지막 실시간 열차 기준 예상) */
+function dstTTExtend(d, tr, nowMs) {
+  var tt = dstTTCached(d.station); if (!tt || !tt.lines || !tr.length) return [];
+  var base = null; for (var i = tr.length - 1; i >= 0; i--) if (!tr[i]._tt && tr[i].eta != null) { base = tr[i]; break; } if (!base) return [];
+  var ln = dstLine(base), L = tt.lines.filter(function (x) { return x.lineId === base.lineId || x.name === ln; })[0]; if (!L) return [];
+  var bDep = nowMs + base.eta * 1000;
+  var toMs = function (t) { var m = /^(\d{2}):(\d{2})/.exec(t); var z = new Date(nowMs); z.setHours(+m[1], +m[2], 0, 0); var v = z.getTime(); if (v < nowMs - 4 * 3600000) v += 86400000; return v; };
+  var dir = L.dirs.filter(function (x) { return x.rows.some(function (r) { return r.to && base.terminus && (r.to === base.terminus || base.terminus.indexOf(r.to) >= 0); }); })[0]
+    || L.dirs.slice().sort(function (a, b) { var f = function (x) { return Math.min.apply(null, x.rows.map(function (r) { return Math.abs(toMs(r.t) - bDep); }).concat([9e12])); }; return f(a) - f(b); })[0];
+  if (!dir) return [];
+  var sh = function (s, ms) { var m = /^(\d{2}):(\d{2})/.exec(s || ''); if (!m) return s; var z = new Date(toMs(m[1] + ':' + m[2]) + ms); return String(z.getHours()).padStart(2, '0') + ':' + String(z.getMinutes()).padStart(2, '0'); };
+  var out = [];
+  dir.rows.forEach(function (r) {
+    var ms = toMs(r.t); if (ms <= bDep + 90000 || ms > nowMs + 5 * 3600000) return;
+    var delta = ms - bDep, o = {}; for (var k in base) o[k] = base[k];
+    o._tt = true; o.eta = (ms - nowMs) / 1000; o.etaSec = null; o.terminus = r.to || base.terminus; o.express = !!r.exp; o.trainNo = r.no || ''; o.delaySec = 0; o.now = '시간표 기준';
+    o.destArrive = sh(base.destArrive, delta); o.rideEstimated = true;
+    if (base.route) o.route = base.route.map(function (g) { var c = {}; for (var q in g) c[q] = g[q]; c.depart = sh(g.depart, delta); c.arrive = sh(g.arrive, delta); return c; });
+    out.push(o);
+  });
+  out.sort(function (a, b) { return a.eta - b.eta; });
+  return out.slice(0, 40);
+}
+/* ---- 시각표 창 ---- */
+var dstTTSt = { st: '', w: 0, li: 0, di: 0 };
+function openDstTT(which) {
+  var d = dstLast, c = dstCfg();
+  var st = which === 'to' ? c.dest : ((d && d.station) || c.from || ''); if (!st) { showToast('출발역을 먼저 정해 주세요.'); return; }
+  dstTTSt = { st: st, w: dstWeekTag(), li: 0, di: 0, which: which || 'from' };
+  document.getElementById('dst-tt-panel').classList.add('active'); dstTTDraw();
+}
+function closeDstTT() { document.getElementById('dst-tt-panel').classList.remove('active'); }
+function dstTTSet(k, v) { dstTTSt[k] = v; if (k === 'w' || k === 'which') { dstTTSt.li = 0; dstTTSt.di = 0; } if (k === 'li') dstTTSt.di = 0; if (k === 'which') { var c = dstCfg(); dstTTSt.st = v === 'to' ? c.dest : ((dstLast && dstLast.station) || c.from || ''); } dstTTDraw(); }
+function dstTTDraw() {
+  var S = dstTTSt, E = dstEsc, box = document.getElementById('dst-tt-body'), c = dstCfg();
+  var from = (dstLast && dstLast.station) || c.from || '';
+  var head = '<div class="tt-seg">' + [['from', from], ['to', c.dest]].map(function (x) { return '<button type="button" class="' + (S.which === x[0] ? 'on' : '') + '" onclick="dstTTSet(\'which\',\'' + x[0] + '\')">' + dsIcon(x[0] === 'from' ? 'dep' : 'arr') + E(x[1] || '-') + '</button>'; }).join('') + '</div>'
+    + '<div class="tt-week">' + [[1, '평일'], [2, '토요일'], [3, '휴일']].map(function (x) { return '<button type="button" class="' + (S.w === x[0] ? 'on' : '') + '" onclick="dstTTSet(\'w\',' + x[0] + ')">' + x[1] + (x[0] === dstWeekTag() ? '<i>오늘</i>' : '') + '</button>'; }).join('') + '</div>';
+  box.innerHTML = head + '<div class="tt-load"><div class="rs-ld"></div>시각표 불러오는 중…</div>';
+  dstTTGet(S.st, S.w, function (tt) {
+    if (S !== dstTTSt) return;
+    if (!tt || tt.error || !tt.lines || !tt.lines.length) { box.innerHTML = head + '<div class="tt-load">' + E((tt && tt.error) || '시각표가 없어요.') + '</div>'; return; }
+    var L = tt.lines[Math.min(S.li, tt.lines.length - 1)], D = L.dirs[Math.min(S.di, L.dirs.length - 1)];
+    var h = head + '<div class="tt-lines">' + tt.lines.map(function (l, i) { return '<button type="button" class="' + (i === S.li ? 'on' : '') + '" style="--c:' + E(l.color) + '" onclick="dstTTSet(\'li\',' + i + ')">' + E(l.name) + '</button>'; }).join('') + '</div>'
+      + '<div class="tt-dirs">' + L.dirs.map(function (x, i) { return '<button type="button" class="' + (i === S.di ? 'on' : '') + '" onclick="dstTTSet(\'di\',' + i + ')">' + E(x.label || (x.tag === 1 ? '상행' : '하행')) + ' 방면</button>'; }).join('') + '</div>';
+    var now = new Date(), nm = (now.getHours() < 4 ? now.getHours() + 24 : now.getHours()) * 60 + now.getMinutes(), today = S.w === dstWeekTag(), by = {}, order = [], nextDone = false;
+    D.rows.forEach(function (r) { var hh = +r.t.slice(0, 2), mm = +r.t.slice(3, 5), k = hh < 4 ? hh + 24 : hh; if (!by[k]) { by[k] = []; order.push(k); } by[k].push({ m: mm, r: r, v: k * 60 + mm }); });
+    h += '<div class="tt-scroll"><div class="tt-grid" style="--c:' + E(L.color) + '">' + order.map(function (k) {
+      var cur = today && Math.floor(nm / 60) === k;
+      return '<div class="tt-row' + (cur ? ' cur' : '') + '"><b>' + String(k % 24).padStart(2, '0') + '</b><span>' + by[k].map(function (x) {
+        var past = today && x.v < nm, nx = today && !past && !nextDone; if (nx) nextDone = true;
+        return '<i class="' + (past ? 'past' : '') + (nx ? ' next' : '') + (x.r.exp ? ' exp' : '') + '" title="' + E(x.r.to) + '행">' + String(x.m).padStart(2, '0') + (x.r.to && x.r.to !== (D.label || '').split(' · ')[0] ? '<small>' + E(x.r.to.slice(0, 3)) + '</small>' : '') + '</i>';
+      }).join('') + '</span></div>';
+    }).join('') + '</div></div><div class="tt-note"><i class="exp">급행</i> 빨간 글씨 · 작은 글씨는 다른 행선지 · 서울시 시각표 기준</div>';
+    box.innerHTML = h;
+    var cur = box.querySelector('.tt-row.cur'), sc = box.querySelector('.tt-scroll'); if (cur && sc) setTimeout(function () { sc.scrollTop = Math.max(0, cur.offsetTop - sc.offsetTop - 40); }, 30);
+  });
+}
 function dstOpen(k) { window.dstOpenKey = window.dstOpenKey === k ? '' : k; try { dstDraw(); } catch (e) {} }
-function dstShift(n) { window.dstOff = (window.dstOff || 0) + n; try { dstDraw(); } catch (e) {} }
+function dstShift(n) { var L = window.dstList || [], i = Math.max(0, Math.min(L.length - 1, (window.dstSelIdx || 0) + n)); window.dstSel = L[i] || ''; window.dstOff = 0; try { dstDraw(); } catch (e) {} }
 function dstDraw() {
   var d = dstLast; if (!d) return;
   var el = (Date.now() - d._got) / 1000;
@@ -13038,16 +13135,26 @@ function dstDraw() {
     var hm = function (ms) { var z = new Date(ms); return String(z.getHours()).padStart(2, '0') + ':' + String(z.getMinutes()).padStart(2, '0'); };
     var toMs = function (s) { var m = /^(\d{1,2}):(\d{2})/.exec(s || ''); if (!m) return null; var z = new Date(nowMs); z.setHours(+m[1], +m[2], 0, 0); var v = z.getTime(); if (v < nowMs - 3 * 3600000) v += 86400000; return v; };
     var rec = tr.reduce(function (b, t) { var x = dstArrMin(t), y = dstArrMin(b); return x < y || (x === y && (t.eta || 0) < (b.eta || 0)) ? t : b; }, tr[0]);
-    var ri = tr.indexOf(rec), si = Math.max(0, Math.min(tr.length - 1, ri + (window.dstOff || 0))); window.dstOff = si - ri;
+    /* 실시간 열차 뒤로는 시각표 열차를 이어 붙여서 '다음열차'를 막차까지 계속 */
+    try { tr = tr.concat(dstTTExtend(d, tr, nowMs)); } catch (e) {}
+    if (!dstTTCached(d.station) && d.station) dstTTGet(d.station, 0, function () { try { if ($('dst-panel').classList.contains('active')) dstDraw(); } catch (e) {} });
+    var tkey = function (t) { return t._tt ? 'tt|' + dstLine(t) + '|' + hm(nowMs + t.eta * 1000) : 'rt|' + (t.trainNo || '') + '|' + dstLine(t) + '|' + (t.terminus || '') + '|' + (t.destArrive || ''); };
+    window.dstList = tr.map(tkey);
+    var ri = tr.indexOf(rec), si = window.dstSel ? window.dstList.indexOf(window.dstSel) : -1;
+    if (si < 0) { si = ri; window.dstSel = ''; }
+    window.dstSelIdx = si;
     var f = tr[si], dep = f.eta == null ? null : nowMs + f.eta * 1000, arr = toMs(f.destArrive);
     dstHero = { f: f, d: d };
     var html = '<div class="nv-nav"><button type="button" onclick="dstShift(-1)"' + (si <= 0 ? ' disabled' : '') + '>이전열차</button>'
-      + '<button type="button" class="mid" onclick="window.dstOff=0;dstDraw()">' + (dep ? '<b>' + hm(dep) + ' 출발</b>' : '<b>곧 출발</b>') + (f === rec ? '<em>추천</em>' : '') + '</button>'
+      + '<button type="button" class="mid" onclick="window.dstSel=\'\';dstDraw()">' + (dep ? '<b>' + hm(dep) + ' 출발</b>' : '<b>곧 출발</b>') + (f === rec ? '<em>추천</em>' : (f._tt ? '<em class="tt">시간표</em>' : '')) + '</button>'
       + '<button type="button" onclick="dstShift(1)"' + (si >= tr.length - 1 ? ' disabled' : '') + '>다음열차</button></div>';
+    html = html.replace('>이전열차<', '>' + dsIcon('chev', 'flip') + '이전열차<').replace('>다음열차<', '>다음열차' + dsIcon('chev') + '<');
     /* 구간: 걸어가기 · 기다리기 · 타는 구간(노선색) · 갈아타기 */
     var parts = [], R = f.route && f.route.length ? f.route : [{ line: f.line, color: f.color, from: d.station, to: d.dest, arrive: f.destArrive }];
+    /* 나서는 시각: 열차 출발 - 걸어가는 시간 (지금보다 이르면 지금) */
+    var leave = dep && walk != null ? Math.max(nowMs, dep - walk * 60000) : nowMs, later = leave - nowMs > 60000;
     if (walk != null) parts.push({ k: 'walk', min: walk });
-    if (walk != null && f.eta != null) { var w0 = Math.round(f.eta / 60) - walk; if (w0 > 0) parts.push({ k: 'wait', min: w0 }); }
+    if (walk != null && f.eta != null && !later) { var w0 = Math.round(f.eta / 60) - walk; if (w0 > 0) parts.push({ k: 'wait', min: w0 }); }
     var prevEnd = dep;
     R.forEach(function (g, i) {
       var a = i === 0 ? dep : toMs(g.depart), b = i === R.length - 1 ? (arr || toMs(g.arrive)) : toMs(g.arrive);
@@ -13056,7 +13163,7 @@ function dstDraw() {
       parts.push({ k: 'ride', min: a && b ? Math.max(1, Math.round((b - a) / 60000)) : null, color: g.color || f.color || '#667085', sh: sh, from: g.from || (i ? '' : d.station), at: a });
       prevEnd = b;
     });
-    var totalMin = arr ? Math.round((arr - nowMs) / 60000) : null;
+    var totalMin = arr ? Math.round((arr - leave) / 60000) : null;
     var bar = '', top = '', lab = '';
     parts.forEach(function (p) {
       var g = Math.max(p.min || 4, p.k === 'ride' ? 6 : 3);
@@ -13067,14 +13174,14 @@ function dstDraw() {
       } else {
         /* 걷기는 글자가 들어갈 만큼, 짧은 대기 · 환승은 얇은 칸만 (분은 칸 위에 작게) */
         var fx = p.k === 'walk' ? Math.max(g, 9) + ' 1 0' : (p.min < 6 ? '0 0 12px' : g + ' 1 0');
-        bar += '<span class="nv-sg ' + p.k + '" style="flex:' + fx + '" title="' + (p.k === 'walk' ? '걷기' : '대기') + ' ' + p.min + '분">' + (p.k === 'walk' ? '🚶' + p.min + '<small>분</small>' : (p.min < 6 ? '' : p.min + '<small>분</small>')) + '</span>';
+        bar += '<span class="nv-sg ' + p.k + '" style="flex:' + fx + '" title="' + (p.k === 'walk' ? '걷기' : '대기') + ' ' + p.min + '분">' + (p.k === 'walk' ? dsIcon('walk') + p.min + '<small>분</small>' : (p.min < 6 ? '' : p.min + '<small>분</small>')) + '</span>';
         top += '<span style="flex:' + fx + '"></span>'; lab += '<span style="flex:' + fx + '"></span>';
       }
     });
     html += '<div class="nv-sum"><div class="nv-big">' + (totalMin != null ? totalMin + '<small>분</small>' : (f.eta != null ? Math.round(f.eta / 60) + '<small>분 후 출발</small>' : '-')) + '</div>'
-      + '<div class="nv-range">' + (walk != null ? '지금 출발 ' : (dep ? hm(dep) + ' ' : '')) + '- ' + (arr ? hm(arr) : '--:--') + ' ' + E(d.dest) + ' 도착' + (f.rideEstimated ? ' (예상)' : '') + '</div>'
+      + '<div class="nv-range">' + (walk != null ? (later ? hm(leave) + ' 나서기 ' : '지금 나서기 ') : (dep ? hm(dep) + ' 출발 ' : '')) + '- ' + (arr ? hm(arr) : '--:--') + ' ' + E(d.dest) + ' 도착' + (f.rideEstimated ? ' (예상)' : '') + '</div>'
       + '<div class="nv-tl"><div class="nv-top">' + top + '</div><div class="nv-bar">' + bar + '</div><div class="nv-lab">' + lab + '</div></div>'
-      + (dstRideGet() ? '' : '<button type="button" class="dst-ride-btn nv-go" style="--lc:' + E(f.color || '#1769d2') + '" onclick="dstRideStart()">🚆 이 열차 탈게요</button>') + '</div>';
+      + (dstRideGet() ? '' : '<button type="button" class="dst-ride-btn nv-go" style="--lc:' + E(f.color || '#1769d2') + '" onclick="dstRideStart()">' + dsIcon('train') + '이 열차 탈게요</button>') + '</div>';
     if (f.route && f.route.length) html += dstMapSvg(f, d);
     $('dst-out').innerHTML = html;
   }
@@ -22296,6 +22403,85 @@ html.ui-dark #dst-panel .nv-bd{background:#1a1f27}
 #dst-panel .dst-sug-none{font-size:12.5px;color:#98a2b3;padding:8px 4px}
 html.ui-dark #dst-panel .dst-sug button{background:#1e232c;border-color:#2c333e;color:#d0d5dd}
 html.ui-dark #dst-panel .dst-sug button:first-child{background:#1f2b40}
+/* ---- 편승열차 아이콘: 아이콘 테마 색 ---- */
+html{--dsi:#2f6fd6;--dsi-bg:#eef4fd}
+html[data-ictheme="hero"]{--dsi:#d6453d;--dsi-bg:#fdeeed}
+html[data-ictheme="char"]{--dsi:#7c4dff;--dsi-bg:#f2edff}
+html[data-ictheme="cute"]{--dsi:#ec5f9a;--dsi-bg:#fdeef5}
+html[data-ictheme="pet"]{--dsi:#e8820c;--dsi-bg:#fff3e4}
+html[data-ictheme="quokka"]{--dsi:#a86b2d;--dsi-bg:#f8efe4}
+html[data-ictheme="ios"]{--dsi:#007aff;--dsi-bg:#eaf3ff}
+#dst-panel .dsi,#dst-tt-panel .dsi{width:18px;height:18px;flex:none;fill:none;stroke:var(--dsi);stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px}
+#dst-panel .dsi.flip{transform:scaleX(-1)}
+html[data-ictheme="ios"] #dst-panel .dst-head-btns .dsi{stroke-width:2.4}
+#dst-panel .dst-save{color:var(--dsi);border-color:color-mix(in srgb,var(--dsi) 35%,#fff)}
+#dst-panel .dst-save .dsi{width:16px;height:16px}
+#dst-panel .dst-save{height:36px;padding:0 9px;gap:3px}
+#dst-panel .dst-refresh{width:36px;height:36px}
+#dst-panel .dst-head .dia-dialog-title{white-space:nowrap;min-width:0;font-size:19px}
+#dst-panel .dst-head-btns{gap:5px}
+#dst-panel .dst-save.on{background:var(--dsi);border-color:var(--dsi)}
+#dst-panel .dst-save.on .dsi{stroke:#fff;fill:none}
+#dst-panel .dst-ttbtn{display:flex;align-items:center;gap:3px;height:36px;padding:0 9px;border:1px solid color-mix(in srgb,var(--dsi) 35%,#fff);border-radius:12px;background:#fff;color:var(--dsi);font-size:13px;font-weight:800;cursor:pointer}
+#dst-panel .dst-ttbtn .dsi{width:16px;height:16px}
+#dst-panel .dst-refresh{background:var(--dsi-bg)}
+#dst-panel .dst-refresh .dsi{width:19px;height:19px}
+#dst-panel .dst-swap{border-color:color-mix(in srgb,var(--dsi) 30%,#fff)}
+#dst-panel .dst-walk b::before{content:none}
+#dst-panel .dst-walk b{display:inline-flex;align-items:center;gap:2px}
+#dst-panel .dst-walk .dsi{width:15px;height:15px;stroke:#667085}
+#dst-panel .nv-sg.walk .dsi{width:14px;height:14px;stroke:#667085;margin-right:1px}
+#dst-panel .nv-nav button .dsi{width:14px;height:14px;stroke:currentColor;opacity:.75}
+#dst-panel .nv-nav button:disabled .dsi{opacity:.3}
+#dst-panel .nv-nav .mid b{color:var(--dsi)}
+#dst-panel .nv-nav .mid em{background:var(--dsi)}
+#dst-panel .nv-nav .mid em.tt{background:#98a2b3}
+#dst-panel .nv-go{display:flex;align-items:center;justify-content:center;gap:6px}
+#dst-panel .nv-go .dsi{stroke:#fff;width:19px;height:19px}
+#dst-panel .dst-org-row button .dsi{width:15px;height:15px}
+#dst-panel .dst-org-row button.on .dsi{stroke:#fff}
+#dst-panel .dst-org-row button.on{background:var(--dsi);border-color:var(--dsi)}
+#dst-panel .dst-sug button b{color:var(--dsi)}
+#dst-panel .dst-org-in button{background:var(--dsi)}
+#dst-panel .dst-od.open{background:var(--dsi-bg)}
+/* ---- 시각표 창 ---- */
+#dst-tt-panel .tt-dialog{max-height:88vh;display:flex;flex-direction:column}
+#dst-tt-panel .tt-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+#dst-tt-panel .tt-head b{display:flex;align-items:center;gap:6px;font-size:18px}
+#dst-tt-panel .tt-head .dsi{width:22px;height:22px}
+#dst-tt-body{display:flex;flex-direction:column;min-height:200px;overflow:hidden;flex:1}
+#dst-tt-panel .tt-scroll{flex:1;overflow:auto;min-height:160px;max-height:52vh;border-radius:10px}
+#dst-tt-panel .tt-dialog{height:88vh}
+#dst-tt-panel .tt-seg,#dst-tt-panel .tt-week{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #dfe5ee;border-radius:12px;overflow:hidden;margin-bottom:8px}
+#dst-tt-panel .tt-week{grid-template-columns:1fr 1fr 1fr}
+#dst-tt-panel .tt-seg button,#dst-tt-panel .tt-week button{height:40px;border:0;background:#fff;font:inherit;font-size:14px;font-weight:800;color:#667085;display:flex;align-items:center;justify-content:center;gap:5px;cursor:pointer}
+#dst-tt-panel .tt-seg button + button,#dst-tt-panel .tt-week button + button{border-left:1px solid #dfe5ee}
+#dst-tt-panel .tt-seg button.on,#dst-tt-panel .tt-week button.on{background:var(--dsi-bg);color:var(--dsi)}
+#dst-tt-panel .tt-seg .dsi{width:15px;height:15px}
+#dst-tt-panel .tt-week i{font-style:normal;font-size:10px;background:var(--dsi);color:#fff;border-radius:5px;padding:1px 4px}
+#dst-tt-panel .tt-lines,#dst-tt-panel .tt-dirs{display:flex;gap:6px;overflow-x:auto;margin:4px 0 8px;scrollbar-width:none}
+#dst-tt-panel .tt-lines button{flex:none;height:32px;padding:0 12px;border-radius:16px;border:2px solid var(--c);background:#fff;color:var(--c);font-weight:900;font-size:13px}
+#dst-tt-panel .tt-lines button.on{background:var(--c);color:#fff}
+#dst-tt-panel .tt-dirs button{flex:1;min-width:0;height:36px;border:1px solid #dfe5ee;border-radius:10px;background:#fff;font-weight:800;font-size:13px;color:#475467;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 8px}
+#dst-tt-panel .tt-dirs button.on{border-color:#1b2b45;color:#1b2b45;background:#f5f7fb}
+#dst-tt-panel .tt-grid{border-top:2px solid var(--c)}
+#dst-tt-panel .tt-row{display:grid;grid-template-columns:40px 1fr;border-bottom:1px solid #eef1f5}
+#dst-tt-panel .tt-row > b{display:grid;place-items:center;background:#f7f9fc;font-size:15px;font-weight:900;color:#344054}
+#dst-tt-panel .tt-row.cur > b{background:var(--c);color:#fff}
+#dst-tt-panel .tt-row > span{display:flex;flex-wrap:wrap;gap:2px 10px;padding:7px 10px}
+#dst-tt-panel .tt-row i{font-style:normal;font-size:15px;font-weight:800;color:#1b2b45;font-variant-numeric:tabular-nums}
+#dst-tt-panel .tt-row i small{font-size:9.5px;color:#98a2b3;margin-left:1px;font-weight:700}
+#dst-tt-panel .tt-row i.past{color:#c4cad3}
+#dst-tt-panel .tt-row i.exp,#dst-tt-panel .tt-note i.exp{color:#e5484d;font-style:normal}
+#dst-tt-panel .tt-row i.next{background:var(--c);color:#fff;border-radius:6px;padding:0 5px}
+#dst-tt-panel .tt-load{display:flex;flex-direction:column;align-items:center;gap:8px;padding:30px 0;color:#98a2b3;font-weight:700;font-size:13px;text-align:center}
+#dst-tt-panel .tt-note{font-size:11.5px;color:#98a2b3;padding:8px 2px}
+html.ui-dark #dst-tt-panel .tt-seg button,html.ui-dark #dst-tt-panel .tt-week button,html.ui-dark #dst-tt-panel .tt-dirs button,html.ui-dark #dst-tt-panel .tt-lines button{background:#1a1f27;color:#c0c6d0;border-color:#323a46}
+html.ui-dark #dst-tt-panel .tt-lines button.on{background:var(--c);color:#fff}
+html.ui-dark #dst-tt-panel .tt-row > b{background:#1e232c;color:#d0d5dd}
+html.ui-dark #dst-tt-panel .tt-row i{color:#e4e7ec}
+html.ui-dark #dst-tt-panel .tt-row{border-color:#2c333e}
+html.ui-dark #dst-panel .dst-ttbtn{background:#1e232c}
 </style>
 
 </body>
