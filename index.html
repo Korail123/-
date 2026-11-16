@@ -4856,9 +4856,12 @@ function wgZip(entries) {
 /* 달 넘기기 즉시: 주소의 v를 1분마다가 아니라 10분 단위로 바꿔서, 한 번 받은 달 그림은 KWGT가 저장해 둔 것을 바로 보여줌
    + 앞 · 뒤 달 그림을 보이지 않게(1px) 미리 받아 둠 → ‹ › 를 누르면 기다리지 않고 바로 넘어감
    (근무표가 바뀌면 10분 안에 새 그림, 달력을 누르면 rf가 커져서 바로 새로 받음) */
-var WG_VER = '$df(yyMMddHH)$$mu(floor, df(mm)/10)$-$gv(rf)$';
+/* 먹통 방지: 누를 때마다 동작은 하나만 (전역변수 mo 하나에 '보는 달~새로고침 표시'를 같이 저장)
+   예) mo = "0~0" → ‹ 누르면 "-1~0" → 달력 누르면 "0~153012"(이번 달 + 지금 시각 → 새 그림) → › 누르면 "1~153012" */
+var WG_MON = '$tc(split, gv(mo), "~", 0)$';
+var WG_VER = '$df(yyMMddHH)$$mu(floor, df(mm)/10)$-$tc(split, gv(mo), "~", 1)$';
 function wgBitmapFormula(monthExpr) {
-  return window.wgPngNow + '&m=' + (monthExpr || '$gv(mo)$') + '&v=' + WG_VER;
+  return window.wgPngNow + '&m=' + (monthExpr || WG_MON) + '&v=' + WG_VER;
 }
 function wgKwgtPreset(imgUrl) {
   var S = '$mu(min, si(rwidth), si(rheight))$';
@@ -4872,10 +4875,7 @@ function wgKwgtPreset(imgUrl) {
   f(cal, 'bitmap_width', S); f(cal, 'bitmap_height', S);
   f(cal, 'position_padding_left', '$' + ox + '$'); f(cal, 'position_padding_top', '$' + oy + '$');
   /* 위젯(달력)을 한 번 누르면: 이번 달로 돌아가고(mo=0) + rf가 1 커져서 최신 근무표 그림을 바로 새로 받음 */
-  cal.internal_events = [
-    { type: 'SINGLE_TAP', action: 'SWITCH_GLOBAL', 'switch': 'mo', switch_text: '0' },
-    { type: 'SINGLE_TAP', action: 'SWITCH_GLOBAL', 'switch': 'rf', switch_text: '$gv(rf)+1$' }
-  ];
+  cal.internal_events = [{ type: 'SINGLE_TAP', action: 'SWITCH_GLOBAL', 'switch': 'mo', switch_text: '0~$df(HHmmss)$' }];
   /* 보이지 않는 1px 그림: 앞 · 뒤 달을 미리 받아 KWGT 저장소에 넣어 둠 */
   function pre(title, monthExpr) {
     var m = base('BitmapModule', title);
@@ -4899,10 +4899,11 @@ function wgKwgtPreset(imgUrl) {
     preset_root: {
       internal_type: 'RootLayerModule',
       globals_list: {
-        mo: { index: 1, type: 'TEXT', title: 'mo', description: '보고 있는 달 (0 = 이번 달)', global_formula: '', value: '0' },
-        rf: { index: 2, type: 'TEXT', title: 'rf', description: '달력을 누를 때마다 1씩 커짐 (이번 달로 돌아가며 새로고침)', global_formula: '', value: '0' }
+        mo: { index: 1, type: 'TEXT', title: 'mo', description: '보는 달~새로고침 표시 (0~0 = 이번 달)', global_formula: '', value: '0~0' }
       },
-      viewgroup_items: [pre('앞 달 미리 받기', '$mu(max, gv(mo)-1, -6)$'), pre('뒷 달 미리 받기', '$mu(min, gv(mo)+1, 6)$'), cal, tap('이전 달', 0.321, '$mu(max, gv(mo)-1, -6)$'), tap('다음 달', 0.679, '$mu(min, gv(mo)+1, 6)$')]
+      viewgroup_items: [pre('앞 달 미리 받기', '$mu(max, tc(split, gv(mo), "~", 0)-1, -6)$'), pre('뒷 달 미리 받기', '$mu(min, tc(split, gv(mo), "~", 0)+1, 6)$'), cal,
+        tap('이전 달', 0.321, '$mu(max, tc(split, gv(mo), "~", 0)-1, -6)$~$tc(split, gv(mo), "~", 1)$'),
+        tap('다음 달', 0.679, '$mu(min, tc(split, gv(mo), "~", 0)+1, 6)$~$tc(split, gv(mo), "~", 1)$')]
     }
   };
 }
@@ -12604,16 +12605,48 @@ var dstPos = null;
 function dstGetPos(cb) {
   if (dstPos && Date.now() - dstPos.t < 20000) { cb(null, dstPos); return; }
   if (!navigator.geolocation) { cb({ code: -1 }); return; }
+  /* 빠르게: 30분 안에 저장한 마지막 위치가 있으면 바로 그 위치로 조회하고, GPS는 뒤에서 확인 → 200m 넘게 움직였으면 다시 조회 */
+  var last = null; try { last = JSON.parse(localStorage.getItem('dstPosLast') || 'null'); } catch (e) {}
+  if (!dstPos && last && Date.now() - last.t < 30 * 60000) {
+    dstPos = last; cb(null, last);
+    navigator.geolocation.getCurrentPosition(function (p) {
+      var np = { lat: p.coords.latitude, lon: p.coords.longitude, t: Date.now() };
+      var moved = dstMeters(last, np) > 200; dstPos = np;
+      try { localStorage.setItem('dstPosLast', JSON.stringify(np)); } catch (e) {}
+      if (moved && $('dst-panel').classList.contains('active')) dstQuery(true);
+    }, function () {}, { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
+    return;
+  }
   var done = false;
   navigator.geolocation.getCurrentPosition(function (p) {
     dstPos = { lat: p.coords.latitude, lon: p.coords.longitude, t: Date.now() };
+    try { localStorage.setItem('dstPosLast', JSON.stringify(dstPos)); } catch (e) {}
     if (!done) { done = true; cb(null, dstPos); }
   }, function (e) {
     if (done) return; done = true;
     if (dstPos && Date.now() - dstPos.t < 15 * 60000) cb(null, dstPos); else cb(e || { code: 0 });
   }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
 }
-var dstCache = {}; /* 목적지별 마지막 결과 (이 폰 메모리에만) */
+var dstCache = {}; /* 목적지별 마지막 결과 (이 폰에 저장 → 앱을 다시 열어도 바로 보여줌) */
+try { var dcs = JSON.parse(localStorage.getItem('dstCacheV1') || '{}') || {}; Object.keys(dcs).forEach(function (k) { if (dcs[k] && Date.now() - dcs[k]._got < 10 * 60000) dstCache[k] = dcs[k]; }); } catch (e) {}
+function dstCacheSave(d) { try { var o = {}; o[d.dest] = d; Object.keys(dstCache).forEach(function (k) { if (k !== d.dest && Date.now() - dstCache[k]._got < 10 * 60000) o[k] = dstCache[k]; }); localStorage.setItem('dstCacheV1', JSON.stringify(o)); } catch (e) {} }
+function dstMeters(a, b) { var R = 6371000, t = Math.PI / 180, x = (b.lon - a.lon) * t * Math.cos((a.lat + b.lat) / 2 * t), y = (b.lat - a.lat) * t; return Math.sqrt(x * x + y * y) * R; }
+/* 미리 받아 두기: 앱을 열 때 · 다시 돌아올 때 (1분 안에 받은 게 있으면 건너뜀) → 편승열차를 누르면 기다리지 않고 바로 */
+function dstPrefetch() {
+  try {
+    var c = dstCfg(); if (!c || !c.dest || typeof dstRequest !== 'function') return;
+    var u = getCurrentUser(); if (!u || !u.token) return;
+    var hit = dstCache[c.dest]; if (hit && Date.now() - hit._got < 60000) return;
+    if (dstPrefetch.busy) return; dstPrefetch.busy = true;
+    dstGetPos(function (err, pos) {
+      if (err) { dstPrefetch.busy = false; return; }
+      dstRequest({ dest: c.dest, lat: pos.lat, lon: pos.lon }, function (d) {
+        dstPrefetch.busy = false;
+        if (d && d.success) { d._got = Date.now(); dstCache[d.dest] = d; dstCacheSave(d); }
+      });
+    });
+  } catch (e) { dstPrefetch.busy = false; }
+}
 function dstSkeleton() {
   return '<div class="dst-skel"><div class="sk-hero"><i style="width:42%"></i><i style="width:30%;height:34px;margin-top:12px"></i><i style="width:58%"></i></div>'
     + '<div class="sk-rows"><i></i><i></i><i></i></div></div>';
@@ -12660,7 +12693,7 @@ function dstOnData(d, my) {
     dstMsg(dstEsc((d && d.message) || '조회하지 못했어요.') + (d && d.nearest ? '<small>가장 가까운 역: ' + dstEsc(d.nearest) + '</small>' : ''), 'warn');
     dstStop(); return;
   }
-  d._got = Date.now(); dstLast = d; dstCredit(true); dstCache[d.dest] = d;
+  d._got = Date.now(); dstLast = d; dstCredit(true); dstCache[d.dest] = d; dstCacheSave(d);
   if (dstPinned()) { dstPinData = d; dstPinRender(); }
   dstFrom(d); dstDraw(); dstSchedule();
   if (!dstTick) dstTick = setInterval(dstDraw, 5000);
@@ -12827,21 +12860,28 @@ function dstDraw() {
   if (!tr.length) {
     $('dst-out').innerHTML = '<div class="dst-msg">지금 <b>' + dstEsc(d.station) + '</b>에서 <b>' + dstEsc(d.dest) + '</b>까지 가는 전철이 보이지 않아요.<small>막차가 끝났거나, 곧 출발할 열차가 아직 잡히지 않았을 수 있어요.</small></div>';
   } else {
-    var walk = dstWalkMin(d.near && d.near[0] ? d.near[0].m : null), wsec = walk == null ? 0 : walk * 60;
+    var walk = dstWalkMin(d.near && d.near[0] ? d.near[0].m : null), wsec = walk == null ? 0 : (walk + 1) * 60;   /* 걸어가는 시간 + 여유 1분 */
     var isX = d.mode === 'transfer';
-    var fi = dstPickIdx(tr, wsec, isX);
+    /* 걸어가서 여유 있게 탈 수 있는 열차만 */
+    var allN = tr.length; tr = tr.filter(function (t) { return t.eta == null || t.eta >= wsec; });
+    if (!tr.length) {
+      $('dst-out').innerHTML = '<div class="dst-msg">지금 오는 열차는 걸어가면 놓쳐요.<small>' + dstEsc(d.station) + '역까지 걸어서 약 ' + walk + '분 · 다음 열차 정보가 들어오면 바로 보여줄게요. (' + allN + '대 놓침)</small></div>';
+      var t0 = new Date(d._got); $('dst-time').textContent = String(t0.getHours()).padStart(2, '0') + ':' + String(t0.getMinutes()).padStart(2, '0') + ' 기준 · 1분마다 갱신'; return;
+    }
+    var fi = dstPickIdx(tr, 0, isX);
     var f = tr[fi], rest = tr.filter(function (x, k) { return k !== fi; }), fr = dstRide(f, d), lc = dstEsc(f.color || '#667085');
-    var etaHtml = f.eta == null ? '<b>-</b>' : (f.eta <= 30 ? '<b>곧</b> 도착' : '<b>' + Math.round(f.eta / 60) + '</b>분 후');
+    var etaHtml = f.eta == null ? '<b>-</b>' : (f.eta <= 30 ? '<b>곧</b> 도착' : '<b>' + Math.round(f.eta / 60) + '</b>분 후 도착');
     var html = '<div class="dst-hero" style="--lc:' + lc + '">'
       + '<div class="dst-hero-top"><i class="dst-chip">' + dstEsc(dstLine(f)) + '</i><b>' + dstEsc(f.terminus || '?') + '행</b>' + (f.express ? '<em class="dst-tag exp">급행</em>' : '') + (f.delaySec >= 60 ? '<em class="dst-tag late">' + Math.round(f.delaySec / 60) + '분 지연</em>' : '') + '</div>'
       + '<div class="dst-hero-mid"><span class="dst-hero-eta">' + etaHtml + '</span><span class="dst-hero-arr"><small>' + dstEsc(d.dest) + ' 도착' + (f.rideEstimated ? ' 예상' : '') + '</small><b>' + (f.rideEstimated ? '<em class="dst-approx">약</em>' : '') + dstEsc(f.destArrive || '--:--') + '</b></span></div>'
       + (f.route && f.route.length ? dstMapSvg(f, d) + dstRouteHtml(f, d) : (isX ? dstXferHtml(f, 'dst-hero-x') : ''))
-      + '<div class="dst-hero-now">' + dstEsc(String(f.now || '').replace(/^\S+열차\s*/, '')) + (fr != null ? ' · 총 ' + fr + '분' : '') + '</div></div>';
+      + '<div class="dst-hero-now">' + dstEsc(String(f.now || '').replace(/^\S+열차\s*/, '')) + (fr != null ? ' · 총 ' + fr + '분' : '') + '</div>'
+      + (walk != null && f.eta != null ? '<div class="dst-hero-walk">🚶 ' + dstEsc(d.station) + '역까지 걸어서 약 ' + walk + '분 · 여유 ' + Math.max(0, Math.round(f.eta / 60) - walk) + '분</div>' : '') + '</div>';
     if (isX && f.transfer) { var fx = dstXfers(f); html = '<div class="dst-xbadge">' + (fx.length === 1
       ? '환승 1회 · ' + dstEsc(fx[0].station) + '에서 ' + dstEsc(String(fx[0].line || '').replace(/\s*\(.*\)$/, '')) + '으로 갈아타요'
       : '최소 환승 ' + fx.length + '회 · ' + fx.map(function (x) { return dstEsc(x.station); }).join(' → ') + '에서 갈아타요') + '</div>' + html; }
-    var missed = 0; for (var q2 = 0; q2 < tr.length; q2++) if (wsec && tr[q2].eta != null && tr[q2].eta < wsec) missed++;
-    if (missed) html += '<div class="dst-hero-note">더 빨리 오는 열차 ' + missed + '대는 걸어가면 놓쳐요</div>';
+    var missed = allN - tr.length;
+    if (missed) html += '<div class="dst-hero-note">더 빨리 오는 열차 ' + missed + '대는 걸어가면 놓쳐서 뺐어요</div>';
     if (rest.length) html += '<div class="dst-sub-h">' + (isX ? '다른 경로' : '다른 열차') + '</div><div class="dst-table"><div class="dst-thead"><span></span><span>노선</span><span>행선지</span><span>도착까지</span><span>소요</span><span>도착</span></div>'
       + rest.slice(0, isX ? 6 : 7).map(function (t) {
         var c = dstEsc(t.color || '#667085');
@@ -21407,5 +21447,17 @@ html.ui-dark #dst-panel .dst-map-st{fill:#c4ccd8;stroke:#161a21}
 html.ui-dark #dst-panel .dst-map-tbg{fill:#232933}
 html.ui-dark #dst-panel .dst-map-tg{fill:#e9edf2}
 </style>
+<style id="dst-fast-style">
+#dst-panel .dst-hero-walk{margin-top:6px;font-size:12.5px;font-weight:700;color:#16794a}
+html.ui-dark #dst-panel .dst-hero-walk{color:#5fd39a}
+</style>
+<script id="dst-prefetch-script">
+(function () {
+  function go() { try { dstPrefetch(); } catch (e) {} }
+  window.addEventListener('load', function () { setTimeout(go, 1500); });
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') setTimeout(go, 800); });
+  var o = window.runLoginPopups; if (typeof o === 'function') window.runLoginPopups = function () { var r = o.apply(this, arguments); setTimeout(go, 600); return r; };
+})();
+</script>
 </body>
 </html>
