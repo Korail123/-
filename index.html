@@ -2136,7 +2136,8 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <details class="guide-sec" data-g="widget"><summary>홈화면 위젯 (KWGT)</summary><div class="gd-stage" data-g="widget"></div><ol>
       <li>환경설정 › <b>위젯 연결</b> › 위젯 주소 만들기.</li>
       <li>KWGT에서 프리셋을 들여오거나 이미지 항목을 추가해요.</li>
-      <li>비트맵 수식에 <b>비트맵 수식 복사</b>한 것을 붙여넣고 저장해요.</li></ol></details>
+      <li>비트맵 수식에 <b>비트맵 수식 복사</b>한 것을 붙여넣고 저장해요.</li>
+      <li>위젯의 <b>‹ ›</b>를 누르면 저번 달 · 다음 달이 바로 넘어가요. <b>달력을 한 번 누르면</b> 최신 근무표로 이번 달에 돌아가요.</li></ol></details>
     <details class="guide-sec" data-g="png"><summary>근무표 PNG 저장</summary><div class="gd-stage" data-g="png"></div><ol>
       <li>근무표 달력 아래 <b>근무표 PNG 저장</b>을 누르면 이미지로 저장돼요.</li></ol></details>
     <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeGuidePanel()">닫기</button></div>
@@ -4870,8 +4871,11 @@ function wgKwgtPreset(imgUrl) {
   f(cal, 'bitmap_bitmap', wgBitmapFormula());
   f(cal, 'bitmap_width', S); f(cal, 'bitmap_height', S);
   f(cal, 'position_padding_left', '$' + ox + '$'); f(cal, 'position_padding_top', '$' + oy + '$');
-  /* 달력을 누르면 rf가 1씩 커짐 → 주소가 바뀌어 그림을 바로 새로 받음 */
-  cal.internal_events = [{ type: 'SINGLE_TAP', action: 'SWITCH_GLOBAL', 'switch': 'rf', switch_text: '$gv(rf)+1$' }];
+  /* 위젯(달력)을 한 번 누르면: 이번 달로 돌아가고(mo=0) + rf가 1 커져서 최신 근무표 그림을 바로 새로 받음 */
+  cal.internal_events = [
+    { type: 'SINGLE_TAP', action: 'SWITCH_GLOBAL', 'switch': 'mo', switch_text: '0' },
+    { type: 'SINGLE_TAP', action: 'SWITCH_GLOBAL', 'switch': 'rf', switch_text: '$gv(rf)+1$' }
+  ];
   /* 보이지 않는 1px 그림: 앞 · 뒤 달을 미리 받아 KWGT 저장소에 넣어 둠 */
   function pre(title, monthExpr) {
     var m = base('BitmapModule', title);
@@ -4891,12 +4895,12 @@ function wgKwgtPreset(imgUrl) {
     return m;
   }
   return {
-    preset_info: { version: 13, title: '철도비서 근무표 달력', description: '철도비서 4x4 근무표 달력 (‹ › 로 앞뒤 6개월)', author: '철도비서', email: '', features: '', release: 0, locked: false, pflags: 0 },
+    preset_info: { version: 13, title: '철도비서 근무표 달력', description: '철도비서 4x4 근무표 달력 (‹ › 로 앞뒤 6개월 바로 넘기기 · 달력 누르면 최신 이번 달)', author: '철도비서', email: '', features: '', release: 0, locked: false, pflags: 0 },
     preset_root: {
       internal_type: 'RootLayerModule',
       globals_list: {
         mo: { index: 1, type: 'TEXT', title: 'mo', description: '보고 있는 달 (0 = 이번 달)', global_formula: '', value: '0' },
-        rf: { index: 2, type: 'TEXT', title: 'rf', description: '달력을 누를 때마다 1씩 커짐 (새로고침)', global_formula: '', value: '0' }
+        rf: { index: 2, type: 'TEXT', title: 'rf', description: '달력을 누를 때마다 1씩 커짐 (이번 달로 돌아가며 새로고침)', global_formula: '', value: '0' }
       },
       viewgroup_items: [pre('앞 달 미리 받기', '$mu(max, gv(mo)-1, -6)$'), pre('뒷 달 미리 받기', '$mu(min, gv(mo)+1, 6)$'), cal, tap('이전 달', 0.321, '$mu(max, gv(mo)-1, -6)$'), tap('다음 달', 0.679, '$mu(min, gv(mo)+1, 6)$')]
     }
@@ -5055,7 +5059,7 @@ function wgRender(r) {
     '<li><b>내 파일</b> 앱 › 다운로드 › 그 파일을 <b>꾹</b> 눌러 <b>이동</b> › 내장 메모리 › <b>Kustom</b> › <b>widgets</b> 폴더에 넣어요.</li>' +
     '<li>홈 화면 빈 곳을 꾹 › <b>위젯</b> › <b>KWGT 4x4</b>를 추가해요.</li>' +
     '<li>빈 위젯을 누르고 위쪽 탭 <b>내보냄(Exported)</b> 또는 <b>SD 카드</b> › <b>철도비서 근무표 달력</b>을 골라요.</li>' +
-    '<li>오른쪽 위 <b>저장(💾)</b>을 누르면 끝! ‹ › 누르면 달 이동, 달력을 누르면 새로고침.</li>' +
+    '<li>오른쪽 위 <b>저장(💾)</b>을 누르면 끝! ‹ › 누르면 바로 저번 달 · 다음 달, 달력을 누르면 최신 근무표로 이번 달에 돌아가요.</li>' +
     '</ol>' +
     '<div class="wg-btns"><button type="button" onclick="wgCopy(window.wgPngNow)">그림 주소 복사</button><button type="button" onclick="wgCopy(wgBitmapFormula())">비트맵 수식 복사</button><button type="button" onclick="window.open(window.wgPngNow,\'_blank\')">브라우저로 확인</button></div>' +
     '<details class="wg-manual"><summary>직접 만들기 (프리셋이 안 될 때)</summary>' +
@@ -12712,10 +12716,113 @@ function dstRouteHtml(f, d) {
     + '<span class="rt-meta">' + (f.rideEstimated ? '약 ' : '') + '<b>' + dstEsc(f.destArrive || last.arrive || '--:--') + '</b> 도착' + (f.rideEstimated ? ' 예상' : '') + '</span></div></div></div>';
   return h;
 }
+/* 노선도 바탕: 간단한 서울 지도 (서울 경계 · 한강) — 위도 · 경도는 대략값 */
+var DST_SEOUL = [[37.701,127.017],[37.688,127.094],[37.636,127.112],[37.603,127.137],[37.582,127.181],[37.548,127.183],[37.527,127.153],[37.505,127.163],[37.468,127.143],[37.458,127.104],[37.432,127.058],[37.445,127.000],[37.466,126.955],[37.475,126.901],[37.487,126.851],[37.512,126.822],[37.548,126.795],[37.583,126.797],[37.598,126.838],[37.630,126.888],[37.655,126.945],[37.684,126.972]];
+var DST_HAN = [[37.590,126.795],[37.578,126.822],[37.567,126.848],[37.556,126.873],[37.547,126.893],[37.540,126.908],[37.534,126.922],[37.525,126.937],[37.517,126.955],[37.515,126.972],[37.516,126.987],[37.519,127.002],[37.526,127.016],[37.531,127.031],[37.530,127.050],[37.526,127.064],[37.525,127.080],[37.531,127.095],[37.541,127.106],[37.551,127.116],[37.561,127.132],[37.570,127.158],[37.578,127.185]];
+function dstSeoulBg(proj, W, H) {
+  var pts = function (a) { return a.map(function (p) { var q = proj(p); return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join(' '); };
+  var h = '<clipPath id="dstMapClip"><rect x="0.5" y="0.5" width="' + (W - 1) + '" height="' + (H - 1) + '" rx="14"/></clipPath><g clip-path="url(#dstMapClip)">';
+  h += '<polygon points="' + pts(DST_SEOUL) + '" class="dst-map-city"/>';
+  h += '<polyline points="' + pts(DST_HAN) + '" class="dst-map-river"/>';
+  var mid = proj([37.522, 126.995]);
+  if (mid[0] > 20 && mid[0] < W - 30 && mid[1] > 12 && mid[1] < H - 6) h += '<text x="' + mid[0].toFixed(1) + '" y="' + (mid[1] + 3).toFixed(1) + '" class="dst-map-rv">한강</text>';
+  return h + '</g>';
+}
+/* ---- 가장 빨리 오는 열차: 출발역 → (환승역) → 도착역 노선도 그림 (역 좌표가 있으면 지도처럼, 없으면 한 줄로)
+   이름표는 서로 · 선과 겹치지 않는 자리를 골라서 놓고, 자리가 없으면 중간역 이름은 생략 ---- */
+function dstMapSvg(f, d) {
+  var R = (f && f.route) || []; if (!R.length) return '';
+  var segs = R.map(function (g) {
+    var names = (Array.isArray(g.stations) && g.stations.length > 1 ? g.stations : [g.from, g.to]).map(function (n) { return typeof n === 'string' ? n : (n && n.name) || ''; });
+    var geo = Array.isArray(g.geo) && g.geo.length === names.length ? g.geo.map(function (p) { return p ? [p[0], p[1]] : null; }) : names.map(function () { return null; });
+    return { color: g.color || '#667085', names: names, geo: geo };
+  });
+  var have = 0; segs.forEach(function (sg) { sg.geo.forEach(function (p) { if (p) have++; }); });
+  var useGeo = have >= 2;
+  if (useGeo) segs.forEach(function (sg) {
+    var g = sg.geo, n = g.length;
+    for (var i = 0; i < n; i++) if (!g[i]) {
+      var a = i - 1; while (a >= 0 && !g[a]) a--; var b = i + 1; while (b < n && !g[b]) b++;
+      if (a >= 0 && b < n) { var t = (i - a) / (b - a); g[i] = [g[a][0] + (g[b][0] - g[a][0]) * t, g[a][1] + (g[b][1] - g[a][1]) * t]; }
+      else if (a >= 0) g[i] = g[a]; else if (b < n) g[i] = g[b];
+    }
+  });
+  if (useGeo && segs.some(function (sg) { return sg.geo.some(function (p) { return !p; }); })) useGeo = false;
+  /* 지나가는 역은 출발 · 환승 · 도착 사이마다 고르게 2~3개만 */
+  segs.forEach(function (sg) {
+    var n = sg.names.length - 2, pick = {};
+    if (n > 0) { var want = n <= 3 ? n : (n <= 6 ? 2 : 3); for (var q = 1; q <= want; q++) pick[Math.round(q * (n + 1) / (want + 1))] = 1; }
+    sg.show = pick;
+  });
+  var W = 320, padX = 46, padY = 40, H = 120;
+  if (useGeo) {
+    var all = []; segs.forEach(function (sg) { sg.geo.forEach(function (p) { all.push(p); }); });
+    var lats = all.map(function (p) { return p[0]; }), lons = all.map(function (p) { return p[1]; });
+    var la0 = Math.min.apply(null, lats), la1 = Math.max.apply(null, lats), lo0 = Math.min.apply(null, lons), lo1 = Math.max.apply(null, lons);
+    var k = Math.cos((la0 + la1) / 2 * Math.PI / 180), gw = Math.max((lo1 - lo0) * k, 1e-4), gh = Math.max(la1 - la0, 1e-4);
+    H = Math.round(Math.min(250, Math.max(170, (W - padX * 2) * gh / gw + padY * 2)));
+    var sc = Math.min((W - padX * 2) / gw, (H - padY * 2) / gh), ox = (W - gw * sc) / 2, oy = (H - gh * sc) / 2;
+    var proj = function (p) { return [ox + (p[1] - lo0) * k * sc, oy + (la1 - p[0]) * sc]; };
+    segs.forEach(function (sg) { sg.xy = sg.geo.map(proj); });
+  } else {
+    var total = segs.reduce(function (acc, sg) { return acc + sg.names.length - 1; }, 0) || 1, step = (W - padX * 2) / total, x = padX;
+    segs.forEach(function (sg) { sg.xy = sg.names.map(function (n, i) { if (i > 0) x += step; return [x, 64]; }); });
+  }
+  /* 겹침 검사용: 선 위의 점들 + 이미 놓은 이름표 */
+  var boxes = [], linePts = [];
+  segs.forEach(function (sg) { for (var i = 0; i < sg.xy.length; i++) { linePts.push(sg.xy[i]); if (i) { var q = sg.xy[i - 1], p = sg.xy[i]; for (var t = 0.25; t < 1; t += 0.25) linePts.push([q[0] + (p[0] - q[0]) * t, q[1] + (p[1] - q[1]) * t]); } } });
+  function free(r, avoidLine) {
+    if (r[0] < 3 || r[1] < 3 || r[0] + r[2] > W - 3 || r[1] + r[3] > H - 3) return false;
+    for (var i = 0; i < boxes.length; i++) { var b = boxes[i]; if (r[0] < b[0] + b[2] + 2 && r[0] + r[2] + 2 > b[0] && r[1] < b[1] + b[3] + 1 && r[1] + r[3] + 1 > b[1]) return false; }
+    if (avoidLine) for (var j = 0; j < linePts.length; j++) { var p = linePts[j]; if (p[0] > r[0] - 3 && p[0] < r[0] + r[2] + 3 && p[1] > r[1] - 3 && p[1] < r[1] + r[3] + 3) return false; }
+    return true;
+  }
+  function place(p, w, hgt, gap, avoidLine) {
+    var c = [[p[0] - w / 2, p[1] + gap], [p[0] - w / 2, p[1] - gap - hgt], [p[0] + gap, p[1] - hgt / 2], [p[0] - gap - w, p[1] - hgt / 2],
+             [p[0] + gap - 2, p[1] + gap - 4], [p[0] - gap - w + 2, p[1] + gap - 4], [p[0] + gap - 2, p[1] - gap - hgt + 4], [p[0] - gap - w + 2, p[1] - gap - hgt + 4]];
+    for (var i = 0; i < c.length; i++) { var r = [c[i][0], c[i][1], w, hgt]; if (free(r, avoidLine)) { boxes.push(r); return r; } }
+    return null;
+  }
+  var E = dstEsc, out = [], tags = [];
+  out.push('<rect x="0.5" y="0.5" width="' + (W - 1) + '" height="' + (H - 1) + '" rx="14" class="dst-map-bg"/>');
+  if (useGeo) out.push(dstSeoulBg(proj, W, H));
+  segs.forEach(function (sg) { out.push('<polyline points="' + sg.xy.map(function (p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ') + '" fill="none" stroke="' + E(sg.color) + '" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>'); });
+  segs.forEach(function (sg) { sg.xy.forEach(function (p, i) { if (i && i < sg.xy.length - 1 && sg.show[i]) out.push('<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="2.8" fill="#fff" stroke="' + E(sg.color) + '" stroke-width="1.8"/>'); }); });
+  var a = segs[0].xy[0], zs = segs[segs.length - 1].xy, z = zs[zs.length - 1];
+  /* 출발 · 도착 핀 (위쪽), 이름표 → 환승역 이름표 → 남는 자리에 중간역 이름 */
+  function pin(p, txt, col) {
+    var r = [p[0] - 17, p[1] - 30, 34, 17]; boxes.push(r);
+    out.push('<path d="M' + p[0].toFixed(1) + ',' + (p[1] - 6).toFixed(1) + ' l-5,-7 h10 z" fill="' + col + '"/><rect x="' + r[0].toFixed(1) + '" y="' + r[1].toFixed(1) + '" width="34" height="17" rx="8.5" fill="' + col + '"/><text x="' + p[0].toFixed(1) + '" y="' + (r[1] + 12).toFixed(1) + '" text-anchor="middle" class="dst-map-pt">' + txt + '</text>');
+  }
+  function tag(p, txt, bd) {
+    var w = Math.max(30, String(txt).length * 10.5 + 14), r = place(p, w, 17, 9, true) || place(p, w, 17, 9, false);
+    if (!r) return;
+    tags.push('<rect x="' + r[0].toFixed(1) + '" y="' + r[1].toFixed(1) + '" width="' + w + '" height="17" rx="8.5" class="dst-map-tbg" stroke="' + bd + '"/><text x="' + (r[0] + w / 2).toFixed(1) + '" y="' + (r[1] + 12).toFixed(1) + '" text-anchor="middle" class="dst-map-tg">' + E(txt) + '</text>');
+  }
+  pin(a, '출발', '#16a34a'); pin(z, '도착', '#e5484d');
+  tag(a, segs[0].names[0], '#16a34a'); tag(z, d.dest, '#e5484d');
+  segs.forEach(function (sg, si) {
+    if (!si) return; var p = sg.xy[0];
+    out.push('<rect x="' + (p[0] - 6).toFixed(1) + '" y="' + (p[1] - 4).toFixed(1) + '" width="12" height="8" rx="4" fill="#fff" stroke="#344054" stroke-width="1.4"/>');
+    tag(p, sg.names[0], '#98a2b3');
+  });
+  segs.forEach(function (sg) {
+    sg.xy.forEach(function (p, i) {
+      if (!i || i === sg.xy.length - 1 || !sg.show[i]) return;
+      var nm = sg.names[i], w = nm.length * 8.6 + 2, r = place(p, w, 10, 4, true) || place(p, w, 10, 5, false);
+      if (r) tags.push('<text x="' + (r[0] + 1).toFixed(1) + '" y="' + (r[1] + 8.5).toFixed(1) + '" class="dst-map-st">' + E(nm) + '</text>');
+    });
+  });
+  out.push('<circle cx="' + a[0].toFixed(1) + '" cy="' + a[1].toFixed(1) + '" r="5" fill="#fff" stroke="#16a34a" stroke-width="2.4"/>');
+  out.push('<circle cx="' + z[0].toFixed(1) + '" cy="' + z[1].toFixed(1) + '" r="5" fill="#fff" stroke="#e5484d" stroke-width="2.4"/>');
+  return '<svg class="dst-map" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + E(R[0].from + '에서 ' + d.dest + '까지 노선도') + '">' + out.join('') + tags.join('') + '</svg>';
+}
 function dstDraw() {
   var d = dstLast; if (!d) return;
   var el = (Date.now() - d._got) / 1000;
-  var tr = (d.trains || []).map(function (t) { var o = {}; for (var k in t) o[k] = t[k]; o.eta = t.etaSec == null ? null : Math.max(0, t.etaSec - el); return o; })
+  /* 이미 지나간 열차(내 역을 떠났거나 도착 예정이 30초 넘게 지난 것)는 빼고, 빨리 오는 순서대로 */
+  var tr = (d.trains || []).filter(function (t) { if (/당역\s*출발/.test(String(t.now || ''))) return false; return t.etaSec == null || (t.etaSec - el) > -30; })
+    .map(function (t) { var o = {}; for (var k in t) o[k] = t[k]; o.eta = t.etaSec == null ? null : Math.max(0, t.etaSec - el); return o; })
     .sort(function (a, b) { return (a.eta == null ? 9e9 : a.eta) - (b.eta == null ? 9e9 : b.eta); });
   if (!tr.length) {
     $('dst-out').innerHTML = '<div class="dst-msg">지금 <b>' + dstEsc(d.station) + '</b>에서 <b>' + dstEsc(d.dest) + '</b>까지 가는 전철이 보이지 않아요.<small>막차가 끝났거나, 곧 출발할 열차가 아직 잡히지 않았을 수 있어요.</small></div>';
@@ -12728,7 +12835,7 @@ function dstDraw() {
     var html = '<div class="dst-hero" style="--lc:' + lc + '">'
       + '<div class="dst-hero-top"><i class="dst-chip">' + dstEsc(dstLine(f)) + '</i><b>' + dstEsc(f.terminus || '?') + '행</b>' + (f.express ? '<em class="dst-tag exp">급행</em>' : '') + (f.delaySec >= 60 ? '<em class="dst-tag late">' + Math.round(f.delaySec / 60) + '분 지연</em>' : '') + '</div>'
       + '<div class="dst-hero-mid"><span class="dst-hero-eta">' + etaHtml + '</span><span class="dst-hero-arr"><small>' + dstEsc(d.dest) + ' 도착' + (f.rideEstimated ? ' 예상' : '') + '</small><b>' + (f.rideEstimated ? '<em class="dst-approx">약</em>' : '') + dstEsc(f.destArrive || '--:--') + '</b></span></div>'
-      + (f.route && f.route.length ? dstRouteHtml(f, d) : (isX ? dstXferHtml(f, 'dst-hero-x') : ''))
+      + (f.route && f.route.length ? dstMapSvg(f, d) + dstRouteHtml(f, d) : (isX ? dstXferHtml(f, 'dst-hero-x') : ''))
       + '<div class="dst-hero-now">' + dstEsc(String(f.now || '').replace(/^\S+열차\s*/, '')) + (fr != null ? ' · 총 ' + fr + '분' : '') + '</div></div>';
     if (isX && f.transfer) { var fx = dstXfers(f); html = '<div class="dst-xbadge">' + (fx.length === 1
       ? '환승 1회 · ' + dstEsc(fx[0].station) + '에서 ' + dstEsc(String(fx[0].line || '').replace(/\s*\(.*\)$/, '')) + '으로 갈아타요'
@@ -12769,7 +12876,9 @@ function dstSaveToggle() {
 function dstMainVisible() { var m = document.getElementById('main-section'); return !!(m && m.offsetParent !== null) && !document.hidden; }
 function dstBest(d) {
   var el = (Date.now() - d._got) / 1000;
-  var tr = (d.trains || []).map(function (t) { var o = {}; for (var k in t) o[k] = t[k]; o.eta = t.etaSec == null ? null : Math.max(0, t.etaSec - el); return o; })
+  /* 이미 지나간 열차(내 역을 떠났거나 도착 예정이 30초 넘게 지난 것)는 빼고, 빨리 오는 순서대로 */
+  var tr = (d.trains || []).filter(function (t) { if (/당역\s*출발/.test(String(t.now || ''))) return false; return t.etaSec == null || (t.etaSec - el) > -30; })
+    .map(function (t) { var o = {}; for (var k in t) o[k] = t[k]; o.eta = t.etaSec == null ? null : Math.max(0, t.etaSec - el); return o; })
     .sort(function (a, b) { return (a.eta == null ? 9e9 : a.eta) - (b.eta == null ? 9e9 : b.eta); });
   var walk = dstWalkMin(d.near && d.near[0] ? d.near[0].m : null), wsec = walk == null ? 0 : walk * 60;
   if (!tr.length) return { f: null, walk: walk };
@@ -21280,5 +21389,23 @@ function xrStampRouteTimes() {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
 </script>
+<style id="dst-map-style">
+#dst-panel .dst-map{display:block;width:100%;height:auto;margin:10px 0 6px}
+#dst-panel .dst-map-bg{fill:#eef1f5;stroke:#e1e6ed}
+#dst-panel .dst-map-city{fill:#f9fafb;stroke:#d5dbe4;stroke-width:1;stroke-dasharray:3 3}
+#dst-panel .dst-map-river{fill:none;stroke:#cfe3f7;stroke-width:9;stroke-linecap:round;stroke-linejoin:round}
+#dst-panel .dst-map-rv{font-size:8px;font-weight:700;fill:#8bb4dd;letter-spacing:2px}
+#dst-panel .dst-map-st{font-size:8.5px;fill:#475467;font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:2.6px;stroke-linejoin:round}
+#dst-panel .dst-map-tbg{fill:#fff}
+#dst-panel .dst-map-tg{font-size:10px;font-weight:800;fill:#1d2939}
+#dst-panel .dst-map-pt{font-size:9.5px;font-weight:800;fill:#fff}
+html.ui-dark #dst-panel .dst-map-bg{fill:#161a21;stroke:#2c333e}
+html.ui-dark #dst-panel .dst-map-city{fill:#1e232c;stroke:#323a46}
+html.ui-dark #dst-panel .dst-map-river{stroke:#1f3a57}
+html.ui-dark #dst-panel .dst-map-rv{fill:#4f7aa6}
+html.ui-dark #dst-panel .dst-map-st{fill:#c4ccd8;stroke:#161a21}
+html.ui-dark #dst-panel .dst-map-tbg{fill:#232933}
+html.ui-dark #dst-panel .dst-map-tg{fill:#e9edf2}
+</style>
 </body>
 </html>
