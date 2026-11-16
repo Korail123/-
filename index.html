@@ -12603,6 +12603,30 @@ function dstXferOne(t, x, i, cls) {
     + (x.estimated ? '<span class="x-info">갈아탈 열차 시각은 예상이에요</span>' : '<span class="x-info">' + dstEsc(x.terminus || '') + '행 ' + dstEsc(x.depart || '') + ' 출발' + (x.waitMin != null ? ' · 대기 ' + x.waitMin + '분' : '') + '</span>') + '</div>';
 }
 function dstXferStations(t) { return dstXfers(t).map(function (x) { return x.station; }).join(' · '); }
+/* 경로도: 출발 → (환승역) → 도착을 노선 색 선으로 잇고 지나는 역을 함께 보여줌 */
+function dstRouteHtml(f, d) {
+  var R = f && f.route; if (!R || !R.length) return '';
+  var xs = dstXfers(f), ln = function (x) { return String(x || '').replace(/\s*\(.*\)$/, ''); };
+  var h = '<div class="dst-rt">';
+  R.forEach(function (g, i) {
+    var lc = dstEsc(g.color || '#667085'), x = i > 0 ? xs[i - 1] : null;
+    var meta = g.estimated ? '갈아탈 열차 시각은 예상이에요'
+      : (g.terminus ? dstEsc(g.terminus) + '행 ' : '') + (g.depart ? dstEsc(g.depart) + ' 출발' : '') + (x && x.waitMin != null ? ' · 대기 ' + x.waitMin + '분' : '');
+    h += '<div class="rt-n" style="--lc:' + lc + '"><i class="rt-d ' + (i ? 'x' : 's') + '"></i><div class="rt-tx">'
+      + '<span class="rt-st"><b>' + dstEsc(g.from) + '</b><em class="rt-tag' + (i ? ' x' : '') + '">' + (i ? '환승' : '출발') + '</em><i class="dst-chip sm" style="--lc:' + lc + '">' + dstEsc(ln(g.line)) + '</i></span>'
+      + (meta ? '<span class="rt-meta">' + meta + '</span>' : '') + '</div></div>';
+    var st = (g.stations || []).slice(1, -1), n = st.length, list;
+    if (!n) list = '바로 다음 역';
+    else if (n <= 5) list = st.map(dstEsc).join(' · ');
+    else list = '<span class="short">' + dstEsc(st[0]) + ' · ' + dstEsc(st[1]) + ' ··· ' + dstEsc(st[n - 1]) + ' <u>모두 보기</u></span><span class="full">' + st.map(dstEsc).join(' · ') + '</span>';
+    h += '<div class="rt-s" style="--lc:' + lc + '"><div class="rt-mid' + (n > 5 ? ' more' : '') + '"' + (n > 5 ? ' onclick="this.classList.toggle(\'open\')"' : '') + '>'
+      + '<span class="rt-cnt">' + (n + 1) + '개 역' + (g.arrive ? ' · ' + dstEsc(g.to) + ' ' + dstEsc(g.arrive) + ' 도착' : '') + '</span>' + list + '</div></div>';
+  });
+  var last = R[R.length - 1];
+  h += '<div class="rt-n end"><i class="rt-d e"></i><div class="rt-tx"><span class="rt-st"><b>' + dstEsc(d.dest) + '</b><em class="rt-tag end">도착</em></span>'
+    + '<span class="rt-meta">' + dstEsc(f.destArrive || last.arrive || '--:--') + ' 도착 예정</span></div></div></div>';
+  return h;
+}
 function dstDraw() {
   var d = dstLast; if (!d) return;
   var el = (Date.now() - d._got) / 1000;
@@ -12619,7 +12643,7 @@ function dstDraw() {
     var html = '<div class="dst-hero" style="--lc:' + lc + '">'
       + '<div class="dst-hero-top"><i class="dst-chip">' + dstEsc(dstLine(f)) + '</i><b>' + dstEsc(f.terminus || '?') + '행</b>' + (f.express ? '<em class="dst-tag exp">급행</em>' : '') + (f.delaySec >= 60 ? '<em class="dst-tag late">' + Math.round(f.delaySec / 60) + '분 지연</em>' : '') + '</div>'
       + '<div class="dst-hero-mid"><span class="dst-hero-eta">' + etaHtml + '</span><span class="dst-hero-arr"><small>' + dstEsc(d.dest) + ' 도착</small><b>' + dstEsc(f.destArrive || '--:--') + '</b></span></div>'
-      + (isX ? dstXferHtml(f, 'dst-hero-x') : '')
+      + (f.route && f.route.length ? dstRouteHtml(f, d) : (isX ? dstXferHtml(f, 'dst-hero-x') : ''))
       + '<div class="dst-hero-now">' + dstEsc(String(f.now || '').replace(/^\S+열차\s*/, '')) + (fr != null ? ' · 총 ' + fr + '분' : '') + (f.stops ? ' · ' + f.stops + '개 역' : '') + '</div></div>';
     if (isX && f.transfer) { var fx = dstXfers(f); html = '<div class="dst-xbadge">' + (fx.length === 1
       ? '환승 1회 · ' + dstEsc(fx[0].station) + '에서 ' + dstEsc(String(fx[0].line || '').replace(/\s*\(.*\)$/, '')) + '으로 갈아타요'
@@ -17447,6 +17471,29 @@ height: calc(90px + env(safe-area-inset-bottom));
 #main-section .menu-art[data-icon="편승열차조회"]{transform:scale(.86)}
 #dst-panel .dst-tag.miss{margin-left:0;margin-right:4px;background:#eef1f5;color:#536279}
 #dst-panel .dst-xbadge{display:inline-block;margin:0 2px 8px;padding:4px 10px;border-radius:999px;background:#fff4e5;color:#b54708;font-size:12.5px;font-weight:800}
+#dst-panel .dst-rt{margin-top:10px;padding:11px 12px 9px;border-radius:12px;background:#fff;border:1px solid #dbe5f3}
+#dst-panel .rt-n{position:relative;display:flex;gap:9px;align-items:flex-start}
+#dst-panel .rt-d{flex:none;width:14px;height:14px;margin-top:3px;border-radius:50%;background:#fff;border:3px solid var(--lc);box-sizing:border-box;position:relative;z-index:1}
+#dst-panel .rt-d.s{background:var(--lc)}
+#dst-panel .rt-d.e{background:#e5484d;border-color:#e5484d;box-shadow:0 0 0 3px #fde3e3}
+#dst-panel .rt-tx{min-width:0;flex:1}
+#dst-panel .rt-st{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+#dst-panel .rt-st b{font-size:14.5px;color:#1b2b45}
+#dst-panel .rt-tag{font-style:normal;padding:1px 6px;border-radius:6px;font-size:10.5px;font-weight:800;background:#e8f1ff;color:#2f6fd6}
+#dst-panel .rt-tag.x{background:#fff4e5;color:#b54708}
+#dst-panel .rt-tag.end{background:#fdeceb;color:#d92d20}
+#dst-panel .rt-meta{display:block;margin-top:1px;font-size:11.5px;font-weight:700;color:#536279}
+#dst-panel .rt-s{margin:0 0 0 5px;padding:5px 0 8px 16px;border-left:4px solid var(--lc);min-height:16px}
+#dst-panel .rt-n:not(.end){padding-bottom:2px}
+#dst-panel .rt-n:not(.end)::before{content:"";position:absolute;left:5px;top:10px;bottom:0;width:4px;background:var(--lc)}
+#dst-panel .rt-n.end .rt-d{margin-top:2px}
+#dst-panel .rt-mid{font-size:11.5px;line-height:1.5;color:#7a869a;word-break:keep-all}
+#dst-panel .rt-mid .rt-cnt{display:block;font-weight:800;color:#536279}
+#dst-panel .rt-mid.more{cursor:pointer}
+#dst-panel .rt-mid u{color:#2f6fd6;text-decoration:none;font-weight:800;margin-left:2px}
+#dst-panel .rt-mid .full{display:none}
+#dst-panel .rt-mid.open .full{display:inline}
+#dst-panel .rt-mid.open .short{display:none}
 #dst-panel .dst-hero-x{display:flex;flex-wrap:wrap;align-items:center;gap:5px 6px;margin-top:9px;padding:8px 10px;border-radius:12px;background:#fff;border:1px dashed #cdd8ea;font-size:12.5px;color:#344054}
 #dst-panel .dst-hero-x .x-stn b{color:#1b2b45}
 #dst-panel .dst-hero-x .x-arrow{padding:1px 6px;border-radius:6px;background:#fff4e5;color:#b54708;font-size:11px;font-weight:800}
