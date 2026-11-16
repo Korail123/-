@@ -20738,6 +20738,7 @@ function iconArrApply() {
   r.classList.toggle('menu-list', a.main === 'list');
   r.classList.toggle('set-grid', a.set === 'grid');
   try { if (typeof setFlatBuild === 'function') setFlatBuild(); } catch (e) {}
+  try { menuSortApply(a.main); } catch (e) {}
   [['ic-arr-main', a.main], ['ic-arr-set', a.set]].forEach(function (x) {
     var el = document.getElementById(x[0]); if (!el) return;
     [].forEach.call(el.querySelectorAll('button'), function (b) { b.classList.toggle('on', b.getAttribute('data-v') === x[1]); });
@@ -20749,6 +20750,24 @@ function iconArrSet(which, v) {
   iconArrApply();
   if (typeof showToast === 'function') showToast((which === 'main' ? '메인화면' : '환경설정') + ' 아이콘을 ' + (v === 'list' ? '세로 목록으로' : '바둑판으로') + ' 보여줄게요');
 }
+/* 이름 가나다순 정렬 도우미 */
+function arrName(t) { var l = t.querySelector('.set-label') || t.querySelector('span'); return ((l && l.textContent) || t.textContent || '').replace(/개발\s*중/g, '').replace(/\s+/g, ' ').trim(); }
+/* 메인화면: 바둑판이면 분류 없이 전체 가나다순(순서만 바꿈), 세로면 분류별 가나다순 */
+function menuSortApply(mode) {
+  var g = document.querySelector('#main-section .menu-grid'); if (!g) return;
+  var btns = [].slice.call(g.querySelectorAll(':scope > .menu-btn'));
+  if (mode === 'list') { btns.forEach(function (b) { b.style.order = ''; }); [].forEach.call(g.querySelectorAll(':scope > .menu-cat'), function (c) { c.style.order = ''; }); return; }
+  btns.slice().sort(function (a, b) { return arrName(a).localeCompare(arrName(b), 'ko'); }).forEach(function (b, i) { b.style.order = String(i + 1); });
+}
+/* 환경설정 세로 목록도 분류 안에서 가나다순 (초기화 · 탈퇴는 맨 뒤) */
+function setListSort() {
+  [].forEach.call(document.querySelectorAll('#settings-section > .settings-category .setting-grid'), function (gr) {
+    var ts = [].slice.call(gr.querySelectorAll(':scope > .set-tile'));
+    ts.sort(function (a, b) { var da = a.classList.contains('danger') ? 1 : 0, db = b.classList.contains('danger') ? 1 : 0; return da - db || arrName(a).localeCompare(arrName(b), 'ko'); })
+      .forEach(function (t) { gr.appendChild(t); });
+  });
+}
+try { setListSort(); } catch (e) {}
 /* 환경설정 바둑판: 분류 없이 모든 칸을 가나다순으로 한 판에 (메인화면처럼). 원래 칸은 그대로 두고 복사본을 보여줌 */
 function setFlatBuild() {
   var sec = document.getElementById('settings-section'); if (!sec) return;
@@ -21061,6 +21080,10 @@ html body #bottom-nav.bottom-nav .bn-btn+.bn-btn::before{content:"";position:abs
 html.ui-dark body #bottom-nav.bottom-nav .bn-btn+.bn-btn::before{background:rgba(255,255,255,.12)}
 html body #bottom-nav.bottom-nav .bn-btn.active::before,html body #bottom-nav.bottom-nav .bn-btn.active+.bn-btn::before{opacity:0}
 @media(max-width:359px){html body #bottom-nav.bottom-nav .bn-btn .bn-ico{width:36px!important;height:27px!important;min-height:27px!important}html body #bottom-nav.bottom-nav .bn-btn .nav-art{width:36px!important;height:36px!important}}
+</style>
+<style id="main-grid-no-cat">
+/* 메인화면 바둑판: 분류 제목 없이 가나다순 한 판 */
+html:not(.menu-list) body #main-section .menu-grid > .menu-cat{display:none!important}
 </style>
 </body>
 </html>
