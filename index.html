@@ -5020,7 +5020,7 @@ function wgLineHtml() {
   }).join('') + '</div>';
 }
 /* ===== 안드로이드 / 아이폰 탭 + 따라하기 애니메이션 ===== */
-var WG_SCRIPTABLE = "// 철도비서 근무표 달력 위젯 (아이폰 · Scriptable)\n// 철도비서 > 환경설정 > 위젯 연결에서 복사된 스크립트입니다.\n// Parameter에는 기존 '그림 주소 복사' 주소를 붙여넣으세요.\n// 위젯을 누르면 철도비서 사이트를 엽니다. iOS에 따라 Safari로 열릴 수 있습니다.\nconst APP_URL = __RAIL_APP_URL__;\nconst url = (args.widgetParameter || '').trim();\nconst widget = new ListWidget();\nwidget.backgroundColor = new Color('#ffffff', 0);\nwidget.setPadding(0, 0, 0, 0);\nwidget.refreshAfterDate = new Date(Date.now() + 15 * 60 * 1000);\nif (/^https:\\/\\//i.test(APP_URL)) widget.url = APP_URL;\n\nif (!url) {\n  const t = widget.addText('위젯 편집 › Parameter에\\n철도비서 그림 주소를 붙여넣어 주세요');\n  t.font = Font.boldSystemFont(14);\n  t.textColor = Color.gray();\n} else {\n  try {\n    const req = new Request(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now());\n    req.timeoutInterval = 20;\n    const img = await req.loadImage();\n    widget.addSpacer();\n    const row = widget.addStack();\n    row.addSpacer();\n    const pic = row.addImage(img);\n    pic.applyFittingContentMode();\n    pic.centerAlignImage();\n    row.addSpacer();\n    widget.addSpacer();\n  } catch (e) {\n    const t = widget.addText('달력을 불러오지 못했어요\\n(인터넷 연결 · 주소 확인)');\n    t.font = Font.systemFont(13);\n    t.textColor = Color.gray();\n  }\n}\nif (config.runsInWidget) {\n  Script.setWidget(widget);\n} else {\n  await widget.presentLarge();\n}\nScript.complete();\n";
+var WG_SCRIPTABLE = "// 철도비서 근무표 달력 위젯 (아이폰 · Scriptable)\n// 철도비서 > 환경설정 > 위젯 연결에서 복사된 스크립트입니다.\n// Parameter에는 '그림 주소 복사'로 받은 주소를 붙여넣으세요.\n//   이번 달 / 저번 달 / 다음 달 주소를 위젯 3개에 하나씩 넣고 겹쳐 쌓으면(위젯 스택)\n//   위젯을 위아래로 쓸어서 달을 넘길 수 있어요. Scriptable은 열리지 않아요.\n// 위젯을 누르면 언제나 철도비서가 열립니다. (Scriptable 앱은 열리지 않음)\nconst APP_URL = __RAIL_APP_URL__;\nconst url = (args.widgetParameter || '').trim();\nconst widget = new ListWidget();\nwidget.backgroundColor = new Color('#ffffff', 0);\nwidget.setPadding(0, 0, 0, 0);\nwidget.refreshAfterDate = new Date(Date.now() + 15 * 60 * 1000);\n// 위젯을 누르면 철도비서 열기 (위젯 설정의 'When Interacting'보다 우선 → Scriptable이 열리지 않음)\nif (/^https:\\/\\//i.test(APP_URL)) widget.url = APP_URL;\n\nif (!url) {\n  const t = widget.addText('위젯 편집 › Parameter에\\n철도비서 그림 주소를 붙여넣어 주세요');\n  t.font = Font.boldSystemFont(14);\n  t.textColor = Color.gray();\n} else {\n  try {\n    const req = new Request(url + (url.includes('?') ? '&' : '?') + (/[?&]m=/.test(url) ? '' : 'm=0&') + 'v=' + Date.now());\n    req.timeoutInterval = 20;\n    const img = await req.loadImage();\n    widget.addSpacer();\n    const row = widget.addStack();\n    row.addSpacer();\n    const pic = row.addImage(img);\n    pic.applyFittingContentMode();\n    pic.centerAlignImage();\n    row.addSpacer();\n    widget.addSpacer();\n  } catch (e) {\n    const t = widget.addText('달력을 불러오지 못했어요\\n(인터넷 연결 · 주소 확인)');\n    t.font = Font.systemFont(13);\n    t.textColor = Color.gray();\n  }\n}\nif (config.runsInWidget) {\n  Script.setWidget(widget);\n} else {\n  await widget.presentLarge();\n}\nScript.complete();\n";
 
 /* 복사 시 현재 배포된 철도비서 주소를 삽입. 위젯 그림 API 주소와 분리. */
 function wgScriptableForSite() {
@@ -5051,14 +5051,14 @@ GD_SCENES.wa = [
 GD_SCENES.wi = [
   { cap: '① App Store에서 Scriptable 받기 (무료)', tap: [80, 30], sel: '.gd-get', html:
     '<div class="gd-top">App Store</div><div class="gd-store"><i class="gd-appico">{ }</i><span><b>Scriptable</b><small>Simon B. Støvring · 무료</small></span><em class="gd-get">받기</em></div>' },
-  { cap: '② 위젯 연결 › 그림 주소 복사 · 스크립트 복사', tap: [50, 72], sel: '.gd-btn', html:
-    '<div class="gd-top">위젯 연결 · 아이폰</div><div class="gd-mini-cal"></div><div class="gd-btn sm">그림 주소 복사</div><div class="gd-btn sm alt">스크립트 복사</div>' },
+  { cap: '② 위젯 연결 › 스크립트 복사', tap: [50, 72], sel: '.gd-btn', html:
+    '<div class="gd-top">위젯 연결 · 아이폰</div><div class="gd-mini-cal"></div><div class="gd-btn sm">스크립트 복사</div><div class="gd-btn sm alt">이번 달 · 다음 달 · 저번 달 주소</div>' },
   { cap: '③ Scriptable › + › 붙여넣기 · 이름 철도비서 › Done', tap: [80, 8], sel: '.gd-done', html:
     '<div class="gd-sbar"><span class="gd-sname">철도비서</span><em class="gd-done">Done</em></div><div class="gd-code"><i>// 철도비서 근무표 달력 위젯</i><i>const url = args.widgetParameter</i><i>const widget = new ListWidget()</i><i>…</i></div>' },
-  { cap: '④ 홈 화면 꾹 › + › Scriptable › 큰 크기 › 위젯 추가', tap: [50, 85], sel: '.gd-sheet .gd-btn', html: 'WPICK_I' },
-  { cap: '⑤ 위젯 꾹 › 위젯 편집 › Script · Parameter 넣기', tap: [50, 50], sel: '.gd-in.hl', html:
-    '<div class="gd-top">위젯 편집</div><div class="gd-lab">Script</div><div class="gd-in">철도비서</div><div class="gd-lab">Parameter</div><div class="gd-in hl">https://…widget_png?t=…<span class="gd-caret"></span></div><div class="gd-lab">When Interacting</div><div class="gd-in">Run Script</div>' },
-  { cap: '⑥ 홈 화면에 근무표 달력 완성 (누르면 철도비서 열기)', tap: null, html: 'HOME' }
+  { cap: '④ 홈 화면 꾹 › + › Scriptable › 큰 크기 › 위젯 3개 추가', tap: [50, 85], sel: '.gd-sheet .gd-btn', html: 'WPICK_I' },
+  { cap: '⑤ 위젯마다 Parameter에 이번 달 · 다음 달 · 저번 달 주소', tap: [50, 50], sel: '.gd-in.hl', html:
+    '<div class="gd-top">위젯 편집</div><div class="gd-lab">Script</div><div class="gd-in">철도비서</div><div class="gd-lab">Parameter</div><div class="gd-in hl">https://…widget_png?t=…&m=1<span class="gd-caret"></span></div>' },
+  { cap: '⑥ 3개를 겹쳐 쌓으면 위아래로 쓸어 달 넘기기 (Scriptable 안 열림)', tap: null, html: 'HOME' }
 ];
 function rsFeedUrl(token) { return SUPABASE_URL + '/rest/v1/rpc/widget?t=' + token + '&apikey=' + SUPABASE_KEY; }
 function openWidgetPanel() {
@@ -5126,16 +5126,17 @@ function wgRender(r) {
     /* ---- 아이폰 (Scriptable) ---- */
     '<div class="wg-pane" data-t="ios" hidden>' +
     '<div class="gd-stage" data-g="wi"></div>' +
-    '<div class="wg-btns"><button type="button" onclick="wgCopy(window.wgPngNow)">① 그림 주소 복사</button><button type="button" onclick="wgCopy(wgScriptableForSite())">② 스크립트 복사</button></div>' +
+    '<div class="wg-btns"><button type="button" onclick="wgCopy(wgScriptableForSite())">① 스크립트 복사</button></div>' +
+    '<div class="wg-btns wg-mon3"><button type="button" onclick="wgCopy(window.wgPngNow + \'&m=-1\')">저번 달 주소</button><button type="button" onclick="wgCopy(window.wgPngNow + \'&m=0\')">이번 달 주소</button><button type="button" onclick="wgCopy(window.wgPngNow + \'&m=1\')">다음 달 주소</button></div>' +
     '<ol class="wg-steps">' +
     '<li>App Store에서 <b>Scriptable</b>(무료, 광고 없음)을 설치해요.</li>' +
-    '<li>위 <b>② 스크립트 복사</b>를 누르고 Scriptable을 열어요 › 오른쪽 위 <b>+</b> › 붙여넣기 › 맨 위 이름을 <b>철도비서</b>로 › <b>Done</b>.</li>' +
-    '<li>홈 화면 빈 곳을 꾹 › 왼쪽 위 <b>+</b> (또는 <b>편집 › 위젯 추가</b>) › <b>Scriptable</b> › <b>큰 크기</b> › 위젯 추가.</li>' +
-    '<li>철도비서로 돌아와 <b>① 그림 주소 복사</b>를 눌러요.</li>' +
-    '<li>추가한 위젯을 꾹 › <b>위젯 편집</b> › <b>Script</b>: 철도비서 / <b>Parameter</b>: 붙여넣기 / <b>When Interacting</b>: Run Script.</li>' +
-    '<li>끝! 위젯은 iOS가 정한 주기로 자동 갱신돼요. 위젯을 누르면 철도비서 주소가 열려요(아이폰 설정에 따라 Safari로 열릴 수 있어요).</li>' +
+    '<li>위 <b>① 스크립트 복사</b>를 누르고 Scriptable을 열어요 › 오른쪽 위 <b>+</b> › 붙여넣기 › 맨 위 이름을 <b>철도비서</b>로 › <b>Done</b>. (Scriptable은 이때 한 번만 열어요)</li>' +
+    '<li>홈 화면 빈 곳을 꾹 › 왼쪽 위 <b>+</b> › <b>Scriptable</b> › <b>큰 크기</b> › 위젯 추가. 이걸 <b>3번</b> 해서 위젯 3개를 만들어요.</li>' +
+    '<li>위젯마다 꾹 › <b>위젯 편집</b> › <b>Script</b>: 철도비서 / <b>Parameter</b>: 위 <b>이번 달 · 다음 달 · 저번 달 주소</b>를 하나씩 붙여넣기. (When Interacting은 그대로 둬도 누르면 철도비서가 열려요)</li>' +
+    '<li>홈 화면 편집 상태에서 위젯 하나를 다른 위젯 <b>위로 끌어다 놓으면</b> 하나로 쌓여요(위젯 스택). 3개를 모두 쌓아요.</li>' +
+    '<li>끝! 위젯을 <b>위아래로 쓸면</b> 저번 달 · 이번 달 · 다음 달로 넘어가요. 누르면 철도비서가 열려요. <b>Scriptable은 열리지 않아요.</b></li>' +
     '</ol>' +
-    '<div class="wg-tip">아이폰 위젯은 ‹ › 로 달을 넘길 수 없어서 <b>이번 달</b>만 보여요.</div>' +
+    '<div class="wg-tip">아이폰 위젯은 ‹ › 를 눌러 넘길 수 없어서 <b>위아래로 쓸어 넘겨요</b>. 스택의 <b>스마트 회전</b>은 꺼 두세요(저절로 다른 달로 바뀌지 않게). 이미 쓰던 위젯도 <b>① 스크립트 복사</b>로 새로 붙여넣어 주세요.</div>' +
     '</div>' +
     '<div class="wg-warn">위젯 주소(그림 주소)를 아는 사람은 내 근무표를 볼 수 있어요. 다른 사람에게 보내지 마세요.</div>' +
     '<div class="wg-btns end"><button type="button" onclick="wgSync()">지금 갱신</button><button type="button" onclick="wgMake(true)">새 주소로 바꾸기</button><button type="button" class="danger" onclick="wgOff()">연결 끄기</button></div>';
@@ -23484,6 +23485,7 @@ html.ui-dark .geo-riv{stroke:#1f3a57}
 </style>
 <style id="kl-style">
 /* 편승 안내 팝업 (3262 팔당 도착 → 경의중앙선 청량리) */
+#wg-panel .wg-mon3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}#wg-panel .wg-mon3 button{min-width:0;padding-left:4px;padding-right:4px;font-size:13px}
 #kl-panel .kl-dialog{max-width:380px;width:calc(100% - 32px);border-radius:20px;padding:20px 18px 16px}
 #kl-panel .kl-kicker{font-size:12.5px;font-weight:800;color:#2f6fd6;display:flex;align-items:center;gap:6px}
 #kl-panel .kl-title{font-size:21px;font-weight:900;color:#101828;margin-top:6px;letter-spacing:-.3px}
