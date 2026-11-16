@@ -21214,7 +21214,9 @@ function xrStampRouteTimes() {
 <style id="rs-signal-loading">
 /* 로딩 신호기: 정지(빨강) → 주의(노랑) → 진행(초록) 반복. 글자 크기(em)에 맞춰 커지고 작아짐 */
 .rs-sig{display:inline-flex;flex-direction:column;align-items:center;justify-content:space-between;width:.62em;height:1.45em;padding:.13em 0;box-sizing:border-box;border-radius:.32em;background:#1f2733;vertical-align:middle;margin-right:.42em;flex:none;font-style:normal}
-.rs-ld{display:inline-flex;align-items:center;max-width:100%}
+.rs-ld{display:inline-flex;align-items:center;max-width:100%;grid-column:1/-1}
+#weekly-wx-panel .ww-list:not(:has(.ww-item)){display:block!important;text-align:center;padding:18px 0;font-size:14px;color:#6c819d;line-height:1.5;word-break:keep-all}
+#weekly-wx-panel .ww-list > .rs-ld{justify-content:center;padding:18px 0;font-size:14px;color:#6c819d;white-space:nowrap}
 .rs-ld > .rs-sig{margin-right:.45em}
 .rs-sig b{display:block;width:.34em;height:.34em;border-radius:50%;background:#3a4452}
 .rs-sig b:nth-child(1){animation:rsSigR 1.8s infinite}
