@@ -21187,5 +21187,24 @@ function xrStampRouteTimes() {
   setTimeout(run, 8000);
 })();
 </script>
+<script id="xr-login-check-script">
+/* 로그인할 때마다(직접 로그인 · 저장된 로그인으로 앱 열기) 0.3초 뒤 XROIS 근무표가 바뀌었는지 바로 확인
+   12시간 간격과 상관없이 확인하고, 바뀐 날이 있으면 기존처럼 팝업으로 물어봄 (같은 로그인 직후 2분 안 중복 확인은 건너뜀) */
+(function () {
+  var o = window.runLoginPopups;
+  if (typeof o !== 'function') return;
+  window.runLoginPopups = function () {
+    var r = o.apply(this, arguments);
+    try {
+      if (typeof crewLinked === 'function' && crewLinked() && typeof xrAutoSync === 'function') {
+        var m = xrGet('meta', {});
+        var badPw = m.fail && typeof xrSig === 'function' && m.pwSig === xrSig(getCrewPw());   /* 비밀번호 틀림 → 계정 잠김 방지로 다시 시도 안 함 */
+        if (!badPw && !(m.at && Date.now() - m.at < 120000)) setTimeout(function () { try { xrAutoSync(true, false); } catch (e) {} }, 300);
+      }
+    } catch (e) {}
+    return r;
+  };
+})();
+</script>
 </body>
 </html>
