@@ -2217,9 +2217,9 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 </div>
 <div id="dst-net-panel" class="dia-modal" style="z-index:409">
   <div class="dnm">
-    <div class="dnm-top"><button type="button" class="dnm-back" onclick="closeDstNet()" aria-label="닫기">‹</button><div class="dnm-search"><input id="dnm-q" placeholder="역 검색 · 초성도 돼요 (예: ㄱㄴ)" autocomplete="off" oninput="dnmSearch(this.value)"><div id="dnm-sug" class="dnm-sug"></div></div></div>
+    <div class="dnm-top"><div class="dnm-search"><button type="button" class="dnm-back" onclick="closeDstNet()" aria-label="닫기">‹</button><svg class="dnm-qi" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg><input id="dnm-q" placeholder="역 검색 (초성 OK)" autocomplete="off" oninput="dnmSearch(this.value)"><div id="dnm-sug" class="dnm-sug"></div></div><button type="button" id="dnm-lbtn" class="dnm-lbtn" onclick="dnmLinesToggle()" aria-label="노선 고르기">노선</button></div>
     <div id="dnm-lines" class="dnm-lines"></div>
-    <div id="dnm-stage" class="dnm-stage"><svg id="dnm-svg" role="img" aria-label="수도권 지하철 노선도"></svg><div id="dnm-route" class="dnm-route" hidden></div><div class="dnm-zoom"><button type="button" onclick="dnmZoom(1.4)" aria-label="확대">+</button><button type="button" onclick="dnmZoom(1/1.4)" aria-label="축소">−</button><button type="button" onclick="dnmFit(DNM.route ? dnmRouteNames() : null)" aria-label="전체 보기">⤢</button></div></div>
+    <div id="dnm-stage" class="dnm-stage"><svg id="dnm-svg" role="img" aria-label="수도권 지하철 노선도"></svg><div id="dnm-route" class="dnm-route" hidden></div><div class="dnm-zoom"><button type="button" class="fit" onclick="dnmFit(DNM.route ? dnmRouteNames() : null)" aria-label="처음 화면으로"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.4"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg></button><button type="button" onclick="dnmZoom(1.4)" aria-label="확대">+</button><button type="button" onclick="dnmZoom(1/1.4)" aria-label="축소">−</button></div></div>
     <div id="dnm-sheet" class="dnm-sheet" hidden></div>
   </div>
 </div>
@@ -13006,7 +13006,7 @@ function dstMapSvg(f, d) {
     var names = (Array.isArray(g.stations) && g.stations.length > 1 ? g.stations : [g.from, g.to]).map(function (n) { return typeof n === 'string' ? n : (n && n.name) || ''; });
     var geo = Array.isArray(g.geo) && g.geo.length === names.length ? g.geo.map(function (p) { return p ? [p[0], p[1]] : null; }) : names.map(function () { return null; });
     geo = geo.map(function (p, i) { if (p) return p; var q = dstXY(names[i]); return q ? [q[0], q[1]] : null; });
-    return { color: g.color || '#667085', names: names, geo: geo };
+    return { color: g.color || '#667085', names: names, geo: geo, lineId: g.lineId };
   });
   var have = 0; segs.forEach(function (sg) { sg.geo.forEach(function (p) { if (p) have++; }); });
   var useGeo = have >= 2;
@@ -13020,7 +13020,7 @@ function dstMapSvg(f, d) {
   });
   if (useGeo && segs.some(function (sg) { return sg.geo.some(function (p) { return !p; }); })) useGeo = false;
   /* 전체 노선도와 같은 그림: 노선도식 배치(DNM)가 있으면 그 좌표 · 휜 지도를 그대로 */
-  var useSch = typeof DNM !== 'undefined' && DNM.net && DNM.proj && segs.every(function (sg) { return sg.names.every(function (n) { return DNM.byName[n] && DNM.byName[n].x != null; }); });
+  var useSch = typeof DNM !== 'undefined' && DNM.net && DNM.proj && segs.every(function (sg) { return sg.names.every(function (n) { var o = dnmFind(n, sg.lineId); return o && o.x != null; }); });
   if (!useSch && typeof dnmLoad === 'function' && !dstMapSvg.asked) { dstMapSvg.asked = 1; dnmLoad(function (ok) { if (ok) try { dstDraw(); } catch (e) {} }); }
   /* 지나가는 역은 출발 · 환승 · 도착 사이마다 고르게 2~3개만 */
   /* 지나가는 주요역은 경로 전체에서 2~3개만 (환승역은 따로 표시) */
@@ -13034,7 +13034,7 @@ function dstMapSvg(f, d) {
   });
   var W = 320, padX = 46, padY = 40, H = 120;
   if (useSch) {
-    var wp = []; segs.forEach(function (sg) { sg.w = sg.names.map(function (n) { var o = DNM.byName[n]; return [o.x, o.y]; }); sg.wPath = [sg.w[0]]; for (var q = 1; q < sg.names.length; q++) sg.wPath = sg.wPath.concat(dnmEdgePts(DNM.byName[sg.names[q - 1]], DNM.byName[sg.names[q]]).slice(1)); wp = wp.concat(sg.wPath); });
+    var wp = []; segs.forEach(function (sg) { sg.w = sg.names.map(function (n) { var o = dnmFind(n, sg.lineId); return [o.x, o.y]; }); sg.wPath = sg.w; wp = wp.concat(sg.wPath); });
     var x0 = Math.min.apply(null, wp.map(function (p) { return p[0]; })), x1 = Math.max.apply(null, wp.map(function (p) { return p[0]; })), y0 = Math.min.apply(null, wp.map(function (p) { return p[1]; })), y1 = Math.max.apply(null, wp.map(function (p) { return p[1]; }));
     var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, sw = Math.max(110, (x1 - x0) * 1.3), sh = Math.max(90, (y1 - y0) * 1.3);
     padX = 14; padY = 14; H = Math.round(Math.min(280, Math.max(200, (W - padX * 2) * sh / sw + padY * 2)));
@@ -13077,7 +13077,7 @@ function dstMapSvg(f, d) {
   var E = dstEsc, out = [], tags = [];
   out.push('<rect x="0.5" y="0.5" width="' + (W - 1) + '" height="' + (H - 1) + '" rx="14" class="dst-map-bg"/>');
   if (useGeo) out.push(dstSeoulBg(proj, W, H, linePts));
-  segs.forEach(function (sg) { out.push('<polyline points="' + (sg.pxy || sg.xy).map(function (p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ') + '" fill="none" stroke="' + E(sg.color) + '" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>'); });
+  segs.forEach(function (sg) { if (sg.pxy || sg.xy.length > 2) { out.push('<path d="' + dnmSmooth(sg.pxy || sg.xy, function (v) { return v.toFixed(1); }) + '" fill="none" stroke="' + E(sg.color) + '" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>'); return; } out.push('<polyline points="' + sg.xy.map(function (p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ') + '" fill="none" stroke="' + E(sg.color) + '" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>'); });
   segs.forEach(function (sg) { sg.xy.forEach(function (p, i) { if (i && i < sg.xy.length - 1 && sg.show[i]) out.push('<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="2.8" fill="#fff" stroke="' + E(sg.color) + '" stroke-width="1.8"/>'); }); });
   var a = segs[0].xy[0], zs = segs[segs.length - 1].xy, z = zs[zs.length - 1];
   /* 출발 · 도착 핀 (위쪽), 이름표 → 환승역 이름표 → 남는 자리에 중간역 이름 */
@@ -13268,6 +13268,9 @@ function dnmLoad(cb) {
 function dnmBuild(v) {
   var by = {}, st = [], edges = [];
   v.lines.forEach(function (L) {
+    /* 이름만 같은 다른 역(양평 · 신촌처럼)은 3km 넘게 떨어져 있으면 따로: '양평(경의중앙선)' */
+    var loc = L.st.map(function (s) { var n = s[0], o = by[n]; if (o && o.lat != null && s[1] != null && o.lines.indexOf(L.id) < 0 && Math.abs(o.lat - s[1]) + Math.abs(o.lon - s[2]) > 0.03) return n + '(' + String(L.name || '').replace(/\s*\(.*\)$/, '') + ')'; return n; });
+    L = { id: L.id, name: L.name, color: L.color, e: L.e, st: L.st.map(function (s, i) { return [loc[i], s[1], s[2]]; }) };
     L.st.forEach(function (s) { var n = s[0]; var o = by[n]; if (!o) { o = by[n] = { name: n, lat: s[1], lon: s[2], lines: [], nb: {} }; st.push(o); } else if (o.lat == null && s[1] != null) { o.lat = s[1]; o.lon = s[2]; } if (o.lines.indexOf(L.id) < 0) o.lines.push(L.id); });
     L.e.forEach(function (e) { var a = L.st[e[0]][0], b = L.st[e[1]][0]; edges.push({ a: a, b: b, line: L.id }); by[a].nb[b] = 1; by[b].nb[a] = 1; });
   });
@@ -13277,13 +13280,18 @@ function dnmBuild(v) {
   var lat0 = 37.55, kx = Math.cos(lat0 * Math.PI / 180) * 1110, ky = 1110;   /* 1 단위 = 약 100m */
   st.forEach(function (o) { o.gx = (o.lon - 126.98) * kx; o.gy = (lat0 - o.lat) * ky; o.xfer = o.lines.length > 1; });
   DNM.net = v; DNM.byName = by; DNM.st = st; DNM.edges = edges.filter(function (e) { return by[e.a].gx != null && by[e.b].gx != null; });
-  DNM._lanes = null; dnmSchem(st, DNM.edges);
+  DNM._lanes = null; DNM._runs = null;
+  /* 실제 지도 그대로: 역은 실제 위치, 노선은 역과 역을 잇는 선 (바탕 지도와 정확히 일치) */
+  st.forEach(function (o) { o.x = o.gx; o.y = o.gy; });
+  DNM.bend = {};
+  DNM.proj = function (p) { return [(p[1] - 126.98) * kx, (lat0 - p[0]) * ky]; };
   DNM.lines = {}; v.lines.forEach(function (L) { DNM.lines[L.id] = L; });
 }
 /* 노선도식 배치: 도심은 넓게 · 외곽은 좁게(어안) → 선을 가로 · 세로 · 45° 로 펴고, 역 간격을 고르게 */
 /* 어안: 서울 도심은 넓게, 50km 밖은 같은 비율로 줄여서 전국 모양이 찌그러지지 않게 */
 function dnmFish(x, y) { var r = Math.sqrt(x * x + y * y); if (r < 1e-6) return [x, y]; var R0 = 500, g = r < R0 ? 112 * Math.log(1 + r / 46) : 112 * Math.log(1 + R0 / 46) + 112 / (46 + R0) * (r - R0); return [x * g / r, y * g / r]; }
 function dnmSchem(st, edges) {
+  var C = window.DNM_CFG || {}, cAn = C.an != null ? C.an : 0.1, cAnEnd = C.anEnd != null ? C.anEnd : 0.05, cEps = C.eps != null ? C.eps : 700, cPw = C.pw || 1, cWin = C.win || 3;
   var n = st.length, idx = {}, F = [], nb = [], i, j;
   st.forEach(function (o, k) { idx[o.name] = k; F.push(dnmFish(o.gx, o.gy)); nb.push({}); });
   edges.forEach(function (e) { var a = idx[e.a], b = idx[e.b]; if (a == null || b == null || a === b) return; nb[a][b] = nb[b][a] = 1; });
@@ -13296,12 +13304,12 @@ function dnmSchem(st, edges) {
   var CH = [];
   chains.forEach(function (c) { var m = c.length - 1, parts = Math.max(1, Math.round(m / 7)), step = m / parts, s0 = 0; for (var q = 1; q <= parts; q++) { var s1 = q === parts ? m : Math.round(q * step); key[c[s1]] = true; CH.push(c.slice(s0, s1 + 1)); s0 = s1; } });
   var P = F.map(function (f) { return [f[0], f[1]]; }), Q = Math.PI / 4, it;
-  CH.forEach(function (c) { var a = c[0], b = c[c.length - 1], m = c.length - 1, d = Math.hypot(F[b][0] - F[a][0], F[b][1] - F[a][1]); c.L = Math.max(m * 8, Math.min(m * 15, d)); });
+  CH.forEach(function (c) { var a = c[0], b = c[c.length - 1], m = c.length - 1, d = Math.hypot(F[b][0] - F[a][0], F[b][1] - F[a][1]); c.L = Math.max(m * (C.sp || 8), d); });   /* 실제 거리(어안)보다 줄이지 않음 → 외곽역이 서울 안으로 끌려 들어오지 않게 */
   var K = []; for (i = 0; i < n; i++) if (key[i]) K.push(i);
   for (it = 0; it < 700; it++) {
     CH.forEach(function (c) { var a = c[0], b = c[c.length - 1]; if (a === b) return; var pa = P[a], pb = P[b], dx = pb[0] - pa[0], dy = pb[1] - pa[1], ang = Math.round(Math.atan2(dy, dx) / Q) * Q;
       var ex = (dx - Math.cos(ang) * c.L) * 0.2, ey = (dy - Math.sin(ang) * c.L) * 0.2; pa[0] += ex; pa[1] += ey; pb[0] -= ex; pb[1] -= ey; });
-    var an = it < 560 ? 0.015 : 0;
+    var an = it < 560 ? cAn : cAnEnd;
     if (an) K.forEach(function (k) { P[k][0] += (F[k][0] - P[k][0]) * an; P[k][1] += (F[k][1] - P[k][1]) * an; });
     if (it % 4 === 0) for (i = 0; i < K.length; i++) for (j = i + 1; j < K.length; j++) { var a = P[K[i]], b = P[K[j]], dx = b[0] - a[0], dy = b[1] - a[1]; if (Math.abs(dx) > 12 || Math.abs(dy) > 12) continue; var d = Math.sqrt(dx * dx + dy * dy) || 0.01; if (d >= 12) continue; var f = (12 - d) / d * 0.5; a[0] -= dx * f; a[1] -= dy * f; b[0] += dx * f; b[1] += dy * f; }
   }
@@ -13323,14 +13331,36 @@ function dnmSchem(st, edges) {
       prev = cur; }
   });
   st.forEach(function (o, k) { o.x = P[k][0]; o.y = P[k][1]; o.rx = P[k][0] - F[k][0]; o.ry = P[k][1] - F[k][1]; o.fx = F[k][0]; o.fy = F[k][1]; o.key = key[k]; });
-  /* 바탕 지도도 같은 방식으로 휘어서 역 · 노선과 지역이 맞게 */
-  var G2 = {}, c2 = 40; st.forEach(function (o) { var k = Math.floor(o.fx / c2) + ',' + Math.floor(o.fy / c2); (G2[k] = G2[k] || []).push(o); });
+  /* 바탕 지도도 역과 똑같이 휘기: 역(어안 위치)으로 삼각형을 나누고, 삼각형마다 역이 옮겨진 만큼 그대로 옮겨요 (역 자리에서는 정확히 일치) */
+  var PS = st.map(function (o) { return { s: [o.fx, o.fy], t: [o.x, o.y] }; });
+  for (var ri = 0; ri < 32; ri++) { var ang = ri / 32 * Math.PI * 2; [420, 1400].forEach(function (R) { var p = [Math.cos(ang) * R, Math.sin(ang) * R]; PS.push({ s: p, t: p }); }); }   /* 바깥 테두리: 움직이지 않는 점 */
+  var TR = dnmDelaunay(PS.map(function (o) { return o.s; }));
+  var G3 = {}, c3 = 30; TR.forEach(function (t) { var a = PS[t[0]].s, b = PS[t[1]].s, c = PS[t[2]].s, x0 = Math.floor(Math.min(a[0], b[0], c[0]) / c3), x1 = Math.floor(Math.max(a[0], b[0], c[0]) / c3), y0 = Math.floor(Math.min(a[1], b[1], c[1]) / c3), y1 = Math.floor(Math.max(a[1], b[1], c[1]) / c3);
+    if ((x1 - x0) * (y1 - y0) > 4000) { (G3.big = G3.big || []).push(t); return; }
+    for (var gx = x0; gx <= x1; gx++) for (var gy = y0; gy <= y1; gy++) (G3[gx + ',' + gy] = G3[gx + ',' + gy] || []).push(t); });
+  var bary = function (t, f) { var a = PS[t[0]].s, b = PS[t[1]].s, c = PS[t[2]].s, d = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]); if (Math.abs(d) < 1e-9) return null;
+    var l1 = ((b[1] - c[1]) * (f[0] - c[0]) + (c[0] - b[0]) * (f[1] - c[1])) / d, l2 = ((c[1] - a[1]) * (f[0] - c[0]) + (a[0] - c[0]) * (f[1] - c[1])) / d, l3 = 1 - l1 - l2; return l1 >= -1e-7 && l2 >= -1e-7 && l3 >= -1e-7 ? [l1, l2, l3] : null; };
   DNM.proj = function (p) {
-    var f = dnmFish((p[1] - 126.98) * Math.cos(37.55 * Math.PI / 180) * 1110, (37.55 - p[0]) * 1110), cx = Math.floor(f[0] / c2), cy = Math.floor(f[1] / c2), sw = 0.0015, sx = 0, sy = 0;
-    for (var gx = cx - 3; gx <= cx + 3; gx++) for (var gy = cy - 3; gy <= cy + 3; gy++) { var L = G2[gx + ',' + gy]; if (!L) continue;
-      for (var q = 0; q < L.length; q++) { var o = L[q], dx = o.fx - f[0], dy = o.fy - f[1], w = 1 / (dx * dx + dy * dy + 700); sw += w; sx += w * o.rx; sy += w * o.ry; } }
-    return [f[0] + sx / sw, f[1] + sy / sw];
+    var f = dnmFish((p[1] - 126.98) * Math.cos(37.55 * Math.PI / 180) * 1110, (37.55 - p[0]) * 1110), L = (G3[Math.floor(f[0] / c3) + ',' + Math.floor(f[1] / c3)] || []).concat(G3.big || []);
+    for (var q = 0; q < L.length; q++) { var t = L[q], w = bary(t, f); if (w) { var A = PS[t[0]].t, B = PS[t[1]].t, C2 = PS[t[2]].t; return [w[0] * A[0] + w[1] * B[0] + w[2] * C2[0], w[0] * A[1] + w[1] * B[1] + w[2] * C2[1]]; } }
+    return f;
   };
+}
+/* 들로네 삼각분할 (Bowyer-Watson) — 점 몇백 개라 단순하게 */
+function dnmDelaunay(P) {
+  var n = P.length, M = 1e5, pts = P.concat([[-M, -M], [M, -M], [0, M]]), tris = [[n, n + 1, n + 2]];
+  var circ = function (t) { var a = pts[t[0]], b = pts[t[1]], c = pts[t[2]], d = 2 * (a[0] * (b[1] - c[1]) + b[0] * (c[1] - a[1]) + c[0] * (a[1] - b[1])); if (Math.abs(d) < 1e-12) return [0, 0, Infinity];
+    var a2 = a[0] * a[0] + a[1] * a[1], b2 = b[0] * b[0] + b[1] * b[1], c2 = c[0] * c[0] + c[1] * c[1], ux = (a2 * (b[1] - c[1]) + b2 * (c[1] - a[1]) + c2 * (a[1] - b[1])) / d, uy = (a2 * (c[0] - b[0]) + b2 * (a[0] - c[0]) + c2 * (b[0] - a[0])) / d;
+    return [ux, uy, (a[0] - ux) * (a[0] - ux) + (a[1] - uy) * (a[1] - uy)]; };
+  var C = [circ(tris[0])];
+  for (var i = 0; i < n; i++) {
+    var p = pts[i], bad = [], keepT = [], keepC = [];
+    for (var k = 0; k < tris.length; k++) { var c = C[k], dx = p[0] - c[0], dy = p[1] - c[1]; if (dx * dx + dy * dy < c[2]) bad.push(tris[k]); else { keepT.push(tris[k]); keepC.push(c); } }
+    var ed = {}; bad.forEach(function (t) { [[t[0], t[1]], [t[1], t[2]], [t[2], t[0]]].forEach(function (e) { var kk = Math.min(e[0], e[1]) + '_' + Math.max(e[0], e[1]); ed[kk] = ed[kk] ? 0 : e; }); });
+    Object.keys(ed).forEach(function (kk) { var e = ed[kk]; if (!e) return; var t = [e[0], e[1], i]; keepT.push(t); keepC.push(circ(t)); });
+    tris = keepT; C = keepC;
+  }
+  return tris.filter(function (t) { return t[0] < n && t[1] < n && t[2] < n; });
 }
 /* 두 역 사이 그리는 점들 (꺾이는 곳 포함) */
 function dnmEdgePts(a, b) { var bp = DNM.bend && DNM.bend[a.name + '|' + b.name]; return bp ? [[a.x, a.y], bp, [b.x, b.y]] : [[a.x, a.y], [b.x, b.y]]; }
@@ -13344,8 +13374,8 @@ function dnmLanes() {
   DNM.edges.forEach(function (e) { if (DNM.hide[e.line]) return; var a = DNM.byName[e.a], b = DNM.byName[e.b], pts = dnmEdgePts(a, b);
     for (var q = 1; q < pts.length; q++) { var p0 = pts[q - 1], p1 = pts[q], dx = p1[0] - p0[0], dy = p1[1] - p0[1], L = Math.sqrt(dx * dx + dy * dy); if (L < 0.01) continue;
       if (dx < -1e-6 || (Math.abs(dx) <= 1e-6 && dy < 0)) { var t = p0; p0 = p1; p1 = t; dx = -dx; dy = -dy; }
-      var ux = dx / L, uy = dy / L, ang = Math.atan2(uy, ux), di = Math.round(ang / Q), ok = Math.abs(ang - di * Q) < 0.06;
-      var nx = -uy, ny = ux; segs.push({ id: e.line, p0: p0, p1: p1, dir: ok ? (di + 4) % 4 : -1 - segs.length, c: nx * p0[0] + ny * p0[1], t0: ux * p0[0] + uy * p0[1], t1: ux * p1[0] + uy * p1[1], nx: nx, ny: ny, lane: 0 }); } });
+      var ux = dx / L, uy = dy / L, ang = Math.atan2(uy, ux), di = Math.round(ang / (Math.PI / 60));
+      var nx = -uy, ny = ux; segs.push({ id: e.line, a: e.a, b: e.b, p0: p0, p1: p1, dir: (di + 60) % 60, c: nx * p0[0] + ny * p0[1], t0: ux * p0[0] + uy * p0[1], t1: ux * p1[0] + uy * p1[1], nx: nx, ny: ny, lane: 0 }); } });
   var byDir = {}; segs.forEach(function (sg) { (byDir[sg.dir] = byDir[sg.dir] || []).push(sg); });
   Object.keys(byDir).forEach(function (dk) {
     var arr = byDir[dk].sort(function (a, b) { return a.c - b.c; }), i = 0;
@@ -13359,10 +13389,42 @@ function dnmLanes() {
   });
   DNM._lanes = segs; return segs;
 }
+/* 점들을 부드러운 곡선으로 (Catmull-Rom → 베지어). 삐죽삐죽한 꺾임 없이 자연스럽게 */
+function dnmSmooth(P, f) {
+  f = f || function (v) { return v.toFixed(2); };
+  if (!P.length) return ''; var d = 'M' + f(P[0][0]) + ' ' + f(P[0][1]); if (P.length === 2) return d + 'L' + f(P[1][0]) + ' ' + f(P[1][1]);
+  var closed = P.length > 3 && Math.abs(P[0][0] - P[P.length - 1][0]) < 1e-6 && Math.abs(P[0][1] - P[P.length - 1][1]) < 1e-6, n = P.length;
+  for (var i = 0; i < n - 1; i++) {
+    var p0 = P[i > 0 ? i - 1 : (closed ? n - 2 : 0)], p1 = P[i], p2 = P[i + 1], p3 = P[i + 2 < n ? i + 2 : (closed ? 1 : n - 1)];
+    var t = 0.5 / 3;
+    d += 'C' + f(p1[0] + (p2[0] - p0[0]) * t) + ' ' + f(p1[1] + (p2[1] - p0[1]) * t) + ' ' + f(p2[0] - (p3[0] - p1[0]) * t) + ' ' + f(p2[1] - (p3[1] - p1[1]) * t) + ' ' + f(p2[0]) + ' ' + f(p2[1]);
+  }
+  return d;
+}
+/* 노선마다 이어진 역 순서(구간) */
+function dnmRuns() {
+  if (DNM._runs) return DNM._runs; var runs = [], cur = null;
+  DNM.edges.forEach(function (e) { if (cur && cur.id === e.line && cur.names[cur.names.length - 1] === e.a) cur.names.push(e.b); else { cur = { id: e.line, names: [e.a, e.b] }; runs.push(cur); } });
+  DNM._runs = runs; return runs;
+}
+/* 역 이름 + 노선으로 찾기 (양평 · 신촌처럼 이름이 같은 역 구분) */
+function dnmFind(name, lineId) {
+  var o = DNM.byName[name]; if (!lineId || (o && o.lines.indexOf(+lineId) >= 0)) return o || null;
+  var nm = String(dnmLineName(+lineId) || '').replace(/\s*\(.*\)$/, ''), base = String(name).replace(/\(.*\)$/, '');
+  return DNM.byName[base + '(' + nm + ')'] || DNM.st.filter(function (x) { return x.name.indexOf(base + '(') === 0 && x.lines.indexOf(+lineId) >= 0; })[0] || DNM.byName[base] || o || null;
+}
 function dnmLinesSvg(k) {
-  var E = dstEsc, out = {}, gap = 5 / k;
-  dnmLanes().forEach(function (sg) { var o = sg.lane * gap, ox = sg.nx * o, oy = sg.ny * o;
-    (out[sg.id] = out[sg.id] || []).push('M' + (sg.p0[0] + ox).toFixed(2) + ' ' + (sg.p0[1] + oy).toFixed(2) + 'L' + (sg.p1[0] + ox).toFixed(2) + ' ' + (sg.p1[1] + oy).toFixed(2)); });
+  var E = dstEsc, out = {}, gap = 5 / k, off = {};
+  dnmLanes().forEach(function (sg) { if (sg.lane) { var v = [sg.nx * sg.lane, sg.ny * sg.lane]; off[sg.id + '|' + sg.a + '|' + sg.b] = v; off[sg.id + '|' + sg.b + '|' + sg.a] = v; } });
+  dnmRuns().forEach(function (r) {
+    if (DNM.hide[r.id]) return;
+    var P = r.names.map(function (n, i) {
+      var o = DNM.byName[n], a = i > 0 ? off[r.id + '|' + r.names[i - 1] + '|' + n] : null, b = i < r.names.length - 1 ? off[r.id + '|' + n + '|' + r.names[i + 1]] : null;
+      var vx = ((a ? a[0] : 0) + (b ? b[0] : 0)) / ((a ? 1 : 0) + (b ? 1 : 0) || 1), vy = ((a ? a[1] : 0) + (b ? b[1] : 0)) / ((a ? 1 : 0) + (b ? 1 : 0) || 1);
+      return [o.x + vx * gap, o.y + vy * gap];
+    });
+    (out[r.id] = out[r.id] || []).push(dnmSmooth(P));
+  });
   return Object.keys(out).map(function (id) { return '<path d="' + out[id].join('') + '" stroke="' + E(dnmLineColor(+id)) + '"/>'; }).join('');
 }
 function dnmLineName(id) { var L = DNM.lines && DNM.lines[id]; return L ? L.name : ''; }
@@ -13381,11 +13443,13 @@ function openDstNet(route) {
   });
   dnmBind();
 }
-function closeDstNet() { document.getElementById('dst-net-panel').classList.remove('active'); clearInterval(DNM.rtTimer); }
+function closeDstNet() { try { dnmLinesToggle(false); } catch (e) {}  document.getElementById('dst-net-panel').classList.remove('active'); clearInterval(DNM.rtTimer); }
 function dnmRouteNames() { var r = DNM.route, out = []; if (!r) return null; r.forEach(function (g) { (g.stations || [g.from, g.to]).forEach(function (n) { n = typeof n === 'string' ? n : (n && n.name) || ''; if (n && DNM.byName[n]) out.push(n); }); }); return out.length ? out : null; }
+function dnmLinesToggle(on) { var b = document.getElementById('dnm-lines'), t = document.getElementById('dnm-lbtn'); if (!b) return; var v = on == null ? !b.classList.contains('open') : !!on; b.classList.toggle('open', v); if (t) t.classList.toggle('on', v || Object.keys(DNM.hide).length > 0); }
 function dnmChips() {
   var box = document.getElementById('dnm-lines'), E = dstEsc;
   var ids = DNM.net.lines.map(function (L) { return L.id; }).filter(function (id, i, a) { return a.indexOf(id) === i; });
+  var lb = document.getElementById('dnm-lbtn'); if (lb) { lb.classList.toggle('on', box.classList.contains('open') || Object.keys(DNM.hide).length > 0); lb.textContent = Object.keys(DNM.hide).length ? '노선 ·' + (ids.length - Object.keys(DNM.hide).filter(function (k) { return ids.indexOf(+k) >= 0; }).length) : '노선'; }
   box.innerHTML = '<button type="button" class="' + (Object.keys(DNM.hide).length ? '' : 'on') + '" onclick="dnmFilter(0)">전체</button>' + ids.map(function (id) { return '<button type="button" class="' + (DNM.hide[id] ? '' : 'on') + '" style="--c:' + E(dnmLineColor(id)) + '" onclick="dnmFilter(' + id + ')"><i></i>' + E(dnmLineName(id).replace(/\s*\(.*\)$/, '')) + '</button>'; }).join('');
 }
 function dnmFilter(id) {
@@ -13400,7 +13464,7 @@ function dnmDraw() {
   var svg = document.getElementById('dnm-svg'), E = dstEsc, rt = DNM.route, on = {};
   var routeNames = dnmRouteNames(), rset = {}; (routeNames || []).forEach(function (n) { rset[n] = 1; });
   var w = '<g class="dnm-lines' + (rt ? ' dim' : '') + '" id="dnm-wl">' + dnmLinesSvg(DNM.k || 1) + '</g>';
-  if (rt) w += '<g class="dnm-rt">' + rt.map(function (g) { var ns = (g.stations || [g.from, g.to]).map(function (n) { return DNM.byName[typeof n === 'string' ? n : (n && n.name) || '']; }).filter(Boolean); if (ns.length < 2) return ''; var pp = [[ns[0].x, ns[0].y]]; for (var q = 1; q < ns.length; q++) pp = pp.concat(dnmEdgePts(ns[q - 1], ns[q]).slice(1)); return '<path d="M' + pp.map(function (o) { return o[0].toFixed(1) + ' ' + o[1].toFixed(1); }).join('L') + '" stroke="' + E(g.color || dnmLineColor(g.lineId)) + '"/>'; }).join('') + '</g>';
+  if (rt) w += '<g class="dnm-rt">' + rt.map(function (g) { var ns = (g.stations || [g.from, g.to]).map(function (n) { return dnmFind(typeof n === 'string' ? n : (n && n.name) || '', g.lineId); }).filter(Boolean); if (ns.length < 2) return ''; return '<path d="' + dnmSmooth(ns.map(function (o) { return [o.x, o.y]; })) + '" stroke="' + E(g.color || dnmLineColor(g.lineId)) + '"/>'; }).join('') + '</g>';
   var kx = Math.cos(37.55 * Math.PI / 180) * 1110, geo = dstGeoSvg(DNM.proj, 'dnm-geo');
   if (rt) w = w.replace(/<g class="dnm-lines dim" id="dnm-wl">[\s\S]*?<\/g>/, '');   /* 경로를 볼 때는 다른 노선은 빼고 */
   var riv = '<polyline class="dnm-river" points="' + DST_HAN.map(function (p) { var q = DNM.proj(p); return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join(' ') + '"/>';
@@ -13456,7 +13520,7 @@ function dnmApply(full) {
   sg.innerHTML = geoLb + dots + labels;
 }
 function dnmFit(names) {
-  var pts = names ? names.map(function (n) { return DNM.byName[n]; }).filter(Boolean) : DNM.st.filter(function (o) { return Math.abs(o.x) < 105 && Math.abs(o.y) < 105; });
+  var pts = names ? names.map(function (n) { return DNM.byName[n]; }).filter(Boolean) : DNM.st.filter(function (o) { return o.x > -150 && o.x < 140 && o.y > -140 && o.y < 110; });
   if (!pts.length) pts = DNM.st;
   var x0 = Math.min.apply(null, pts.map(function (o) { return o.x; })), x1 = Math.max.apply(null, pts.map(function (o) { return o.x; })), y0 = Math.min.apply(null, pts.map(function (o) { return o.y; })), y1 = Math.max.apply(null, pts.map(function (o) { return o.y; }));
   var bw = Math.max(40, x1 - x0), bh = Math.max(40, y1 - y0);
@@ -13492,7 +13556,7 @@ function dnmBind() {
   el.addEventListener('wheel', function (e) { e.preventDefault(); var p = pos(e); dnmZoom(e.deltaY < 0 ? 1.18 : 1 / 1.18, p[0], p[1]); }, { passive: false });
   window.addEventListener('resize', function () { if (!document.getElementById('dst-net-panel').classList.contains('active')) return; DNM.W = el.clientWidth; DNM.H = el.clientHeight; dnmApply(true); });
 }
-function dnmTap(x, y) {
+function dnmTap(x, y) { try { dnmLinesToggle(false); } catch (e) {}
   var best = null, bd = 22;
   DNM.st.forEach(function (o) { if (o.lines.every(function (l) { return DNM.hide[l]; })) return; var d = Math.hypot(o.x * DNM.k + DNM.tx - x, o.y * DNM.k + DNM.ty - y); if (d < bd) { bd = d; best = o; } });
   if (best) dnmSelect(best.name, false); else { DNM.sel = ''; document.getElementById('dnm-sheet').hidden = true; clearInterval(DNM.rtTimer); dnmApply(true); }
@@ -23218,6 +23282,30 @@ html.ui-dark #dst-panel .dst-map-gg{fill:#0e1620!important}
 #dst-panel .nv-bd{left:1px;top:1px;width:16px;height:16px;border-width:2px;font-size:8.5px}
 #dst-panel .nv-sg.walk .dsi{width:11px;height:11px}
 html.ui-dark #dst-panel .nv-t2{color:#c0c6d0}html.ui-dark #dst-panel .nv-t2.tm span.b{color:#f2f4f7}
+</style>
+<style id="dnm-ui1">
+/* 노선도 화면 · 후보 1 (미니멀): 지도를 꽉 채우고 위에 검색 + [노선], 오른쪽 아래 ◎ + − */
+#dst-net-panel .dnm{background:#dbe8f4}
+#dst-net-panel .dnm-top{position:absolute;left:0;right:0;top:0;z-index:6;display:flex;align-items:center;gap:8px;padding:calc(12px + env(safe-area-inset-top)) 12px 0;background:none!important;box-shadow:none!important;pointer-events:none}
+#dst-net-panel .dnm-top > *{pointer-events:auto}
+#dst-net-panel .dnm-search{position:relative;flex:1;display:flex;align-items:center;height:46px;border-radius:23px;background:#fff;box-shadow:0 4px 16px rgba(16,24,40,.14);padding:0 14px 0 4px}
+#dst-net-panel .dnm-back{flex:none;width:38px;height:38px;border:0;border-radius:50%;background:none;font-size:26px;line-height:1;color:#344054;cursor:pointer;padding:0 0 3px}
+#dst-net-panel .dnm-qi{flex:none;width:18px;height:18px;fill:none;stroke:#98a2b3;stroke-width:2.2;stroke-linecap:round;margin-right:6px}
+#dst-net-panel .dnm-search input{flex:1;min-width:0;height:44px;border:0!important;background:none!important;padding:0!important;font-size:15px;outline:none;color:#101828}
+#dst-net-panel .dnm-sug{top:52px}
+#dst-net-panel .dnm-lbtn{flex:none;height:46px;min-width:56px;padding:0 14px;border:0;border-radius:23px;background:#fff;box-shadow:0 4px 16px rgba(16,24,40,.14);font:inherit;font-size:14px;font-weight:800;color:#344054;cursor:pointer}
+#dst-net-panel .dnm-lbtn.on{background:var(--dsi,#2f6fd6);color:#fff}
+#dst-net-panel #dnm-lines{position:absolute!important;right:12px;top:calc(66px + env(safe-area-inset-top));z-index:7;width:min(300px,calc(100% - 24px));display:none!important;flex-wrap:wrap;gap:6px;padding:12px!important;border:0!important;border-radius:16px;background:#fff!important;box-shadow:0 10px 28px rgba(16,40,80,.2);max-height:60vh;overflow-y:auto!important}
+#dst-net-panel #dnm-lines.open{display:flex!important}
+#dst-net-panel .dnm-stage{position:absolute!important;inset:0;flex:none!important}
+#dst-net-panel .dnm-route{top:calc(66px + env(safe-area-inset-top))!important}
+#dst-net-panel .dnm-zoom{right:12px;bottom:calc(18px + env(safe-area-inset-bottom));gap:8px}
+#dst-net-panel .dnm-zoom button{width:46px;height:46px;border-radius:14px;font-size:22px;display:grid;place-items:center;box-shadow:0 4px 16px rgba(16,24,40,.14)}
+#dst-net-panel .dnm-zoom button svg{width:22px;height:22px;fill:none;stroke:#344054;stroke-width:2;stroke-linecap:round}
+#dst-net-panel .dnm-sheet{z-index:8;position:absolute!important;left:0;right:0;bottom:0}
+html.ui-dark #dst-net-panel .dnm-search,html.ui-dark #dst-net-panel .dnm-lbtn:not(.on),html.ui-dark #dst-net-panel #dnm-lines{background:#1d2430!important;color:#e4e7ec}
+html.ui-dark #dst-net-panel .dnm-search input{color:#f2f4f7}html.ui-dark #dst-net-panel .dnm-back{color:#e4e7ec}
+html.ui-dark #dst-net-panel .dnm-zoom button svg{stroke:#d0d5dd}
 </style>
 </body>
 </html>
