@@ -1124,7 +1124,8 @@ var ICON_THEMES = [
   { k: 'char', name: '철도', desc: '철도 관련 캐릭터, 시설물' },
   { k: 'pet', name: '강아지/고양이', desc: '승무원 강아지·고양이 친구들' },
   { k: 'quokka', name: '쿼카/레서판다', desc: '승무원 쿼카·레서판다 친구들' },
-  { k: 'hero', name: '레일 히어로', desc: '철도를 지키는 꼬마 영웅 레일 히어로' }
+  { k: 'hero', name: '레일 히어로', desc: '철도를 지키는 꼬마 영웅 레일 히어로' },
+  { k: 'ios', name: '아이폰', desc: '아이폰처럼 둥근 색깔 아이콘 + 유리 느낌 화면 (관리자 테스트)', admin: true }
 ];
 /* 작은 버튼 속 아이콘: 그림이 아래쪽에 붙어 있어 처져 보이므로, 투명 여백을 잘라 정가운데로 맞춘 그림으로 바꿔 끼움 */
 var IC_CENTER_CACHE = {};
@@ -18367,11 +18368,12 @@ html body #main-container > #main-section.page-view.active > .menu-grid > button
 function iconPanelRender() {
   var cur = iconTheme(), dark = uiIsDark();
   var el = document.getElementById('ic-list'); if (!el) return;
-  el.innerHTML = ICON_THEMES.map(function (t) {
+  var adm = (typeof isBoardAdmin === 'function') && isBoardAdmin();
+  el.innerHTML = ICON_THEMES.filter(function (t) { return !t.admin || (adm && window.APP_ICON_THEMES[t.k]); }).map(function (t) {
     var src = t.k === 'basic' ? ((dark && window.APP_ICONS_DARK && window.APP_ICONS_DARK['근무표']) || window.APP_ICONS['근무표']) : window.APP_ICON_THEMES[t.k]['근무표'];
     return '<button type="button" class="ic-card' + (t.k === cur ? ' on' : '') + '" onclick="setIconTheme(\'' + t.k + '\')" aria-pressed="' + (t.k === cur) + '" title="' + t.name + ' · ' + t.desc + '">' +
       '<img src="' + src + '" alt=""' + (t.k !== 'basic' ? ' data-th="1"' : '') + '>' +
-      '<span class="ic-name">' + t.name.replace('/', '/<wbr>') + '</span><small>' + t.desc + '</small><i class="ic-ck" aria-hidden="true"></i></button>';
+      '<span class="ic-name">' + t.name.replace('/', '/<wbr>') + (t.admin ? '<em class="ic-adm">관리자</em>' : '') + '</span><small>' + t.desc + '</small><i class="ic-ck" aria-hidden="true"></i></button>';
   }).join('');
   /* 지금 고른 테마 설명은 목록 아래 한 줄로 */
   var curT = ICON_THEMES.filter(function (t) { return t.k === cur; })[0] || ICON_THEMES[0];
@@ -18386,7 +18388,11 @@ function setIconTheme(k) {
   applyAppIcons(document);
   iconPanelRender();
 }
-function openIconPanel() { iconPanelRender(); document.getElementById('icon-panel').classList.add('active'); }
+function openIconPanel() {
+  iconPanelRender(); document.getElementById('icon-panel').classList.add('active');
+  /* 관리자: 아이폰 테마 아이콘을 만들어서 목록에 추가 */
+  if (typeof iosThemeBuild === 'function' && typeof isBoardAdmin === 'function' && isBoardAdmin()) iosThemeBuild().then(function () { iconPanelRender(); });
+}
 function closeIconPanel() { document.getElementById('icon-panel').classList.remove('active'); }
 </script>
 <style id="team-css">
@@ -20832,5 +20838,146 @@ html.ui-dark body #main-container > div.top-bar > #liveClock .lc-w.sun{color:#ff
 html.ui-dark body #main-container > div.top-bar > #liveClock .lc-w.sat{color:#8cb8ff}
 @media(max-width:359px){html body #main-container > div.top-bar{grid-template-columns:72px minmax(0,1fr) 72px!important}html body #main-container > div.top-bar > #liveClock .lc-hm{font-size:32px}}
 </style>
+<script id="ios-theme-script">
+/* ===== 관리자 테스트 테마: 아이폰 =====
+   기본 아이콘을 흰 그림으로 바꿔 아이폰식 둥근 색깔 칸(스쿼클) 위에 올려 만듦 (이 폰에서 그려서 씀 · 파일 추가 없음)
+   화면은 html.ui-ios 클래스로 유리(블러) 카드 · 둥근 모서리 · 떠 있는 하단 메뉴 */
+var IOS_PAL = [
+  [/환경설정|근무설정|백업|설정|초기화$/, ['#8e8e93', '#636366']],
+  [/휴가|운휴|탈퇴|초기화/, ['#ff6b5e', '#ff3b30']],
+  [/월급|명세|통계|근무시간|출근시간|퇴근시간/, ['#ffb340', '#ff9500']],
+  [/알람|알림|소리|진동|팝업/, ['#4cd964', '#28b446']],
+  [/아이콘|테마|화면|애니메이션|위젯/, ['#c86dee', '#a347d4']],
+  [/공지|브리핑|가이드|메모|규정/, ['#ffd84d', '#ffb800']],
+  [/그룹|마이|승무원|사원|이름|로그인|입사|CREW/, ['#7d7aff', '#5856d6']],
+  [/사이트|교환|비교|불러오기/, ['#5ad8ff', '#1fa8e0']],
+  [/열차|편승|조회|NXLogis|다이아|근무표|패턴|메인|승무근무표|근무/, ['#4aa3ff', '#0a6cff']]
+];
+function iosColor(name) {
+  for (var i = 0; i < IOS_PAL.length; i++) if (IOS_PAL[i][0].test(name)) return IOS_PAL[i][1];
+  var h = 0; for (var j = 0; j < name.length; j++) h = (h * 31 + name.charCodeAt(j)) >>> 0;
+  return IOS_PAL[h % IOS_PAL.length][1];
+}
+function iosSquircle(x, n) {
+  /* 아이폰 아이콘 모양에 가까운 둥근 사각형 (모서리 22%) */
+  var r = n * 0.225, k = r * 0.12;
+  x.beginPath();
+  x.moveTo(r, 0); x.lineTo(n - r, 0); x.bezierCurveTo(n - k, 0, n, k, n, r);
+  x.lineTo(n, n - r); x.bezierCurveTo(n, n - k, n - k, n, n - r, n);
+  x.lineTo(r, n); x.bezierCurveTo(k, n, 0, n - k, 0, n - r);
+  x.lineTo(0, r); x.bezierCurveTo(0, k, k, 0, r, 0); x.closePath();
+}
+function iosMake(name, src) {
+  return new Promise(function (res) {
+    var im = new Image();
+    im.onload = function () {
+      try {
+        var n = 160, c = document.createElement('canvas'); c.width = c.height = n;
+        var x = c.getContext('2d'), col = iosColor(name);
+        var g = x.createLinearGradient(0, 0, 0, n); g.addColorStop(0, col[0]); g.addColorStop(1, col[1]);
+        iosSquircle(x, n); x.fillStyle = g; x.fill();
+        /* 위쪽 살짝 밝은 유리 광택 */
+        var gl = x.createLinearGradient(0, 0, 0, n * 0.55); gl.addColorStop(0, 'rgba(255,255,255,.28)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
+        x.save(); iosSquircle(x, n); x.clip(); x.fillStyle = gl; x.fillRect(0, 0, n, n * 0.55); x.restore();
+        /* 원래 아이콘 → 흰 그림 (진한 선은 진하게, 옅은 색칠은 옅게) */
+        var m = Math.round(n * 0.64), o = document.createElement('canvas'); o.width = o.height = m;
+        var ox = o.getContext('2d'); ox.drawImage(im, 0, 0, m, m);
+        var d = ox.getImageData(0, 0, m, m), p = d.data;
+        for (var i = 0; i < p.length; i += 4) {
+          var lum = (0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2]) / 255;
+          var a = p[i + 3] / 255 * Math.min(1, Math.max(0, (1 - lum) * 1.6 + 0.12));
+          p[i] = p[i + 1] = p[i + 2] = 255; p[i + 3] = Math.round(a * 255);
+        }
+        ox.putImageData(d, 0, 0);
+        x.shadowColor = 'rgba(0,0,0,.18)'; x.shadowBlur = 4; x.shadowOffsetY = 1.5;
+        x.drawImage(o, (n - m) / 2, (n - m) / 2);
+        res(c.toDataURL('image/png'));
+      } catch (e) { res(''); }
+    };
+    im.onerror = function () { res(''); };
+    im.src = src;
+  });
+}
+var iosBuilding = null;
+function iosThemeBuild() {
+  if (window.APP_ICON_THEMES && window.APP_ICON_THEMES.ios) return Promise.resolve();
+  if (iosBuilding) return iosBuilding;
+  var base = window.APP_ICONS || {}, out = {};
+  var names = Object.keys(base).filter(function (k) { return k.indexOf('날씨_') !== 0 && /^data:image/.test(base[k] || ''); });
+  iosBuilding = Promise.all(names.map(function (k) { return iosMake(k, base[k]).then(function (u) { if (u) out[k] = u; }); }))
+    .then(function () { window.APP_ICON_THEMES.ios = out; iosBuilding = null; });
+  return iosBuilding;
+}
+/* 화면 모양: 아이폰 테마일 때만 html.ui-ios */
+function iosUiApply() {
+  var on = false;
+  try { on = localStorage.getItem('rs_icon_theme') === 'ios' && !!(window.APP_ICON_THEMES && window.APP_ICON_THEMES.ios) && (typeof isBoardAdmin !== 'function' || isBoardAdmin()); } catch (e) {}
+  document.documentElement.classList.toggle('ui-ios', on);
+}
+(function () {
+  var o = window.setIconTheme;
+  if (typeof o === 'function') window.setIconTheme = function (k) {
+    if (k === 'ios' && !(window.APP_ICON_THEMES && window.APP_ICON_THEMES.ios)) { iosThemeBuild().then(function () { window.setIconTheme('ios'); }); return; }
+    var r = o.apply(this, arguments); iosUiApply();
+    try { if (typeof setFlatBuild === 'function') setFlatBuild(); } catch (e) {}
+    return r;
+  };
+  /* 저장된 테마가 아이폰이면 (관리자만) 시작할 때 만들어서 적용 */
+  function boot() {
+    var want = false; try { want = localStorage.getItem('rs_icon_theme') === 'ios'; } catch (e) {}
+    if (!want) { iosUiApply(); return; }
+    if (typeof isBoardAdmin === 'function' && !isBoardAdmin()) { iosUiApply(); return; }
+    iosThemeBuild().then(function () {
+      applyAppIcons(document); try { if (typeof renderBottomNav === 'function') renderBottomNav(); } catch (e) {}
+      applyAppIcons(document); iosUiApply();
+      try { if (typeof setFlatBuild === 'function') setFlatBuild(); } catch (e) {}
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else setTimeout(boot, 0);
+  window.addEventListener('rs-login', boot);
+  setTimeout(boot, 2500);
+})();
+</script>
+<style id="ios-theme-style">
+#icon-panel .ic-card .ic-name:has(.ic-adm){flex-direction:column}
+#icon-panel .ic-card .ic-adm{display:block;margin-top:1px;font-style:normal;font-size:8.5px;font-weight:800;color:#ff9500}
+#icon-panel .ic-card img[src*="image/png"]{border-radius:22%}
+/* ---- 아이폰 화면 (html.ui-ios) ---- */
+html.ui-ios body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Apple SD Gothic Neo","Pretendard",system-ui,sans-serif!important;background:linear-gradient(160deg,#dfe9ff 0%,#f3e8ff 45%,#ffe9f1 100%) fixed!important}
+html.ui-ios body #main-container{background:transparent!important}
+html.ui-ios body #main-container > div.top-bar > #liveClock{background:rgba(255,255,255,.45)!important;-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);border:1px solid rgba(255,255,255,.7)!important;box-shadow:0 8px 24px rgba(60,70,120,.12)!important;border-radius:26px!important}
+html.ui-ios body #main-container > div.top-bar > #liveClock .lc-hm{font-weight:300;font-size:46px;letter-spacing:-1px;color:#1c1c1e}
+html.ui-ios body #main-container > div.top-bar > #liveClock .lc-s{font-weight:400;color:#3a3a3c}
+html.ui-ios body #main-container > div.top-bar > .refresh-btn,html.ui-ios body #main-container > div.top-bar > #top-wx{background:rgba(255,255,255,.5)!important;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.7)!important}
+html.ui-ios body .dia-modal > div:first-child,html.ui-ios body .dia-dialog{background:rgba(255,255,255,.86)!important;-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border-radius:26px!important}
+html.ui-ios body .login-success-card,html.ui-ios body #dst-pin,html.ui-ios body .settings-category,html.ui-ios body .ns-row{background:rgba(255,255,255,.55)!important;-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);border-color:rgba(255,255,255,.7)!important;border-radius:22px!important}
+html.ui-ios body #main-section .menu-grid > button.menu-btn{background:transparent!important;border:0!important;box-shadow:none!important}
+html.ui-ios body #main-section .menu-grid > button.menu-btn img.menu-art,html.ui-ios body .set-art{border-radius:22%!important;box-shadow:0 4px 10px rgba(40,50,90,.18)!important}
+html.ui-ios body #main-section .menu-grid > button.menu-btn > span,html.ui-ios body #set-flat .set-tile>span{color:#1c1c1e!important;font-weight:500!important;letter-spacing:-.2px}
+html.ui-ios body #main-section .menu-grid > .menu-cat{color:#3c3c43!important;opacity:.7}
+html.ui-ios body #main-section .menu-grid > .menu-cat::after{background:rgba(60,60,67,.18)!important}
+html.ui-ios body #bottom-nav{left:12px!important;right:12px!important;bottom:calc(10px + env(safe-area-inset-bottom))!important;width:auto!important;border-radius:28px!important;background:rgba(255,255,255,.55)!important;-webkit-backdrop-filter:blur(26px) saturate(190%);backdrop-filter:blur(26px) saturate(190%);border:1px solid rgba(255,255,255,.75)!important;box-shadow:0 10px 30px rgba(40,50,90,.18)!important}
+html.ui-ios body #bottom-nav .bn-btn .nav-art{border-radius:22%!important}
+html.ui-ios body .ns-switch:checked{background:#34c759!important;border-color:#34c759!important}
+html.ui-ios.ui-dark body{background:linear-gradient(160deg,#0d1424 0%,#1a1030 50%,#220f1c 100%) fixed!important}
+html.ui-ios.ui-dark body .login-success-card,html.ui-ios.ui-dark body #dst-pin,html.ui-ios.ui-dark body .settings-category,html.ui-ios.ui-dark body .ns-row,html.ui-ios.ui-dark body .dia-dialog,html.ui-ios.ui-dark body #bottom-nav,html.ui-ios.ui-dark body #main-container > div.top-bar > #liveClock{background:rgba(40,40,48,.55)!important;border-color:rgba(255,255,255,.12)!important}
+html.ui-ios.ui-dark body #main-container > div.top-bar > #liveClock .lc-hm,html.ui-ios.ui-dark body #main-section .menu-grid > button.menu-btn > span,html.ui-ios.ui-dark body #set-flat .set-tile>span{color:#f2f2f7!important}
+</style>
+<style id="bottom-nav-floating">
+/* 하단 고정메뉴바: 화면 아래에 떠 있는 둥근 막대 (양옆 · 아래 여백, 그림자, 살짝 비치는 유리) */
+html body #bottom-nav.bottom-nav{left:12px!important;right:12px!important;bottom:calc(10px + env(safe-area-inset-bottom))!important;width:auto!important;max-width:616px!important;margin:0 auto!important;transform:none!important;padding:4px 4px!important;border:1px solid rgba(225,231,240,.9)!important;border-radius:26px!important;background:rgba(255,255,255,.88)!important;-webkit-backdrop-filter:blur(18px) saturate(170%);backdrop-filter:blur(18px) saturate(170%);box-shadow:0 8px 28px rgba(20,40,80,.16),0 1px 3px rgba(20,40,80,.08)!important}
+html body #bottom-nav.bottom-nav .bn-btn{border-radius:20px!important}
+html body #bottom-nav.bottom-nav .bn-btn.active,html body #bottom-nav.bottom-nav .bn-btn.on{background:rgba(27,100,218,.08)!important}
+html.ui-dark body #bottom-nav.bottom-nav{background:rgba(30,34,41,.88)!important;border-color:rgba(255,255,255,.08)!important;box-shadow:0 8px 28px rgba(0,0,0,.45)!important}
+html.ui-dark body #bottom-nav.bottom-nav .bn-btn.active,html.ui-dark body #bottom-nav.bottom-nav .bn-btn.on{background:rgba(140,184,255,.12)!important}
+/* 떠 있는 만큼 내용이 가려지지 않게 아래 여백 추가 */
+html body #main-container{padding-bottom:calc(var(--bn-h,72px) + 24px + env(safe-area-inset-bottom))!important}
+</style>
+<script id="bottom-nav-floating-script">
+(function () {
+  function fit() { var n = document.getElementById('bottom-nav'); if (!n || !n.offsetHeight) return; document.documentElement.style.setProperty('--bn-h', n.offsetHeight + 'px'); }
+  window.addEventListener('load', fit); window.addEventListener('resize', fit); setTimeout(fit, 1500); setTimeout(fit, 4000);
+})();
+</script>
 </body>
 </html>
