@@ -2181,7 +2181,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <div class="tq-cal-foot"><button type="button" onclick="tqCalPickToday()">오늘</button></div>
       </div>
       <label class="tq-lab" for="tq-in">열차번호</label>
-      <input id="tq-in" class="tq-field" inputmode="numeric" maxlength="6" placeholder="예: 3224" autocomplete="off" oninput="tqPrefetch()" onkeydown="if(event.key==='Enter')trainQueryInput()">
+      <input id="tq-in" class="tq-field" inputmode="text" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="예: 3224 · K1001 · 1001A" autocomplete="off" oninput="tqPrefetch()" onkeydown="if(event.key==='Enter')trainQueryInput()" onblur="this.value=this.value.toUpperCase()">
       <div id="tq-msg" class="tq-msg"></div>
       <button type="button" class="tq-main" onclick="trainQueryInput()">조회</button>
     </div>
@@ -2197,7 +2197,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
     <div class="dst-route">
       <button type="button" class="dst-od from" onclick="dstSheet('from')"><i class="dst-od-dot g"></i><span class="dst-od-tx"><small id="dst-from-lb">출발역</small><b id="dst-from-name">위치 확인 중…</b></span><span id="dst-walk" class="dst-walk"></span></button>
-      <button type="button" class="dst-od to" onclick="dstSheet('to')"><i class="dst-od-dot r"></i><span class="dst-od-tx"><small>도착역</small><b id="dst-to-name">-</b></span><em class="dst-od-ch">변경</em></button>
+      <button type="button" class="dst-od to" onclick="dstSheet('to')"><i class="dst-od-dot r"></i><span class="dst-od-tx"><small>도착역</small><b id="dst-to-name">-</b></span></button>
       <i class="dst-od-link"></i>
       <button type="button" class="dst-swap" onclick="dstSwap()" aria-label="출발역과 도착역 바꾸기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v15M8 4 4.5 7.5M8 4l3.5 3.5M16 20V5m0 15-3.5-3.5M16 20l3.5-3.5"/></svg></button>
     </div>
@@ -12074,8 +12074,8 @@ function tqPrefetch() {
   if (tqPrefetchTimer) clearTimeout(tqPrefetchTimer);
   tqPrefetchTimer = setTimeout(function () {
     var el = $('tq-in'); if (!el) return;
-    var v = String(el.value || '').replace(/\D/g, '');
-    if (v.length < 3) return;
+    var v = String(el.value || '').replace(/[^0-9A-Za-z-]/g, '').toUpperCase();
+    if (v.replace(/\D/g, '').length < 3) return;
     var day = ($('tq-day') && $('tq-day').value) || trainQueryToday();
     try { passRoute(v, day, false, function () {}); } catch (e) {}
   }, 450);
@@ -12597,21 +12597,22 @@ function dstSheet(kind) {
   var E = dstEsc, c = dstCfg(), dl = '<datalist id="dst-st-list">' + dstStationNames().map(function (n) { return '<option value="' + E(n) + '">'; }).join('') + '</datalist>';
   var form = function (ph, fn) { return '<form class="dst-org-in" onsubmit="event.preventDefault();var v=this.q.value.trim().replace(/역$/,\'\');if(v)' + fn + '(v)"><input name="q" list="dst-st-list" placeholder="' + ph + '" autocomplete="off" maxlength="20" enterkeyhint="search"><button type="submit">확인</button>' + dl + '</form>'; };
   if (kind === 'from') {
-    box.innerHTML = '<div class="dst-sh-h">내 위치에서 가까운 역</div><div class="dst-org-row" id="dst-near3"><span class="dst-sh-wait">가까운 역 찾는 중…</span></div>'
-      + '<div class="dst-org-row"><button type="button" class="' + (c.from ? '' : 'on') + '" onclick="dstSetOrigin(\'\')">📍 늘 가장 가까운 역으로 (자동)</button></div>'
-      + form('다른 출발역 이름 (예: 합정)', 'dstSetOrigin');
+    box.innerHTML = '<div class="dst-sh-h">출발역 입력</div>' + form('출발역 이름 (예: 합정)', 'dstSetOrigin') + '<div class="dst-sh-h">내 위치에서 가까운 역</div><div class="dst-org-row" id="dst-near3"><span class="dst-sh-wait">가까운 역 찾는 중…</span></div>'
+      + '<div class="dst-org-row"><button type="button" class="' + (c.from ? '' : 'on') + '" onclick="dstSetOrigin(\'\')">📍 늘 가장 가까운 역으로 (자동)</button></div>';
     dstNear3(function (list) {
       var row = document.getElementById('dst-near3'); if (!row || dstSheetOn !== 'from') return;
       if (!list) { row.innerHTML = '<span class="dst-sh-wait">위치를 확인하지 못했어요 · 아래에 역 이름을 적어 주세요</span>'; return; }
       if (!list.length) { row.innerHTML = '<span class="dst-sh-wait">가까운 역 정보가 없어요</span>'; return; }
       row.innerHTML = list.map(function (n, i) { return '<button type="button" class="' + (dstOrigin() === n.name ? 'on' : '') + '" onclick="dstSetOrigin(\'' + E(n.name) + '\')">' + (i === 0 ? '<i class="dst-near1">가장 가까움</i>' : '') + E(n.name) + '<small>' + dstFmtM(n.m) + '</small></button>'; }).join('');
     });
+    dstSheetFocus();
   } else {
     var rec = dstDestRecent().concat(DST_LIST).filter(function (n, i, a) { return n && a.indexOf(n) === i; }).slice(0, 8);
-    box.innerHTML = '<div class="dst-sh-h">자주 가는 도착역</div><div class="dst-org-row wrap">' + rec.map(function (n) { return '<button type="button" class="' + (n === c.dest ? 'on' : '') + '" onclick="dstPick(\'' + E(n) + '\')">' + E(n) + '</button>'; }).join('') + '</div>'
-      + form('도착역 이름 (예: 강남)', 'dstPick');
+    box.innerHTML = '<div class="dst-sh-h">도착역 입력</div>' + form('도착역 이름 (예: 강남)', 'dstPick') + '<div class="dst-sh-h">자주 가는 도착역</div><div class="dst-org-row wrap">' + rec.map(function (n) { return '<button type="button" class="' + (n === c.dest ? 'on' : '') + '" onclick="dstPick(\'' + E(n) + '\')">' + E(n) + '</button>'; }).join('') + '</div>';
+    dstSheetFocus();
   }
 }
+function dstSheetFocus() { setTimeout(function () { var i = document.querySelector('#dst-sheet .dst-org-in input'); if (i) try { i.focus(); } catch (e) {} }, 30); }
 function dstSheetClose() { dstSheetOn = ''; var box = document.getElementById('dst-sheet'); if (box) { box.hidden = true; box.innerHTML = ''; } [].forEach.call(document.querySelectorAll('#dst-panel .dst-od'), function (b) { b.classList.remove('open'); }); }
 function dstDrawOrigins() { var t = document.getElementById('dst-to-name'); if (t) t.textContent = dstCfg().dest + '역'; }
 function dstOriginEdit() { dstSheet('from'); }
@@ -12659,7 +12660,7 @@ function dstDrawDests() {
 /* 출발 줄: 현재 위치 → 가장 가까운 역 · 거리 · 걸어서 몇 분 */
 function dstWalkMin(m) { return m == null ? null : Math.max(1, Math.round(m * 1.3 / 75) + 1); } /* 직선거리×1.3, 분속 75m, 개찰 1분 */
 function dstFrom(d) {
-  var lb = document.getElementById('dst-from-lb'); if (lb) lb.textContent = dstOrigin() ? '출발역 · 직접 고름' : '출발역 · 내 위치에서 가장 가까운 역';
+  var lb = document.getElementById('dst-from-lb'); if (lb) lb.textContent = dstOrigin() ? '출발역 · 직접 입력' : '출발역 · 가장 가까운 역';
   if (d && d.station) {
     var m = d.near && d.near[0] ? d.near[0].m : null;
     $('dst-from-name').innerHTML = dstEsc(d.station) + '역' + (m != null ? '<em>' + (m < 1000 ? m + 'm' : (m / 1000).toFixed(1) + 'km') + '</em>' : '');
@@ -12950,6 +12951,7 @@ function dstMapSvg(f, d) {
   out.push('<circle cx="' + z[0].toFixed(1) + '" cy="' + z[1].toFixed(1) + '" r="5" fill="#fff" stroke="#e5484d" stroke-width="2.4"/>');
   return '<svg class="dst-map" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + E(R[0].from + '에서 ' + d.dest + '까지 노선도') + '">' + out.join('') + tags.join('') + '</svg>';
 }
+function dstOpen(k) { window.dstOpenKey = window.dstOpenKey === k ? '' : k; try { dstDraw(); } catch (e) {} }
 function dstShift(n) { window.dstOff = (window.dstOff || 0) + n; try { dstDraw(); } catch (e) {} }
 function dstDraw() {
   var d = dstLast; if (!d) return;
@@ -12969,43 +12971,50 @@ function dstDraw() {
       $('dst-out').innerHTML = '<div class="dst-msg">지금 오는 열차는 걸어가면 놓쳐요.<small>' + dstEsc(d.station) + '역까지 걸어서 약 ' + walk + '분 · 다음 열차 정보가 들어오면 바로 보여줄게요. (' + allN + '대 놓침)</small></div>';
       var t0 = new Date(d._got); $('dst-time').textContent = String(t0.getHours()).padStart(2, '0') + ':' + String(t0.getMinutes()).padStart(2, '0') + ' 기준 · 1분마다 갱신'; return;
     }
-    var fi = dstPickIdx(tr, 0, isX);
-    /* 이전 열차 · 다음 열차: 빨리 오는 순서에서 앞 · 뒤 열차를 큰 카드로 */
-    var base = trAll.indexOf(tr[fi]), oi = Math.max(0, Math.min(trAll.length - 1, base + (window.dstOff || 0))); window.dstOff = oi - base;
-    var f = trAll[oi], fMiss = !!(wsec && f.eta != null && f.eta < wsec), rest = tr.filter(function (x) { return x !== f; }), fr = dstRide(f, d), lc = dstEsc(f.color || '#667085');
+    /* 길찾기 앱처럼: 이전열차 | 18:09 출발 | 다음열차 → 큰 소요시간 + 시각 + 구간 막대 → 노선도 */
+    var E = dstEsc, nowMs = Date.now();
+    var hm = function (ms) { var z = new Date(ms); return String(z.getHours()).padStart(2, '0') + ':' + String(z.getMinutes()).padStart(2, '0'); };
+    var toMs = function (s) { var m = /^(\d{1,2}):(\d{2})/.exec(s || ''); if (!m) return null; var z = new Date(nowMs); z.setHours(+m[1], +m[2], 0, 0); var v = z.getTime(); if (v < nowMs - 3 * 3600000) v += 86400000; return v; };
+    var rec = tr.reduce(function (b, t) { var x = dstArrMin(t), y = dstArrMin(b); return x < y || (x === y && (t.eta || 0) < (b.eta || 0)) ? t : b; }, tr[0]);
+    var ri = tr.indexOf(rec), si = Math.max(0, Math.min(tr.length - 1, ri + (window.dstOff || 0))); window.dstOff = si - ri;
+    var f = tr[si], dep = f.eta == null ? null : nowMs + f.eta * 1000, arr = toMs(f.destArrive);
     dstHero = { f: f, d: d };
-    var etaHtml = f.eta == null ? '<b>-</b>' : (f.eta <= 30 ? '<b>곧</b> 도착' : '<b>' + Math.round(f.eta / 60) + '</b>분 후 도착');
-    var clk = function (t) { if (!t || t.eta == null) return ''; var z = new Date((d._got || Date.now()) + t.eta * 1000); return String(z.getHours()).padStart(2, '0') + ':' + String(z.getMinutes()).padStart(2, '0'); };
-    if (f.eta != null) etaHtml += '<small class="dst-hero-clk">' + clk(f) + ' ' + dstEsc(d.station) + ' 도착 · 출발</small>';
-    var nav = '<div class="dst-nav"><button type="button" onclick="dstShift(-1)"' + (oi <= 0 ? ' disabled' : '') + '>‹ 이전 열차</button><span>' + (oi + 1) + ' / ' + trAll.length + (window.dstOff ? (fMiss ? ' · 놓칠 수 있음' : '') : ' · 추천') + '</span><button type="button" onclick="dstShift(1)"' + (oi >= trAll.length - 1 ? ' disabled' : '') + '>다음 열차 ›</button></div>';
-    var html = nav + '<div class="dst-hero" style="--lc:' + lc + '">'
-      + '<div class="dst-hero-top"><i class="dst-chip">' + dstEsc(dstLine(f)) + '</i><b>' + dstEsc(f.terminus || '?') + '행</b>' + (f.express ? '<em class="dst-tag exp">급행</em>' : '') + (f.delaySec >= 60 ? '<em class="dst-tag late">' + Math.round(f.delaySec / 60) + '분 지연</em>' : '') + '</div>'
-      + '<div class="dst-hero-mid"><span class="dst-hero-eta">' + etaHtml + '</span><span class="dst-hero-arr"><small>' + dstEsc(d.dest) + ' 도착' + (f.rideEstimated ? ' 예상' : '') + '</small><b>' + (f.rideEstimated ? '<em class="dst-approx">약</em>' : '') + dstEsc(f.destArrive || '--:--') + '</b></span></div>'
-      + (f.route && f.route.length ? dstMapSvg(f, d) + dstRouteHtml(f, d) : (isX ? dstXferHtml(f, 'dst-hero-x') : ''))
-      + '<div class="dst-hero-now">' + dstEsc(String(f.now || '').replace(/^\S+열차\s*/, '')) + (fr != null ? ' · 총 ' + fr + '분' : '') + '</div>'
-      + (fMiss ? '<div class="dst-hero-miss">🏃 걸어가면 놓칠 수 있는 열차예요 (걸어서 약 ' + walk + '분)</div>' : '')
-      + (walk != null && f.eta != null && !fMiss ? '<div class="dst-hero-walk">🚶 ' + dstEsc(d.station) + '역까지 걸어서 약 ' + walk + '분 · 여유 ' + Math.max(0, Math.round(f.eta / 60) - walk) + '분</div>' : '') + '</div>';
-    if (isX && f.transfer) { var fx = dstXfers(f); html = '<div class="dst-xbadge">' + (fx.length === 1
-      ? '환승 1회 · ' + dstEsc(fx[0].station) + '에서 ' + dstEsc(String(fx[0].line || '').replace(/\s*\(.*\)$/, '')) + '으로 갈아타요'
-      : '최소 환승 ' + fx.length + '회 · ' + fx.map(function (x) { return dstEsc(x.station); }).join(' → ') + '에서 갈아타요') + '</div>' + html; }
-    var missed = allN - tr.length;
-    if (missed && !window.dstOff) html += '<div class="dst-hero-note">더 빨리 오는 열차 ' + missed + '대는 걸어가면 놓쳐요 · ‹ 이전 열차로 볼 수 있어요</div>';
-    if (rest.length) html += '<div class="dst-sub-h">' + (isX ? '다른 경로' : '다른 열차') + '</div><div class="dst-table"><div class="dst-thead"><span></span><span>노선</span><span>행선지</span><span>도착까지</span><span>소요</span><span>도착</span></div>'
-      + rest.slice(0, isX ? 6 : 7).map(function (t) {
-        var c = dstEsc(t.color || '#667085');
-        var e = t.eta == null ? '-' : (t.eta <= 30 ? '곧' : Math.round(t.eta / 60) + '분');
-        if (t.eta != null) e += '<small class="dst-clk">' + clk(t) + '</small>';
-        var r = dstRide(t, d);
-        var dl = t.delaySec >= 60 ? '<em class="dst-tag late" title="지연">+' + Math.round(t.delaySec / 60) + '분</em>' : '';
-        var now = String(t.now || '').replace(/^\S+열차\s*/, '');
-        var miss = wsec && t.eta != null && t.eta < wsec;
-        if (miss) dl = '<em class="dst-tag miss">놓침</em>';
-        return '<div class="dst-row' + (miss ? ' miss' : '') + '" style="--lc:' + c + '"><i class="bar"></i><span class="ln">' + dstEsc(dstLine(t)) + '</span>'
-          + '<span class="term"><span class="tm"><b>' + dstEsc(t.terminus || '?') + '행</b>' + (t.express ? '<em class="dst-tag exp">급행</em>' : '') + dl + '</span>'
-          + (t.transfer ? '<small class="tx"><i style="background:' + dstEsc(t.transfer.color || '#98a2b3') + '"></i>' + dstEsc(dstXferStations(t)) + ' 환승</small>' : '') + '</span>'
-          + '<span class="eta">' + e + '</span><span class="ride">' + (r == null ? '-' : r + '분') + '</span><span class="arr">' + (t.rideEstimated ? '약 ' : '') + dstEsc(t.destArrive || '--:--') + '</span></div>';
-      }).join('') + '</div>';
-    $('dst-out').innerHTML = html + '<div class="dst-note"></div>';
+    var html = '<div class="nv-nav"><button type="button" onclick="dstShift(-1)"' + (si <= 0 ? ' disabled' : '') + '>이전열차</button>'
+      + '<button type="button" class="mid" onclick="window.dstOff=0;dstDraw()">' + (dep ? '<b>' + hm(dep) + ' 출발</b>' : '<b>곧 출발</b>') + (f === rec ? '<em>추천</em>' : '') + '</button>'
+      + '<button type="button" onclick="dstShift(1)"' + (si >= tr.length - 1 ? ' disabled' : '') + '>다음열차</button></div>';
+    /* 구간: 걸어가기 · 기다리기 · 타는 구간(노선색) · 갈아타기 */
+    var parts = [], R = f.route && f.route.length ? f.route : [{ line: f.line, color: f.color, from: d.station, to: d.dest, arrive: f.destArrive }];
+    if (walk != null) parts.push({ k: 'walk', min: walk });
+    if (walk != null && f.eta != null) { var w0 = Math.round(f.eta / 60) - walk; if (w0 > 0) parts.push({ k: 'wait', min: w0 }); }
+    var prevEnd = dep;
+    R.forEach(function (g, i) {
+      var a = i === 0 ? dep : toMs(g.depart), b = i === R.length - 1 ? (arr || toMs(g.arrive)) : toMs(g.arrive);
+      if (i > 0 && prevEnd && a && a > prevEnd) parts.push({ k: 'wait', min: Math.round((a - prevEnd) / 60000), x: 1 });
+      var nm = String(g.line || f.line || '').replace(/\s*\(.*\)$/, ''), sh = (/^(\d+)호선/.exec(nm) || [])[1] || nm.charAt(0);
+      parts.push({ k: 'ride', min: a && b ? Math.max(1, Math.round((b - a) / 60000)) : null, color: g.color || f.color || '#667085', sh: sh, from: g.from || (i ? '' : d.station), at: a });
+      prevEnd = b;
+    });
+    var totalMin = arr ? Math.round((arr - nowMs) / 60000) : null;
+    var bar = '', top = '', lab = '';
+    parts.forEach(function (p) {
+      var g = Math.max(p.min || 4, p.k === 'ride' ? 6 : 3);
+      if (p.k === 'ride') {
+        bar += '<span class="nv-sg ride" style="flex:' + g + ' 1 0;--c:' + E(p.color) + '"><i class="nv-bd">' + E(p.sh) + '</i><span>' + (p.min != null ? p.min + '<small>분</small>' : '') + '</span></span>';
+        top += '<span style="flex:' + g + ' 1 0">' + (p.at ? hm(p.at) : '') + '</span>';
+        lab += '<span style="flex:' + g + ' 1 0;color:' + E(p.color) + '">' + E(p.from || '') + '</span>';
+      } else {
+        /* 걷기는 글자가 들어갈 만큼, 짧은 대기 · 환승은 얇은 칸만 (분은 칸 위에 작게) */
+        var fx = p.k === 'walk' ? Math.max(g, 9) + ' 1 0' : (p.min < 6 ? '0 0 12px' : g + ' 1 0');
+        bar += '<span class="nv-sg ' + p.k + '" style="flex:' + fx + '" title="' + (p.k === 'walk' ? '걷기' : '대기') + ' ' + p.min + '분">' + (p.k === 'walk' ? '🚶' + p.min + '<small>분</small>' : (p.min < 6 ? '' : p.min + '<small>분</small>')) + '</span>';
+        top += '<span style="flex:' + fx + '"></span>'; lab += '<span style="flex:' + fx + '"></span>';
+      }
+    });
+    html += '<div class="nv-sum"><div class="nv-big">' + (totalMin != null ? totalMin + '<small>분</small>' : (f.eta != null ? Math.round(f.eta / 60) + '<small>분 후 출발</small>' : '-')) + '</div>'
+      + '<div class="nv-range">' + (walk != null ? '지금 출발 ' : (dep ? hm(dep) + ' ' : '')) + '- ' + (arr ? hm(arr) : '--:--') + ' ' + E(d.dest) + ' 도착' + (f.rideEstimated ? ' (예상)' : '') + '</div>'
+      + '<div class="nv-tl"><div class="nv-top">' + top + '</div><div class="nv-bar">' + bar + '</div><div class="nv-lab">' + lab + '</div></div>'
+      + (dstRideGet() ? '' : '<button type="button" class="dst-ride-btn nv-go" style="--lc:' + E(f.color || '#1769d2') + '" onclick="dstRideStart()">🚆 이 열차 탈게요</button>') + '</div>';
+    if (f.route && f.route.length) html += dstMapSvg(f, d);
+    $('dst-out').innerHTML = html;
   }
   var t = new Date(d._got);
   $('dst-time').textContent = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') + ' 기준 · 지연 반영 · 1분마다 갱신';
@@ -13168,7 +13177,7 @@ function trainQueryInput() {
   var day = String($('tq-day').value || '');
   var v = String($('tq-in').value || '').replace(/\s/g, '').toUpperCase();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) { $('tq-msg').textContent = '날짜를 골라주세요.'; return; }
-  if (!/^[A-Z]?\d{1,5}$/.test(v)) { $('tq-msg').textContent = '열차번호를 숫자로 입력해 주세요.'; return; }
+  if (!/^(?=.*\d)[A-Z0-9-]{1,8}$/.test(v)) { $('tq-msg').textContent = '열차번호를 숫자와 영문으로 입력해 주세요. (예: 3224, K1001)'; return; }
   closeTrainQuery();
   passShowTrainAnim(v, day);
 }
@@ -22078,6 +22087,45 @@ function dstRideHtml(compact) {
   };
 })();
 </script>
+<style id="dst-list-style">
+/* 편승열차 세로 목록 + 추천 */
+#dst-panel .dst-rec{margin:4px 0 10px;padding:12px 13px;border-radius:14px;background:linear-gradient(180deg,#eef5ff,#f7faff);border:1px solid #d3e3fb;border-left:5px solid var(--lc)}
+#dst-panel .dst-rec{cursor:pointer}
+#dst-panel .dst-rec-h{font-size:12px;font-weight:800;color:#1769d2;margin-bottom:6px}
+#dst-panel .dst-rec-h small{float:right;font-weight:700;color:#8aa9d6}
+#dst-panel .dst-rec-t{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+#dst-panel .dst-rec-t b{font-size:17px;color:#1b2b45}
+#dst-panel .dst-rec-t span{margin-left:auto;font-size:14px;font-weight:800;color:#2f6fd6}
+#dst-panel .dst-rec-flow{display:flex;flex-wrap:wrap;align-items:center;gap:4px 5px;margin-top:9px;font-size:12.5px;font-weight:700;color:#344054}
+#dst-panel .dst-rec-flow span{padding:3px 8px;border-radius:8px;background:#fff;border:1px solid #e1e8f2;white-space:nowrap}
+#dst-panel .dst-rec-flow span.end{background:#fdecec;border-color:#f6caca;color:#c02626}
+#dst-panel .dst-rec-flow i{font-style:normal;color:#98a2b3}
+#dst-panel .dst-rec-sum{margin-top:8px;font-size:13px;color:#475467;font-weight:600}
+#dst-panel .dst-rec-sum b{color:#1769d2;font-size:15px}
+#dst-panel .dst-sub-h small{font-weight:600;color:#98a2b3;margin-left:4px}
+#dst-panel .dst-list{display:flex;flex-direction:column;gap:7px}
+#dst-panel .dst-it{border:1px solid #e3e8ef;border-radius:13px;background:#fff;overflow:hidden;border-left:4px solid var(--lc)}
+#dst-panel .dst-it.rec{border-color:#bcd4f7;border-left-color:var(--lc);box-shadow:0 2px 10px rgba(47,111,214,.10)}
+#dst-panel .dst-it-main{display:grid;grid-template-columns:62px 1fr auto 14px;align-items:center;gap:8px;width:100%;padding:10px 10px 10px 9px;border:0;background:none;text-align:left;font:inherit;color:inherit;cursor:pointer}
+#dst-panel .dst-it-l{display:flex;flex-direction:column;align-items:flex-start}
+#dst-panel .dst-it-eta{font-size:15.5px;font-weight:900;color:#2f6fd6;white-space:nowrap;letter-spacing:-.3px}
+#dst-panel .dst-it-l small,#dst-panel .dst-it-r small{font-size:11px;font-weight:700;color:#8a94a6;white-space:nowrap}
+#dst-panel .dst-it-m{min-width:0}
+#dst-panel .dst-it-top{display:flex;align-items:center;gap:5px;min-width:0}
+#dst-panel .dst-it-top b{font-size:14.5px;color:#1b2b45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dst-panel .dst-it-top .dst-chip{flex:none}
+#dst-panel .dst-it-m > small{display:block;margin-top:3px;font-size:11.5px;font-weight:600;color:#667085;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dst-panel .dst-it-r{display:flex;flex-direction:column;align-items:flex-end}
+#dst-panel .dst-it-r b{font-size:16px;font-weight:900;color:#1b2b45}
+#dst-panel .dst-it-ar{font-style:normal;color:#98a2b3;font-size:12px}
+#dst-panel .dst-tag.rec{background:#2f6fd6;color:#fff}
+#dst-panel .dst-it-det{padding:0 10px 12px;border-top:1px dashed #e3e8ef}
+#dst-panel .dst-it-det .dst-ride-btn{width:100%;margin-top:10px}
+html.ui-dark #dst-panel .dst-rec{background:#16202f;border-color:#2b3d58}
+html.ui-dark #dst-panel .dst-rec-t b,html.ui-dark #dst-panel .dst-it-top b,html.ui-dark #dst-panel .dst-it-r b{color:#e4e7ec}
+html.ui-dark #dst-panel .dst-rec-flow span{background:#1e232c;border-color:#323a46;color:#d0d5dd}
+html.ui-dark #dst-panel .dst-it{background:#1a1f27;border-color:#2c333e}
+</style>
 <style id="dst-nav-style">
 #dst-panel .dst-route{position:relative;margin:12px 0 8px;border-radius:14px;background:#f5f7fb;padding:4px 50px 4px 0}
 #dst-panel .dst-od{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:6px;width:100%;min-height:52px;padding:6px 8px 6px 4px;border:0;background:none;text-align:left;cursor:pointer;border-radius:12px;font:inherit;color:inherit}
@@ -22098,6 +22146,8 @@ function dstRideHtml(compact) {
 #dst-panel .dst-sh-h{font-size:12px;font-weight:800;color:#667085;margin:0 0 8px}
 #dst-panel .dst-sh-wait{font-size:12.5px;color:#98a2b3;padding:6px 2px}
 #dst-panel .dst-sheet .dst-org-row{margin-bottom:8px}
+#dst-panel .dst-sheet .dst-org-in{margin:0 0 12px}
+#dst-panel .dst-od.from{grid-template-columns:34px 1fr auto auto}
 #dst-panel .dst-org-row.wrap{flex-wrap:wrap;overflow:visible}
 #dst-panel .dst-near1{font-style:normal;font-size:10px;font-weight:800;color:#16a34a;background:#e7f6ec;border-radius:6px;padding:1px 5px;margin-right:2px}
 #dst-panel .dst-org-row button.on .dst-near1{background:rgba(255,255,255,.2);color:#fff}
@@ -22134,5 +22184,47 @@ html.ui-dark #dst-panel .dst-hero-miss{background:#3a2a12;color:#f5b25b}
 html.ui-dark #dst-panel .dst-nav button{background:#1e232b;border-color:#2f3a4c;color:#8cb8ff}
 html.ui-dark #dst-panel .dst-nav span{color:#a7b1c0}
 </style>
+<style id="dst-nv-style">
+/* 편승열차 · 길찾기 앱 스타일 (설명글 줄이고 한눈에) */
+#dst-panel .dst-od-tx small,#dst-panel .dst-od-ch{display:none}
+#dst-panel .dst-od{min-height:46px}
+#dst-panel .dst-od-tx b{font-size:18px}
+#dst-panel .dst-od-tx b em{font-size:11.5px}
+#dst-panel .dst-od-link{top:31px}
+#dst-panel .dst-walk small{display:none}
+#dst-panel .dst-walk b{font-size:13px;color:#667085;font-weight:700}
+#dst-panel .dst-walk b::before{content:'🚶 '}
+#dst-panel .dst-foot .dst-src{display:none}
+#dst-panel .nv-nav{display:grid;grid-template-columns:1fr 1.5fr 1fr;border:1px solid #dfe5ee;border-radius:12px;overflow:hidden;margin:2px 0 14px}
+#dst-panel .nv-nav button{height:46px;border:0;background:#fff;font:inherit;font-size:14.5px;font-weight:700;color:#344054;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
+#dst-panel .nv-nav button + button{border-left:1px solid #dfe5ee}
+#dst-panel .nv-nav button:disabled{color:#c4cad3;cursor:default}
+#dst-panel .nv-nav .mid b{color:#2f6fd6;font-size:16px}
+#dst-panel .nv-nav .mid em{font-style:normal;font-size:10.5px;font-weight:800;color:#fff;background:#2f6fd6;border-radius:6px;padding:2px 5px}
+#dst-panel .nv-sum{padding:2px 2px 4px}
+#dst-panel .nv-big{font-size:44px;font-weight:900;line-height:1;color:#101828;letter-spacing:-1px}
+#dst-panel .nv-big small{font-size:20px;font-weight:700;margin-left:2px;letter-spacing:0}
+#dst-panel .nv-range{margin-top:8px;font-size:16px;color:#344054;font-weight:600}
+#dst-panel .nv-tl{margin-top:16px}
+#dst-panel .nv-top,#dst-panel .nv-lab{display:flex;gap:3px;font-size:12.5px;font-weight:700;color:#475467;min-height:16px}
+#dst-panel .nv-top span,#dst-panel .nv-lab span{min-width:0;white-space:nowrap;overflow:visible}
+#dst-panel .nv-lab{margin-top:6px;font-size:13.5px;font-weight:800}
+#dst-panel .nv-bar{display:flex;gap:3px;margin-top:4px;height:26px}
+#dst-panel .nv-sg{min-width:0;display:flex;align-items:center;justify-content:center;border-radius:13px;font-size:12.5px;font-weight:800;white-space:nowrap;overflow:hidden}
+#dst-panel .nv-sg small{font-size:10px;margin-left:1px}
+#dst-panel .nv-sg.walk{background:#eef1f5;color:#667085}
+#dst-panel .nv-sg.wait{background:#f4f5f7;color:#98a2b3}
+#dst-panel .nv-sg.ride{position:relative;background:var(--c);color:#fff;justify-content:center;padding-left:24px}
+#dst-panel .nv-bd{position:absolute;left:1px;top:1px;width:24px;height:24px;border-radius:50%;background:#fff;border:2.5px solid var(--c);box-sizing:border-box;color:var(--c);font-style:normal;font-size:11px;font-weight:900;display:grid;place-items:center}
+#dst-panel .nv-go{height:44px;margin-top:14px}
+#dst-panel #dst-out > .dst-map{margin-top:14px}
+html.ui-dark #dst-panel .nv-nav,html.ui-dark #dst-panel .nv-nav button + button{border-color:#323a46}
+html.ui-dark #dst-panel .nv-nav button{background:#1a1f27;color:#d0d5dd}
+html.ui-dark #dst-panel .nv-big{color:#f2f4f7}
+html.ui-dark #dst-panel .nv-range,html.ui-dark #dst-panel .nv-top{color:#c0c6d0}
+html.ui-dark #dst-panel .nv-sg.walk,html.ui-dark #dst-panel .nv-sg.wait{background:#262c36;color:#98a2b3}
+html.ui-dark #dst-panel .nv-bd{background:#1a1f27}
+</style>
+
 </body>
 </html>
