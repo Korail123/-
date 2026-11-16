@@ -6365,8 +6365,9 @@ function renderDayDetail() {
     var ddXi = (!isStatus && diaNo && typeof xrGet === 'function') ? xrGet('info', {})[dateKeyForSelectedDay()] : null;
     if (ddXi && xrNorm(ddXi.dia) === xrNorm(diaNo)) {
       /* XROIS 출근·퇴근은 행로표로 계산한 시각보다 무조건 우선 */
-      if (ddXi.start) { startTime = ddXi.start; rsStartEstimated = !!ddXi.est; }
-      if (ddXi.end) { endTime = ddXi.end; rsEndEstimated = !!ddXi.est; }
+      /* 행로표 첫·마지막 시각으로 짐작한 값(est)은 출근·퇴근으로 쓰지 않음 */
+      if (ddXi.start && !ddXi.est) { startTime = ddXi.start; rsStartEstimated = false; }
+      if (ddXi.end && !ddXi.est) { endTime = ddXi.end; rsEndEstimated = false; }
       var xt1 = ddXi.t1 || (ddXi.trains || [])[0] || '', xt2 = ddXi.t2 || (ddXi.trains || [])[1] || '';
       if (xt1) train1 = xt1;
       if (xt2) train2 = xt2;
@@ -6696,13 +6697,14 @@ function rsSharedDiaFind(dia, dk) {
 }
 function rsUseSharedDia(dia, dk, e, quiet) {
   dia = String(dia || '').trim().toUpperCase();
-  var a = rpAll(), xr = e.xr ? Object.assign({}, e.xr, { date: dk }) : null;
+  var xd = (e.xrDates && e.xrDates[dk]) || ((e.xr && e.xr.date === dk) ? e.xr : null);
+  var a = rpAll(), xr = xd ? { start: xd.start || '', end: xd.end || '', t1: (e.xr && e.xr.t1) || '', t2: (e.xr && e.xr.t2) || '', date: dk } : null;
   a[dia] = { rows: e.rows || [], at: Date.now(), type: e.type || '', src: 'shared', xr: xr };
   rpSaveAll(a); rpSetDate(dk, dia);
   var drv = [];
   (e.rows || []).forEach(function (r) { var tn = String(r.train || '').toUpperCase(); if (/운전/.test(r.kind || '') && tn && tn !== 'K' && drv.indexOf(tn) < 0) drv.push(tn); });
   var t = rpTempTimes(e.rows || []);
-  var st = (xr && xr.start) || t.start || '', en = (xr && xr.end) || t.end || '';
+  var st = (xr && xr.start) || '', en = (xr && xr.end) || '';   /* 다른 날짜 · 행로표 계산 시각은 쓰지 않음 (XROIS가 오면 채워짐) */
   var t1 = (xr && xr.t1) || drv[0] || '', t2 = (xr && xr.t2) || drv[1] || '';
   try { var info = xrGet('info', {}); info[dk] = { dia: dia, start: st, end: en, trains: drv, t1: t1, t2: t2, src: 'shared' }; xrPut('info', info); } catch (er) {}
   if (e.type === '야') { try { var u = getCurrentUser(); rsAutoNextOff(u.employeeId, snapShiftKey(dk, 1)); } catch (er) {} }
@@ -8135,7 +8137,7 @@ function xrGroupPlanGet(dia, dk) {
   var t = rpTempTimes(c.rows || []), drv = [];
   (c.rows || []).forEach(function (r) { var tn = String(r.train || '').toUpperCase(); if (/운전/.test(r.kind || '') && tn && tn !== 'K' && drv.indexOf(tn) < 0) drv.push(tn); });
   return { dia: xrNorm(dia), rows: c.rows || [], xr: c.xr || null, trains: drv, type: c.type || '', viaViewer: true,
-    start: (c.xr && c.xr.start) || t.start || '', end: (c.xr && c.xr.end) || t.end || '', basis: t.basis || '' };
+    start: (c.xr && c.xr.start) || '', end: (c.xr && c.xr.end) || '', basis: '' };
 }
 function xrGroupPlanFetch(dia, dk, onDone) {
   if (typeof crewLinked !== 'function' || !crewLinked()) return false;
@@ -18620,11 +18622,13 @@ function rsEstimatedPlan(diaNo, dateKey, employeeId) {
   var remoteDates = rsSharedRouteCache[owner] && rsSharedRouteCache[owner].dates;
   if (dateKey && remoteDates && remoteDates[dateKey] && String(remoteDates[dateKey]).toUpperCase() !== dia) return null;
   var t = rpTempTimes(saved.rows || []);
-  var xr = saved.xr || null;
+  /* 출근·퇴근은 그 날짜의 XROIS 시각만 사용 (다른 날짜에 가져온 XROIS 시각 · 행로표로 계산한 예정 시각은 쓰지 않음) */
+  var xr = (typeof xrTimeFor === 'function') ? xrTimeFor(dateKey, dia, owner, saved) : null;
+  var xrUser = (typeof xrTimeUser === 'function') ? xrTimeUser(owner, saved) : false;
   var drv = [];
   (saved.rows || []).forEach(function (r) { var tn = String(r.train || '').toUpperCase(); if (/운전/.test(r.kind || '') && tn && tn !== 'K' && drv.indexOf(tn) < 0) drv.push(tn); });
   return { dia: dia, rows: saved.rows || [], xr: xr, trains: drv, type: saved.type || '',
-    start: (xr && xr.start) || t.start || saved.tempStart || '', end: (xr && xr.end) || t.end || saved.tempEnd || '', basis: t.basis || saved.tempBasis || '' };
+    start: (xr && xr.start) || (xrUser ? '' : (t.start || saved.tempStart || '')), end: (xr && xr.end) || (xrUser ? '' : (t.end || saved.tempEnd || '')), basis: xrUser ? '' : (t.basis || saved.tempBasis || '') };
 }
 /* 임시 행로표 예상시간: 출고가 있으면 출고운전 시작 70분 전, 없으면 첫 편승·승계·운전 시작 40분 전.
    퇴근은 마지막 최종 정리(정리·편승정리·입고정리)의 종료시각만 사용.
@@ -18882,11 +18886,12 @@ function rpRowHtml(r, i) {
 function rpRender(full) {
   if (full !== false) $('rp-rows').innerHTML = rpRows.map(rpRowHtml).join('') || '<div class="rp-empty">위에 표를 붙여넣거나 [구간 추가]로 입력하세요.</div>';
   var rows = rpRows.map(function (r) { return { kind: r.kind, train: r.train, from: r.from, to: r.to, dep: rpTime(r.dep), arr: rpTime(r.arr) }; });
-  var tm = rpTempTimes(rows);
-  $('rp-preview').innerHTML = rows.length ? '<img alt="예상 행로표 미리보기" src="' + rpUrl(rpDia || ($('rp-dia').value || '').toUpperCase(), rows) + '">' +
-    '<div class="rp-temp-time"><b>임시 다이아 예상 출근</b> ' + (tm.start || '미산정') +
-    ' <b>· 퇴근</b> ' + (tm.end || '최종 정리시간 필요') +
-    ' <small>(' + rpEsc(tm.basis) + ' / 실제 근무시각 확인 필요)</small></div>' : '';
+  var tm = rpTempTimes(rows), rDia = rpDia || ($('rp-dia').value || '').toUpperCase(), rDk = ($('rp-date') && $('rp-date').value) || '';
+  var rx = (typeof xrTimeFor === 'function') ? xrTimeFor(rDk, rDia) : null, linked = (typeof crewLinked === 'function') && crewLinked();
+  var timeLine = rx ? '<div class="rp-temp-time"><b>XROIS 출근</b> ' + rpEsc(rx.start || '-') + ' <b>· 퇴근</b> ' + rpEsc(rx.end || '-') + ' <small>(' + rpEsc(rDk) + ' XROIS 기준)</small></div>'
+    : linked ? '<div class="rp-temp-time"><b>출근 · 퇴근</b> XROIS에서 가져오면 표시돼요 <small>(예정 시각은 쓰지 않아요)</small></div>'
+    : '<div class="rp-temp-time"><b>임시 다이아 예상 출근</b> ' + (tm.start || '미산정') + ' <b>· 퇴근</b> ' + (tm.end || '최종 정리시간 필요') + ' <small>(' + rpEsc(tm.basis) + ' / 실제 근무시각 확인 필요)</small></div>';
+  $('rp-preview').innerHTML = rows.length ? '<img alt="예상 행로표 미리보기" src="' + rpUrl(rDia, rows) + '">' + timeLine : '';
 }
 function rpEdit(i, k, v) { if (!rpRows[i]) return; rpRows[i][k] = v; delete rpRows[i].auto; rpRender(false); }
 function rpDel(i) { rpRows.splice(i, 1); rpRender(); }
@@ -19685,6 +19690,7 @@ function xrApply(days, manual, crewMap) {
     Object.keys(info).forEach(function (k) { if (k < old) delete info[k]; });
     Object.keys(roster).forEach(function (k) { if (k < old) delete roster[k]; });
     xrPut('seen', seen); xrPut('info', info); xrPut('roster', roster);
+    try { xrStampRouteTimes(); } catch (e) {}
     var m2 = xrGet('meta', {}); m2.rosterAt = stampNow(); xrPut('meta', m2);
 
     /* 물어볼 목록에 쌓기 (고를 때까지 남아 있음, 지난 날짜는 뺌) */
@@ -21130,6 +21136,55 @@ html.ui-dark body #schedule-section > .sch-head > .sch-nav:active,html.ui-dark b
     var o = window[fn]; if (typeof o !== 'function') return;
     window[fn] = function () { var r = o.apply(this, arguments); setTimeout(all, 30); setTimeout(all, 400); return r; };
   });
+})();
+</script>
+<script id="xr-time-script">
+/* ===== 출근·퇴근 시각은 XROIS 기준 =====
+   · 내 근무: 이 폰에 받아 둔 XROIS 근무(날짜별)의 출근·퇴근
+   · 다른 사람: 그 사람이 XROIS로 받아 공유한 날짜별 출근·퇴근(xrDates)
+   · 다른 날짜에 받은 XROIS 시각, 행로표로 계산한 예정 시각은 쓰지 않음 */
+function xrTimeUser(owner, saved) {
+  var me = String(((typeof getCurrentUser === 'function' && getCurrentUser()) || {}).employeeId || '');
+  if (!owner || String(owner) === me) return (typeof crewLinked === 'function') && crewLinked();
+  return !!(saved && (saved.xrDates || (saved.xr && saved.xr.date)));
+}
+function xrTimeFor(dk, dia, owner, saved) {
+  if (!dk) return null;
+  dia = String(dia || '').trim().toUpperCase();
+  var me = String(((typeof getCurrentUser === 'function' && getCurrentUser()) || {}).employeeId || '');
+  var norm = function (v) { return (typeof xrNorm === 'function') ? xrNorm(v) : String(v || '').toUpperCase(); };
+  if (!owner || String(owner) === me) {
+    try { var i = xrGet('info', {})[dk]; if (i && (!dia || norm(i.dia) === norm(dia)) && !i.est && (i.start || i.end)) return { start: i.start || '', end: i.end || '', t1: i.t1 || '', t2: i.t2 || '', date: dk }; } catch (e) {}
+  }
+  if (saved) {
+    var d = saved.xrDates && saved.xrDates[dk];
+    if (d && (d.start || d.end)) return { start: d.start || '', end: d.end || '', t1: (saved.xr && saved.xr.t1) || '', t2: (saved.xr && saved.xr.t2) || '', date: dk };
+    if (saved.xr && saved.xr.date === dk && !saved.xr.est) return saved.xr;
+  }
+  return null;
+}
+/* XROIS로 받은 이번 달 · 다음 달 날짜별 출근·퇴근을 내 예상 행로표(다이아별)에 붙여 서버로 공유 → 근무그룹에서도 XROIS 시각 */
+function xrStampRouteTimes() {
+  if (typeof rpAll !== 'function' || typeof xrGet !== 'function') return;
+  var info = xrGet('info', {}), a = rpAll(), t = todayKST(), changed = false;
+  var from = getDateKey(t.y, t.m, 1), nx = new Date(t.y, t.m + 2, 0), to = getDateKey(nx.getFullYear(), nx.getMonth(), nx.getDate());
+  Object.keys(a).forEach(function (dia) {
+    var e = a[dia]; if (!e) return;
+    var old = JSON.stringify(e.xrDates || {}), m = {};
+    Object.keys(e.xrDates || {}).forEach(function (k) { if (k >= from) m[k] = e.xrDates[k]; });
+    Object.keys(info).forEach(function (k) {
+      var i = info[k]; if (k < from || k > to || !i || i.est || !(i.start || i.end)) return;
+      if (xrNorm(i.dia) === xrNorm(dia)) m[k] = { start: i.start || '', end: i.end || '' };
+    });
+    if (JSON.stringify(m) !== old) { e.xrDates = m; changed = true; }
+  });
+  if (changed) { try { rpSaveAll(a); } catch (e) {} try { if (typeof rsShareQueue === 'function') rsShareQueue(); } catch (e) {} }
+}
+/* 이미 이번 달 XROIS 근무를 받아 둔 사람: 앱을 열 때 한 번 XROIS 기준으로 맞춤 */
+(function () {
+  function run() { try { if ((typeof crewLinked === 'function') && crewLinked() && getCurrentUser().token) { xrStampRouteTimes(); try { renderDayDetail(); } catch (e) {} } } catch (e) {} }
+  window.addEventListener('load', function () { setTimeout(run, 3000); });
+  setTimeout(run, 8000);
 })();
 </script>
 </body>
