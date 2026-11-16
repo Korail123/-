@@ -1,34 +1,19 @@
 {
-  "id": "/",
+  "id": "./",
   "name": "철도비서",
   "short_name": "철도비서",
-  "description": "열차 운휴·통과·도착 및 근무 열차 알림을 제공하는 철도비서",
-  "start_url": "/",
-  "scope": "/",
+  "description": "철도 승무원을 위한 근무표 · 열차운행정보 비서",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
-  "lang": "ko",
-  "prefer_related_applications": false,
   "icons": [
-    {
-      "src": "/icon-192.png?v=3",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-512.png?v=3",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-maskable-512.png?v=3",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
