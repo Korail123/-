@@ -2167,8 +2167,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
     <div id="dst-out" class="dst-out"></div>
     <div class="dst-foot">
-      <span id="dst-time"></span>
-      <a class="dst-credit" href="https://railnow.runvia.app" target="_blank" rel="noopener"><img class="rn-lt" src="https://railnow.runvia.app/brand/railnow-provided-by-light.svg" alt="Provided by RailNow" width="96" height="38" loading="lazy"><img class="rn-dk" src="https://railnow.runvia.app/brand/railnow-provided-by-dark.svg" alt="Provided by RailNow" width="96" height="38" loading="lazy"></a>
+      <span class="dst-foot-l"><span id="dst-time"></span><small class="dst-src">자료: 서울시 열린데이터광장 (지하철 실시간 도착정보 · 지하철역 정보)</small></span>
     </div>
     <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeDstPanel()">닫기</button></div>
   </div>
@@ -12461,7 +12460,7 @@ function passCheckCancelled(train, dateKey, cb) {
 }
 
 /* ============ 편승열차 조회 (RailNow 실시간 · 엣지 함수 railnow 경유, 키는 서버에만) ============ */
-var DST_FN = 'railnow';
+var DST_FN = 'subway';  /* 서울시 지하철 실시간 도착정보 · 지하철역 정보 */
 var DST_LIST = ['청량리', '용산', '서울', '수색', '의정부'];
 var dstTimer = null, dstTick = null, dstBusy = false, dstLast = null, dstSeq = 0;
 function dstCfg() { var c = null; try { c = JSON.parse(localStorage.getItem('dstCfg') || 'null'); } catch (e) {} c = c || {}; if (DST_LIST.indexOf(c.dest) < 0) c.dest = '청량리'; c.mode = 'gps'; return c; }
@@ -12560,7 +12559,7 @@ function dstFetch(q, auto, my) {
   fetch(SUPABASE_URL + '/functions/v1/' + DST_FN, { method: 'POST', headers: h, body: JSON.stringify(q), signal: ctl ? ctl.signal : undefined })
     .then(function (r) { return r.json().catch(function () { return { success: false, message: '서버 응답을 읽지 못했어요. (' + r.status + ')' }; }); })
     .then(function (d) { dstOnData(d, my); })
-    .catch(function () { if (my === dstSeq) { if (dstLast) dstNote('연결이 불안정해요. 잠시 뒤 다시 불러올게요.'); else dstMsg('서버에 연결하지 못했어요. (railnow 함수가 배포됐는지 확인해 주세요)', 'warn'); dstSchedule(); } })
+    .catch(function () { if (my === dstSeq) { if (dstLast) dstNote('연결이 불안정해요. 잠시 뒤 다시 불러올게요.'); else dstMsg('서버에 연결하지 못했어요. (subway 함수가 배포됐는지 확인해 주세요)', 'warn'); dstSchedule(); } })
     .then(function () { dstBusy = false; dstSpin(false); if (tm) clearTimeout(tm); });
 }
 function dstOnData(d, my) {
@@ -12575,7 +12574,7 @@ function dstOnData(d, my) {
   dstFrom(d); dstDraw(); dstSchedule();
   if (!dstTick) dstTick = setInterval(dstDraw, 5000);
 }
-function dstSchedule() { if (dstTimer) clearTimeout(dstTimer); dstTimer = setTimeout(function () { if ($('dst-panel').classList.contains('active')) dstQuery(true); }, 30000); }
+function dstSchedule() { if (dstTimer) clearTimeout(dstTimer); dstTimer = setTimeout(function () { if ($('dst-panel').classList.contains('active')) dstQuery(true); }, 60000); }
 function dstNote(t) { var n = document.querySelector('#dst-out .dst-note'); if (n) n.textContent = t; }
 function dstLine(t) { return String(t.line || '').replace(/\s*\(.*\)$/, ''); }
 function dstTags(t) { return (t.express ? '<em class="dst-tag exp">급행</em>' : '') + (t.delaySec >= 120 ? '<em class="dst-tag late">' + Math.round(t.delaySec / 60) + '분 지연</em>' : ''); }
@@ -12642,7 +12641,7 @@ function dstDraw() {
     var etaHtml = f.eta == null ? '<b>-</b>' : (f.eta <= 30 ? '<b>곧</b> 도착' : '<b>' + Math.round(f.eta / 60) + '</b>분 후');
     var html = '<div class="dst-hero" style="--lc:' + lc + '">'
       + '<div class="dst-hero-top"><i class="dst-chip">' + dstEsc(dstLine(f)) + '</i><b>' + dstEsc(f.terminus || '?') + '행</b>' + (f.express ? '<em class="dst-tag exp">급행</em>' : '') + (f.delaySec >= 60 ? '<em class="dst-tag late">' + Math.round(f.delaySec / 60) + '분 지연</em>' : '') + '</div>'
-      + '<div class="dst-hero-mid"><span class="dst-hero-eta">' + etaHtml + '</span><span class="dst-hero-arr"><small>' + dstEsc(d.dest) + ' 도착</small><b>' + dstEsc(f.destArrive || '--:--') + '</b></span></div>'
+      + '<div class="dst-hero-mid"><span class="dst-hero-eta">' + etaHtml + '</span><span class="dst-hero-arr"><small>' + dstEsc(d.dest) + ' 도착' + (f.rideEstimated ? ' 예상' : '') + '</small><b>' + (f.rideEstimated ? '<em class="dst-approx">약</em>' : '') + dstEsc(f.destArrive || '--:--') + '</b></span></div>'
       + (f.route && f.route.length ? dstRouteHtml(f, d) : (isX ? dstXferHtml(f, 'dst-hero-x') : ''))
       + '<div class="dst-hero-now">' + dstEsc(String(f.now || '').replace(/^\S+열차\s*/, '')) + (fr != null ? ' · 총 ' + fr + '분' : '') + (f.stops ? ' · ' + f.stops + '개 역' : '') + '</div></div>';
     if (isX && f.transfer) { var fx = dstXfers(f); html = '<div class="dst-xbadge">' + (fx.length === 1
@@ -12662,12 +12661,12 @@ function dstDraw() {
         return '<div class="dst-row' + (miss ? ' miss' : '') + '" style="--lc:' + c + '"><i class="bar"></i><span class="ln">' + dstEsc(dstLine(t)) + '</span>'
           + '<span class="term"><span class="tm"><b>' + dstEsc(t.terminus || '?') + '행</b>' + (t.express ? '<em class="dst-tag exp">급행</em>' : '') + dl + '</span>'
           + (t.transfer ? '<small class="tx"><i style="background:' + dstEsc(t.transfer.color || '#98a2b3') + '"></i>' + dstEsc(dstXferStations(t)) + ' 환승</small>' : '') + '</span>'
-          + '<span class="eta">' + e + '</span><span class="ride">' + (r == null ? '-' : r + '분') + '</span><span class="arr">' + dstEsc(t.destArrive || '--:--') + '</span></div>';
+          + '<span class="eta">' + e + '</span><span class="ride">' + (r == null ? '-' : r + '분') + '</span><span class="arr">' + (t.rideEstimated ? '약 ' : '') + dstEsc(t.destArrive || '--:--') + '</span></div>';
       }).join('') + '</div>';
     $('dst-out').innerHTML = html + '<div class="dst-note"></div>';
   }
   var t = new Date(d._got);
-  $('dst-time').textContent = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') + ' 기준 · 지연 반영 · 30초마다 갱신';
+  $('dst-time').textContent = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') + ' 기준 · 지연 반영 · 1분마다 갱신';
 }
 /* ---- 메인화면 편승열차 (저장하면 환영 카드 아래에 다음 열차를 애니메이션으로) ---- */
 var dstPinData = null, dstPinErr = '', dstPinBusy = false;
@@ -12689,6 +12688,20 @@ function dstBest(d) {
   var walk = dstWalkMin(d.near && d.near[0] ? d.near[0].m : null), wsec = walk == null ? 0 : walk * 60;
   if (!tr.length) return { f: null, walk: walk };
   return { f: tr[dstPickIdx(tr, wsec, d.mode === 'transfer')], walk: walk };
+}
+/* 서버(subway 함수)에 편승열차 묻기 — 메인화면 위젯용 (결과를 cb로 돌려줌) */
+function dstRequest(q, cb) {
+  var u = null; try { u = getCurrentUser(); } catch (e) {}
+  if (!u || !u.token) { cb({ success: false, message: '다시 로그인해 주세요.' }); return; }
+  var h = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY };
+  if (/^eyJ/.test(SUPABASE_KEY)) h.Authorization = 'Bearer ' + SUPABASE_KEY;
+  q.employeeId = u.employeeId; q.token = u.token;
+  var ctl = null, tm = null;
+  try { ctl = new AbortController(); tm = setTimeout(function () { ctl.abort(); }, 25000); } catch (e) {}
+  fetch(SUPABASE_URL + '/functions/v1/' + DST_FN, { method: 'POST', headers: h, body: JSON.stringify(q), signal: ctl ? ctl.signal : undefined })
+    .then(function (r) { return r.json().catch(function () { return { success: false, message: '서버 응답을 읽지 못했어요. (' + r.status + ')' }; }); })
+    .then(function (d) { if (tm) clearTimeout(tm); cb(d || { success: false }); })
+    .catch(function () { if (tm) clearTimeout(tm); cb({ success: false, net: true, message: '서버에 연결하지 못했어요.' }); });
 }
 function dstPinFetch() {
   if (dstPinBusy) return;
@@ -12712,7 +12725,7 @@ function dstPinRender() {
   var d = dstPinData, c = dstCfg();
   if (d && d.dest !== c.dest) d = dstPinData = null;
   var b = d ? dstBest(d) : null;
-  $('dst-pin-route').textContent = (d ? d.station + '역' : '현재 위치') + ' → ' + c.dest + (b && b.f && b.f.transfer ? ' · ' + dstXferStations(b.f) + ' 환승' : '') + (b && b.walk != null ? ' · 도보 ' + b.walk + '분' : '');
+  $('dst-pin-route').textContent = (d ? d.station + '역' : '현재 위치') + ' → ' + c.dest + (b && b.f && b.f.transfer ? (dstXfers(b.f).length > 1 ? ' · 환승 ' + dstXfers(b.f).length + '회' : ' · ' + dstXferStations(b.f) + ' 환승') : '') + (b && b.walk != null ? ' · 도보 ' + b.walk + '분' : '');
   if (!d || !b.f) {
     el.className = 'dst-pin msg';
     $('dst-pin-msg').textContent = d ? '지금 ' + c.dest + '까지 가는 전철이 없어요' : (dstPinErr || '편승열차 정보를 불러오는 중…');
@@ -12736,7 +12749,7 @@ function dstPinLoop(force) {
   el.hidden = !on;
   if (!on || !dstMainVisible()) return;
   var age = dstPinData ? Date.now() - dstPinData._got : 1e9;
-  if (age > (force === true ? 15000 : 60000)) dstPinFetch();
+  if (age > (force === true ? 30000 : 120000)) dstPinFetch(); /* RailNow 조회 한도(시간당 500회) 아끼려고 2분마다 */
   dstPinRender();
 }
 setInterval(dstPinLoop, 5000);
@@ -17494,6 +17507,9 @@ height: calc(90px + env(safe-area-inset-bottom));
 #dst-panel .rt-mid .full{display:none}
 #dst-panel .rt-mid.open .full{display:inline}
 #dst-panel .rt-mid.open .short{display:none}
+#dst-panel .dst-approx{font-style:normal;font-size:13px;font-weight:800;color:#8a94a6;margin-right:3px}
+#dst-panel .dst-foot-l{display:flex;flex-direction:column;gap:1px;min-width:0}
+#dst-panel .dst-src{font-size:10.5px;color:#98a2b3}
 #dst-panel .dst-hero-x{display:flex;flex-wrap:wrap;align-items:center;gap:5px 6px;margin-top:9px;padding:8px 10px;border-radius:12px;background:#fff;border:1px dashed #cdd8ea;font-size:12.5px;color:#344054}
 #dst-panel .dst-hero-x .x-stn b{color:#1b2b45}
 #dst-panel .dst-hero-x .x-arrow{padding:1px 6px;border-radius:6px;background:#fff4e5;color:#b54708;font-size:11px;font-weight:800}
