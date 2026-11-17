@@ -1714,6 +1714,16 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <textarea id="board-editor-content" class="be-input be-content" rows="12" maxlength="5000" placeholder="내용을 입력해주세요"></textarea>
         <div class="be-count"><span id="be-count">0</span> / 5000</div>
       </div>
+      <div class="be-field be-att">
+        <div class="be-label">첨부 <small>사진 · PDF · 문서 · APK · 한 파일 30MB · 8개까지</small></div>
+        <div class="be-att-bar">
+          <button type="button" class="be-att-btn" onclick="beAttPick('image')"><i class="ba-ico ba-img"></i><span>사진</span></button>
+          <button type="button" class="be-att-btn" onclick="beAttPick('pdf')"><i class="ba-ico ba-pdf"></i><span>PDF</span></button>
+          <button type="button" class="be-att-btn" onclick="beAttPick('file')"><i class="ba-ico ba-file"></i><span>첨부파일</span></button>
+        </div>
+        <div id="be-att-list" class="be-att-list"></div>
+        <input type="file" id="be-att-input" multiple style="display:none" onchange="beAttChosen(this)">
+      </div>
       <div id="board-editor-message" class="status-message" style="white-space:normal"></div>
       <button type="button" class="be-save" onclick="saveBoardPost()">저장하기</button>
     </div>
@@ -1731,6 +1741,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       </div>
       <div id="board-detail-title" class="bp-title">게시물</div>
       <div id="board-detail-content" class="bp-content"></div>
+      <div id="board-detail-atts" class="bp-atts"></div>
       <div id="board-comment-section" class="bp-comments">
         <div class="bp-pill"><span id="bp-comment-count">댓글</span></div>
         <div id="board-comments" class="bp-comment-list"></div>
@@ -10735,7 +10746,10 @@ function openBoardEditor(type, post) {
   if (!user || user.employeeId === 'guest') { alert('로그인 후 이용해주세요.'); return; }
   $('board-editor-title').textContent = (type === 'notice' ? '공지사항 ' : '건의사항 ') + (boardEditorPostId ? '수정' : '작성');
   $('board-editor-subject').value = post ? (type === 'notice' ? noticeTitleOf(post) : (post.title || '')) : '';
-  $('board-editor-content').value = post ? (post.content || post.body || '') : '';
+  var beParsed = boardAttParse(post ? (post.content || post.body || '') : '');
+  $('board-editor-content').value = beParsed.text;
+  beAtt = beParsed.atts.map(function (a) { return Object.assign({ st: 'ok', pct: 100 }, a); });
+  beAttRender();
   /* 분류: 공지사항은 공지사항·업데이트·기타, 건의사항은 기존 분류 */
   var catSel = $('board-editor-category');
   if (!catSel.__suggestHtml) catSel.__suggestHtml = catSel.innerHTML;
@@ -10769,7 +10783,10 @@ function saveBoardPost() {
   var msg = $('board-editor-message');
   if (boardEditorType === 'notice' && !isBoardAdmin()) { msg.textContent = '공지사항 작성은 관리자 199878 송주영만 가능합니다.'; return; }
   if (!title) { msg.textContent = '제목을 입력해주세요.'; return; }
-  if (!content) { msg.textContent = '내용을 입력해주세요.'; return; }
+  if (!content && !beAtt.length) { msg.textContent = '내용을 입력해주세요.'; return; }
+  if (beAtt.some(function (a) { return a.st === 'up'; })) { msg.textContent = '첨부파일을 올리는 중이에요. 다 올라간 뒤 저장해주세요.'; return; }
+  var okAtt = beAtt.filter(function (a) { return a.st === 'ok' && a.url; });
+  if (okAtt.length) content = (content ? content + '\n\n' : '') + okAtt.map(boardAttMarker).join('\n');
   msg.textContent = '저장 중...';
   var category = $('board-editor-category').value;
   /* 공지사항 분류는 제목 앞에 [분류]로도 저장 (서버에 분류 칸이 없어도 유지되도록, 화면에서는 떼고 보여줌) */
@@ -10814,6 +10831,7 @@ function openBoardDetail(type, id) {
   $('bp-author-name').textContent = '';
   $('board-detail-meta').textContent = '게시물을 불러오는 중...';
   $('board-detail-content').textContent = '';
+  if ($('board-detail-atts')) $('board-detail-atts').innerHTML = '';
   $('board-comments').innerHTML = '<div class="dia-empty">댓글을 불러오는 중...</div>';
   $('bp-comment-count').textContent = '댓글';
   $('board-detail-actions').innerHTML = '';
@@ -10839,7 +10857,9 @@ function openBoardDetail(type, id) {
     var cat = type === 'notice' ? noticeCatOf(post) : (post.category || '');
     $('board-detail-meta').textContent = (cat ? cat + ' · ' : '') + boardTimeText(post.createdAt || post.date);
     $('board-detail-title').textContent = type === 'notice' ? noticeTitleOf(post) : (post.title || '건의사항');
-    $('board-detail-content').textContent = post.content || post.body || '';
+    var bdParsed = boardAttParse(post.content || post.body || '');
+    $('board-detail-content').textContent = bdParsed.text;
+    $('board-detail-atts').innerHTML = boardAttViewHtml(bdParsed.atts);
     var canEdit = type === 'notice' ? isBoardAdmin() : String(authorId) === String(getCurrentUser().employeeId);
     $('board-detail-actions').innerHTML = 
       (canEdit
@@ -16672,7 +16692,8 @@ function permRender() {
     if (rsAppIn()) {
       bgi.innerHTML = '<b>철도비서 앱 알림</b><br>· 출근 · 도중출무 알람: 휴대폰에 예약돼서 <b>앱을 닫아도</b> 울려요<br>' +
         (rsAppHas('bgWatch') ? '· 열차 운휴 · 통과/도착: <b>앱을 닫아도</b> 확인해요<br>' + rsBgStatusHtml()
-          : '· 열차 운휴 · 통과/도착: 앱이 <b>열려 있을 때</b> 와요 · <a href="javascript:void 0" onclick="openAppUpdate()">앱 업데이트(1.1.0)</a>하면 꺼져도 와요');
+          : '· 열차 운휴 · 통과/도착: 앱이 <b>열려 있을 때</b> 와요 · <a href="javascript:void 0" onclick="openAppUpdate()">앱 업데이트(1.1.0)</a>하면 꺼져도 와요') +
+        rsPermHtml();
       bgi.style.display = '';
     } else bgi.style.display = 'none';
   }
@@ -16769,14 +16790,18 @@ function permAutoPrompt(gen) {
   (function attempt() {
     if (gen !== loginPopupGen) return;
     var u = getCurrentUser();
-    if (!u.token || LS.getItem('permAsked_' + u.employeeId)) return;
-    if (rsAppIn()) return;
+    var app = rsAppIn() && rsAppHas('perms');
+    if (!u.token || LS.getItem((app ? 'permAskedApp_' : 'permAsked_') + u.employeeId)) return;
+    if (rsAppIn()) { if (!app || !rsPermMissing().length) return; }
+    else {
     if (!('Notification' in window) && !(permIsIOS() && !permIsStandalone())) return;
     if ('Notification' in window && Notification.permission !== 'default') return;
+    }
     if (document.querySelector('.dia-modal.active, .schedule-edit-modal.active, .route-viewer.active, .notice-popup.active, [id$="-panel"].active')) {
       if (++tries < 8) setTimeout(attempt, 2500);
       return;
     }
+    if (app) { try { LS.setItem('permAskedApp_' + u.employeeId, '1'); } catch (e) {} }   /* 앱 권한 안내는 앱 설치 후 한 번 */
     openPermPanel();
   })();
 }
@@ -24390,6 +24415,209 @@ html.ui-dark #kl-panel .kl-re{background:#232a35;color:#e4e7ec}
 .rsapp-upd button{grid-row:1/3;grid-column:2;height:40px;padding:0 16px;border:0;border-radius:12px;background:#2f6fd6;color:#fff;font:inherit;font-weight:800}
 .rsapp-upd i{grid-row:1/3;grid-column:3;font-style:normal;font-size:22px;color:#98a2b3;padding:0 4px;cursor:pointer}
 </style>
+<script id="board-attach">
+/* ============ 공지사항 · 건의사항 첨부 (사진 · PDF · 문서 · APK) ============
+   · 파일은 Supabase 함수 board-files가 Storage(board-files 버킷)에 올리고 주소를 돌려줌
+   · 글 내용 맨 아래에 [[첨부|종류|크기|이름|주소]] 줄로 같이 저장 (서버 표 수정 없이) → 화면에서는 이 줄을 떼고 아이콘 · 사진으로 보여줌
+   · 큰 사진은 올리기 전에 긴 변 1920px로 줄임 */
+var BOARD_ATT_FN = 'board-files';
+var BOARD_ATT_MAX = 8, BOARD_ATT_BYTES = 30 * 1024 * 1024;
+var BOARD_ATT_RE = /^\[\[첨부\|([a-z]+)\|(\d+)\|([^|\]]*)\|(https:\/\/[^\]\s]+)\]\]\s*$/;
+var beAtt = [];
+function boardAttExt(name) { var m = /\.([a-z0-9]{1,5})$/i.exec(String(name || '')); return m ? m[1].toLowerCase() : ''; }
+function boardAttKind(name) {
+  var e = boardAttExt(name);
+  if (/^(jpe?g|png|gif|webp|heic|heif)$/.test(e)) return 'image';
+  if (e === 'pdf') return 'pdf';
+  if (e === 'apk') return 'apk';
+  if (/^(hwp|hwpx|doc|docx|txt|rtf)$/.test(e)) return 'doc';
+  if (/^(xls|xlsx|csv)$/.test(e)) return 'sheet';
+  if (/^(ppt|pptx)$/.test(e)) return 'slide';
+  if (/^(zip)$/.test(e)) return 'zip';
+  return '';
+}
+function boardAttSize(n) { n = +n || 0; return n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB'; }
+function boardAttMarker(a) { return '[[첨부|' + a.kind + '|' + (a.size || 0) + '|' + String(a.name || '파일').replace(/[|\[\]\r\n]/g, ' ') + '|' + a.url + ']]'; }
+function boardAttParse(content) {
+  var atts = [], keep = [];
+  String(content || '').replace(/\r/g, '').split('\n').forEach(function (line) {
+    var m = BOARD_ATT_RE.exec(line.trim());
+    if (m && /^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/board-files\//.test(m[4])) atts.push({ kind: m[1], size: +m[2], name: m[3], url: m[4] });
+    else keep.push(line);
+  });
+  return { text: keep.join('\n').replace(/\s+$/, ''), atts: atts };
+}
+/* 종류별 아이콘 (선 아이콘 + 색 타일) */
+var BOARD_ATT_ICO = {
+  image: ['#2f80ed', '<rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17l5-5 4 4 3-3 4 4"/>'],
+  pdf: ['#e5484d', '<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><text x="13" y="18" font-size="5.6" font-weight="900" text-anchor="middle" fill="currentColor" stroke="none">PDF</text>'],
+  apk: ['#2fb36b', '<rect x="6" y="9" width="12" height="10" rx="2"/><path d="M8 9a4 4 0 0 1 8 0"/><path d="M9 5.5l-1-1.5M15 5.5l1-1.5"/><circle cx="10" cy="7.3" r=".6"/><circle cx="14" cy="7.3" r=".6"/>'],
+  doc: ['#3b6fd8', '<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M9.5 12.5h6M9.5 15.5h6M9.5 18.5h4"/>'],
+  sheet: ['#1f9d55', '<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M9.5 12h6v7h-6zM9.5 15.5h6M12.5 12v7"/>'],
+  slide: ['#e8803a', '<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><rect x="9.5" y="12" width="6" height="4.5" rx=".6"/>'],
+  zip: ['#8a6d3b', '<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M11 5v1.5M11 8v1.5M11 11v1.5"/><rect x="10" y="13.5" width="2.2" height="3" rx=".5"/>'],
+  file: ['#64748b', '<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/>']
+};
+function boardAttIco(kind, size) {
+  var d = BOARD_ATT_ICO[kind] || BOARD_ATT_ICO.file;
+  return '<span class="ba-tile" style="--c:' + d[0] + ';width:' + size + 'px;height:' + size + 'px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + d[1] + '</svg></span>';
+}
+function boardAttLabel(kind) { return { image: '사진', pdf: 'PDF', apk: 'APK', doc: '문서', sheet: '표', slide: '발표', zip: '압축' }[kind] || '파일'; }
+/* ----- 글쓰기 ----- */
+function beAttPick(type) {
+  if (beAtt.length >= BOARD_ATT_MAX) { showToast('첨부는 ' + BOARD_ATT_MAX + '개까지 넣을 수 있어요.'); return; }
+  var inp = $('be-att-input');
+  inp.accept = type === 'image' ? 'image/*' : type === 'pdf' ? 'application/pdf,.pdf'
+    : '.pdf,.apk,.hwp,.hwpx,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,image/*,application/pdf,application/vnd.android.package-archive';
+  inp.value = '';
+  inp.click();
+}
+function beAttChosen(inp) {
+  var files = Array.prototype.slice.call(inp.files || []);
+  inp.value = '';
+  files.forEach(function (f) {
+    if (beAtt.length >= BOARD_ATT_MAX) { showToast('첨부는 ' + BOARD_ATT_MAX + '개까지예요.'); return; }
+    var kind = boardAttKind(f.name);
+    if (!kind) { showToast(f.name + ' · 올릴 수 없는 파일 종류예요.'); return; }
+    if (f.size > BOARD_ATT_BYTES && kind !== 'image') { showToast(f.name + ' · 30MB가 넘어요.'); return; }
+    var a = { kind: kind, name: f.name, size: f.size, st: 'up', pct: 0, url: '' };
+    beAtt.push(a); beAttRender();
+    beAttPrepare(f, kind, function (blob, name) {
+      if (blob.size > BOARD_ATT_BYTES) { a.st = 'err'; a.err = '30MB가 넘어요'; beAttRender(); return; }
+      a.name = name; a.size = blob.size;
+      if (kind === 'image') { try { a.thumb = URL.createObjectURL(blob); } catch (e) {} }
+      beAttUpload(a, blob);
+    });
+  });
+}
+/* 큰 사진(1.5MB 넘거나 긴 변 2400px 넘음)은 긴 변 1920px JPEG로 줄임 · HEIC · GIF는 그대로 */
+function beAttPrepare(f, kind, cb) {
+  if (kind !== 'image' || !/^image\/(jpeg|png|webp)$/.test(f.type || '')) { cb(f, f.name); return; }
+  var url = URL.createObjectURL(f), img = new Image();
+  img.onload = function () {
+    var w = img.naturalWidth, h = img.naturalHeight, big = Math.max(w, h);
+    if (f.size <= 1.5 * 1048576 && big <= 2400) { URL.revokeObjectURL(url); cb(f, f.name); return; }
+    var k = Math.min(1, 1920 / big), cv = document.createElement('canvas');
+    cv.width = Math.round(w * k); cv.height = Math.round(h * k);
+    var cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(img, 0, 0, cv.width, cv.height);
+    URL.revokeObjectURL(url);
+    cv.toBlob(function (b) { cb(b && b.size < f.size ? b : f, b && b.size < f.size ? f.name.replace(/\.[^.]+$/, '') + '.jpg' : f.name); }, 'image/jpeg', 0.85);
+  };
+  img.onerror = function () { URL.revokeObjectURL(url); cb(f, f.name); };
+  img.src = url;
+}
+function beAttUpload(a, blob) {
+  var u = getCurrentUser();
+  var fd = new FormData();
+  fd.append('employeeId', u.employeeId); fd.append('token', u.token || ''); fd.append('name', a.name); fd.append('file', blob, a.name);
+  var x = new XMLHttpRequest();
+  a.xhr = x;
+  x.open('POST', SUPABASE_URL + '/functions/v1/' + BOARD_ATT_FN);
+  x.setRequestHeader('apikey', SUPABASE_KEY);
+  if (/^eyJ/.test(SUPABASE_KEY)) x.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_KEY);
+  x.upload.onprogress = function (e) { if (e.lengthComputable) { a.pct = Math.min(99, Math.round(e.loaded * 100 / e.total)); beAttRenderOne(a); } };
+  x.onload = function () {
+    var j = null; try { j = JSON.parse(x.responseText); } catch (e) {}
+    if (j && j.success && j.url) { a.st = 'ok'; a.pct = 100; a.url = j.url; a.kind = boardAttKind(a.name) || a.kind; }
+    else { a.st = 'err'; a.err = (j && j.message) || (x.status === 404 ? '서버 함수 board-files가 없어요 (Deploy 필요)' : '올리지 못했어요 (' + x.status + ')'); }
+    beAttRender();
+  };
+  x.onerror = function () { a.st = 'err'; a.err = '인터넷 연결을 확인해주세요'; beAttRender(); };
+  x.send(fd);
+}
+function beAttRemove(i) {
+  var a = beAtt[i]; if (!a) return;
+  try { if (a.xhr && a.st === 'up') a.xhr.abort(); } catch (e) {}
+  beAtt.splice(i, 1); beAttRender();
+}
+function beAttRetry(i) { showToast('다시 골라서 올려주세요.'); beAttRemove(i); }
+function beAttItemHtml(a, i) {
+  var ico = a.kind === 'image' && (a.thumb || a.url) ? '<span class="ba-thumb" style="background-image:url(\'' + esc(a.thumb || a.url) + '\')"></span>' : boardAttIco(a.kind, 30);
+  var sub = a.st === 'up' ? '<span class="ba-bar"><i style="width:' + Math.max(4, a.pct) + '%"></i></span>'
+    : a.st === 'err' ? '<small class="ba-err">' + esc(a.err || '실패') + '</small>'
+    : '<small>' + boardAttLabel(a.kind) + ' · ' + boardAttSize(a.size) + '</small>';
+  return '<div class="ba-item' + (a.st === 'err' ? ' err' : '') + '" data-i="' + i + '">' + ico +
+    '<div class="ba-txt"><b>' + esc(a.name) + '</b>' + sub + '</div>' +
+    '<button type="button" class="ba-x" aria-label="첨부 빼기" onclick="beAttRemove(' + i + ')">✕</button></div>';
+}
+function beAttRender() {
+  var box = $('be-att-list'); if (!box) return;
+  box.innerHTML = beAtt.map(beAttItemHtml).join('');
+}
+function beAttRenderOne(a) {
+  var i = beAtt.indexOf(a), box = $('be-att-list'); if (i < 0 || !box) return;
+  var el = box.querySelector('.ba-item[data-i="' + i + '"] .ba-bar i');
+  if (el) el.style.width = Math.max(4, a.pct) + '%'; else beAttRender();
+}
+/* ----- 글 보기: 사진은 미리보기 칸, 나머지는 아이콘 카드 ----- */
+function boardAttViewHtml(atts) {
+  if (!atts || !atts.length) return '';
+  var imgs = atts.filter(function (a) { return a.kind === 'image'; }), files = atts.filter(function (a) { return a.kind !== 'image'; });
+  var h = '';
+  if (imgs.length) h += '<div class="bp-att-imgs n' + Math.min(imgs.length, 3) + '">' + imgs.map(function (a) {
+    return '<button type="button" class="bp-att-img" onclick="boardAttOpen(decodeURIComponent(\'' + encodeURIComponent(a.url) + '\'),\'image\')" aria-label="' + esc(a.name) + ' 크게 보기"><img src="' + esc(a.url) + '" alt="' + esc(a.name) + '" loading="lazy"></button>';
+  }).join('') + '</div>';
+  if (files.length) h += '<div class="bp-att-files">' + files.map(function (a) {
+    return '<button type="button" class="bp-att-file" onclick="boardAttOpen(decodeURIComponent(\'' + encodeURIComponent(a.url) + '\'),\'' + a.kind + '\')">' + boardAttIco(a.kind, 32) +
+      '<span class="ba-txt"><b>' + esc(a.name) + '</b><small>' + boardAttLabel(a.kind) + ' · ' + boardAttSize(a.size) + (a.kind === 'apk' ? ' · 눌러서 내려받기' : ' · 눌러서 열기') + '</small></span><span class="bp-att-dl">↓</span></button>';
+  }).join('') + '</div>';
+  return h;
+}
+function boardAttOpen(url, kind) {
+  if (kind === 'image') { boardAttViewer(url); return; }
+  if (rsAppHas('openUrl')) { rsAppCall('openUrl', url); return; }   /* 앱: 바깥 브라우저 · 다운로드 */
+  try { window.open(url, '_blank', 'noopener'); } catch (e) { location.href = url; }
+}
+function boardAttViewer(url) {
+  var v = document.createElement('div'); v.className = 'bp-att-viewer';
+  v.innerHTML = '<img src="' + esc(url) + '" alt=""><div class="bav-bar"><button type="button" class="bav-dl">원본 열기</button><button type="button" class="bav-x">닫기</button></div>';
+  v.onclick = function (e) { if (e.target === v || e.target.tagName === 'IMG') v.remove(); };
+  v.querySelector('.bav-x').onclick = function () { v.remove(); };
+  v.querySelector('.bav-dl').onclick = function (e) { e.stopPropagation(); if (rsAppHas('openUrl')) rsAppCall('openUrl', url); else window.open(url, '_blank', 'noopener'); };
+  document.body.appendChild(v);
+}
+</script>
+<style id="board-attach-style">
+.be-att .be-label small{font-weight:500;color:#98a2b3;font-size:11px;margin-left:4px}
+.be-att-bar{display:flex;flex-wrap:wrap;gap:6px}
+.be-att-btn{display:inline-flex;align-items:center;gap:5px;padding:4px 10px 4px 5px;border:1px solid #e3e8ef;border-radius:999px;background:#fff;color:#33415c;font-size:12px;font-weight:800;line-height:1}
+.be-att-btn:active{transform:scale(.97);background:#f4f7fb}
+.ba-ico{width:22px;height:22px;border-radius:50%;display:block;flex:0 0 22px;background-repeat:no-repeat;background-position:center;background-size:14px}
+.ba-img{background-color:#e8f1fe;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232f80ed' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='2.5'/%3E%3Ccircle cx='9' cy='10' r='1.8'/%3E%3Cpath d='M4 17l5-5 4 4 3-3 4 4'/%3E%3C/svg%3E")}
+.ba-pdf{background-color:#fdecec;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e5484d' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 3h7l5 5v13H7z'/%3E%3Cpath d='M14 3v5h5'/%3E%3Ctext x='13' y='18' font-size='5.6' font-weight='900' text-anchor='middle' fill='%23e5484d' stroke='none' font-family='sans-serif'%3EPDF%3C/text%3E%3C/svg%3E")}
+.ba-file{background-color:#eef1f5;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20.5 11.5l-8.2 8.2a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8'/%3E%3C/svg%3E")}
+.be-att-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.be-att-list:empty{display:none}
+.ba-item{display:flex;align-items:center;gap:8px;padding:5px 6px;border:1px solid #e3e8ef;border-radius:12px;background:#fff}
+.ba-item.err{border-color:#f3c2c2;background:#fff7f7}
+.ba-tile{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;border-radius:11px;color:var(--c);background:color-mix(in srgb,var(--c) 12%,#fff)}
+.ba-tile svg{width:62%;height:62%}
+.ba-thumb{flex:0 0 30px;width:30px;height:30px;border-radius:8px;background:#eef1f5 center/cover no-repeat}
+.ba-txt{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:left}
+.ba-txt b{font-size:12.5px;color:#1f2a44;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ba-txt small{font-size:11px;color:#7a8696}
+.ba-err{color:#c62828!important}
+.ba-bar{display:block;height:5px;border-radius:3px;background:#e8edf3;overflow:hidden;margin-top:3px}
+.ba-bar i{display:block;height:100%;background:#2f6fe0;border-radius:3px;transition:width .2s}
+.ba-x{flex:0 0 24px;width:24px;height:24px;border:0;border-radius:50%;background:#f1f4f8;color:#7a8696;font-size:12px}
+.bp-atts:empty{display:none}
+.bp-atts{margin:12px 0 4px;display:flex;flex-direction:column;gap:8px}
+.bp-att-imgs{display:grid;gap:6px;grid-template-columns:1fr}
+.bp-att-imgs.n2{grid-template-columns:1fr 1fr}
+.bp-att-imgs.n3{grid-template-columns:1fr 1fr 1fr}
+.bp-att-img{padding:0;border:0;border-radius:12px;overflow:hidden;background:#eef1f5;aspect-ratio:4/3}
+.bp-att-imgs.n1 .bp-att-img{aspect-ratio:auto;max-height:230px;justify-self:start;max-width:72%}
+.bp-att-img img{display:block;width:100%;height:100%;object-fit:cover}
+.bp-att-imgs.n1 .bp-att-img img{object-fit:cover;max-height:230px}
+.bp-att-files{display:flex;flex-direction:column;gap:6px}
+.bp-att-file{display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid #e3e8ef;border-radius:14px;background:#fff;width:100%}
+.bp-att-file:active{background:#f4f7fb}
+.bp-att-dl{flex:0 0 26px;width:26px;height:26px;font-size:13px;border-radius:50%;background:#eef4ff;color:#2f6fe0;font-weight:900;display:flex;align-items:center;justify-content:center}
+.bp-att-viewer{position:fixed;inset:0;z-index:100000;background:rgba(10,15,25,.92);display:flex;align-items:center;justify-content:center;flex-direction:column}
+.bp-att-viewer img{max-width:100%;max-height:calc(100% - 70px);object-fit:contain}
+.bav-bar{position:absolute;bottom:calc(14px + env(safe-area-inset-bottom));display:flex;gap:10px}
+.bav-bar button{padding:9px 18px;border-radius:12px;border:0;background:rgba(255,255,255,.16);color:#fff;font-weight:800;font-size:14px}
+</style>
 <script id="rs-bg-watch">
 /* ============ 안드로이드 앱: 앱이 꺼져 있어도 열차 운휴 · 통과/도착 알림 ============
    앱(1.1.0+)이 보이지 않는 화면으로 이 페이지를 ?rsbg=1로 열어 두고, 1분(통과 감시)~10분(운휴만)마다 rsBgTick()을 부름.
@@ -24412,13 +24640,54 @@ function rsBgSync() {
   if (sig === rsBgSig) return;
   rsBgSig = sig; rsAppCall('bgWatch', { on: on });
 }
+/* ===== 안드로이드 앱 권한 (알림 · 정확한 알람 · 잠금화면 알람 화면 · 배터리 · 위치 · 소리/진동) ===== */
+var RS_PERMS = [
+  { k: 'noti', t: '알림', d: '팝업 · 알림창 · 소리' },
+  { k: 'exact', t: '정확한 알람', d: '출근 알람을 제시간에' },
+  { k: 'fullscreen', t: '잠금화면 알람 화면', d: '화면이 꺼져 있어도 알람 화면' },
+  { k: 'battery', t: '배터리 제한 없음', d: '앱을 닫아도 운휴 · 통과 알림' },
+  { k: 'location', t: '위치', d: '날씨 · 내 주변 역' },
+  { k: 'sound', t: '소리 · 진동', d: '알림 종류별 소리 · 진동 켜기' }
+];
+function rsPerms() { try { return JSON.parse(rsAppCall('perms') || 'null'); } catch (e) { return null; } }
+function rsPermMissing(st) { st = st || rsPerms() || {}; return RS_PERMS.filter(function (p) { return st[p.k] === false; }).map(function (p) { return p.k; }); }
+function rsPermHtml() {
+  if (!rsAppHas('perms')) return '';
+  var st = rsPerms() || {}, miss = rsPermMissing(st);
+  var h = '<div class="rp-box"><div class="rp-head"><b>앱 권한</b>' +
+    (miss.length ? '<button type="button" class="rp-all" onclick="rsPermFlowStart()">한 번에 허용 (' + miss.length + ')</button>' : '<span class="rp-ok">모두 허용됨 ✓</span>') + '</div>';
+  RS_PERMS.forEach(function (p) {
+    if (!(p.k in st)) return;
+    var ok = st[p.k] !== false;
+    h += '<div class="rp-row"><div class="rp-t"><b>' + p.t + '</b><small>' + p.d + '</small></div>' +
+      (ok ? (p.k === 'sound' ? '<button type="button" class="rp-btn sub" onclick="rsAppCall(\'askPerm\',\'sound\')">설정</button>' : '<span class="rp-chip">허용됨</span>')
+          : '<button type="button" class="rp-btn" onclick="rsPermAsk(\'' + p.k + '\')">허용</button>') + '</div>';
+  });
+  return h + '</div>';
+}
+var rsPermFlow = null;
+function rsPermAsk(k) { rsAppCall('askPerm', k); }
+function rsPermFlowStart() { rsPermFlow = { done: {}, cur: null, t: null }; rsPermFlowNext(); }
+function rsPermFlowNext() {
+  if (!rsPermFlow) return;
+  var miss = rsPermMissing().filter(function (k) { return !rsPermFlow.done[k] && k !== 'sound'; });
+  if (!miss.length) { rsPermFlow = null; try { permRender(); } catch (e) {} showToast(rsPermMissing().length ? '허용하지 않은 권한은 아래에서 다시 누를 수 있어요.' : '권한을 모두 허용했어요.'); return; }
+  rsPermFlow.cur = miss[0]; rsPermFlow.done[miss[0]] = 1;
+  rsAppCall('askPerm', miss[0]);
+}
+/* 앱이 알려줌: 허용 창을 닫았거나 설정 화면에서 돌아옴 → 화면 새로 + 한 번에 허용 중이면 다음 권한 */
+window.rsAppPermChanged = function () {
+  if (window.rsBgMode) return;
+  try { if ($('perm-panel') && $('perm-panel').classList.contains('active')) permRender(); } catch (e) {}
+  if (rsPermFlow) { clearTimeout(rsPermFlow.t); rsPermFlow.t = setTimeout(rsPermFlowNext, 700); }
+};
 function rsBgStatus() { try { return JSON.parse(rsAppCall('bgStatus') || '{}') || {}; } catch (e) { return {}; } }
 function rsBgStatusHtml() {
   var st = rsBgStatus(), h = '';
   h += '· 앱 꺼짐 감시: <b>' + (st.on ? (st.running ? '켜짐' : '켜는 중') : '꺼짐 (운휴 알림 또는 통과 알림 역을 켜면 자동으로 켜져요)') + '</b>';
   if (st.last) { var d = new Date(Number(st.last) + 9 * 3600000); h += ' · 마지막 확인 ' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()); }
   h += '<br>';
-  if (st.on && st.battery === false) h += '· <b style="color:#c62828">배터리 사용 제한</b>이 걸려 있으면 알림이 늦을 수 있어요 <button type="button" class="bg-batt-btn" onclick="rsAppCall(\'askBattery\')">제한 풀기</button><br>';
+  if (st.on && st.battery === false && !rsAppHas('perms')) h += '· <b style="color:#c62828">배터리 사용 제한</b>이 걸려 있으면 알림이 늦을 수 있어요 <button type="button" class="bg-batt-btn" onclick="rsAppCall(\'askBattery\')">제한 풀기</button><br>';
   return h;
 }
 var rsBg = { nxAt: 0, snapAt: 0, done: {} };
@@ -24514,6 +24783,19 @@ if (window.rsBgMode) {
 .bg-watch-info{margin:0 0 10px;padding:10px 12px;border-radius:14px;background:#eef5ff;color:#33415c;font-size:12px;line-height:1.7}
 .bg-watch-info b{color:#1d3f8a}
 .bg-watch-info a{color:#1d6fd8;font-weight:700}
+.rp-box{margin-top:8px;padding-top:8px;border-top:1px solid #d6e3f5}
+.rp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.rp-head b{font-size:13px}
+.rp-all{padding:5px 10px;border-radius:10px;border:0;background:#2f6fe0;color:#fff;font-size:12px;font-weight:800}
+.rp-ok{font-size:12px;font-weight:800;color:#17a85a}
+.rp-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px dashed #dbe5f3}
+.rp-row:first-of-type{border-top:0}
+.rp-t{display:flex;flex-direction:column;line-height:1.35;min-width:0}
+.rp-t b{font-size:12.5px;color:#1f2a44!important}
+.rp-t small{font-size:11px;color:#7a8696}
+.rp-chip{flex:0 0 auto;font-size:11px;font-weight:800;color:#17a85a;background:#e5f7ec;padding:3px 9px;border-radius:9px}
+.rp-btn{flex:0 0 auto;padding:4px 12px;border-radius:9px;border:1px solid #2f6fe0;background:#fff;color:#2f6fe0;font-size:12px;font-weight:800}
+.rp-btn.sub{border-color:#c5d1e0;color:#56657a}
 .bg-batt-btn{margin-left:4px;padding:2px 8px;border-radius:8px;border:1px solid #c62828;background:#fff;color:#c62828;font-size:11px;font-weight:700}
 </style>
 </body>
