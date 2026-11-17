@@ -845,7 +845,8 @@ html.ui-dark .swap-gap-note .sgx .sgx-t{color:#c4ccd8}
 .swap-gap-note .sgn-h{padding:0 4px}
 .swap-gap-note .sgx{gap:2px 2px!important;margin-top:2px}
 .swap-gap-note .sgx .cmp-cell{padding:2px 0;border-radius:6px;overflow:visible}
-.swap-gap-note .sgx .cmp-dh{border-radius:6px}
+.swap-gap-note .sgx .cmp-dh{border-radius:6px;position:relative}
+.swap-gap-note .sgx .sgx-se{display:block;font-style:normal;font-size:8.5px;line-height:1;font-weight:900;color:#fff;background:#1769d2;border-radius:4px;padding:2px 3px;margin:0 2px 1px;white-space:nowrap;letter-spacing:-.4px}
 .swap-gap-note .sgx .cmp-name,.swap-gap-note .sgx .sgx-lnm{font-size:9.5px;padding:0}
 .swap-gap-note .sgx .sgx-t{font-size:9px;letter-spacing:-.5px}
 .swap-gap-note .sgx.tight .sgx-t{font-size:8px;letter-spacing:-.6px}
@@ -8305,6 +8306,12 @@ function swapEndKey(w) {
   var d = new Date(Math.floor((w.e - 1) / 1440) * 86400000);
   return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
 }
+/* 종료 쪽 퇴근 칸: 마지막 근무가 야간이고 퇴근한 날(비번)이 종료일 안이면 그 비번 날, 아니면 마지막 근무 날 */
+function swapLastOutKey(w, endKey) {
+  if (!w) return '';
+  var k = swapEndKey(w);
+  return (k > w.key && k <= endKey) ? k : w.key;
+}
 function swapGapGrid(list, startKey, endKey) {
   var lo = snapShiftKey(startKey, -1), hi = snapShiftKey(endKey, 1), firstMax = startKey, lastMin = endKey;
   list.forEach(function (x) {
@@ -8319,7 +8326,7 @@ function swapGapGrid(list, startKey, endKey) {
   list.forEach(function (x) {
     var g = x.g;
     if (g.firstW) keyset[g.firstW.key] = 1;
-    if (g.lastW) keyset[g.lastW.key] = 1;
+    if (g.lastW) keyset[swapLastOutKey(g.lastW, endKey)] = 1;
     if (g.prevW && g.firstW) { var pk0 = swapEndKey(g.prevW); keyset[pk0 >= g.firstW.key ? g.prevW.key : pk0] = 1; }
     if (g.nextW && g.firstW) keyset[g.nextW.key] = 1;
   });
@@ -8338,7 +8345,9 @@ function swapGapGrid(list, startKey, endKey) {
     if (k === '…') { h += '<div class="cmp-dh sgx-skip" style="grid-row:' + HROW + ';grid-column:' + (i + 2) + '">…</div>'; return; }
     var p = k.split('-'), dw = new Date(+p[0], +p[1] - 1, +p[2]).getDay();
     var hol = holidayName(+p[0], +p[1] - 1, +p[2]), inR = k >= startKey && k <= endKey;
-    h += '<div class="cmp-dh' + ((dw === 0 || hol) ? ' sun' : dw === 6 ? ' sat' : '') + (inR ? ' sgx-in' : '') + '" style="grid-row:' + HROW + ';grid-column:' + (i + 2) + '"><b>' + (+p[2]) + '</b><small>' + W.charAt(dw) + '</small></div>';
+    h += '<div class="cmp-dh' + ((dw === 0 || hol) ? ' sun' : dw === 6 ? ' sat' : '') + (inR ? ' sgx-in' : '') + '" style="grid-row:' + HROW + ';grid-column:' + (i + 2) + '">' +
+      (k === startKey || k === endKey ? '<i class="sgx-se">' + (startKey === endKey ? '시작·종료' : k === startKey ? '시작' : '종료') + '</i>' : '') +
+      '<b>' + (+p[2]) + '</b><small>' + W.charAt(dw) + '</small></div>';
   });
   });
   list.forEach(function (x, ri) {
@@ -8356,7 +8365,7 @@ function swapGapGrid(list, startKey, endKey) {
     h += '<div class="sgx-lnm' + (ri === 0 ? ' me' : '') + '" style="grid-row:' + arcRow + ';grid-column:1">' + esc(x.name) + '</div>';
     /* 호는 퇴근한 날부터: 직전 근무가 야간이면 다음 날(비번)부터 출근 날까지 */
     if (g.prevW && g.firstW) { var pk = swapEndKey(g.prevW); if (pk >= g.firstW.key) pk = g.prevW.key; h += arc(pk, g.firstW.key, g.prev); }
-    if (g.lastW && g.nextW) h += arc(g.lastW.key, g.nextW.key, g.next);
+    if (g.lastW && g.nextW) h += arc(swapLastOutKey(g.lastW, endKey), g.nextW.key, g.next);   /* 종료일이 비번이면 비번 날부터 */
     /* 칸 밑 작은 시각: 직전 근무 퇴근 · 첫 근무 출근 · 마지막 근무 퇴근 · 직후 근무 출근 (퇴근은 퇴근한 날 칸에) */
     var tmap = {};
     function hm(min) { var v = ((Math.round(min) % 1440) + 1440) % 1440; return String(Math.floor(v / 60)).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0'); }
@@ -8366,7 +8375,7 @@ function swapGapGrid(list, startKey, endKey) {
       if (g.prevW && !g.prevW.unknown) addT(swapEndKey(g.prevW), '<em>퇴</em>' + sp + hm(g.prevW.e));
       if (!g.firstW.unknown) addT(g.firstW.key, '<em>출</em>' + sp + hm(g.firstW.s));
       /* 마지막 근무 퇴근은 그 근무 칸에 (기간 안 근무가 하루면 그 칸에 출·퇴 둘 다, 아니면 칸마다 하나씩) */
-      if (g.lastW && !g.lastW.unknown) addT(g.lastW.key, '<em>퇴</em>' + sp + hm(g.lastW.e));
+      if (g.lastW && !g.lastW.unknown) addT(swapLastOutKey(g.lastW, endKey), '<em>퇴</em>' + sp + hm(g.lastW.e));
       if (g.nextW && !g.nextW.unknown) addT(g.nextW.key, '<em>출</em>' + sp + hm(g.nextW.s));
     }
     h += '<div class="cmp-name' + (ri === 0 ? ' me' : '') + '" style="grid-row:' + dutyRow + ';grid-column:1">' + esc(x.name) + '</div>';
