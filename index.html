@@ -840,6 +840,16 @@ box-shadow:0 1px 2px rgba(16,24,40,.04); transition:background .15s ease;
 .swap-gap-note .sgx .sgx-t em{font-style:normal;color:#8a96a8}
 .swap-gap-note .sgx .sgx-t{display:block;font-size:8.5px;line-height:1.15;font-weight:700;color:#4e5968;letter-spacing:-.4px;white-space:nowrap;font-variant-numeric:tabular-nums;text-align:center}
 html.ui-dark .swap-gap-note .sgx .sgx-t{color:#c4ccd8}
+/* 여백 최소화: 출근·퇴근 시각이 잘리지 않게 */
+.swap-gap-note:not(.idle){padding:5px 3px 4px;margin-left:-4px;margin-right:-4px}
+.swap-gap-note .sgn-h{padding:0 4px}
+.swap-gap-note .sgx{gap:2px 2px!important;margin-top:2px}
+.swap-gap-note .sgx .cmp-cell{padding:2px 0;border-radius:6px;overflow:visible}
+.swap-gap-note .sgx .cmp-dh{border-radius:6px}
+.swap-gap-note .sgx .cmp-name,.swap-gap-note .sgx .sgx-lnm{font-size:9.5px;padding:0}
+.swap-gap-note .sgx .sgx-t{font-size:9px;letter-spacing:-.5px}
+.swap-gap-note .sgx.tight .sgx-t{font-size:8px;letter-spacing:-.6px}
+.swap-gap-note .sgx .cmp-dh.sgx-skip,.swap-gap-note .sgx .cmp-cell.sgx-skip{font-size:12px;letter-spacing:-1px}
 .swap-gap-note .sgx .sgx-skip{background:none;border:0;color:#8a96a8;font-weight:800;justify-content:center;align-items:center;display:flex}
 .swap-gap-note .sgx .sgx-lane{height:26px}
 .swap-gap-note .sgx .sgx-lane.sgx-sep{height:34px;border-top:1.5px dashed #f2b8c6;align-self:start;margin-top:3px}
@@ -8304,15 +8314,23 @@ function swapGapGrid(list, startKey, endKey) {
     if (g.firstW && g.firstW.key > firstMax) firstMax = g.firstW.key;
     if (g.lastW && g.lastW.key < lastMin) lastMin = g.lastW.key;
   });
-  /* 열: 직전 근무 ~ 첫 근무, 마지막 근무 ~ 직후 근무 (가운데가 길면 … 한 칸) */
-  var all = snapDateKeys(lo, hi), cols = [];
-  if (all.length <= 9) cols = all.slice();
-  else {
-    var a = snapDateKeys(lo, firstMax > lastMin ? hi : firstMax), b = firstMax > lastMin ? [] : snapDateKeys(lastMin, hi);
-    cols = a.slice(); if (b.length) { if (dateKeyToNum(b[0]) - dateKeyToNum(a[a.length - 1]) > 86400000) cols.push('…'); b.forEach(function (k) { if (cols.indexOf(k) < 0) cols.push(k); }); }
-  }
+  /* 열: 고른 시작일 · 종료일 + 직전 근무(퇴근한 날) · 직후 근무만 (사이가 떨어져 있으면 … 한 칸) */
+  var keyset = {}; keyset[startKey] = 1; keyset[endKey] = 1;
+  list.forEach(function (x) {
+    var g = x.g;
+    if (g.firstW) keyset[g.firstW.key] = 1;
+    if (g.lastW) keyset[g.lastW.key] = 1;
+    if (g.prevW && g.firstW) { var pk0 = swapEndKey(g.prevW); keyset[pk0 >= g.firstW.key ? g.prevW.key : pk0] = 1; }
+    if (g.nextW && g.firstW) keyset[g.nextW.key] = 1;
+  });
+  var ks = Object.keys(keyset).sort(), cols = [];
+  ks.forEach(function (k, i) {
+    if (i && dateKeyToNum(k) - dateKeyToNum(ks[i - 1]) > 86400000) cols.push('…');
+    cols.push(k);
+  });
   var W = '일월화수목금토', n = cols.length, todayKey = todayKeyKST();
-  var h = '<div class="cmp-grid sgx' + (n > 6 ? ' tight' : '') + '" style="grid-template-columns:40px repeat(' + n + ',minmax(0,1fr))">';
+  var nReal = cols.filter(function (k) { return k !== '…'; }).length;
+  var h = '<div class="cmp-grid sgx' + (nReal > 6 ? ' tight' : '') + '" style="grid-template-columns:30px ' + cols.map(function (k) { return k === '…' ? '9px' : 'minmax(0,1fr)'; }).join(' ') + '">';
   /* 줄: 1 내 휴식시간 · 2 날짜 · 3 내 근무 · 4 (점선) 상대 휴식시간 · 5 날짜 · 6 상대 근무 */
   [2, 5].forEach(function (HROW) {
   h += '<div class="cmp-corner" style="grid-row:' + HROW + ';grid-column:1"></div>';
@@ -8338,7 +8356,7 @@ function swapGapGrid(list, startKey, endKey) {
     h += '<div class="sgx-lnm' + (ri === 0 ? ' me' : '') + '" style="grid-row:' + arcRow + ';grid-column:1">' + esc(x.name) + '</div>';
     /* 호는 퇴근한 날부터: 직전 근무가 야간이면 다음 날(비번)부터 출근 날까지 */
     if (g.prevW && g.firstW) { var pk = swapEndKey(g.prevW); if (pk >= g.firstW.key) pk = g.prevW.key; h += arc(pk, g.firstW.key, g.prev); }
-    if (g.lastW && g.nextW) { var lk = swapEndKey(g.lastW); if (lk >= g.nextW.key) lk = g.lastW.key; h += arc(lk, g.nextW.key, g.next); }
+    if (g.lastW && g.nextW) h += arc(g.lastW.key, g.nextW.key, g.next);
     /* 칸 밑 작은 시각: 직전 근무 퇴근 · 첫 근무 출근 · 마지막 근무 퇴근 · 직후 근무 출근 (퇴근은 퇴근한 날 칸에) */
     var tmap = {};
     function hm(min) { var v = ((Math.round(min) % 1440) + 1440) % 1440; return String(Math.floor(v / 60)).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0'); }
