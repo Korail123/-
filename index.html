@@ -8258,10 +8258,11 @@ var swapGapMarks = {};
 function swapWorkTimes(empId, key, info) {
   if (!info || !info.label) return null;
   if (info.nightCarryover || info.nightCarryStatus) return null;            /* 비번 = 전날 야간의 이어짐 */
-  if (info.overrideType === 'status' && !info.dia) return null;            /* 휴무·휴가 등 */
   var code = swapDutyLabel(info);
-  if (code !== '주' && code !== '야' && !info.dia) return null;
-  if (code === '비' || code === '휴' || code === 'X') return null;
+  /* 실제로 출근하는 날만: 주간·야간 (휴무충당·대기충당·운휴충당도 근무). 연차·공가·휴무 등은 다이아가 남아 있어도 근무 아님 */
+  var credit = /충당/.test(String(info.creditStatus || info.status || ''));
+  if (code !== '주' && code !== '야' && !(credit && info.dia)) return null;
+  if (info.overrideType === 'status' && !credit) return null;
   var dia = String(info.dia || '').trim().toUpperCase(), meta = null;
   try { meta = dia ? diaByNumber(dia) : null; } catch (e) {}
   var st = info.start || (meta && meta.start) || '', en = info.end || (meta && meta.end) || '';
