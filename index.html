@@ -8283,6 +8283,13 @@ function swapGapBadge(g) {
   return '<span class="sd-gap ' + cls + '">' + (cls === 'bad' ? '!' : '') + swapGapText(g) + '</span>';
 }
 /* 달력 밑: 근무그룹 '근무표 비교'와 같은 표 (교환 뒤 결과) + 직전 근무→첫 근무, 마지막 근무→직후 근무 사이에 호와 휴식시간 */
+/* 퇴근하는 날 (야간이면 다음 날 = 비번 날) */
+function swapEndKey(w) {
+  if (!w) return '';
+  if (w.unknown || w.e == null) return w.key;
+  var d = new Date(Math.floor((w.e - 1) / 1440) * 86400000);
+  return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
+}
 function swapGapGrid(list, startKey, endKey) {
   var lo = snapShiftKey(startKey, -1), hi = snapShiftKey(endKey, 1), firstMax = startKey, lastMin = endKey;
   list.forEach(function (x) {
@@ -8324,8 +8331,9 @@ function swapGapGrid(list, startKey, endKey) {
     }
     h += '<div class="sgx-lane' + (ri ? ' sgx-sep' : '') + '" style="grid-row:' + arcRow + ';grid-column:1 / -1"></div>';
     h += '<div class="sgx-lnm' + (ri === 0 ? ' me' : '') + '" style="grid-row:' + arcRow + ';grid-column:1">' + esc(x.name) + '</div>';
-    if (g.prevW && g.firstW) h += arc(g.prevW.key, g.firstW.key, g.prev);
-    if (g.lastW && g.nextW) h += arc(g.lastW.key, g.nextW.key, g.next);
+    /* 호는 퇴근한 날부터: 직전 근무가 야간이면 다음 날(비번)부터 출근 날까지 */
+    if (g.prevW && g.firstW) { var pk = swapEndKey(g.prevW); if (pk >= g.firstW.key) pk = g.prevW.key; h += arc(pk, g.firstW.key, g.prev); }
+    if (g.lastW && g.nextW) { var lk = swapEndKey(g.lastW); if (lk >= g.nextW.key) lk = g.lastW.key; h += arc(lk, g.nextW.key, g.next); }
     h += '<div class="cmp-name' + (ri === 0 ? ' me' : '') + '" style="grid-row:' + dutyRow + ';grid-column:1">' + esc(x.name) + '</div>';
     cols.forEach(function (k, i) {
       if (k === '…') { h += '<div class="cmp-cell sgx-skip" style="grid-row:' + dutyRow + ';grid-column:' + (i + 2) + '">…</div>'; return; }
@@ -8411,8 +8419,7 @@ function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
       '" onclick="selectSwapRangeDate(this.dataset.key)">' +
       '<span class="sd-top"><span class="sd-num">' + d + '</span>' +
       (edge ? '<span class="sd-edge">' + edge + '</span>' : '') + '</span>' +
-      '<span class="sd-duty ' + cls + '">' + (info && info.manual ? '*' : '') + esc(label) + '</span>' +
-      swapGapBadge((swapGapMarks[employeeId] || {})[key]) + '</button>';
+      '<span class="sd-duty ' + cls + '">' + (info && info.manual ? '*' : '') + esc(label) + '</span></button>';   /* 위 달력에는 휴식시간 표시 안 함 (밑 표에서만) */
       }
   // 달마다 주 수가 달라져도 달력 높이가 변하지 않도록 6주(42칸) 고정
   var usedCells = firstDow + daysInMonth;
