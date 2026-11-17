@@ -20752,6 +20752,17 @@ html.ui-dark #weekly-wx-panel .ww-close{background:#354f70;color:#e2f2ff}
 #xr-change .xr-cmp small{display:block;font-size:11px;color:#8a96a8;font-weight:700}
 #xr-change .xr-cmp s{display:block;font-size:14px;font-weight:800;color:#5b6678;text-decoration:none;word-break:keep-all}
 #xr-change .xr-cmp b{display:block;font-size:16px;font-weight:900;color:#2f6fd6}
+#xr-change .xr-cmp{align-items:stretch}
+#xr-change .xr-cmp s{font-size:16px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#xr-change .xr-cmp b{line-height:1.3}
+#xr-change .xr-cmp>div.xr-arrow{display:flex;align-items:center}
+#xr-change .xr-cmp>div.xr-new{border-color:#bcd5f7;background:#f3f8ff}
+#xr-change .xr-cmp .xr-ln{display:block;margin-top:3px;font-size:11.5px;line-height:1.35;color:#3c4a60;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+#xr-change .xr-cmp .xr-ln em{font-style:normal;font-weight:600;color:#8a96a8;font-size:10.5px;margin-right:3px}
+#xr-change .xr-cmp .xr-ln em+em,#xr-change .xr-cmp .xr-ln em:nth-of-type(2){margin-left:6px}
+#xr-change .xr-cmp>div:first-child .xr-ln{color:#6b7686}
+html.ui-dark #xr-change .xr-cmp>div.xr-new{background:#1a2638;border-color:#2e4a74}
+html.ui-dark #xr-change .xr-cmp .xr-ln{color:#c9d3e0}
 #xr-change .xr-q{font-size:13px;font-weight:700;color:#33415c;margin:8px 0 6px}
 #xr-change .xr-btns{display:flex;gap:6px;margin-top:8px}
 #xr-change .xr-btns button{flex:1 1 0;height:40px;border-radius:10px;border:0;font-size:14px;font-weight:800;cursor:pointer}
@@ -20833,7 +20844,8 @@ function xrAutoSync(force, manual) {
   if (!force && m.at && now - m.at < XR_EVERY) return;            /* 12시간에 한 번 */
   if (manual && m.at && now - m.at < 60000) { showToast('방금 확인했어요. 잠시 후에 다시 눌러주세요.'); return; }
   var t = todayKST(), yms = [t.y + String(t.m + 1).padStart(2, '0')];
-  if (t.d >= 20) { var nx = new Date(t.y, t.m + 1, 1); yms.push(nx.getFullYear() + String(nx.getMonth() + 1).padStart(2, '0')); }
+  /* 오늘 포함 이후 전부: 이번 달 + 다음 달 당월승무근무표 (다음 달이 아직 없으면 XROIS가 빈 값) */
+  var nx = new Date(t.y, t.m + 1, 1); yms.push(nx.getFullYear() + String(nx.getMonth() + 1).padStart(2, '0'));
   xrBusy = true;
   m.at = now; m.stamp = stampNow().slice(5, 16); xrPut('meta', m);
   if (manual) xrStatus('XROIS 근무표 확인 중…');
@@ -20952,7 +20964,7 @@ function xrApply(days, manual, crewMap) {
   var keys = Object.keys(uniq).sort();
   var months = []; keys.forEach(function (k) { var p = k.split('-'), ym = [+p[0], +p[1] - 1]; if (!months.some(function (a) { return a[0] === ym[0] && a[1] === ym[1]; })) months.push(ym); });
   xrMyDays(months, function (mine) {
-    var seen = xrGet('seen', {}), info = xrGet('info', {}), emp = getCurrentUser().employeeId, changes = [];
+    var seen = xrGet('seen', {}), info = xrGet('info', {}), kept = xrGet('kept', {}), emp = getCurrentUser().employeeId, changes = [];
     keys.forEach(function (k) {
       var x = uniq[k], dia = xrNorm(x.dia);
       info[k] = { dia: dia, start: x.start || '', end: x.end || '', trains: x.trains || [] };
@@ -20961,15 +20973,18 @@ function xrApply(days, manual, crewMap) {
       if (k < today) return;                                           /* 지난 날은 바꾸지 않음 */
       var my = mine[k] || {}, myDia = xrNorm(my.dia || '');
       if (myDia === dia) return;
-      if (prev && prev === dia) return;                                /* XROIS 그대로 = 내가 직접 바꾼 것 존중 */
+      /* 다르면 물어봄. 단, 이 날 이 XROIS 다이아에 [그대로 두기]를 고른 적이 있으면 다시 묻지 않음 */
+      if (kept[k] && kept[k] === dia) return;
       /* 바로 바꾸지 않고 사용자에게 물어봄 (직접 수정한 날도 물어보기만, 고르기 전엔 그대로) */
       var ov = xrMyOverride(emp, k);
-      changes.push({ date: k, from: my.dia || my.label || '', fromPartner: ov ? String(ov[6] || '') : '', fromCredit: ov ? String(ov[3] || '') : '',
+      var myTr = [my.train1, my.train2, my.train3].map(function (v) { return String(v || '').trim(); }).filter(function (v) { return v && v !== '-'; });
+      changes.push({ date: k, from: my.dia || my.label || '', fromStart: my.start || '', fromEnd: my.end || '', fromTrains: myTr, fromPartner: ov ? String(ov[6] || '') : '', fromCredit: ov ? String(ov[3] || '') : '',
         manual: !!ov, to: dia, start: x.start || '', end: x.end || '', trains: x.trains || [] });
     });
     /* 오래된 기록 정리 (60일 전) */
     var od = new Date(t.y, t.m - 2, t.d), old = getDateKey(od.getFullYear(), od.getMonth(), od.getDate());
     Object.keys(seen).forEach(function (k) { if (k < old) delete seen[k]; });
+    Object.keys(kept).forEach(function (k) { if (k < today) delete kept[k]; }); xrPut('kept', kept);
     Object.keys(info).forEach(function (k) { if (k < old) delete info[k]; });
     Object.keys(roster).forEach(function (k) { if (k < old) delete roster[k]; });
     xrPut('seen', seen); xrPut('info', info); xrPut('roster', roster);
@@ -20983,6 +20998,9 @@ function xrApply(days, manual, crewMap) {
     xrPut('pending', pend);
     var mm = xrGet('meta', {}); mm.changed = pend.length; xrPut('meta', mm); xrRenderStatus();
     try { renderDayDetail(); } catch (e) {}
+    /* 이번 주 근무가 바뀐 날(* 표시 = 직접 바꾼 날)은 그 다이아로 XROIS에서 출근·퇴근·열차번호·승무원·예상 행로표를 채움
+       (XROIS와 다이아가 달라서 물어보는 날은 고른 뒤에 채우므로 여기서는 뺌) */
+    try { xrFillWeekChanged(mine, pend); } catch (e) {}
     if (!pend.length) { if (manual) showToast('XROIS와 철도비서 근무표가 같아요.'); return; }
     xrShowChanges();
   });
@@ -21022,15 +21040,23 @@ function xrGuessNight(c) {
 function xrShowChanges() {
   var pend = xrGet('pending', []);
   if (!pend.length) { xrCloseChanges(); return; }
+  /* 칸 안에: 다이아 이름 · 열차번호 · 출근/퇴근 */
+  function cell(start, end, trains) {
+    return '<span class="xr-ln"><em>출근</em>' + esc(start || '-') + '<em>퇴근</em>' + esc(end || '-') + '</span>' +
+      '<span class="xr-ln"><em>열차</em>' + esc((trains && trains.length) ? trains.join(' · ') : '-') + '</span>';
+  }
   $('xr-list').innerHTML = pend.map(function (c, i) {
-    var w = [];
-    if (c.start || c.end) w.push('출근 ' + (c.start || '-') + ' · 퇴근 ' + (c.end || '-'));
-    if (c.trains && c.trains.length) w.push('열차 ' + c.trains.join(' · '));
+    /* 철도비서 쪽: 바꾸기 전 근무표 값 (예전에 쌓인 목록은 다이아 목록에서) */
+    var fs = c.fromStart || '', fe = c.fromEnd || '', ft = c.fromTrains || [];
+    if (!fs && !fe && !ft.length && c.from) {
+      var kd = diaByNumber(c.from);
+      if (kd) { fs = kd.start || ''; fe = kd.end || ''; ft = [kd.train1, kd.train2, kd.train3].filter(function (v) { return v && v !== '-'; }); }
+    }
     var fromTxt = (c.from || '-') + (c.fromPartner ? ' · ' + c.fromPartner + '님과 교환' : '') + (c.fromCredit ? ' · ' + c.fromCredit : '');
     var o = xrAskOpen[c.date];
     var html = '<div class="xr-item" data-i="' + i + '"><div class="xr-d">' + xrDateLabel(c.date) + (c.manual ? ' <small class="xr-man">직접 수정한 근무</small>' : '') + '</div>' +
-      '<div class="xr-cmp"><div><small>철도비서</small><s>' + esc(fromTxt) + '</s></div><div class="xr-arrow">→</div><div><small>XROIS</small><b>' + esc(c.to) + '</b></div></div>' +
-      (w.length ? '<div class="xr-w">' + esc(w.join(' / ')) + '</div>' : '');
+      '<div class="xr-cmp"><div><small>철도비서</small><s>' + esc(fromTxt) + '</s>' + cell(fs, fe, ft) + '</div><div class="xr-arrow">→</div>' +
+      '<div class="xr-new"><small>XROIS</small><b>' + esc(c.to) + '</b>' + cell(c.start, c.end, c.trains) + '</div></div>';
     if (!o) {
       html += '<div class="xr-q">이 날 근무를 XROIS 다이아로 바꾸시겠어요?</div><div class="xr-btns"><button type="button" class="xr-keep" onclick="xrAskKeep(\'' + c.date + '\')">그대로 두기</button><button type="button" class="xr-go" onclick="xrAskOpenOpts(\'' + c.date + '\')">바꾸기</button></div>';
     } else {
@@ -21052,7 +21078,11 @@ function xrAskDone(dk) {
   if (!xrGet('pending', []).length) { xrCloseChanges(); return; }
   xrShowChanges();
 }
-function xrAskKeep(dk) { xrAskDone(dk); showToast(xrDateLabel(dk) + ' 근무는 그대로 두었어요.'); }
+function xrAskKeep(dk) {
+  var c = xrAskFind(dk);
+  if (c) { var kp = xrGet('kept', {}); kp[dk] = xrNorm(c.to); xrPut('kept', kp); }   /* 같은 XROIS 다이아면 다음 로그인 때 다시 묻지 않음 */
+  xrAskDone(dk); showToast(xrDateLabel(dk) + ' 근무는 그대로 두었어요.');
+}
 function xrAskOpenOpts(dk) {
   var c = xrAskFind(dk); if (!c) return;
   var cr = /휴무충당|대기충당/.test(c.fromCredit || '') ? c.fromCredit.match(/휴무충당|대기충당/)[0] : '본 근무';
@@ -21073,9 +21103,65 @@ function xrAskApply(dk) {
   if (duty === '야') rsAutoNextOff(emp, next);
   try { loadMyMonth(); } catch (e) {}
   try { renderDayDetail(); } catch (e) {}
-  if (!known) { try { xrMakePlans([c]); } catch (e) {} }
-  showToast(xrDateLabel(dk) + ' ' + c.to + ' (' + o.duty + (credit ? ' · ' + credit : '') + ')으로 바꿨어요.');
+  /* 바뀐 다이아: 승무근무표 현황(출근·퇴근·열차번호·승무원) + 승무다이아(예상 행로표)를 XROIS에서 가져옴 */
+  try { xrQueueDiaInfo(dk, c.to); } catch (e) {}
+  showToast(xrDateLabel(dk) + ' ' + c.to + ' (' + o.duty + (credit ? ' · ' + credit : '') + ')으로 바꿨어요. 다이아 정보를 가져오는 중…');
   xrAskDone(dk);
+}
+function xrFillWeekChanged(mine, pend) {
+  var emp = getCurrentUser().employeeId, ws = thisWeekStart(), info = xrGet('info', {}), rp = (typeof rpAll === 'function') ? rpAll() : {};
+  var asked = {}; (pend || []).forEach(function (p) { asked[p.date] = 1; });
+  var done = xrGet('weekFill', {}), n = 0;
+  for (var i = 0; i < 7; i++) {
+    var dt = new Date(ws.getFullYear(), ws.getMonth(), ws.getDate() + i), dk = getDateKey(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    if (asked[dk] || !xrMyOverride(emp, dk)) continue;                       /* * 표시(직접 바꾼 날)만 */
+    var dia = xrNorm((mine[dk] || {}).dia || '');
+    if (!/^[0-9A-Z]{3,8}$/.test(dia)) continue;                              /* 휴무·비번 등은 그대로 */
+    var inf = info[dk], havePlan = rp[dia] && rp[dia].rows && rp[dia].rows.length;
+    if (inf && xrNorm(inf.dia) === dia && (inf.start || inf.end) && havePlan) continue;   /* 이미 채워져 있음 */
+    if (done[dk] === dia) continue;                                           /* 이 다이아로 이미 한 번 물어봄 (XROIS에 없던 경우) */
+    done[dk] = dia; n++;
+    xrQueueDiaInfo(dk, dia);
+  }
+  Object.keys(done).forEach(function (k) { if (k < getDateKey(ws.getFullYear(), ws.getMonth(), ws.getDate())) delete done[k]; });
+  xrPut('weekFill', done);
+  return n;
+}
+/* 여러 날을 연달아 바꾸면 모아서 로그인 한 번에 (최대 6개씩) */
+var xrDiaQueue = [], xrDiaQueueTimer = null, xrDiaQueueBusy = false;
+function xrQueueDiaInfo(dk, dia) {
+  dia = xrNorm(dia);
+  xrDiaQueue = xrDiaQueue.filter(function (x) { return x.date !== dk; });
+  xrDiaQueue.push({ dia: dia, date: dk });
+  if (xrDiaQueueTimer) clearTimeout(xrDiaQueueTimer);
+  xrDiaQueueTimer = setTimeout(xrRunDiaQueue, 1500);
+}
+function xrRunDiaQueue() {
+  xrDiaQueueTimer = null;
+  if (xrDiaQueueBusy || !xrDiaQueue.length) return;
+  var pw = getCrewPw(), m = xrGet('meta', {});
+  if (!pw || (m.fail && m.pwSig === xrSig(pw))) { xrDiaQueue = []; return; }   /* 로그인 실패 상태면 다시 시도 안 함 (계정 잠금 방지) */
+  var items = xrDiaQueue.splice(0, 6);
+  xrDiaQueueBusy = true;
+  xrCall({ action: 'xrDia', items: items, withRoster: true, withCrew: true }, function (err, d) {
+    xrDiaQueueBusy = false;
+    if (err) {
+      if (err.code === 'LOGIN_FAILED') { var mm = xrGet('meta', {}); mm.fail = true; mm.pwSig = xrSig(pw); mm.ok = false; mm.msg = err.message; xrPut('meta', mm); xrDiaQueue = []; try { xrRenderStatus(); } catch (e) {} }
+      showToast(err.message || 'XROIS 다이아 정보를 가져오지 못했어요.');
+      return;
+    }
+    var ok = 0, plan = 0, miss = [];
+    (d.results || []).forEach(function (r) {
+      if (xrApplyDiaRes(r.date, r.dia, r, true)) { ok++; if ((r.rows || []).length) plan++; }
+      else miss.push(r.dia);
+    });
+    try { loadMyMonth(); } catch (e) {}
+    try { renderDayDetail(); } catch (e) {}
+    showToast(ok
+      ? '다이아 ' + ok + '개: 출근·퇴근·열차번호·승무원을 넣었어요' + (plan ? ' · 예상 행로표 ' + plan + '개' : '') + (miss.length ? ' (정보 없음: ' + miss.join(', ') + ')' : '')
+      : 'XROIS에 ' + miss.join(', ') + ' 다이아 정보가 아직 없어요.');
+    if (xrDiaQueue.length) setTimeout(xrRunDiaQueue, 1500);
+  });
 }
 function xrCloseChanges() { $('xr-change').classList.remove('active'); }
 
@@ -21105,12 +21191,13 @@ function xrApplyDiaRes(dk, dia, r, quiet) {
   if ((!r.ok || !rows.length) && !wkOk && !crOk) { if (!quiet) showToast('XROIS에 ' + dia + ' (' + xrDateLabel(dk) + ') 정보가 없어요.'); return false; }
   /* 출근·퇴근·열차번호 순서: ① 개인 당월승무근무표(그 날 내 다이아가 맞을 때) ② 승무근무표 현황의 이 다이아 줄 ③ 승무다이아 내역(첫·마지막 시각, 운전 열차) */
   var start = '', end = '', trains = [], t1 = '', t2 = '';
-  if (wkOk) { start = wk.start || ''; end = wk.end || ''; (wk.trains || []).forEach(function (t) { if (t && trains.indexOf(t) < 0) trains.push(t); }); }
+  /* ① 승무근무표 현황에서 다이아 번호가 같은 줄 (출근·퇴근·열차번호) ② 개인 당월승무근무표 ③ 승무다이아 내역 */
   if (crOk) {
-    if (!start) start = cr.start || ''; if (!end) end = cr.end || '';
+    start = cr.start || ''; end = cr.end || '';
     t1 = cr.t1 || ''; t2 = cr.t2 || '';
     [cr.t1, cr.t2].forEach(function (t) { if (t && trains.indexOf(t) < 0) trains.push(t); });
   }
+  if (wkOk) { if (!start) start = wk.start || ''; if (!end) end = wk.end || ''; (wk.trains || []).forEach(function (t) { if (t && trains.indexOf(t) < 0) trains.push(t); }); }
   var est = false;
   if (rows.length) {
     /* 당월승무근무표 · 승무근무표 현황에 출근/퇴근이 없을 때만: 승무다이아의 출근·퇴근 줄 → 없으면 첫·마지막 시각(예상) */
@@ -21472,6 +21559,32 @@ function routeArLoad(img) {
 #cb-find-panel .cbf-sub{margin:-2px 2px 10px;font-size:12.5px;color:#6b7684;line-height:1.5}
 #cb-find-panel .cbf-out{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px}
 #cb-find-panel .cbf-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+#cb-find-panel .cbf-wrap{border:1px solid #e5e8eb;border-radius:12px;overflow:hidden;background:#fff}
+#cb-find-panel .cbf-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:11.5px;font-variant-numeric:tabular-nums}
+#cb-find-panel .cbf-table th{text-align:center;position:sticky;top:0;z-index:1;background:#f2f4f6;color:#4e5968;font-weight:700;padding:7px 0;font-size:11px}
+#cb-find-panel .cbf-table td{padding:7px 0;border-bottom:1px solid #eef0f3;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:clip;color:#191f28}
+#cb-find-panel .cbf-table th+th,#cb-find-panel .cbf-table td+td{border-left:1px solid #eef0f3}
+#cb-find-panel .cbf-table th:first-child,#cb-find-panel .cbf-table td:first-child{width:13%}
+#cb-find-panel .cbf-table th:nth-child(2),#cb-find-panel .cbf-table td:nth-child(2){width:12.5%}
+#cb-find-panel .cbf-table td.cbf-dt{font-weight:800;line-height:1.1}
+#cb-find-panel .cbf-table td.cbf-dt small{display:block;font-size:9.5px;font-weight:700;color:#8b95a1}
+#cb-find-panel .cbf-table td.cbf-dt.sun,#cb-find-panel .cbf-table td.cbf-dt.sun small{color:#e03131}
+#cb-find-panel .cbf-table td.cbf-dt.sat,#cb-find-panel .cbf-table td.cbf-dt.sat small{color:#1b64da}
+#cb-find-panel .cbf-table td.cb-d{font-weight:800}
+#cb-find-panel .cbf-table td.cb-n{font-weight:600}
+#cb-find-panel .cbf-table td.cb-n.hit{background:#1769d2;color:#fff;font-weight:800}
+#cb-find-panel .cbf-table tr.off td{background:#fafbfc}
+#cb-find-panel .cbf-table td.cbf-off{color:#8b95a1;font-weight:700}
+#cb-find-panel .cbf-table td.cbf-none{color:#b0b8c1}
+#cb-find-panel .cbf-table tr.today td{background:#fff8e1}
+#cb-find-panel .cbf-table tr.today td:first-child{box-shadow:inset 3px 0 0 #f59f00}
+#cb-find-panel .cbf-table td.dupd{color:#b0b8c1}
+html.ui-dark #cb-find-panel .cbf-wrap{background:#1b1f25;border-color:#2c323b}
+html.ui-dark #cb-find-panel .cbf-table th{background:#232830;color:#aab4c2}
+html.ui-dark #cb-find-panel .cbf-table td{color:#e9edf2;border-color:#2c323b}
+html.ui-dark #cb-find-panel .cbf-table tr.off td{background:#1f242b}
+html.ui-dark #cb-find-panel .cbf-table tr.today td{background:#3a3220}
+html.ui-dark #cb-find-panel .cbf-table td.cb-n.hit{background:#2f7cf6;color:#fff}
 #cb-find-panel .cbf-sum div{padding:9px 6px;border-radius:12px;background:#f2f6fc;text-align:center}
 #cb-find-panel .cbf-sum b{display:block;font-size:19px;color:#1b2b45}
 #cb-find-panel .cbf-sum small{font-size:11.5px;color:#6b7684;font-weight:700}
@@ -21522,8 +21635,10 @@ html.ui-dark #crewboard-section .cb-find input{color:#e9edf2!important}
 #crewboard-section .cb-table th+th,#crewboard-section .cb-table td+td{border-left:1px solid #eef0f3}
 #crewboard-section .cb-table td.cb-d{font-weight:800}
 #crewboard-section .cb-table td.cb-n{font-weight:600}
-#crewboard-section .cb-table tr.me td{background:#e8f1ff}
-#crewboard-section .cb-table td.cb-n.me{color:#1b64da;font-weight:800}
+#crewboard-section .cb-table tr.me td{background:#dcebff;color:#0f3f8c;font-weight:800;border-bottom-color:#c4dafa}
+#crewboard-section .cb-table tr.me td:first-child{box-shadow:inset 4px 0 0 #1769d2}
+#crewboard-section .cb-table td.cb-n.me{color:#fff;font-weight:800}
+#crewboard-section .cb-table td.cb-n.me{background:#1769d2!important;border-radius:0}
 #crewboard-section .cb-empty{background:#fff;border:1px dashed #d1d6db;border-radius:16px;padding:26px 14px;text-align:center;color:#6b7684;font-size:14px;line-height:1.7}
 #crewboard-section .cb-empty button{margin-top:10px;border:0;background:#3182f6;color:#fff;font-weight:700;border-radius:10px;padding:9px 16px;font-size:14px;cursor:pointer}
 #crewboard-section .cb-skel{height:300px;border-radius:12px;background:linear-gradient(90deg,#f2f4f6 25%,#e9edf1 50%,#f2f4f6 75%);background-size:200% 100%;animation:cbsk 1.2s infinite}
@@ -21538,8 +21653,9 @@ html.ui-dark #crewboard-section .sch-nav{background:none!important;color:#8cb8ff
 html.ui-dark .np-btns .np-sub{background:#2a3038!important;color:#e9edf2!important}
 html.ui-dark .np-btns .np-main{background:#3182f6!important;color:#fff!important}
 .dd-row.crew-inline .crew-sub{font-size:.8em;color:#8a96a8;font-weight:500}
-html.ui-dark #crewboard-section .cb-table tr.me td{background:#1d3357!important}
-html.ui-dark #crewboard-section .cb-table td.cb-n.me{color:#8cb8ff!important}
+html.ui-dark #crewboard-section .cb-table tr.me td{background:#1d3357!important;color:#dce8ff!important}
+html.ui-dark #crewboard-section .cb-table tr.me td:first-child{box-shadow:inset 4px 0 0 #4c9aff}
+html.ui-dark #crewboard-section .cb-table td.cb-n.me{background:#2f7cf6!important;color:#fff!important}
 </style>
 
 <script>
@@ -21621,10 +21737,13 @@ function cbRender() {
     return;
   }
   var me = cbMyName(), myDia = cbMyDia(dk);
+  /* 내 이름이 들어 있는 다이아 줄에 색 표시. 이름으로 찾은 줄이 하나도 없을 때만 내 근무표 다이아로 */
+  function nameHit(r) { return !!me && cbNames(r).concat(r.crew || []).some(function (n) { return n && crewIsMe(n, me); }); }
+  var anyName = (c.rows || []).some(nameHit);
   /* XROIS 표 순서 그대로 */
   var body = (c.rows || []).map(function (r) {
     var names = cbNames(r);
-    var hit = (myDia && xrNorm(r.dia) === myDia) || (me && names.some(function (n) { return n && crewIsMe(n, me); }));
+    var hit = anyName ? nameHit(r) : !!(myDia && xrNorm(r.dia) === myDia);
     var t1 = r.t1 != null ? r.t1 : ((r.trains || [])[0] || ''), t2 = r.t2 != null ? r.t2 : ((r.trains || [])[1] || '');
     return '<tr' + (hit ? ' class="me"' : '') + '><td class="cb-d">' + esc(r.dia || '') + '</td><td>' + esc(t1) + '</td><td>' + esc(t2) + '</td>' +
       '<td>' + esc(r.start || '') + '</td><td>' + esc(r.end || '') + '</td>' +
@@ -21702,42 +21821,41 @@ function cbfDayHits(rows, q) {
   return hits;
 }
 function cbfRender(q, st, dates) {
+  /* 오늘부터 월말까지 날짜별 한 줄씩 — 승무근무표 현황 표와 같은 모양으로 세로로 */
   var t = todayKST(), todayK = t.y + '-' + String(t.m + 1).padStart(2, '0') + '-' + String(t.d).padStart(2, '0');
-  var y = t.y, m = t.m, first = new Date(y, m, 1).getDay(), last = new Date(y, m + 1, 0).getDate();
-  var work = 0, off = 0, noData = 0, dup = false, firstWork = '';
-  var cells = '';
-  /* 이번 주(일요일)부터 월말까지만 — 지난주들은 빈칸이라 뺌 */
-  var startD = Math.max(1, t.d - new Date(y, m, t.d).getDay());
-  var lead = (first + startD - 1) % 7;
-  for (var i = 0; i < lead; i++) cells += '<div class="cbc-cell blank"></div>';
-  for (var d = startD; d <= last; d++) {
+  var y = t.y, m = t.m, last = new Date(y, m + 1, 0).getDate();
+  var work = 0, off = 0, noData = 0, dup = false, body = '';
+  for (var d = t.d; d <= last; d++) {
     var k = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-    var wd = (first + d - 1) % 7, cls = 'cbc-cell' + (wd === 0 ? ' sun' : wd === 6 ? ' sat' : '') + (k === todayK ? ' today' : '');
-    var inner = '<span class="cbc-d">' + d + '</span>';
-    if (k < todayK) { cells += '<div class="' + cls + ' past">' + inner + '</div>'; continue; }
+    var wd = new Date(y, m, d).getDay();
+    var dcls = 'cbf-dt' + (wd === 0 ? ' sun' : wd === 6 ? ' sat' : '');
+    var dl = '<td class="' + dcls + '">' + d + '<small>' + '일월화수목금토'.charAt(wd) + '</small></td>';
+    var trc = k === todayK ? ' class="today"' : '';
     var rows = st.board[k];
-    if (!rows) { noData++; cells += '<button type="button" class="' + cls + ' nodata" onclick="cbfPick(\'' + k + '\')">' + inner + '<span class="cbc-x">-</span></button>'; continue; }
+    if (!rows) { noData++; body += '<tr' + trc + '>' + dl + '<td colspan="7" class="cbf-none">아직 안 올라왔어요</td></tr>'; continue; }
     var hits = cbfDayHits(rows, q);
-    if (!hits.length) { off++; cells += '<button type="button" class="' + cls + ' off" onclick="cbfPick(\'' + k + '\')">' + inner + '<span class="cbc-off">휴</span></button>'; continue; }
-    work++; if (!firstWork) firstWork = k; if (hits.length > 1) dup = true;
-    var h0 = hits[0].r;
-    cells += '<button type="button" class="' + cls + ' work" onclick="cbfPick(\'' + k + '\')">' + inner
-      + (hits.length > 1 ? '<i class="cbc-more">+' + (hits.length - 1) + '</i>' : '') + '<span class="cbc-dia">' + esc(h0.dia || '-') + '</span>'
-      + '<span class="cbc-t">' + esc(h0.start || '') + '</span></button>';
+    if (!hits.length) { off++; body += '<tr class="off' + (k === todayK ? ' today' : '') + '">' + dl + '<td colspan="7" class="cbf-off">승무 없음</td></tr>'; continue; }
+    work++; if (hits.length > 1) dup = true;
+    hits.forEach(function (h, hi) {
+      var r = h.r, names = cbNames(r);
+      var t1 = r.t1 != null ? r.t1 : ((r.trains || [])[0] || ''), t2 = r.t2 != null ? r.t2 : ((r.trains || [])[1] || '');
+      body += '<tr' + trc + '>' + (hi ? '<td class="' + dcls + ' dupd">″</td>' : dl) +
+        '<td class="cb-d">' + esc(r.dia || '') + '</td><td>' + esc(t1) + '</td><td>' + esc(t2) + '</td>' +
+        '<td>' + esc(r.start || '') + '</td><td>' + esc(r.end || '') + '</td>' +
+        names.map(function (n) { return '<td class="cb-n' + (n && cbfMatch(n, q) ? ' hit' : '') + '">' + esc(n) + '</td>'; }).join('') + '</tr>';
+    });
   }
   var when = st.at ? new Date(st.at) : null;
   $('cbf-sub').textContent = (m + 1) + '월 · 오늘부터 월말까지 · XROIS 승무근무표 현황' + (when ? ' · ' + (when.getMonth() + 1) + '/' + when.getDate() + ' ' + String(when.getHours()).padStart(2, '0') + ':' + String(when.getMinutes()).padStart(2, '0') + ' 기준' : '');
   var sum = '<div class="cbf-sum"><div><b>' + work + '</b><small>승무하는 날</small></div><div><b>' + off + '</b><small>승무 없는 날</small></div><div><b>' + noData + '</b><small>아직 안 올라온 날</small></div></div>';
-  var cal = '<div class="cbc"><div class="cbc-wk"><span class="sun">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span class="sat">토</span></div><div class="cbc-grid">' + cells + '</div></div>';
+  var tbl = '<div class="cbf-wrap"><table class="cbf-table"><thead><tr><th>날짜</th><th>다이아</th><th>열차1</th><th>열차2</th><th>출근</th><th>퇴근</th><th>승무원1</th><th>승무원2</th></tr></thead><tbody>' + body + '</tbody></table></div>';
   var notes = [];
   if (!work) notes.push('이번 달 남은 날 중에 <b>' + esc(q) + '</b>님 이름이 승무근무표에 없어요. 이름을 다시 확인해 주세요.');
-  if (dup) notes.push('XROIS는 이름 첫 글자를 가려서 보내줘서, 끝 글자가 같은 다른 사람이 함께 나올 수 있어요. (+1 표시)');
-  if (noData) notes.push('"-" 표시는 XROIS에 승무근무표가 아직 올라오지 않은 날이에요.');
+  if (dup) notes.push('XROIS는 이름 첫 글자를 가려서 보내줘서, 끝 글자가 같은 다른 사람이 함께 나올 수 있어요. (″ 줄)');
   if (st.partial) notes.push('시간이 오래 걸려 일부 날짜만 가져왔어요. 아래 <b>다시 가져오기</b>를 누르면 나머지를 가져와요.');
-  $('cbf-out').innerHTML = sum + cal + '<div id="cbf-detail" class="cbf-detail"></div>' + (notes.length ? '<div class="cbf-note">' + notes.join('<br>') + '</div>' : '')
+  $('cbf-out').innerHTML = sum + tbl + (notes.length ? '<div class="cbf-note">' + notes.join('<br>') + '</div>' : '')
     + '<button type="button" class="cbf-re" onclick="cbFind(true)">XROIS에서 다시 가져오기</button>';
   cbfLast = { q: q, st: st, todayK: todayK };
-  cbfPick(st.board[todayK] && cbfDayHits(st.board[todayK], q).length ? todayK : (firstWork || todayK));
 }
 /* 달력에서 날짜를 누르면 그날 자세히 */
 function cbfPick(k) {
