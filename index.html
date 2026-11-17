@@ -1798,6 +1798,10 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="진동" alt="" aria-hidden="true"><span><b class="ns-t">진동</b><small id="np-vib-note" style="display:none">아이폰은 휴대폰 설정(햅틱)을 따릅니다</small></span></span>
         <input type="checkbox" id="np-vib" class="ns-switch" onchange="notiPrefsChanged()" aria-label="진동">
       </div>
+      <div class="ns-row">
+        <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알림소리" alt="" aria-hidden="true"><span><b class="ns-t">무음 모드에서도 울리기</b><small id="np-loud-note">철도비서 안드로이드 앱에서 알람 음량으로 울려요</small></span></span>
+        <input type="checkbox" id="np-loud" class="ns-switch" onchange="notiPrefsChanged()" aria-label="무음 모드에서도 울리기">
+      </div>
     </div>
     <div class="ns-card ns-test-card">
     <div class="ns-card-title">알림 테스트</div>
@@ -1833,7 +1837,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="dia-dialog ns-dialog rp-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="예상행로표" alt="" aria-hidden="true">다이아 행로표 만들기<button type="button" class="rp-guide-btn" onclick="openRpGuide()">사용설명서</button></div>
     <div class="rp-step"><div class="rp-h"><b>1</b> 사업 내역 텍스트 넣기</div>
-      <div class="rp-note">승무 시스템 화면을 <b>위쪽(대상다이아·사업일자)부터 표 끝까지</b> 복사해 붙여넣으면 DIA·날짜까지 알아서 찾아 근무표에 바로 올려요. 임시다이아처럼 표가 없으면 <b>운전·편승만</b> 한 줄씩 적어도 돼요(예: <b>4655 청량리 10:45 동두천 11:37</b> / 편승은 <b>K</b>). 준비·감시·정리·승계는 철도비서가 규칙으로 채워요.</div>
+      <div class="rp-note">승무 시스템 화면을 <b>위쪽(대상다이아·사업일자)부터 표 끝까지</b> 복사해 붙여넣으면 DIA·날짜까지 알아서 찾아 근무표에 바로 올려요. 임시다이아처럼 표가 없으면 <b>운전·편승만</b> 한 줄씩 적어도 돼요(예: <b>4655 청량리 10:45 동두천 11:37</b> / 편승은 <b>K</b>).</div>
       <textarea id="rp-paste" class="rp-text" rows="6" placeholder="예)&#10;1  준비  -  -  10:05  -  10:45&#10;2  운전  4655  청량리  10:45  동두천  11:37&#10;3  입환  9999  동두천  11:37  동두천  12:07"></textarea>
       <button type="button" class="rp-btn rp-primary rp-read" onclick="rpReadPaste()">텍스트 읽어서 행로표 그리기</button>
       <div id="rp-ocr-msg" class="rp-msg"></div>
@@ -1850,7 +1854,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <input id="rp-date" type="hidden">
       <div id="rp-cal" class="rp-cal"></div>
       <div id="rp-cal-sel" class="rp-cal-sel"></div>
-      <label class="rp-check"><input type="checkbox" id="rp-setdia" checked> 근무정보가 없는 날짜에만 근무 자동 입력 (기존 근무는 변경하지 않음)</label>
     </div>
     <div class="rp-actions"><button type="button" class="rp-btn" onclick="rpDownload()">이미지로 저장</button><button type="button" class="rp-btn rp-primary" onclick="rpSave()">저장</button></div>
     <div class="rp-step"><div class="rp-h">저장한 행로표</div><div id="rp-list"></div></div>
@@ -2981,6 +2984,7 @@ function snapApply(owner, gen, r) {
   return true;
 }
 var snapTeamMissing = false;
+var snapForceFull = false;
 function snapVersionFor(owner) {
   return (snapshot && snapshot.owner === owner && snapshot.raw && snapshot.raw.version)
     ? String(snapshot.raw.version)
@@ -3005,9 +3009,12 @@ function refreshSnapshot(force, cb) {
   var gen = snapGen;
   var owner = user.employeeId;
   /* 조별 근무표: 내 조 사람 · 내 조 다이아만 (서버에 조별 SQL이 없으면 예전 방식으로) */
+  /* 근무그룹을 열 때·앱으로 돌아올 때는 버전 비교 없이 통째로 받아서 다른 사람 변경을 놓치지 않음 */
+  var verUse = snapForceFull ? '' : snapVersionFor(owner);
+  snapForceFull = false;
   function snapFetch(cb2) {
-    if (snapTeamMissing) return api({ action: 'getSnapshot', employeeId: owner, token: user.token, ver: snapVersionFor(owner) }, cb2);
-    api({ action: 'getTeamSnapshot', employeeId: owner, token: user.token, ver: snapVersionFor(owner) }, function (r0) {
+    if (snapTeamMissing) return api({ action: 'getSnapshot', employeeId: owner, token: user.token, ver: verUse }, cb2);
+    api({ action: 'getTeamSnapshot', employeeId: owner, token: user.token, ver: verUse }, function (r0) {
       if (r0 && (r0.success || r0.errorCode === 'AUTH')) return cb2(r0);
       snapTeamMissing = true;
       api({ action: 'getSnapshot', employeeId: owner, token: user.token, ver: '' }, cb2);
@@ -6976,16 +6983,45 @@ function openGroupSection() {
   groupData = null;
   switchSection('group-section');
   loadGroupSchedule(false);
+  groupHardRefresh();
   startGroupAutoRefresh();
 }
+function groupSectionActive() {
+  var e = $('group-section');
+  return !!(e && e.classList.contains('active'));
+}
+/* 서버 근무표를 버전 비교 없이 새로 받아 근무그룹 표를 다시 계산 (다른 사람이 바꾼 근무 즉시 반영) */
+var groupHardBusy = false;
+function groupHardRefresh() {
+  if (groupHardBusy || !getCurrentUser().token) return;
+  groupHardBusy = true;
+  var finish = function () {
+    groupHardBusy = false;
+    if (groupSectionActive()) loadGroupSchedule(true);
+  };
+  syncPending(function () {
+    snapForceFull = true;
+    refreshSnapshot(true, finish);
+  });
+}
+var groupTick = 0;
 function startGroupAutoRefresh() {
   stopGroupAutoRefresh();
+  groupTick = 0;
   groupTimer = setInterval(function () {
-    if (document.hidden) return;
-    /* 상대방이 교환한 내용이 보관함에 있으면 먼저 가져온 뒤 표를 새로 그림 */
-    syncPending(function () { loadGroupSchedule(true); });
+    if (document.hidden || !groupSectionActive()) return;
+    groupTick++;
+    /* 2분마다 한 번은 통째로, 그 사이에는 바뀐 것만 */
+    if (groupTick % 4 === 0) { groupHardRefresh(); return; }
+    /* 상대방이 교환한 내용이 보관함에 있으면 먼저 가져온 뒤 서버 근무표를 새로 받고 표를 다시 그림 */
+    syncPending(function () { refreshSnapshot(true, function () { if (groupSectionActive()) loadGroupSchedule(true); }); });
   }, GROUP_REFRESH_MS);
 }
+/* 앱으로 돌아오면 근무그룹 표를 바로 새로 받음 */
+document.addEventListener('visibilitychange', function () {
+  if (!document.hidden && groupSectionActive()) setTimeout(groupHardRefresh, 300);
+});
+window.addEventListener('focus', function () { if (groupSectionActive()) groupHardRefresh(); });
 function stopGroupAutoRefresh() {
   if (groupTimer) {
     clearInterval(groupTimer);
@@ -7007,7 +7043,16 @@ function goGroupThisWeek() {
 }
 function loadGroupSchedule(silent) {
   var user = getCurrentUser();
-  if (user && user.token && typeof rsShareFetch === 'function') rsShareFetch();
+  if (user && user.token && typeof rsShareFetch === 'function') {
+    var shareBefore = '';
+    try { shareBefore = JSON.stringify(rsSharedRouteCache || null); } catch (e) {}
+    /* 동료 행로표를 새로 받아 바뀌었으면 표를 다시 그림 */
+    rsShareFetch(function () {
+      var after = '';
+      try { after = JSON.stringify(rsSharedRouteCache || null); } catch (e) {}
+      if (after !== shareBefore && groupSectionActive()) renderGroupTable();
+    });
+  }
   var status = $('group-status');
   if (!user.token) {
     renderGroupTable();
@@ -9506,6 +9551,7 @@ function payWorkStats(y, m, S) {
     var type = String(info.type || info.label || '').trim();
     if (type !== '주' && type !== '야' && !isCredit) continue;
     st.days++;
+    (st.workKeys || (st.workKeys = [])).push(key);
     /* 승무수당 · 조정수당의 17일 기준 근무일은 소정근무만 (휴일근무=휴무충당 제외) — 시행세칙 제15조②, 제17조②
        야간근무는 출근일 · 퇴근일 이틀에 걸치므로 2일 (실제 명세서: 교번근무 승무수당 전액 지급과 일치) */
     if (!isCredit) st.regDays += (type === '야' ? 2 : 1);
@@ -9550,7 +9596,9 @@ function payWorkStats(y, m, S) {
       if (!xv) continue;
       xc++; sN += +xv.niht || 0; sH += +xv.hldy || 0; sE += +xv.extn || 0; sT += +xv.tot || 0;
     }
-    if (xc >= last - 1) {
+    /* 한 달을 다 덮거나, 근무한 날(주·야·휴무충당)은 모두 XROIS 명세서가 있으면 XROIS 값으로 */
+    var wk = st.workKeys || [], allWork = wk.length > 0 && wk.every(function (k) { return !!xsAll[k]; });
+    if (xc >= last - 1 || allWork) {
       st.nightMin = sN; st.holMin = sH; st.overMin = sE;
       /* 총 근무시간(정산 인정): XROIS 총 사업시간에서 편승은 50%만, 감시는 빼고 */
       var adj = 0;
@@ -9865,9 +9913,12 @@ function payCalc(T, prefs, work, grade, step, payM, payY, joinDate) {
         /* 실제 명세서: 시급(통상임금 ÷ 209)을 원 단위로 반올림한 뒤 × 시간 × 배율, 10원 미만 절사 */
         v = f10p(hrs * Math.round(hourly) * (+it.rate)); d = HOURS[it.calc][1] + ' ' + hrs + '시간 × 시급 ' + won(hourly) + '원 × ' + (+it.rate);
         /* 같은 시간으로 법정차액도 따로 (명세서: 시간외수당_법정차액 · 야간수당_법정차액) */
-        var lv = legalHourly > 0 && it.calc !== '근무시간' ? f10p(hrs * Math.round(legalHourly) * (+it.rate)) : 0;
+        /* 법정 통상시급(법정 통상임금 ÷ 209, 원 단위 반올림)으로 계산한 수당 − 회사 통상시급으로 계산한 수당 (각각 10원 미만 절사)
+           2026년 10월 명세서로 확인: 시간외 6시간 131,300 − 114,040 = 17,260 · 야간 27.83시간 203,000 − 176,330 = 26,670 (법정 시급 14,589원) */
+        var lgH = Math.round((ordinary + legalExtra) / STD_H);
+        var lv = legalExtra > 0 && it.calc !== '근무시간' ? f10p(hrs * lgH * (+it.rate)) - v : 0;
         if (lv > 0) legalItems.push({ per: 'prev', name: payShowName(it.name).replace(/근무수당$/, '수당') + '_법정차액', amt: lv,
-          detail: HOURS[it.calc][1] + ' ' + hrs + '시간 × 차액시급 ' + won(legalHourly) + '원 × ' + (+it.rate),
+          detail: HOURS[it.calc][1] + ' ' + hrs + '시간 × (법정 시급 ' + won(lgH) + '원 − 시급 ' + won(Math.round(hourly)) + '원) × ' + (+it.rate),
           help: '회사 통상임금으로 계산한 수당과 법정 통상임금(기본급 + 위험 · 기술 · 대우 · 조정 · 승무 · 1인승무 · 특별업무 · 업무지원수당 + 급식보조비, 명절상여금 · 평가금 제외)으로 계산한 수당의 차이예요. 차액시급 = 월 ' + won(legalExtra) + '원' + (legalNames.length ? '(' + legalNames.join(' · ') + ')' : '') + ' ÷ ' + STD_H + '시간. 전달 근무 시간으로 계산해요.' });
       }
     } else if (DAYS[it.calc]) {
@@ -11133,6 +11184,7 @@ function logout() {
   LS.removeItem(USER_KEY);
   SS.removeItem(USER_KEY);
   lcSetName('');   /* 시계 아래 이전 사용자 이름 바로 지우기 */
+  try { rsAppCall('setAlarms', []); rsAppAlarmSig = ''; } catch (e) {}   /* 앱에 예약한 알람도 지우기 */
   var saved = readSavedLogin();
   if (saved) {
     writeSavedLogin(saved.id, saved.name, false);
@@ -11466,6 +11518,7 @@ function alarmAutoSave(withToast) {
     pushSyncAlarms(true);          /* 끄면 서버에 올려 둔 알람도 지움 */
   }
   renderAlarmSub();
+  try { rsAppAlarmSig = ''; rsAppSyncAlarms(); } catch (e) {}
   if (withToast) showToast(cfg.on ? '출근 ' + alarmMinText(cfg.min) + ' 알람을 켰습니다.' : '출근 알람을 껐습니다.');
 }
 function alarmToggleChanged() {
@@ -11479,6 +11532,7 @@ function alarmBeep() {
     /* 처음 화면을 눌렀을 때 준비해 둔 소리 장치를 사용 (새로 만들면 브라우저가 소리를 막을 수 있음) */
     var np = getNotiPrefs();
     if (!np.sound || np.vol <= 0) return;                    /* 사용자가 소리를 껐으면 울리지 않음 */
+    if (rsAppHas('ring')) { rsAppCall('ring', rsAppSound('beep')); return; }   /* 앱: 알람 음량으로 (무음 모드에서도) */
     appAudioSession();
     var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     if (ios && !navigator.audioSession && appBeepEl) {   /* 옛 아이폰: 미디어 재생은 무음 스위치를 무시 */
@@ -11531,6 +11585,7 @@ function fireAlarm(w, key, min) {
 }
 function closeAlarmRing() {
   if (alarmRingTimer) { clearInterval(alarmRingTimer); alarmRingTimer = null; }
+  try { rsAppCall('stopRing'); } catch (e) {}
   $('alarm-ring-panel').classList.remove('active');
 }
 function runAlarmCheck() {
@@ -15792,6 +15847,63 @@ function runLoginPopups() {
 }
 /* ============ 알림 방식 설정: 팝업 · 소리 · 진동 · 볼륨 (이 폰에만 저장) ============ */
 function notiPrefKey() { return 'notiPrefs_' + (getCurrentUser().employeeId || ''); }
+/* ================= 철도비서 안드로이드 앱 연결 (RsApp) =================
+   웹(index.html)이 '언제 · 무엇을' 정하고, 앱은 '할 줄 아는 일'만 해요.
+   앱이 없으면(브라우저 · PWA) 아무 일도 안 하고 지금처럼 웹 방식으로 동작해요.
+   앱이 제공하면 쓰는 함수 (모두 문자열 JSON 주고받기):
+     RsApp.version()              → '1.0.0'
+     RsApp.ring(json)             → 지금 울리기 {kind, title, body, vol(0~100), loud(무음에서도), vib:[ms...], repeat}
+     RsApp.stopRing()             → 울림 멈추기
+     RsApp.setAlarms(json)        → 예약 알람 전체 교체 [{id, at(ms), kind, title, body, vol, loud, vib, repeat}] (앱이 꺼져 있어도 울림)
+     RsApp.notify(json)           → 알림창 알림 {tag, title, body}
+     RsApp.vibrate(json)          → 진동 [ms...]
+     RsApp.openUrl(url)           → 바깥 브라우저 · 다운로드로 열기
+   기존 위젯 연결(RsWidget)은 그대로 둬요. */
+var RS_APP_LATEST_URL = 'app-version.json';   /* 같은 사이트에 올리는 최신 앱 정보 {version, apk, notes} */
+function rsApp() { return window.RsApp || null; }
+function rsAppHas(fn) { var a = rsApp(); return !!(a && typeof a[fn] === 'function'); }
+function rsAppCall(fn) { if (!rsAppHas(fn)) return undefined; var args = Array.prototype.slice.call(arguments, 1).map(function (v) { return typeof v === 'string' ? v : JSON.stringify(v); }); try { return window.RsApp[fn].apply(window.RsApp, args); } catch (e) { return undefined; } }
+function rsAppVersion() { var v = rsAppCall('version'); return v ? String(v) : ''; }
+/* 앱 알람 소리 설정: 무음 모드에서도 알람 음량으로 (알림 설정 '무음에서도 울리기') */
+function rsAppSound(kind, title, body, repeat) {
+  var np = getNotiPrefs();
+  return { kind: kind || 'alarm', title: title || '철도비서', body: body || '', vol: np.sound ? np.vol : 0, loud: np.loud !== false, vib: np.vib ? [400, 200, 400, 200, 600] : [], repeat: repeat || 1 };
+}
+/* 출근 · 도중출무 알람을 앱에 예약 (앱이 꺼져 있어도 휴대폰이 직접 울림) */
+var rsAppAlarmSig = '';
+function rsAppSyncAlarms() {
+  if (!rsAppHas('setAlarms')) return;
+  try {
+    var u = getCurrentUser(); if (!u || !u.token) { rsAppCall('setAlarms', []); rsAppAlarmSig = ''; return; }
+    if (!snapshotUsable()) return;
+    var list = pushAlarmList(getAlarmCfg()).concat(pushMidList()).map(function (a) {
+      var o = rsAppSound(a.tag.indexOf('mid-') === 0 ? 'mid' : 'alarm', a.title, a.body, 10);
+      o.id = a.tag; o.at = new Date(a.at).getTime(); return o;
+    });
+    var sig = JSON.stringify(list); if (sig === rsAppAlarmSig) return;
+    rsAppAlarmSig = sig; rsAppCall('setAlarms', list);
+  } catch (e) {}
+}
+/* 새 앱 버전 알림 (앱 안에서만) */
+function rsAppCheckUpdate() {
+  var cur = rsAppVersion(); if (!cur || rsAppCheckUpdate.done) return; rsAppCheckUpdate.done = 1;
+  fetch(RS_APP_LATEST_URL + '?v=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+    if (!j || !j.version || !j.apk) return;
+    var a = cur.split('.').map(Number), b = String(j.version).split('.').map(Number), newer = false;
+    for (var i = 0; i < 3; i++) { if ((b[i] || 0) !== (a[i] || 0)) { newer = (b[i] || 0) > (a[i] || 0); break; } }
+    if (!newer) return;
+    var bar = document.createElement('div'); bar.className = 'rsapp-upd';
+    bar.innerHTML = '<b>새 앱 버전 ' + esc(j.version) + '</b><span>' + esc(j.notes || '앱 기능이 좋아졌어요.') + '</span><button type="button">받기</button><i role="button" aria-label="닫기">×</i>';
+    bar.querySelector('button').onclick = function () { if (rsAppHas('openUrl')) rsAppCall('openUrl', new URL(j.apk, location.href).href); else location.href = j.apk; };
+    bar.querySelector('i').onclick = function () { bar.remove(); };
+    document.body.appendChild(bar);
+  }).catch(function () {});
+}
+(function () {
+  setTimeout(function () { rsAppSyncAlarms(); rsAppCheckUpdate(); }, 4000);
+  setInterval(rsAppSyncAlarms, 10 * 60000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) setTimeout(rsAppSyncAlarms, 1500); });
+})();
 function getNotiPrefs() {
   var d = { popup: true, sound: true, vib: true, vol: 80 };
   try {
@@ -15799,6 +15911,7 @@ function getNotiPrefs() {
     if (typeof o.popup === 'boolean') d.popup = o.popup;
     if (typeof o.sound === 'boolean') d.sound = o.sound;
     if (typeof o.vib === 'boolean') d.vib = o.vib;
+    if (typeof o.loud === 'boolean') d.loud = o.loud;
     if (o.vol >= 0 && o.vol <= 100) d.vol = Math.round(o.vol);
     if (o.kinds && typeof o.kinds === 'object') d.kinds = o.kinds;
     if (o.retry && typeof o.retry === 'object') d.retry = o.retry;
@@ -15821,12 +15934,14 @@ function saveNotiPrefs(p) {
 }
 function appVibrate(pattern) {
   if (!getNotiPrefs().vib) return;
+  if (rsAppHas('vibrate')) { rsAppCall('vibrate', pattern); return; }   /* 앱: 무음 모드에서도 진동 */
   try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
 }
 /* 휴대폰 알림창 알림 (팝업 끄면 표시 안 함, 소리·진동 설정 반영) */
 function appNotify(title, opt, force) {
   var np = getNotiPrefs();
   if (!force && !np.popup) return;
+  if (rsAppHas('notify')) { rsAppCall('notify', { tag: (opt && opt.tag) || '', title: title, body: (opt && opt.body) || '' }); return; }
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   opt = opt || {};
   opt.renotify = true;
@@ -15844,6 +15959,8 @@ function notiPrefsRender() {
   if ($('np-popup')) $('np-popup').checked = np.popup;
   if ($('np-sound')) $('np-sound').checked = np.sound;
   if ($('np-vib')) $('np-vib').checked = np.vib;
+  if ($('np-loud')) $('np-loud').checked = np.loud !== false;
+  if ($('np-loud-note')) $('np-loud-note').textContent = rsAppVersion() ? '앱 ' + rsAppVersion() + ' · 꺼져 있어도 알람 음량으로 울려요' : '앱에서는 꺼져 있어도 · 웹은 화면이 켜져 있을 때만';
   var r = $('np-vol');
   if (r) {
     r.value = String(np.vol);
@@ -15861,8 +15978,9 @@ function notiPrefsRender() {
 }
 function notiPrefsChanged() {
   var before = getNotiPrefs();
-  var np = { popup: $('np-popup').checked, sound: $('np-sound').checked, vib: $('np-vib').checked, vol: parseInt($('np-vol').value, 10) || 0 };
+  var np = Object.assign({}, before, { popup: $('np-popup').checked, sound: $('np-sound').checked, vib: $('np-vib').checked, vol: parseInt($('np-vol').value, 10) || 0, loud: $('np-loud') ? $('np-loud').checked : before.loud !== false });
   saveNotiPrefs(np);
+  try { rsAppAlarmSig = ''; rsAppSyncAlarms(); } catch (e) {}
   notiPrefsRender();
   if (np.popup !== before.popup) {
     try { pushSyncAlarms(true); } catch (e) {}
@@ -19795,12 +19913,13 @@ function rsEstimatedPlan(diaNo, dateKey, employeeId) {
   var drv = [];
   (saved.rows || []).forEach(function (r) { var tn = String(r.train || '').toUpperCase(); if (/운전/.test(r.kind || '') && tn && tn !== 'K' && drv.indexOf(tn) < 0) drv.push(tn); });
   return { dia: dia, rows: saved.rows || [], xr: xr, trains: drv, type: saved.type || '',
-    start: (xr && xr.start) || (xrUser ? '' : (t.start || saved.tempStart || '')), end: (xr && xr.end) || (xrUser ? '' : (t.end || saved.tempEnd || '')), basis: xrUser ? '' : (t.basis || saved.tempBasis || '') };
+    start: (xr && xr.start) || '', end: (xr && xr.end) || '', basis: '' };
 }
 /* 임시 행로표 예상시간: 출고가 있으면 출고운전 시작 70분 전, 없으면 첫 편승·승계·운전 시작 40분 전.
    퇴근은 마지막 최종 정리(정리·편승정리·입고정리)의 종료시각만 사용.
    정리 종료시각이 없을 땐 임의의 퇴근시간을 만들지 않습니다. 정식 DIA 자료는 변경하지 않음. */
 function rpTempTimes(rows) {
+  return { start: '', end: '', basis: '' };   /* 행로표로 출근·퇴근 시각을 짐작하지 않음 (XROIS 시각만 사용) */
   var rr = (rows || []).filter(function (r) { return r && rpMin(r.dep) != null; });
   if (!rr.length) return { start: '', end: '', basis: '' };
   var hasOut = rr.some(function (r) { return r.kind === '출고운전' || r.kind === '출고준비'; });
@@ -20058,7 +20177,7 @@ function rpRender(full) {
   var timeLine = rx ? '<div class="rp-temp-time"><b>XROIS 출근</b> ' + rpEsc(rx.start || '-') + ' <b>· 퇴근</b> ' + rpEsc(rx.end || '-') + ' <small>(' + rpEsc(rDk) + ' XROIS 기준)</small></div>'
     : linked ? '<div class="rp-temp-time"><b>출근 · 퇴근</b> XROIS에서 가져오면 표시돼요 <small>(예정 시각은 쓰지 않아요)</small></div>'
     : '<div class="rp-temp-time"><b>임시 다이아 예상 출근</b> ' + (tm.start || '미산정') + ' <b>· 퇴근</b> ' + (tm.end || '최종 정리시간 필요') + ' <small>(' + rpEsc(tm.basis) + ' / 실제 근무시각 확인 필요)</small></div>';
-  $('rp-preview').innerHTML = rows.length ? '<img alt="예상 행로표 미리보기" src="' + rpUrl(rDia, rows) + '">' + timeLine : '';
+  $('rp-preview').innerHTML = rows.length ? '<img alt="행로표 미리보기" src="' + rpUrl(rDia, rows) + '">' : '';
 }
 function rpEdit(i, k, v) { if (!rpRows[i]) return; rpRows[i][k] = v; delete rpRows[i].auto; rpRender(false); }
 function rpDel(i) { rpRows.splice(i, 1); rpRender(); }
@@ -20073,14 +20192,11 @@ function rpReadPaste() {
   var m = String(t).match(/대상\s*다이아\s*[\t ]*([0-9A-Z]{4,6})/i) || String(t).match(/\b(12[0-9A-Z]{3})\b/);
   if (m && !$('rp-dia').value) $('rp-dia').value = m[1].toUpperCase();
   rpDia = ($('rp-dia').value || '').toUpperCase();
-  var onlyMoves = rows.every(function (r) { return r.kind === '운전' || r.kind === '편승'; });
-  if (onlyMoves) rows = rpAutoFill(rows);
+  /* 규칙으로 줄을 채우지 않고 읽은 그대로 */
   rpRows = rows;
   rpSetType(rpGuessType(rows), true);
   rpRender();
-  var head = onlyMoves
-    ? '운전·편승 ' + rows.filter(function (r) { return !r.auto; }).length + '개를 읽고 준비·감시·정리·승계는 규칙으로 채웠어요(연한 줄).'
-    : rows.length + '개 구간을 읽었어요.';
+  var head = rows.length + '개 구간을 읽었어요.';
   /* 붙여넣은 글에 사업일자가 있으면 그 날짜로 (승무 시스템 화면 위쪽: 사업일자 20261109) */
   var dm = String(t).match(/사업\s*일자\s*[:\t ]*(\d{4})[.\-\/ ]?(\d{1,2})[.\-\/ ]?(\d{1,2})/);
   if (dm) { var dk = dm[1] + '-' + ('0' + dm[2]).slice(-2) + '-' + ('0' + dm[3]).slice(-2); $('rp-date').value = dk; rpCalOpen(dk); }
@@ -20417,7 +20533,7 @@ function rpSetType(t, auto) {
   rpType = t;
   var b = document.querySelectorAll('#rp-panel .rp-type button');
   for (var i = 0; i < b.length; i++) b[i].classList.toggle('on', b[i].getAttribute('data-t') === t);
-  var h = $('rp-type-hint'); if (h) h.textContent = auto ? '시각을 보고 자동으로 골랐어요' : '';
+  var h = $('rp-type-hint'); if (h) h.textContent = '';
 }
 /* 사용설명서 애니메이션 */
 var RPG_CAPS = ['① 매우 중요! 대상다이아·사업일자와 표의 모든 열·모든 행을 처음부터 끝까지 싹 드래그하여 복사하세요!', '② 다이아 행로표 만들기 1번 칸에 붙여넣고 버튼 누르기', '③ 철도비서가 표를 읽어 행로표를 그려요', '④ 사업일자 근무표에 자동으로 올라가요'];
@@ -23510,6 +23626,13 @@ html.ui-dark .geo-riv{stroke:#1f3a57}
 html.ui-dark #kl-panel .kl-title,html.ui-dark #kl-panel .kl-t b,html.ui-dark #kl-panel .kl-ln,html.ui-dark #kl-panel .kl-sub b{color:#f2f4f7}
 html.ui-dark #kl-panel .kl-row{background:#1d2430}html.ui-dark #kl-panel .kl-row.first{background:#17312a}
 html.ui-dark #kl-panel .kl-re{background:#232a35;color:#e4e7ec}
+</style>
+<style id="rsapp-style">
+/* 새 앱 버전 알림 (안드로이드 앱 안에서만) */
+.rsapp-upd{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:900;display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:4px 10px;padding:12px 12px 12px 16px;border-radius:16px;background:#101828;color:#fff;box-shadow:0 10px 28px rgba(0,0,0,.25)}
+.rsapp-upd b{font-size:14.5px}.rsapp-upd span{grid-column:1;font-size:12.5px;color:#c0c6d0}
+.rsapp-upd button{grid-row:1/3;grid-column:2;height:40px;padding:0 16px;border:0;border-radius:12px;background:#2f6fd6;color:#fff;font:inherit;font-weight:800}
+.rsapp-upd i{grid-row:1/3;grid-column:3;font-style:normal;font-size:22px;color:#98a2b3;padding:0 4px;cursor:pointer}
 </style>
 </body>
 </html>
