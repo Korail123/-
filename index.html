@@ -18026,6 +18026,8 @@ window.addEventListener('load', hookSwitch);
 .be-input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #d5dde7;border-radius:12px;background:#fff;font:inherit;font-size:15px;color:#111;outline:none}
 .be-input:focus{border-color:#1a73e8;box-shadow:0 0 0 3px rgba(26,115,232,.12)}
 .be-content{min-height:42vh;resize:vertical;line-height:1.7;word-break:keep-all}
+/* 글 쓰는 칸 = 글 보이는 칸 (폭 · 글자 크기 · 줄 간격 · 줄바꿈이 똑같아서 쓴 모양 그대로 보임) */
+html body #board-editor-content.be-content{box-sizing:border-box!important;width:100%!important;font-size:13px!important;line-height:1.6!important;padding:12px 9px!important;letter-spacing:normal!important;word-break:keep-all!important;overflow-wrap:anywhere!important;white-space:pre-wrap!important;font-family:inherit!important;tab-size:4}
 .be-count{margin-top:4px;text-align:right;font-size:11px;color:#98a2b3}
 .be-save{display:block;width:100%;margin-top:14px;border:0;border-radius:14px;background:#1a73e8;color:#fff;font-size:15px;font-weight:900;padding:14px;cursor:pointer}
 #main-container > #notice-panel.page-view,#main-container > #suggestion-panel.page-view{padding:4px 0 100px!important;margin:0!important;max-width:none!important}
