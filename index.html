@@ -1363,7 +1363,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
     <div class="input-group">
       <label for="signup-team" class="ico-lab"><img class="lab-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무그룹" alt="" aria-hidden="true">조</label>
-      <select id="signup-team" class="signup-select"><option value="1종조">1종조</option><option value="디젤조">디젤조</option><option value="2종조">2종조</option><option value="부기관사조" selected>부기관사조</option><option value="입환조">입환조</option></select>
+      <select id="signup-team" class="signup-select"><option value="1종조">1종조</option><option value="디젤조">디젤조</option><option value="2종조">2종조</option><option value="부기관사조" selected>부기관사조</option><option value="입환조">지부조</option></select>
     </div>
     <div class="input-group">
       <label for="signup-code">인증번호</label>
@@ -1576,7 +1576,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       </span>
     </div>
     <div class="mp-field"><span>조</span>
-      <span class="mp-selects"><select id="mp-team" onchange="saveMyTeam()"><option value="1종조">1종조</option><option value="디젤조">디젤조</option><option value="2종조">2종조</option><option value="부기관사조" selected>부기관사조</option><option value="입환조">입환조</option></select></span>
+      <span class="mp-selects"><select id="mp-team" onchange="saveMyTeam()"><option value="1종조">1종조</option><option value="디젤조">디젤조</option><option value="2종조">2종조</option><option value="부기관사조" selected>부기관사조</option><option value="입환조">지부조</option></select></span>
     </div>
     <div class="mp-note" style="margin-top:4px">※ 호봉은 매년 1월 1일에 자동으로 1호봉씩 올라갑니다.</div>
   </div>
@@ -4558,7 +4558,8 @@ function rsWidgetMonth(y, m, cb) {
       }
       var swap = info && (info.swapPartnerName || info.swapPartnerId) ? 1 : 0;
       /* 한 칸: 구분|색|공휴일|교환 */
-      out.push([label, tone, holidayName(y, m, d) ? 1 : 0, swap].join('|'));
+      var hn = holidayName(y, m, d) || '';
+      out.push([label, tone, hn ? 1 : 0, swap, String(hn).replace(/\|/g, ' ')].join('|'));   /* 위젯: 구분|색|공휴일|교환|공휴일 이름 */
       var credit = info && (info.creditStatus === '대기충당' || info.creditStatus === '운휴충당' || info.creditStatus === '휴무충당') ? info.creditStatus
         : (info && (info.status === '대기충당' || info.status === '운휴충당' || info.status === '휴무충당') ? info.status
         : (info && (info.label === '대기충당' || info.label === '운휴충당' || info.label === '휴무충당') ? info.label : ''));
@@ -5332,7 +5333,7 @@ function wgOff() {
   });
 }
 var rsWidgetTimer = null, rsWidgetLast = '';
-function rsWidgetPush(now) {
+function rsWidgetPush(now, around) {
   try { rsFeedSoon(); } catch (e) {}
   if (!window.RsWidget || typeof window.RsWidget.update !== 'function') return;
   if (rsWidgetTimer) clearTimeout(rsWidgetTimer);
@@ -5340,8 +5341,13 @@ function rsWidgetPush(now) {
     rsWidgetTimer = null;
     var u = getCurrentUser();
     if (!u || !u.token || u.employeeId === 'guest') { try { window.RsWidget.update(JSON.stringify({ months: {}, name: '', at: '' })); } catch (e) {} return; }
-    var t = todayKST(), list = [], left = 4, name = u.name || '';
-    for (var i = -1; i <= 2; i++) {
+    /* 위젯에서 넘겨 볼 수 있게: 지난 2달 ~ 앞으로 6달 (+ 위젯이 보고 있는 달 앞뒤) */
+    var t = todayKST(), list = [], name = u.name || '', offs = [];
+    for (var i = -2; i <= 6; i++) offs.push(i);
+    around = +around || 0;
+    for (var j = around - 1; j <= around + 1; j++) if (offs.indexOf(j) < 0) offs.push(j);
+    var left = offs.length;
+    offs.forEach(function (i) {
       var dt = new Date(t.y, t.m + i, 1);
       (function (y, m) {
         rsWidgetMonth(y, m, function (r) {
@@ -5357,7 +5363,7 @@ function rsWidgetPush(now) {
           try { window.RsWidget.update(payload); } catch (e) {}
         });
       })(dt.getFullYear(), dt.getMonth());
-    }
+    });
   }, now ? 0 : 1500);
 }
 (function () {
@@ -9068,6 +9074,9 @@ function tenureText(joinDate) {
 /* ============ 조 (1종조 · 디젤조 · 2종조 · 부기관사조 · 입환조) ============
    서버 members.crew_team · app_getteams(읽기) · app_setmyteam(내 조 바꾸기) */
 var RS_TEAMS = ['1종조', '디젤조', '2종조', '부기관사조', '입환조'];
+/* 화면에 보이는 이름: 입환조 → 지부조 (서버 · 다이아 표에 저장된 값은 '입환조' 그대로) */
+var TEAM_LABEL = { '입환조': '지부조' };
+function teamLabel(t) { return TEAM_LABEL[t] || t; }
 function teamKey() { return 'rs_team_' + (getCurrentUser().employeeId || ''); }
 function myTeam() { try { var t = LS.getItem(teamKey()) || ''; return t === '지' + '부조' ? '입환조' : t; } catch (e) { return ''; } }
 function teamPut(t) { try { if (RS_TEAMS.indexOf(t) >= 0) LS.setItem(teamKey(), t); } catch (e) {} }
@@ -16673,7 +16682,7 @@ function permRender() {
     guide = '<b>철도비서 앱 알림</b><br>' +
       '· 출근 알람 · 도중출무 알람: 휴대폰에 직접 예약돼서 <b>앱을 닫아도</b> 울려요<br>' +
       (rsAppHas('bgWatch')
-        ? '· 열차 운휴 · 통과/도착 알림: <b>앱을 닫아도</b> 확인해요 (알림창에 \'알림 확인 중\' 표시)<br>' + rsBgStatusHtml()
+        ? '· 열차 운휴 · 통과/도착 알림: <b>앱을 닫아도</b> 확인해요<br>' + rsBgStatusHtml()
         : '· 열차 운휴 · 통과/도착 알림: 앱이 <b>열려 있을 때</b> 와요 (앱 업데이트 1.1.0부터 꺼져도 와요)<br>') +
       '· 설정 › 애플리케이션 › 철도비서 › 알림 <b>허용</b>, 배터리 <b>제한 없음</b><br>' +
       '· 알람이 안 울리면: 설정 › 애플리케이션 › 철도비서 › <b>알람 및 리마인더</b> 허용';
@@ -24415,6 +24424,41 @@ html.ui-dark #kl-panel .kl-re{background:#232a35;color:#e4e7ec}
 .rsapp-upd button{grid-row:1/3;grid-column:2;height:40px;padding:0 16px;border:0;border-radius:12px;background:#2f6fd6;color:#fff;font:inherit;font-weight:800}
 .rsapp-upd i{grid-row:1/3;grid-column:3;font-style:normal;font-size:22px;color:#98a2b3;padding:0 4px;cursor:pointer}
 </style>
+<script id="team-label-jibu">
+/* 화면 글자 속 '입환조'를 '지부조'로 바꿔 보여줌 (값 · 저장은 그대로라 근무표 · 다이아 · 서버와 계속 맞음)
+   게시판 글 · 댓글 · 입력 칸은 사용자가 쓴 그대로 둠 */
+(function () {
+  var FROM = /입환조/g, TO = '지부조';
+  var SKIP = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, INPUT: 1, OPTION: 0, CODE: 1 };
+  var KEEP = '.bp-content,.bp-c-text,.bp-title,#board-editor-content,#board-editor-subject,.board-list-table';
+  function fix(n) {
+    if (!n || n.nodeType !== 3 || n.nodeValue.indexOf('입환조') < 0) return;
+    var p = n.parentElement; if (!p || SKIP[p.tagName] || (p.closest && p.closest(KEEP))) return;
+    n.nodeValue = n.nodeValue.replace(FROM, TO);
+  }
+  function scan(root) {
+    if (!root) return;
+    if (root.nodeType === 3) { fix(root); return; }
+    if (root.nodeType !== 1 || SKIP[root.tagName]) return;
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), x;
+    while ((x = w.nextNode())) fix(x);
+  }
+  function start() {
+    scan(document.body);
+    new MutationObserver(function (ms) {
+      ms.forEach(function (m) {
+        if (m.type === 'characterData') fix(m.target);
+        else for (var i = 0; i < m.addedNodes.length; i++) scan(m.addedNodes[i]);
+      });
+    }).observe(document.body, { childList: true, subtree: true, characterData: true });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+  /* 알림창(alert) · 확인창 글자도 */
+  var oa = window.alert, oc = window.confirm;
+  window.alert = function (m) { return oa.call(window, String(m == null ? '' : m).replace(FROM, TO)); };
+  window.confirm = function (m) { return oc.call(window, String(m == null ? '' : m).replace(FROM, TO)); };
+})();
+</script>
 <script id="board-attach">
 /* ============ 공지사항 · 건의사항 첨부 (사진 · PDF · 문서 · APK) ============
    · 파일은 Supabase 함수 board-files가 Storage(board-files 버킷)에 올리고 주소를 돌려줌
@@ -24684,7 +24728,7 @@ window.rsAppPermChanged = function () {
 function rsBgStatus() { try { return JSON.parse(rsAppCall('bgStatus') || '{}') || {}; } catch (e) { return {}; } }
 function rsBgStatusHtml() {
   var st = rsBgStatus(), h = '';
-  h += '· 앱 꺼짐 감시: <b>' + (st.on ? (st.running ? '켜짐' : '켜는 중') : '꺼짐 (운휴 알림 또는 통과 알림 역을 켜면 자동으로 켜져요)') + '</b>';
+  h += '· 앱 꺼짐 확인: <b>' + (st.on ? '켜짐' : '꺼짐 (운휴 알림 또는 통과 알림 역을 켜면 자동으로 켜져요)') + '</b>';
   if (st.last) { var d = new Date(Number(st.last) + 9 * 3600000); h += ' · 마지막 확인 ' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()); }
   h += '<br>';
   if (st.on && st.battery === false && !rsAppHas('perms')) h += '· <b style="color:#c62828">배터리 사용 제한</b>이 걸려 있으면 알림이 늦을 수 있어요 <button type="button" class="bg-batt-btn" onclick="rsAppCall(\'askBattery\')">제한 풀기</button><br>';
