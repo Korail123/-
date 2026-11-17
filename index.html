@@ -1094,7 +1094,8 @@ max-width: 100% !important; object-fit: contain !important; flex: 0 0 auto !impo
 .mp-crew-status{margin-top:8px;font-size:12px;color:#344054}
 html,body,*{scrollbar-width:none;-ms-overflow-style:none}
 html::-webkit-scrollbar,body::-webkit-scrollbar,*::-webkit-scrollbar{display:none;width:0;height:0;background:transparent}</style>
-<style id="crew-roster-style">.crew-row{flex-wrap:wrap;white-space:normal!important}
+<style id="crew-roster-style">.crew-row{flex-wrap:nowrap!important;white-space:normal!important;align-items:center}
+.crew-row>span{min-width:0;flex:1 1 auto}
 .crew-row small{font-size:.8em;color:#8a96a8;font-weight:normal}
 .crew-names{color:#1d5fc4}
 .crew-box{display:flex;flex-direction:column;gap:3px;min-width:0}
@@ -6318,12 +6319,12 @@ function crewMatesHtml(dateKey, diaNo, trains) {
   if (!crewLinked()) return '';                       /* CREW 연동 안 한 사람에게는 아무것도 표시하지 않음 */
   var ico = '<img class="detail-art" src="' + appIcon('승무원') + '" alt="" aria-hidden="true">';
   var r = crewPick(dateKey, diaNo, trains, getCurrentUser().name);
-  if (!r) return '<div class="dd-row dd-icon-row crew-row">' + ico + '<span>승무원 : <small>아직 안 가져왔어요 (마이페이지 CREW 연동 [지금 최신화])</small></span></div>';
+  if (!r) return '<div class="dd-row dd-icon-row crew-row crew-inline">' + ico + '<span>승무원 : <small class="crew-sub">정보가 없어요</small></span></div>';
   /* 출근 시간 · 퇴근 시간 줄과 똑같이 한 줄로: '승무원 : *철수, *영희' */
   var val;
   if (r.level === 1) val = r.mates.map(esc).join(', ');
   else if (r.level === 2) val = r.mates.map(esc).join(', ') + ' <small class="crew-sub">(같은 열차 ' + esc(r.trains.join('·')) + ')</small>';
-  else val = '<small class="crew-sub">' + (r.found ? '단독 승무' : '승무근무표 현황에 ' + esc(diaNo) + ' 없음') + '</small>';
+  else val = '<small class="crew-sub">' + (r.found ? '단독 승무' : '정보가 없어요') + '</small>';
   return '<div class="dd-row dd-icon-row crew-row crew-inline">' + ico + '<span>승무원 : ' + val + '</span></div>';
 }
 /* ============ 일일 메모장 ============
@@ -6457,7 +6458,7 @@ function renderDayDetail() {
     : esc(info.label);
   var tag = '근무';
   if (info.label === '휴' || (isStatus && String(info.status || '') !== '비번')) tag = '휴무';
-  else if (info.label === '비' || info.label === '비번' || info.nightCarryover) tag = '비번';
+  else if (info.label === '비' || info.label === '비번' || info.nightCarryover) tag = '근무';   /* 비번 날도 [근무] */
   else if (info.label === 'X') tag = '-';
   var html = dayDetailHead(dateText);
   var creditDetail = rsCreditForDate(getDateKey(selDate.y, selDate.m, selDate.d), info);
@@ -21635,10 +21636,7 @@ html.ui-dark #crewboard-section .cb-find input{color:#e9edf2!important}
 #crewboard-section .cb-table th+th,#crewboard-section .cb-table td+td{border-left:1px solid #eef0f3}
 #crewboard-section .cb-table td.cb-d{font-weight:800}
 #crewboard-section .cb-table td.cb-n{font-weight:600}
-#crewboard-section .cb-table tr.me td{background:#dcebff;color:#0f3f8c;font-weight:800;border-bottom-color:#c4dafa}
-#crewboard-section .cb-table tr.me td:first-child{box-shadow:inset 4px 0 0 #1769d2}
-#crewboard-section .cb-table td.cb-n.me{color:#fff;font-weight:800}
-#crewboard-section .cb-table td.cb-n.me{background:#1769d2!important;border-radius:0}
+#crewboard-section .cb-table tr.me td{background:#e3efff}
 #crewboard-section .cb-empty{background:#fff;border:1px dashed #d1d6db;border-radius:16px;padding:26px 14px;text-align:center;color:#6b7684;font-size:14px;line-height:1.7}
 #crewboard-section .cb-empty button{margin-top:10px;border:0;background:#3182f6;color:#fff;font-weight:700;border-radius:10px;padding:9px 16px;font-size:14px;cursor:pointer}
 #crewboard-section .cb-skel{height:300px;border-radius:12px;background:linear-gradient(90deg,#f2f4f6 25%,#e9edf1 50%,#f2f4f6 75%);background-size:200% 100%;animation:cbsk 1.2s infinite}
@@ -21653,9 +21651,7 @@ html.ui-dark #crewboard-section .sch-nav{background:none!important;color:#8cb8ff
 html.ui-dark .np-btns .np-sub{background:#2a3038!important;color:#e9edf2!important}
 html.ui-dark .np-btns .np-main{background:#3182f6!important;color:#fff!important}
 .dd-row.crew-inline .crew-sub{font-size:.8em;color:#8a96a8;font-weight:500}
-html.ui-dark #crewboard-section .cb-table tr.me td{background:#1d3357!important;color:#dce8ff!important}
-html.ui-dark #crewboard-section .cb-table tr.me td:first-child{box-shadow:inset 4px 0 0 #4c9aff}
-html.ui-dark #crewboard-section .cb-table td.cb-n.me{background:#2f7cf6!important;color:#fff!important}
+html.ui-dark #crewboard-section .cb-table tr.me td{background:#1d3357!important}
 </style>
 
 <script>
@@ -21737,17 +21733,17 @@ function cbRender() {
     return;
   }
   var me = cbMyName(), myDia = cbMyDia(dk);
-  /* 내 이름이 들어 있는 다이아 줄에 색 표시. 이름으로 찾은 줄이 하나도 없을 때만 내 근무표 다이아로 */
+  /* 내 이름이 들어 있는 다이아 줄만 연한 파란색으로 */
   function nameHit(r) { return !!me && cbNames(r).concat(r.crew || []).some(function (n) { return n && crewIsMe(n, me); }); }
-  var anyName = (c.rows || []).some(nameHit);
+
   /* XROIS 표 순서 그대로 */
   var body = (c.rows || []).map(function (r) {
     var names = cbNames(r);
-    var hit = anyName ? nameHit(r) : !!(myDia && xrNorm(r.dia) === myDia);
+    var hit = nameHit(r);   /* 내 이름이 있는 줄만 (비번·휴무 날은 이름이 없으니 색칠 없음) */
     var t1 = r.t1 != null ? r.t1 : ((r.trains || [])[0] || ''), t2 = r.t2 != null ? r.t2 : ((r.trains || [])[1] || '');
     return '<tr' + (hit ? ' class="me"' : '') + '><td class="cb-d">' + esc(r.dia || '') + '</td><td>' + esc(t1) + '</td><td>' + esc(t2) + '</td>' +
       '<td>' + esc(r.start || '') + '</td><td>' + esc(r.end || '') + '</td>' +
-      names.map(function (n) { return '<td class="cb-n' + (n && me && crewIsMe(n, me) ? ' me' : '') + '">' + esc(n) + '</td>'; }).join('') + '</tr>';
+      names.map(function (n) { return '<td class="cb-n">' + esc(n) + '</td>'; }).join('') + '</tr>';
   }).join('');
   list.innerHTML = '<div class="cb-wrap"><table class="cb-table"><thead><tr><th>다이아</th><th>열차1</th><th>열차2</th><th>출근</th><th>퇴근</th><th>승무원1</th><th>승무원2</th></tr></thead><tbody>' +
     (body || '<tr><td colspan="7" style="padding:20px;color:#8b95a1">내용이 없어요</td></tr>') + '</tbody></table></div>';
