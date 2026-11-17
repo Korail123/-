@@ -876,6 +876,7 @@ html.ui-dark .swap-gap-note .sgn-seg button.on{background:#2f7cf6;border-color:#
 .swap-gap-note .sgx .sgx-arc.ok{color:#1f8a4c}
 .swap-gap-note .sgx .sgx-arc.bad{color:#e03131}
 .swap-gap-note .sgx .sgx-arc.unk{color:#8a96a8}
+.swap-gap-note .sgx .sgx-arc.mid{color:#e8590c}
 .swap-gap-note .sgx .sgx-none{align-self:end;font-size:10px;color:#8a96a8;text-align:center;padding-bottom:2px}
 .swap-gap-note.bad .sgx .sgx-arc span{background:#fff3f5}
 .swap-gap-note:not(.bad) .sgx .sgx-arc span{background:#f1faf4}
@@ -8364,8 +8365,10 @@ function swapGapGrid(list, startKey, endKey) {
       var i1 = cols.indexOf(fromK), i2 = cols.indexOf(toK);
       if (i1 < 0 || i2 < 0) return '';
       var span = i2 - i1 + 1, inset = (50 / span).toFixed(2) + '%';
-      var c = gp.unknown ? 'unk' : gp.gap >= SWAP_REST_MIN ? 'ok' : 'bad';
-      var txt = gp.unknown ? '?' : swapRestHours() + 'h ' + (c === 'ok' ? 'O' : 'X');   /* 실제 휴식시간 대신 기준만: 13h O / 15h X */
+      /* 글자는 실제로 넘은 단계: 15시간 이상 → 15h O, 13시간 이상 → 13h O, 13시간 미만 → 13h X
+         색은 고른 기준: 기준을 넘으면 초록, 13시간은 넘었지만 15시간 기준에 못 미치면 주황, 13시간 미만은 빨강 */
+      var c = gp.unknown ? 'unk' : gp.gap >= SWAP_REST_MIN ? 'ok' : gp.gap >= 13 * 60 ? 'mid' : 'bad';
+      var txt = gp.unknown ? '?' : gp.gap >= 15 * 60 ? '15h O' : gp.gap >= 13 * 60 ? '13h O' : '13h X';
       return '<div class="sgx-arc ' + c + '" style="grid-row:' + arcRow + ';grid-column:' + (i1 + 2) + ' / ' + (i2 + 3) + '"><span>' + txt + '</span><i style="left:' + inset + ';right:' + inset + '"></i></div>';
     }
     h += '<div class="sgx-lane' + (ri ? ' sgx-sep' : '') + '" style="grid-row:' + arcRow + ';grid-column:1 / -1"></div>';
@@ -8516,8 +8519,8 @@ function renderSwapCalendars() {
         return '<span class="sgn-' + c + '">' + lbl + ' ' + (x.unknown ? '시각 정보 없음' : swapGapText(x) + (c === 'ok' ? ' ✓' : ' ⚠')) + '</span>';
       }
       gapLines.push({ id: pr[0], other: pr[1], name: pr[2], g: g });
-      if (g.prev) { mk[g.prev.key] = g.prev; if (!g.prev.unknown && g.prev.gap < SWAP_REST_MIN) gapMsg.push(pr[2] + ': 직전 근무 퇴근 → 첫 출근 ' + swapRestHours() + 'h X'); }
-      if (g.next) { var o = mk[g.next.key]; if (!o || o.unknown || (!g.next.unknown && g.next.gap < o.gap)) mk[g.next.key] = g.next; if (!g.next.unknown && g.next.gap < SWAP_REST_MIN) gapMsg.push(pr[2] + ': 마지막 퇴근 → 직후 근무 출근 ' + swapRestHours() + 'h X'); }
+      if (g.prev) { mk[g.prev.key] = g.prev; if (!g.prev.unknown && g.prev.gap < SWAP_REST_MIN) gapMsg.push(pr[2] + ': 직전 근무 퇴근 → 시작일 출근 ' + (g.prev.gap >= 13 * 60 ? '13h O (15h 미만)' : '13h X')); }
+      if (g.next) { var o = mk[g.next.key]; if (!o || o.unknown || (!g.next.unknown && g.next.gap < o.gap)) mk[g.next.key] = g.next; if (!g.next.unknown && g.next.gap < SWAP_REST_MIN) gapMsg.push(pr[2] + ': 종료일 퇴근 → 직후 근무 출근 ' + (g.next.gap >= 13 * 60 ? '13h O (15h 미만)' : '13h X')); }
     });
   }
   swapGapWarn = gapMsg;
