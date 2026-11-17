@@ -1427,7 +1427,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <h1 class="screen-title"><span class="page-heading-icon" aria-hidden="true"><img class="heading-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무통계" alt="" decoding="async"></span>내 근무 통계</h1>
   <div class="sch-head">
     <button type="button" class="sch-nav" onclick="statsMonth(-1)" aria-label="이전 달">◀</button>
-    <div id="stats-title" class="sch-title"></div>
+    <div id="stats-title" class="sch-title" onclick="statsToday()" style="cursor:pointer;touch-action:manipulation" title="누르면 이번 달"></div>
     <button type="button" class="sch-nav" onclick="statsMonth(1)" aria-label="다음 달">▶</button>
   </div>
   <div class="stats-card"><div id="stats-sum"></div><div id="mypage-stats" class="mypage-box"></div></div>
@@ -4179,7 +4179,8 @@ function getInfo(y, m, d) {
   return null;
 }
 function openSchedule() {
-  if (!selDate) {
+  /* 근무표는 열 때마다 항상 이번 달 · 오늘 */
+  {
     var today = todayKST();
     calendarYear = Math.max(today.y, CAL_MIN_Y);
     calendarMonth = today.y < CAL_MIN_Y ? 0 : today.m;
@@ -21727,6 +21728,22 @@ function statsRender() {
   try { [].slice.call(document.querySelectorAll('#stats-section #mypage-stats .mp-row')).forEach(function (r) { if (/^(총 근무시간|근무 일수)/.test((r.querySelector('span') || {}).textContent || '')) r.style.display = 'none'; }); } catch (e) {}
   try { schWeekRender(); } catch (e) {}
 }
+/* 앱으로 돌아왔을 때 10분 넘게 비웠으면 근무표 · 근무그룹 · 근무통계를 다시 이번 달 · 오늘로 */
+(function () {
+  var hiddenAt = 0;
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { hiddenAt = Date.now(); return; }
+    if (!hiddenAt || Date.now() - hiddenAt < 600000) return;
+    hiddenAt = 0;
+    function on(id) { var e = $(id); return !!(e && e.classList.contains('active')); }
+    try {
+      if (on('schedule-section')) openSchedule();
+      else if (on('group-section') && typeof goGroupThisWeek === 'function') goGroupThisWeek();
+      else if (on('stats-section')) statsToday();
+    } catch (e) {}
+  });
+})();
+function statsToday() { var t = todayKST(); statsY = t.y; statsM = t.m; statsRender(); }
 function statsMonth(d) {
   var x = new Date(statsY, statsM + d, 1);
   if (rsBeforeStartYm(x.getFullYear(), x.getMonth())) { rsStartToast(); return; }
@@ -22848,16 +22865,17 @@ html body #main-container > div.top-bar > #liveClock{grid-row:1!important;grid-c
 </style>
 <style id="cal-head-fixed-arrows">
 /* 근무표 · 근무그룹 달력 머리: 화살표를 제목 양옆 고정 자리에 (제목 글자가 바뀌어도 화살표는 그대로, 글자는 자리에 맞춰 줄어듦) */
-html body #schedule-section > .sch-head,html body #group-section > .sch-head{display:grid!important;grid-template-columns:minmax(0,1fr) 40px var(--cal-tw) 40px minmax(0,1fr)!important;align-items:center!important;column-gap:4px!important;gap:0 4px!important}
-html body #schedule-section > .sch-head{--cal-tw:min(176px,calc(100% - 96px))}
+html body #schedule-section > .sch-head,html body #group-section > .sch-head,html body #stats-section > .sch-head{display:grid!important;grid-template-columns:minmax(0,1fr) 40px var(--cal-tw) 40px minmax(0,1fr)!important;align-items:center!important;column-gap:4px!important;gap:0 4px!important}
+html body #schedule-section > .sch-head,html body #stats-section > .sch-head{--cal-tw:min(176px,calc(100% - 96px))}
 html body #group-section > .sch-head{--cal-tw:min(252px,calc(100% - 96px))}
-html body #schedule-section > .sch-head > .sch-nav,html body #group-section > .sch-head > .sch-nav{width:40px!important;height:40px!important;min-width:40px!important;padding:0!important;margin:0!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:15px!important;line-height:1!important;color:#3c4a60!important;background:transparent!important;border:0!important;border-radius:50%!important;box-shadow:none!important}
-html body #schedule-section > .sch-head > .sch-nav:active,html body #group-section > .sch-head > .sch-nav:active{background:#eef2f7!important}
-html body #schedule-section > .sch-head > .sch-nav:first-child,html body #group-section > .sch-head > .sch-nav:first-child{grid-column:2!important}
-html body #schedule-section > .sch-head > .sch-title,html body #group-section > .sch-head > .sch-title{grid-column:3!important;min-width:0!important;width:100%!important;overflow:hidden!important;white-space:nowrap!important;text-align:center!important;text-overflow:clip!important}
-html body #schedule-section > .sch-head > .sch-nav:last-child,html body #group-section > .sch-head > .sch-nav:last-child{grid-column:4!important}
-html.ui-dark body #schedule-section > .sch-head > .sch-nav,html.ui-dark body #group-section > .sch-head > .sch-nav{color:#c4ccd8!important}
-html.ui-dark body #schedule-section > .sch-head > .sch-nav:active,html.ui-dark body #group-section > .sch-head > .sch-nav:active{background:#262c35!important}
+html body #stats-section > .sch-head{--cal-tw:min(252px,calc(100% - 96px))}
+html body #schedule-section > .sch-head > .sch-nav,html body #group-section > .sch-head > .sch-nav,html body #stats-section > .sch-head > .sch-nav{width:40px!important;height:40px!important;min-width:40px!important;padding:0!important;margin:0!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:15px!important;line-height:1!important;color:#3c4a60!important;background:transparent!important;border:0!important;border-radius:50%!important;box-shadow:none!important}
+html body #schedule-section > .sch-head > .sch-nav:active,html body #group-section > .sch-head > .sch-nav:active,html body #stats-section > .sch-head > .sch-nav:active{background:#eef2f7!important}
+html body #schedule-section > .sch-head > .sch-nav:first-child,html body #group-section > .sch-head > .sch-nav:first-child,html body #stats-section > .sch-head > .sch-nav:first-child{grid-column:2!important}
+html body #schedule-section > .sch-head > .sch-title,html body #group-section > .sch-head > .sch-title,html body #stats-section > .sch-head > .sch-title{grid-column:3!important;min-width:0!important;width:100%!important;overflow:hidden!important;white-space:nowrap!important;text-align:center!important;text-overflow:clip!important}
+html body #schedule-section > .sch-head > .sch-nav:last-child,html body #group-section > .sch-head > .sch-nav:last-child,html body #stats-section > .sch-head > .sch-nav:last-child{grid-column:4!important}
+html.ui-dark body #schedule-section > .sch-head > .sch-nav,html.ui-dark body #group-section > .sch-head > .sch-nav,html.ui-dark body #stats-section > .sch-head > .sch-nav{color:#c4ccd8!important}
+html.ui-dark body #schedule-section > .sch-head > .sch-nav:active,html.ui-dark body #group-section > .sch-head > .sch-nav:active,html.ui-dark body #stats-section > .sch-head > .sch-nav:active{background:#262c35!important}
 </style>
 <script id="cal-head-fit-script">
 /* 제목 글자가 칸보다 길면 글자 크기를 줄여 화살표와 겹치지 않게 */
