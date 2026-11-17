@@ -816,6 +816,95 @@ box-shadow:0 1px 2px rgba(16,24,40,.04); transition:background .15s ease;
 .swap-day.empty{background:transparent}
 .swap-day .sd-top{display:flex;align-items:center;justify-content:center;gap:2px;line-height:1;min-height:11px;max-width:100%}
 .swap-day .sd-num{font-size:10px;color:#687386;line-height:1}
+.swap-day .sd-gap{display:block;font-size:7.5px;line-height:1;font-weight:800;padding:1px 2px;border-radius:3px;margin-top:1px;white-space:nowrap;letter-spacing:-.3px;font-variant-numeric:tabular-nums}
+.swap-day .sd-gap.ok{background:#e3f6ea;color:#1f8a4c}
+.swap-day .sd-gap.bad{background:#ffe3e3;color:#d6336c}
+.swap-day .sd-gap.unk{background:#eef1f5;color:#8a96a8}
+.swap-gap-warn{color:#d6336c;font-weight:700}
+.swap-gap-note{margin-top:6px;padding:7px 10px;border-radius:10px;background:#f1faf4;border:1px solid #cdebd8;font-size:12px;line-height:1.6;color:#33415c}
+.swap-gap-note.bad{background:#fff3f5;border-color:#ffd0da}
+.swap-gap-note .sgn-h{font-size:11px;font-weight:800;color:#6b7686;margin-bottom:1px}
+.swap-gap-note b{font-weight:800;margin-right:4px}
+.swap-gap-note .sgn-ok{color:#1f8a4c;font-weight:700}
+.swap-gap-note .sgn-bad{color:#d6336c;font-weight:800}
+.swap-gap-note .sgn-unk{color:#8a96a8}
+.swap-gap-note .sgx{gap:2px 3px;margin-top:4px}
+.swap-gap-note .sgx .cmp-dh{padding:3px 0}
+.swap-gap-note .sgx .cmp-dh b{font-size:12px}
+.swap-gap-note .sgx .cmp-dh.sgx-in{background:#dfe9fb;box-shadow:inset 0 0 0 1.5px #1769d2}
+.swap-gap-note .sgx .cmp-cell{min-height:36px;padding:2px 0}
+.swap-gap-note .sgx .cmp-cell.sgx-in{border-color:#1769d2;box-shadow:inset 0 0 0 1px #1769d2}
+.swap-gap-note .sgx .cmp-cell .sd-duty{font-size:14px}
+.swap-gap-note .sgx .sgx-skip{background:none;border:0;color:#8a96a8;font-weight:800;justify-content:center;align-items:center;display:flex}
+.swap-gap-note .sgx .sgx-lane{height:26px}
+.swap-gap-note .sgx .sgx-lane.sgx-sep{height:34px;border-top:1.5px dashed #f2b8c6;align-self:start;margin-top:3px}
+.swap-gap-note .sgx .sgx-lnm{align-self:end;font-size:9px;font-weight:700;color:#8a96a8;text-align:center;padding-bottom:3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.swap-gap-note .sgx .sgx-lnm.me{color:#6b8fd6}
+.swap-gap-note.idle{background:#f6f8fb;border-color:#e2e7ef}
+.swap-gap-note .sgn-check{display:block;width:100%;margin-top:7px;height:36px;border:0;border-radius:10px;background:#1769d2;color:#fff;font-size:13.5px;font-weight:800;cursor:pointer}
+html.ui-dark .swap-gap-note.idle{background:#1b1f25;border-color:#2f3640}
+.swap-gap-note .sgn-h{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.swap-gap-note .sgn-seg{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:#6b7686;font-weight:700}
+.swap-gap-note .sgn-seg button{border:1px solid #d5dbe4;background:#fff;color:#4e5968;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:800;cursor:pointer}
+.swap-gap-note .sgn-seg button.on{background:#1769d2;border-color:#1769d2;color:#fff}
+html.ui-dark .swap-gap-note .sgn-seg button{background:#232830;border-color:#3a414c;color:#c9d3e0}
+html.ui-dark .swap-gap-note .sgn-seg button.on{background:#2f7cf6;border-color:#2f7cf6;color:#fff}
+.swap-gap-note .sgx .sgx-arc{position:relative;height:24px;align-self:end;text-align:center;font-size:10px;font-weight:900;white-space:nowrap;letter-spacing:-.3px;z-index:1}
+.swap-gap-note .sgx .sgx-arc span{position:relative;display:inline-block;padding:0 3px;line-height:1;border-radius:4px;background:#fff;top:-1px}
+.swap-gap-note .sgx .sgx-arc i{position:absolute;bottom:-3px;height:13px;border:2px solid currentColor;border-bottom:0;border-radius:50% 50% 0 0/100% 100% 0 0}
+.swap-gap-note .sgx .sgx-arc.ok{color:#1f8a4c}
+.swap-gap-note .sgx .sgx-arc.bad{color:#e03131}
+.swap-gap-note .sgx .sgx-arc.unk{color:#8a96a8}
+.swap-gap-note .sgx .sgx-none{align-self:end;font-size:10px;color:#8a96a8;text-align:center;padding-bottom:2px}
+.swap-gap-note.bad .sgx .sgx-arc span{background:#fff3f5}
+.swap-gap-note:not(.bad) .sgx .sgx-arc span{background:#f1faf4}
+html.ui-dark .swap-gap-note .sgx .sgx-arc span{background:#1b1f25}
+.swap-gap-note .sgc-head,.swap-gap-note .sgc-row{display:grid;grid-template-columns:40px minmax(0,1fr) 36px minmax(0,1fr) 9px minmax(0,1fr) 36px minmax(0,1fr);align-items:center;gap:0 2px}
+.swap-gap-note .sgc-head{margin-top:3px;font-size:9.5px;color:#8a96a8;font-weight:700;text-align:center}
+.swap-gap-note .sgc-row{margin-top:4px}
+.swap-gap-note .sgc-name{font-size:11px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.swap-gap-note .sgc-cell{background:#fff;border:1px solid #dfe4ec;border-radius:8px;padding:3px 1px;text-align:center;line-height:1.15;min-width:0}
+.swap-gap-note .sgc-cell.swapped{border-color:#1769d2;box-shadow:inset 0 0 0 1px #1769d2}
+.swap-gap-note .sgc-cell.span3{grid-column:span 3}
+.swap-gap-note .sgc-cell small{display:block;font-size:9px;color:#8a96a8;font-weight:700}
+.swap-gap-note .sgc-cell b{display:block;font-size:14px;font-weight:900}
+.swap-gap-note .sgc-cell i{display:block;font-style:normal;font-size:9px;font-weight:700;color:#4e5968;white-space:nowrap;letter-spacing:-.3px}
+.swap-gap-note .sgc-cell.none{background:#f6f7f9;color:#b0b8c1}
+.swap-gap-note .sgc-mid{text-align:center;color:#8a96a8;font-weight:800}
+.swap-gap-note .sgc-gap{text-align:center;font-size:10px;font-weight:900;white-space:nowrap;letter-spacing:-.3px}
+.swap-gap-note .sgc-gap span{display:block;line-height:1.1}
+.swap-gap-note .sgc-gap i{display:block;height:0;border-top:2px solid currentColor;margin:2px 2px 0;position:relative}
+.swap-gap-note .sgc-gap i:after{content:'';position:absolute;right:-1px;top:-5px;border:4px solid transparent;border-left:6px solid currentColor;border-right:0}
+.swap-gap-note .sgc-gap.ok{color:#1f8a4c}
+.swap-gap-note .sgc-gap.bad{color:#e03131}
+.swap-gap-note .sgc-gap.unk,.swap-gap-note .sgc-gap.none{color:#b0b8c1}
+.swap-gap-note .sgc-empty{grid-column:2 / -1;font-size:11px;color:#8a96a8;padding:6px 0}
+html.ui-dark .swap-gap-note .sgc-cell{background:#1b1f25;border-color:#2f3640}
+html.ui-dark .swap-gap-note .sgc-cell i{color:#c4ccd8}
+.swap-gap-note .sgv{display:flex;align-items:flex-end;gap:8px;margin-top:8px}
+.swap-gap-note .sgv-name{flex:0 0 46px;font-weight:800;font-size:12px;padding-bottom:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.swap-gap-note .sgv-track{position:relative;flex:1;min-width:0;padding:22px 8px 0}
+.swap-gap-note .sgv-bar{display:flex;height:34px;border:1.5px solid #8a96a8;border-radius:8px;overflow:hidden;background:#fff}
+.swap-gap-note .sgv-bar span{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#33415c;line-height:1.15}
+.swap-gap-note .sgv-bar span+span{border-left:1.5px solid #c3cad5}
+.swap-gap-note .sgv-bar span small{font-size:9.5px;font-weight:700;color:#8a96a8}
+.swap-gap-note .sgv-bar span.mid{flex:.8;color:#8a96a8;font-weight:700}
+.swap-gap-note .sgv-gap{position:absolute;top:0;width:44%;max-width:120px;font-size:11px;font-weight:800;white-space:nowrap}
+.swap-gap-note .sgv-gap.left{left:0;text-align:left}
+.swap-gap-note .sgv-gap.right{right:0;text-align:right}
+.swap-gap-note .sgv-gap span{display:block;line-height:1}
+.swap-gap-note .sgv-gap i{display:block;height:10px;margin-top:2px;border:2px solid currentColor;border-bottom:0;border-radius:50% 50% 0 0/100% 100% 0 0;width:46px}
+.swap-gap-note .sgv-gap.left i{margin-left:-4px}
+.swap-gap-note .sgv-gap.right i{margin-left:auto;margin-right:-4px}
+.swap-gap-note .sgv-gap.ok{color:#1f8a4c}
+.swap-gap-note .sgv-gap.bad{color:#e03131}
+.swap-gap-note .sgv-gap.unk,.swap-gap-note .sgv-gap.none{color:#8a96a8;font-weight:700}
+html.ui-dark .swap-gap-note .sgv-bar{background:#1b1f25;border-color:#5b6678}
+html.ui-dark .swap-gap-note .sgv-bar span{color:#d9e1ec}
+html.ui-dark .swap-gap-note{background:#16261d;border-color:#24503a;color:#d9e1ec}
+html.ui-dark .swap-gap-note.bad{background:#2c1820;border-color:#5a2a38}
+html.ui-dark .swap-day .sd-gap.ok{background:#173d2a;color:#7ee2a8}
+html.ui-dark .swap-day .sd-gap.bad{background:#4a1f2b;color:#ff8fab}
 .swap-day .sd-edge{display:inline-block;font-size:8px;line-height:1;font-weight:800;padding:1px 3px;border-radius:4px;background:rgba(255,255,255,.28);color:#fff;white-space:nowrap;letter-spacing:-.4px}
 .swap-pick-date{width:100%;padding:2px 1px;border:0;color:inherit;font:inherit;text-align:center;cursor:pointer;} .swap-pick-date:focus-visible{outline:2px solid #1769d2;outline-offset:1px;}
 .swap-day .sd-duty{font-size:12px;font-weight:800;color:#1769d2;overflow:visible;max-width:100%;letter-spacing:-.3px;line-height:1.15;flex:none}
@@ -7810,6 +7899,7 @@ var swapCalendarMonth = null;
 var swapSubmitting = false;
 var swapRangeStart = '';
 var swapRangeEnd = '';
+var swapGapWarn = [];
 function openGroupSwapSelector(mode) {
   swapSelectMode = mode === 'compare' ? 'compare' : 'swap';
   var cmp = swapSelectMode === 'compare';
@@ -7898,6 +7988,7 @@ function openGroupSwap(mem) {
   swapRangeStart = '';
   swapRangeEnd = '';
   swapCalendarMonth = new Date(t.y, t.m, 1);
+  swapGapChecked = '';
   $('swap-me-title').textContent = (getCurrentUser().name || getCurrentUser().employeeId) + ' · 내 근무표';
   $('swap-other-title').textContent = swapTargetMember.name + ' · 상대 근무표';
   $('swap-subtitle').textContent = '선택한 사용자의 근무표를 나란히 비교합니다. 기간을 선택한 뒤 교환하세요.';
@@ -8126,6 +8217,169 @@ function swapDutyLabel(info) {
   if (map[status]) return map[status];
   return map[type] || map[label] || type || label || '-';
 }
+/* ============ 근무교환 휴식시간 확인 (13시간) ============
+   교환 뒤 기준으로 ① 기간 안 첫 근무 출근 ↔ 바로 앞 근무 퇴근 ② 기간 안 마지막 근무 퇴근 ↔ 바로 뒤 근무 출근
+   두 간격이 13시간 이상인지 사람마다 따로 확인 (야간은 다음 날 퇴근) */
+var SWAP_REST_MIN = 13 * 60;
+/* 휴식시간 기준: 사용자가 13시간 / 15시간 중 고름 (이 폰에 저장) */
+function swapRestHours() { try { var v = parseInt(localStorage.getItem('rs_swap_rest_h'), 10); return v === 15 ? 15 : 13; } catch (e) { return 13; } }
+function swapSetRest(h) { try { localStorage.setItem('rs_swap_rest_h', String(h === 15 ? 15 : 13)); } catch (e) {} SWAP_REST_MIN = swapRestHours() * 60; swapGapChecked = ''; renderSwapCalendars(); }
+/* [체크하기]를 눌러야 휴식시간 확인이 켜짐 (기간이나 기준을 바꾸면 다시 눌러야 함) */
+var swapGapChecked = '';
+function swapGapKey() { return swapRangeStart + '|' + swapRangeEnd + '|' + swapRestHours(); }
+function swapRunGapCheck() { if (!swapRangeStart || !swapRangeEnd) return; swapGapChecked = swapGapKey(); renderSwapCalendars(); }
+SWAP_REST_MIN = swapRestHours() * 60;
+var swapGapMarks = {};
+function swapWorkTimes(empId, key, info) {
+  if (!info || !info.label) return null;
+  if (info.nightCarryover || info.nightCarryStatus) return null;            /* 비번 = 전날 야간의 이어짐 */
+  if (info.overrideType === 'status' && !info.dia) return null;            /* 휴무·휴가 등 */
+  var code = swapDutyLabel(info);
+  if (code !== '주' && code !== '야' && !info.dia) return null;
+  if (code === '비' || code === '휴' || code === 'X') return null;
+  var dia = String(info.dia || '').trim().toUpperCase(), meta = null;
+  try { meta = dia ? diaByNumber(dia) : null; } catch (e) {}
+  var st = info.start || (meta && meta.start) || '', en = info.end || (meta && meta.end) || '';
+  if ((!st || !en) && dia) {
+    try { var x = xrGet('info', {})[key]; if (x && xrNorm(x.dia) === dia) { st = st || x.start || ''; en = en || x.end || ''; } } catch (e) {}
+    try { var ep = rsEstimatedPlan(dia, key, empId); if (ep) { st = st || ep.start || ''; en = en || ep.end || ''; } } catch (e) {}
+  }
+  var a = parseHM(st), b = parseHM(en), base = dateKeyToNum(key) / 60000;
+  if (isNaN(a) || isNaN(b)) return { key: key, unknown: true };
+  if (b <= a) b += 1440;
+  return { key: key, s: base + a, e: base + b };
+}
+/* 교환 뒤 그 사람의 그 날 근무: 기간 안이면 상대 근무, 밖이면 자기 근무 */
+function swapAfterInfo(empId, otherId, key, startKey, endKey) {
+  return swapMemberInfo(key >= startKey && key <= endKey ? otherId : empId, key);
+}
+function swapGapCheck(empId, otherId, startKey, endKey) {
+  var res = { prev: null, next: null };
+  if (!startKey || !endKey) return res;
+  function at(key) { return swapWorkTimes(key >= startKey && key <= endKey ? otherId : empId, key, swapAfterInfo(empId, otherId, key, startKey, endKey)); }
+  var keys = snapDateKeys(startKey, endKey), first = null, last = null;
+  for (var i = 0; i < keys.length; i++) { var w = at(keys[i]); if (w) { if (!first) first = w; last = w; } }
+  if (!first) return res;
+  var prev = null; for (var b = 1; b <= 4 && !prev; b++) prev = at(snapShiftKey(startKey, -b));
+  var next = null; for (var f = 1; f <= 4 && !next; f++) next = at(snapShiftKey(endKey, f));
+  /* 표시는 기간 밖 날짜에만: 앞 간격 → 바로 앞 근무 날, 뒤 간격 → 바로 뒤 근무 날 */
+  res.prevW = prev; res.firstW = first; res.lastW = last; res.nextW = next;
+  if (prev) res.prev = (prev.unknown || first.unknown) ? { key: prev.key, unknown: true } : { key: prev.key, gap: first.s - prev.e };
+  if (next) res.next = (next.unknown || last.unknown) ? { key: next.key, unknown: true } : { key: next.key, gap: next.s - last.e };
+  return res;
+}
+function swapGapText(g) {
+  if (!g) return '';
+  if (g.unknown) return '?';
+  if (g.gap < 0) return '겹침';
+  var h = Math.floor(g.gap / 60), m = Math.round(g.gap % 60);
+  return h + 'h' + (m ? m : '');
+}
+function swapGapBadge(g) {
+  if (!g) return '';
+  var cls = g.unknown ? 'unk' : g.gap >= SWAP_REST_MIN ? 'ok' : 'bad';
+  return '<span class="sd-gap ' + cls + '">' + (cls === 'bad' ? '!' : '') + swapGapText(g) + '</span>';
+}
+/* 달력 밑: 근무그룹 '근무표 비교'와 같은 표 (교환 뒤 결과) + 직전 근무→첫 근무, 마지막 근무→직후 근무 사이에 호와 휴식시간 */
+function swapGapGrid(list, startKey, endKey) {
+  var lo = snapShiftKey(startKey, -1), hi = snapShiftKey(endKey, 1), firstMax = startKey, lastMin = endKey;
+  list.forEach(function (x) {
+    var g = x.g;
+    if (g.prevW && g.prevW.key < lo) lo = g.prevW.key;
+    if (g.nextW && g.nextW.key > hi) hi = g.nextW.key;
+    if (g.firstW && g.firstW.key > firstMax) firstMax = g.firstW.key;
+    if (g.lastW && g.lastW.key < lastMin) lastMin = g.lastW.key;
+  });
+  /* 열: 직전 근무 ~ 첫 근무, 마지막 근무 ~ 직후 근무 (가운데가 길면 … 한 칸) */
+  var all = snapDateKeys(lo, hi), cols = [];
+  if (all.length <= 9) cols = all.slice();
+  else {
+    var a = snapDateKeys(lo, firstMax > lastMin ? hi : firstMax), b = firstMax > lastMin ? [] : snapDateKeys(lastMin, hi);
+    cols = a.slice(); if (b.length) { if (dateKeyToNum(b[0]) - dateKeyToNum(a[a.length - 1]) > 86400000) cols.push('…'); b.forEach(function (k) { if (cols.indexOf(k) < 0) cols.push(k); }); }
+  }
+  var W = '일월화수목금토', n = cols.length, todayKey = todayKeyKST();
+  var h = '<div class="cmp-grid sgx" style="grid-template-columns:40px repeat(' + n + ',minmax(0,1fr))">';
+  /* 줄: 1 내 휴식시간 · 2 날짜 · 3 내 근무 · 4 (점선) 상대 휴식시간 · 5 상대 근무 */
+  var HROW = 2;
+  h += '<div class="cmp-corner" style="grid-row:' + HROW + ';grid-column:1"></div>';
+  cols.forEach(function (k, i) {
+    if (k === '…') { h += '<div class="cmp-dh sgx-skip" style="grid-row:' + HROW + ';grid-column:' + (i + 2) + '">…</div>'; return; }
+    var p = k.split('-'), dw = new Date(+p[0], +p[1] - 1, +p[2]).getDay();
+    var hol = holidayName(+p[0], +p[1] - 1, +p[2]), inR = k >= startKey && k <= endKey;
+    h += '<div class="cmp-dh' + ((dw === 0 || hol) ? ' sun' : dw === 6 ? ' sat' : '') + (inR ? ' sgx-in' : '') + '" style="grid-row:' + HROW + ';grid-column:' + (i + 2) + '"><b>' + (+p[2]) + '</b><small>' + W.charAt(dw) + '</small></div>';
+  });
+  list.forEach(function (x, ri) {
+    var g = x.g, arcRow = ri === 0 ? 1 : 4, dutyRow = ri === 0 ? 3 : 5;
+    function arc(fromK, toK, gp) {
+      if (!gp || !fromK || !toK) return '';
+      var i1 = cols.indexOf(fromK), i2 = cols.indexOf(toK);
+      if (i1 < 0 || i2 < 0) return '';
+      var span = i2 - i1 + 1, inset = (50 / span).toFixed(2) + '%';
+      var c = gp.unknown ? 'unk' : gp.gap >= SWAP_REST_MIN ? 'ok' : 'bad';
+      var txt = gp.unknown ? '시각 모름' : swapGapText(gp) + (c === 'ok' ? ' O' : ' X');
+      return '<div class="sgx-arc ' + c + '" style="grid-row:' + arcRow + ';grid-column:' + (i1 + 2) + ' / ' + (i2 + 3) + '"><span>' + txt + '</span><i style="left:' + inset + ';right:' + inset + '"></i></div>';
+    }
+    h += '<div class="sgx-lane' + (ri ? ' sgx-sep' : '') + '" style="grid-row:' + arcRow + ';grid-column:1 / -1"></div>';
+    h += '<div class="sgx-lnm' + (ri === 0 ? ' me' : '') + '" style="grid-row:' + arcRow + ';grid-column:1">' + esc(x.name) + '</div>';
+    if (g.prevW && g.firstW) h += arc(g.prevW.key, g.firstW.key, g.prev);
+    if (g.lastW && g.nextW) h += arc(g.lastW.key, g.nextW.key, g.next);
+    h += '<div class="cmp-name' + (ri === 0 ? ' me' : '') + '" style="grid-row:' + dutyRow + ';grid-column:1">' + esc(x.name) + '</div>';
+    cols.forEach(function (k, i) {
+      if (k === '…') { h += '<div class="cmp-cell sgx-skip" style="grid-row:' + dutyRow + ';grid-column:' + (i + 2) + '">…</div>'; return; }
+      var info = swapAfterInfo(x.id, x.other, k, startKey, endKey), code = swapDutyLabel(info);
+      var isSt = !!(info && info.overrideType === 'status');
+      var cls = (!info || code === '-' || code === '') ? 'duty-none' : isSt ? 'duty-off' : code === '주' ? 'duty-day' : (code === '야' || code === '비' || code === 'X') ? 'duty-night' : 'duty-off';
+      var inR = k >= startKey && k <= endKey;
+      h += '<div class="cmp-cell' + (inR ? ' sgx-in' : '') + '" style="grid-row:' + dutyRow + ';grid-column:' + (i + 2) + '"><b class="sd-duty ' + cls + '">' + ((inR || (info && info.manual)) ? '*' : '') + esc(code) + '</b></div>';
+    });
+    if (!g.firstW) h += '<div class="sgx-none" style="grid-row:' + arcRow + ';grid-column:2 / -1">교환 기간 안에 근무 없음</div>';
+  });
+  return h + '</div>';
+}
+/* (예전) 달력 밑: 근무그룹 '비교하기'처럼 교환 뒤 결과를 칸으로
+   [직전 근무 퇴근] —13h?— [기간 첫 근무 출근] … [기간 마지막 근무 퇴근] —13h?— [직후 근무 출근] */
+function swapGapCompare(empId, otherId, name, g, startKey, endKey) {
+  var W = '일월화수목금토';
+  function hm(min) { var x = ((Math.round(min) % 1440) + 1440) % 1440; return String(Math.floor(x / 60)).padStart(2, '0') + ':' + String(x % 60).padStart(2, '0'); }
+  function cell(w, what, extra) {
+    if (!w) return '<div class="sgc-cell none' + (extra || '') + '"><small>-</small><b>-</b><i>근무 없음</i></div>';
+    var info = swapAfterInfo(empId, otherId, w.key, startKey, endKey), code = swapDutyLabel(info);
+    var cls = code === '주' ? 'duty-day' : (code === '야' || code === '비' || code === 'X') ? 'duty-night' : 'duty-off';
+    var p = w.key.split('-'), dw = W.charAt(new Date(+p[0], +p[1] - 1, +p[2]).getDay());
+    var inR = w.key >= startKey && w.key <= endKey;
+    var tm = w.unknown ? '시각 모름' : what === 'both' ? hm(w.s) + '~' + hm(w.e) : what === 'in' ? '출근 ' + hm(w.s) : '퇴근 ' + hm(w.e);
+    return '<div class="sgc-cell' + (inR ? ' swapped' : '') + (extra || '') + '"><small>' + (+p[1]) + '/' + (+p[2]) + '(' + dw + ')</small>' +
+      '<b class="sd-duty ' + cls + '">' + esc(code) + '</b><i>' + tm + '</i></div>';
+  }
+  function gap(x) {
+    if (!x) return '<div class="sgc-gap none"><span>-</span></div>';
+    var c = x.unknown ? 'unk' : x.gap >= SWAP_REST_MIN ? 'ok' : 'bad';
+    return '<div class="sgc-gap ' + c + '"><span>' + (x.unknown ? '?' : swapGapText(x) + (c === 'ok' ? ' O' : ' X')) + '</span><i></i></div>';
+  }
+  var body;
+  if (!g.firstW) body = '<div class="sgc-empty">교환 기간 안에 근무가 없어요</div>';
+  else if (g.firstW.key === g.lastW.key) body = cell(g.prevW, 'out') + gap(g.prev) + cell(g.firstW, 'both', ' span3') + gap(g.next) + cell(g.nextW, 'in');
+  else body = cell(g.prevW, 'out') + gap(g.prev) + cell(g.firstW, 'in') + '<div class="sgc-mid">…</div>' + cell(g.lastW, 'out') + gap(g.next) + cell(g.nextW, 'in');
+  return '<div class="sgc-row"><div class="sgc-name">' + esc(name) + '</div>' + body + '</div>';
+}
+/* 달력 밑 그림: [앞 간격 호] 시작 | … | 종료 [뒤 간격 호] */
+function swapGapVisual(name, g, startKey, endKey) {
+  function md(k) { var p = k.split('-'); return (+p[1]) + '/' + (+p[2]); }
+  function arc(x, side) {
+    if (!x) return '<div class="sgv-gap ' + side + ' none"><span>앞뒤 근무 없음</span></div>';
+    var c = x.unknown ? 'unk' : x.gap >= SWAP_REST_MIN ? 'ok' : 'bad';
+    var txt = x.unknown ? '시각 모름' : swapGapText(x) + (c === 'ok' ? ' ○' : ' ✕');
+    return '<div class="sgv-gap ' + side + ' ' + c + '"><span>' + txt + '</span><i></i></div>';
+  }
+  var n = (dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000 + 1;
+  var cells = startKey === endKey
+    ? '<span class="one">시작·종료<small>' + md(startKey) + '</small></span>'
+    : '<span>시작<small>' + md(startKey) + '</small></span>' + (n > 2 ? '<span class="mid">' + (n - 2) + '일</span>' : '') + '<span>종료<small>' + md(endKey) + '</small></span>';
+  var none = !g.prev && !g.next;
+  return '<div class="sgv"><div class="sgv-name">' + esc(name) + '</div><div class="sgv-track">' +
+    (none ? '<div class="sgv-gap left none"><span>기간 안에 근무 없음</span></div>' : arc(g.prev, 'left') + arc(g.next, 'right')) +
+    '<div class="sgv-bar">' + cells + '</div></div></div>';
+}
 function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
   var el = $(containerId);
   if (!el || !swapCalendarMonth) return;
@@ -8154,7 +8408,8 @@ function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
       '" onclick="selectSwapRangeDate(this.dataset.key)">' +
       '<span class="sd-top"><span class="sd-num">' + d + '</span>' +
       (edge ? '<span class="sd-edge">' + edge + '</span>' : '') + '</span>' +
-      '<span class="sd-duty ' + cls + '">' + (info && info.manual ? '*' : '') + esc(label) + '</span></button>';
+      '<span class="sd-duty ' + cls + '">' + (info && info.manual ? '*' : '') + esc(label) + '</span>' +
+      swapGapBadge((swapGapMarks[employeeId] || {})[key]) + '</button>';
       }
   // 달마다 주 수가 달라져도 달력 높이가 변하지 않도록 6주(42칸) 고정
   var usedCells = firstDow + daysInMonth;
@@ -8185,6 +8440,24 @@ function renderSwapCalendars() {
   $('swap-month-label').textContent = swapCalendarMonth.getFullYear() + '년 ' + (swapCalendarMonth.getMonth() + 1) + '월';
   $('swap-start-label').textContent = startKey || '선택 전';
   $('swap-end-label').textContent = endKey || (startKey ? '종료일 선택' : '선택 전');
+  /* 휴식시간 13시간 확인 → 달력 칸에 작게 표시 */
+  var myId = getCurrentUser().employeeId, otId = swapTargetMember.employeeId, gapMsg = [], gapLines = [];
+  swapGapMarks = {};
+  var gapOn = !!(startKey && endKey && swapGapChecked && swapGapChecked === swapGapKey());
+  if (gapOn && startKey <= endKey) {
+    [[myId, otId, '나'], [otId, myId, swapTargetMember.name || '상대']].forEach(function (pr) {
+      var g = swapGapCheck(pr[0], pr[1], startKey, endKey), mk = swapGapMarks[pr[0]] = {};
+      function part(lbl, x) {
+        if (!x) return '';
+        var c = x.unknown ? 'unk' : x.gap >= SWAP_REST_MIN ? 'ok' : 'bad';
+        return '<span class="sgn-' + c + '">' + lbl + ' ' + (x.unknown ? '시각 정보 없음' : swapGapText(x) + (c === 'ok' ? ' ✓' : ' ⚠')) + '</span>';
+      }
+      gapLines.push({ id: pr[0], other: pr[1], name: pr[2], g: g });
+      if (g.prev) { mk[g.prev.key] = g.prev; if (!g.prev.unknown && g.prev.gap < SWAP_REST_MIN) gapMsg.push(pr[2] + ': 직전 근무 퇴근 → 첫 출근 ' + swapGapText(g.prev) + ' (기준 ' + swapRestHours() + '시간)'); }
+      if (g.next) { var o = mk[g.next.key]; if (!o || o.unknown || (!g.next.unknown && g.next.gap < o.gap)) mk[g.next.key] = g.next; if (!g.next.unknown && g.next.gap < SWAP_REST_MIN) gapMsg.push(pr[2] + ': 마지막 퇴근 → 직후 근무 출근 ' + swapGapText(g.next) + ' (기준 ' + swapRestHours() + '시간)'); }
+    });
+  }
+  swapGapWarn = gapMsg;
   renderOneSwapCalendar(getCurrentUser().employeeId, 'swap-me-calendar', startKey, endKey);
   renderOneSwapCalendar(swapTargetMember.employeeId, 'swap-other-calendar', startKey, endKey);
   fitSwapDutyText();
@@ -8192,7 +8465,14 @@ function renderSwapCalendars() {
   var status = $('swap-status');
   if (startKey && !endKey) status.textContent = '시작일을 선택했어요. 내 근무표 또는 상대 근무표에서 종료일을 선택하세요.';
   else if (startKey && endKey && (dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000 > 30) status.textContent = '한 번에 최대 31일까지만 교환할 수 있습니다.';
-  else status.textContent = startKey && endKey ? startKey + ' ~ ' + endKey + ' 기간이 선택되었습니다.' : '달력에서 시작일을 한 번, 종료일을 한 번 누르면 기간이 한 번에 선택됩니다.';
+  else if (startKey && endKey) {
+    var seg = '<span class="sgn-seg">기준 ' + [13, 15].map(function (hh) { return '<button type="button" class="' + (swapRestHours() === hh ? 'on' : '') + '" onclick="swapSetRest(' + hh + ')">' + hh + '시간</button>'; }).join('') + '</span>';
+    status.innerHTML = esc(startKey + ' ~ ' + endKey + ' 기간이 선택되었습니다.') + (gapOn
+      ? '<div class="swap-gap-note' + (gapMsg.length ? ' bad' : '') + '"><div class="sgn-h"><span>교환 뒤 근무 · 휴식시간</span>' + seg + '</div>' + swapGapGrid(gapLines, startKey, endKey) + '</div>'
+      : '<div class="swap-gap-note idle"><div class="sgn-h"><span>휴식시간 확인</span>' + seg + '</div>' +
+        '<button type="button" class="sgn-check" onclick="swapRunGapCheck()">' + swapRestHours() + '시간 기준으로 체크하기</button></div>');
+  }
+  else status.textContent = '달력에서 시작일을 한 번, 종료일을 한 번 누르면 기간이 한 번에 선택됩니다.';
   var btn = $('swap-submit');
   if (btn) btn.disabled = swapSubmitting || !startKey || !endKey || startKey > endKey || (dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000 > 30;
 }
@@ -8203,7 +8483,8 @@ function submitGroupSwap() {
   if (!startKey || !endKey || startKey > endKey) { $('swap-status').textContent = '교환할 기간을 확인해주세요.'; return; }
   var count = (dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000 + 1;
   if (count > 31) { $('swap-status').textContent = '한 번에 최대 31일까지만 교환할 수 있습니다.'; return; }
-  if (!confirm((swapTargetMember.name || swapTargetMember.employeeId) + '님과 ' + startKey + '부터 ' + endKey + '까지의 근무를 서로 교환할까요?')) return;
+  var gapNote = (swapGapWarn && swapGapWarn.length) ? '\n\n⚠ 휴식시간이 ' + swapRestHours() + '시간이 안 되는 곳이 있어요.\n' + swapGapWarn.join('\n') + '\n' : '';
+  if (!confirm((swapTargetMember.name || swapTargetMember.employeeId) + '님과 ' + startKey + '부터 ' + endKey + '까지의 근무를 서로 교환할까요?' + gapNote)) return;
   var swaps = [];
   var keys = snapDateKeys(startKey, endKey);
   for (var i = 0; i < keys.length; i++) {
