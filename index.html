@@ -846,7 +846,9 @@ html.ui-dark .swap-gap-note .sgx .sgx-t{color:#c4ccd8}
 .swap-gap-note .sgx{gap:2px 2px!important;margin-top:2px}
 .swap-gap-note .sgx .cmp-cell{padding:2px 0;border-radius:6px;overflow:visible}
 .swap-gap-note .sgx .cmp-dh{border-radius:6px;position:relative}
-.swap-gap-note .sgx .sgx-se{display:block;font-style:normal;font-size:8.5px;line-height:1;font-weight:900;color:#fff;background:#1769d2;border-radius:4px;padding:2px 3px;margin:0 2px 1px;white-space:nowrap;letter-spacing:-.4px}
+.swap-gap-note .sgx .cmp-dh{padding-top:13px!important;padding-bottom:3px!important}   /* 모든 날짜 칸 같은 위치 (시작·종료 글씨 자리 비워 둠) */
+.swap-gap-note .sgx .cmp-dh.sgx-skip{padding-top:3px!important}
+.swap-gap-note .sgx .sgx-se{position:absolute;top:1px;left:1px;right:1px;display:block;font-style:normal;font-size:8px;line-height:11px;font-weight:900;color:#fff;background:#1769d2;border-radius:4px;text-align:center;white-space:nowrap;letter-spacing:-.5px}
 .swap-gap-note .sgx .cmp-name,.swap-gap-note .sgx .sgx-lnm{font-size:9.5px;padding:0}
 .swap-gap-note .sgx .sgx-t{font-size:9px;letter-spacing:-.5px}
 .swap-gap-note .sgx.tight .sgx-t{font-size:8px;letter-spacing:-.6px}
@@ -8279,15 +8281,19 @@ function swapGapCheck(empId, otherId, startKey, endKey) {
   var res = { prev: null, next: null };
   if (!startKey || !endKey) return res;
   function at(key) { return swapWorkTimes(key >= startKey && key <= endKey ? otherId : empId, key, swapAfterInfo(empId, otherId, key, startKey, endKey)); }
-  var keys = snapDateKeys(startKey, endKey), first = null, last = null;
-  for (var i = 0; i < keys.length; i++) { var w = at(keys[i]); if (w) { if (!first) first = w; last = w; } }
-  if (!first) return res;
+  /* ① 시작일 출근 ↔ 직전 근무 퇴근   ② 종료일 퇴근 ↔ 직후 근무 출근
+     · 시작일이 근무가 아니면(휴·비번 등) ①은 없음
+     · 종료일 퇴근: 종료일 근무의 퇴근, 종료일이 비번이면 전날 야간(기간 안)의 퇴근 */
+  var first = at(startKey), last = at(endKey);
+  if (!last) {
+    var bk = snapShiftKey(endKey, -1), wb = bk >= startKey ? at(bk) : null;
+    if (wb && !wb.unknown && swapEndKey(wb) === endKey) last = wb;
+  }
   var prev = null; for (var b = 1; b <= 4 && !prev; b++) prev = at(snapShiftKey(startKey, -b));
   var next = null; for (var f = 1; f <= 4 && !next; f++) next = at(snapShiftKey(endKey, f));
-  /* 표시는 기간 밖 날짜에만: 앞 간격 → 바로 앞 근무 날, 뒤 간격 → 바로 뒤 근무 날 */
-  res.prevW = prev; res.firstW = first; res.lastW = last; res.nextW = next;
-  if (prev) res.prev = (prev.unknown || first.unknown) ? { key: prev.key, unknown: true } : { key: prev.key, gap: first.s - prev.e };
-  if (next) res.next = (next.unknown || last.unknown) ? { key: next.key, unknown: true } : { key: next.key, gap: next.s - last.e };
+  res.prevW = first ? prev : null; res.firstW = first; res.lastW = last; res.nextW = last ? next : null;
+  if (first && prev) res.prev = (prev.unknown || first.unknown) ? { key: prev.key, unknown: true } : { key: prev.key, gap: first.s - prev.e };
+  if (last && next) res.next = (next.unknown || last.unknown) ? { key: next.key, unknown: true } : { key: next.key, gap: next.s - last.e };
   return res;
 }
 function swapGapText(g) {
@@ -8328,10 +8334,8 @@ function swapGapGrid(list, startKey, endKey) {
   var keyset = {}; keyset[startKey] = 1; keyset[endKey] = 1;
   list.forEach(function (x) {
     var g = x.g;
-    if (g.firstW) keyset[g.firstW.key] = 1;
-    if (g.lastW) keyset[swapLastOutKey(g.lastW, endKey)] = 1;
-    if (g.prevW && g.firstW) { var pk0 = swapEndKey(g.prevW); keyset[pk0 >= g.firstW.key ? g.prevW.key : pk0] = 1; }
-    if (g.nextW && g.firstW) keyset[g.nextW.key] = 1;
+    if (g.prevW && g.firstW) { var pk0 = swapEndKey(g.prevW); keyset[pk0 >= startKey ? g.prevW.key : pk0] = 1; }
+    if (g.nextW && g.lastW) keyset[g.nextW.key] = 1;
   });
   var ks = Object.keys(keyset).sort(), cols = [];
   ks.forEach(function (k, i) {
@@ -8367,18 +8371,19 @@ function swapGapGrid(list, startKey, endKey) {
     h += '<div class="sgx-lane' + (ri ? ' sgx-sep' : '') + '" style="grid-row:' + arcRow + ';grid-column:1 / -1"></div>';
     h += '<div class="sgx-lnm' + (ri === 0 ? ' me' : '') + '" style="grid-row:' + arcRow + ';grid-column:1">' + esc(x.name) + '</div>';
     /* 호는 퇴근한 날부터: 직전 근무가 야간이면 다음 날(비번)부터 출근 날까지 */
-    if (g.prevW && g.firstW) { var pk = swapEndKey(g.prevW); if (pk >= g.firstW.key) pk = g.prevW.key; h += arc(pk, g.firstW.key, g.prev); }
-    if (g.lastW && g.nextW) h += arc(swapLastOutKey(g.lastW, endKey), g.nextW.key, g.next);   /* 종료일이 비번이면 비번 날부터 */
+    /* 직전 근무(퇴근한 날) → 시작일, 종료일 → 직후 근무 */
+    if (g.prevW && g.firstW) { var pk = swapEndKey(g.prevW); if (pk >= startKey) pk = g.prevW.key; h += arc(pk, startKey, g.prev); }
+    if (g.lastW && g.nextW) h += arc(endKey, g.nextW.key, g.next);
     /* 칸 밑 작은 시각: 직전 근무 퇴근 · 첫 근무 출근 · 마지막 근무 퇴근 · 직후 근무 출근 (퇴근은 퇴근한 날 칸에) */
     var tmap = {};
     function hm(min) { var v = ((Math.round(min) % 1440) + 1440) % 1440; return String(Math.floor(v / 60)).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0'); }
     function addT(k, t) { if (!k) return; tmap[k] = tmap[k] ? tmap[k] + '<br>' + t : t; }
-    if (g.firstW) {
+    if (g.firstW || g.lastW) {
       var sp = n > 6 ? '' : ' ';
-      if (g.prevW && !g.prevW.unknown) addT(swapEndKey(g.prevW), '<em>퇴</em>' + sp + hm(g.prevW.e));
-      if (!g.firstW.unknown) addT(g.firstW.key, '<em>출</em>' + sp + hm(g.firstW.s));
+      if (g.prevW && !g.prevW.unknown) { var pk2 = swapEndKey(g.prevW); addT(pk2 >= startKey ? g.prevW.key : pk2, '<em>퇴</em>' + sp + hm(g.prevW.e)); }
+      if (g.firstW && !g.firstW.unknown) addT(startKey, '<em>출</em>' + sp + hm(g.firstW.s));
       /* 마지막 근무 퇴근은 그 근무 칸에 (기간 안 근무가 하루면 그 칸에 출·퇴 둘 다, 아니면 칸마다 하나씩) */
-      if (g.lastW && !g.lastW.unknown) addT(swapLastOutKey(g.lastW, endKey), '<em>퇴</em>' + sp + hm(g.lastW.e));
+      if (g.lastW && !g.lastW.unknown) addT(endKey, '<em>퇴</em>' + sp + hm(g.lastW.e));
       if (g.nextW && !g.nextW.unknown) addT(g.nextW.key, '<em>출</em>' + sp + hm(g.nextW.s));
     }
     h += '<div class="cmp-name' + (ri === 0 ? ' me' : '') + '" style="grid-row:' + dutyRow + ';grid-column:1">' + esc(x.name) + '</div>';
@@ -8391,7 +8396,7 @@ function swapGapGrid(list, startKey, endKey) {
       h += '<div class="cmp-cell' + (inR ? ' sgx-in' : '') + '" style="grid-row:' + dutyRow + ';grid-column:' + (i + 2) + '"><b class="sd-duty ' + cls + '">' + ((inR || (info && info.manual)) ? '*' : '') + esc(code) + '</b>' +
         (tmap[k] ? '<small class="sgx-t">' + tmap[k] + '</small>' : '') + '</div>';
     });
-    if (!g.firstW) h += '<div class="sgx-none" style="grid-row:' + arcRow + ';grid-column:2 / -1">교환 기간 안에 근무 없음</div>';
+    if (!g.firstW && !g.lastW) h += '<div class="sgx-none" style="grid-row:' + arcRow + ';grid-column:2 / -1">시작일·종료일에 근무 없음</div>';
   });
   return h + '</div>';
 }
