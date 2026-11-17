@@ -1585,7 +1585,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   </div></div>
 <div class="mp-sec" data-sec="crew"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('crew')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="CREW연동" alt="" aria-hidden="true">CREW 연동<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
   <div class="mypage-box">
-    <div class="mp-note">XROIS(xcrew.korail.com) 비밀번호를 저장해 두면, 12시간마다 <b>XROIS 당월승무근무표</b>로 다이아를 맞추고, <b>승무근무표 현황</b>에서 함께 타는 <b>승무원</b> 정보를 가져옵니다. (승무원은 이번 달 근무일)</div>
+    <div class="mp-note">XROIS(xcrew.korail.com) 비밀번호를 저장해 두면, <b>철도비서에 로그인할 때마다</b> <b>XROIS 당월승무근무표</b>로 다이아를 맞추고, <b>승무근무표 현황</b>에서 함께 타는 <b>승무원</b> 정보를 가져옵니다. (승무원은 이번 달 근무일)</div>
     <div class="mp-field"><span>로그인 사원번호</span><b id="crew-id">-</b></div>
     <label class="mp-field"><span>XROIS 비밀번호</span><input type="password" id="crew-pw" autocomplete="off" placeholder="비밀번호 입력" style="width:150px"></label>
     <div class="mp-crew-btns">
@@ -1594,7 +1594,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <button type="button" class="crew-refresh crew-off" onclick="clearCrewLogin()">연동 해제</button>
     </div>
     <div id="crew-status" class="mp-crew-status"></div>
-    <div class="mp-xr"><div><b>XROIS 다이아 자동 맞춤</b><small id="xr-status">12시간마다 XROIS 근무표를 확인해서 바뀐 다이아를 근무표에 자동 반영해요.</small></div></div>
+    <div class="mp-xr"><div><b>XROIS 다이아 확인 (로그인할 때)</b><small id="xr-status">로그인할 때마다 XROIS 근무표를 확인해서, 바뀐 다이아가 있으면 바꿀지 물어봐요.</small></div></div>
     <div class="mp-note" style="margin-top:8px">※ 비밀번호는 이 폰(브라우저)에만 저장되고, 서버에는 저장되지 않습니다. 공용 기기에서는 사용하지 마세요.</div>
   </div>
   </div></div>
@@ -2221,7 +2221,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <details class="guide-sec" data-g="xrois"><summary>XROIS 연동 (마이페이지)</summary><div class="gd-stage" data-g="xrois"></div><ol>
       <li>하단 <b>마이페이지</b> › <b>CREW(XROIS) 연동</b>을 열어요.</li>
       <li>XROIS 비밀번호를 넣고 <b>저장</b>해요. 비밀번호는 <b>이 폰에만</b> 저장되고 서버에는 저장하지 않아요.</li>
-      <li><b>12시간마다</b> XROIS 당월승무근무표를 확인해서, 철도비서 근무표와 다른 날이 있으면 <b>팝업으로 물어봐요</b>. [바꾸기]를 누르면 주간·야간과 본 근무·휴무충당·대기충당을 고를 수 있어요. 고르기 전에는 근무표가 바뀌지 않아요.</li>
+      <li><b>로그인할 때마다</b> XROIS 당월승무근무표를 확인해서, 철도비서 근무표와 다른 날이 있으면 <b>팝업으로 물어봐요</b>. [바꾸기]를 누르면 주간·야간과 본 근무·휴무충당·대기충당을 고를 수 있어요. 고르기 전에는 근무표가 바뀌지 않아요.</li>
       <li>근무표 상세에 <b>함께 타는 승무원</b>이 나오고, 미리보는 월급에는 <b>개인근무명세서</b>의 휴일 · 연장 · 야간 시간이 들어가요.</li>
       <li>메인화면 › <b>승무근무표 현황</b>에서 그 날 전체 다이아 표를 볼 수 있어요.</li></ol></details>
     <details class="guide-sec" data-g="theme"><summary>아이콘 테마 바꾸기</summary><div class="gd-stage" data-g="theme"></div><ol>
@@ -6135,7 +6135,7 @@ function renderCrewSetting() {
   var m = getCrewMeta();
   if (!getCrewPw()) { st.innerHTML = '<span style="color:#8a96a8">연동 안 됨</span>'; return; }
   st.innerHTML = m.ok
-    ? '연동됨 · 자동 최신화 · 마지막 <b>' + esc(m.at || '-') + '</b>'
+    ? '연동됨 · 로그인할 때마다 확인 · 마지막 <b>' + esc(m.at || '-') + '</b>'
     : (m.msg ? '<span style="color:#c62828">' + esc(m.msg) + '</span>' : '연동됨 · 아직 불러오지 않음');
 }
 function saveCrewLogin() {
@@ -6347,15 +6347,11 @@ function rsBackfillTempDias(force) {
 }
 function autoCrewRoster() {
   if (!crewAllowed()) return;
-  /* XROIS 당월승무근무표 한 번으로 다이아 맞춤 + 승무원 정보까지 (12시간에 로그인 1번) */
-  try { xrAutoSync(false); } catch (e) {}
+  /* XROIS 근무표 확인은 로그인할 때 한 번만 (xr-login-check-script) — 여기서는 따로 접속하지 않음 */
   /* 지난 임시다이아 채우기 (자동 동기화 로그인과 겹치지 않게 조금 뒤에) */
   setTimeout(function () { try { rsBackfillTempDias(false); } catch (e) {} }, 25000);
 }
-document.addEventListener('visibilitychange', function () {
-  if (document.visibilityState === 'visible') setTimeout(function () { try { autoCrewRoster(); } catch (e) {} }, 1500);
-});
-setInterval(function () { if (document.visibilityState === 'visible') { try { autoCrewRoster(); } catch (e) {} } }, 30 * 60000);
+/* 예전: 앱을 다시 볼 때 · 30분마다 12시간 간격 자동 확인 → 이제 로그인할 때만 */
 function openCrewSetting() {
   try {
     var st = mySecState(); st.crew = false;
@@ -12031,7 +12027,7 @@ function midUiUpdate() {
     }).join('<br>');
     var dg = $('mid-diag'); if (dg) dg.hidden = !(meta.err || (!items.length && xrGet('midWhy', null)));
     lst.innerHTML = (h || '<span class="mid-none">가져온 도중출무 예정이 없어요.</span>') +
-      (meta.stamp ? '<br><span class="mid-none">XROIS 확인 ' + esc(meta.stamp) + (meta.err ? ' · ' + esc(meta.err) : '') + ' · 12시간마다 자동</span>' : '');
+      (meta.stamp ? '<br><span class="mid-none">XROIS 확인 ' + esc(meta.stamp) + (meta.err ? ' · ' + esc(meta.err) : '') + ' · 로그인할 때 확인</span>' : '');
   }
 }
 function midAutoSave(withToast) {
@@ -21180,10 +21176,10 @@ function xrCall(body, cb) {
 function xrStatus(text, bad) { var el = $('xr-status'); if (el) { el.textContent = text; el.classList.toggle('bad', !!bad); } }
 function xrRenderStatus() {
   var m = xrGet('meta', {});
-  if (!getCrewPw()) { xrStatus('CREW 연동 비밀번호를 저장하면 12시간마다 XROIS 다이아를 자동으로 맞춰요.'); return; }
+  if (!getCrewPw()) { xrStatus('CREW 연동 비밀번호를 저장하면 로그인할 때마다 XROIS 다이아를 확인해요.'); return; }
   if (m.fail) { xrStatus('XROIS 로그인 실패 · 비밀번호를 다시 저장하면 다시 확인해요. (계정 잠김 방지로 자동 확인 멈춤)', true); return; }
   if (m.msg && !m.ok) { xrStatus(m.msg, true); return; }
-  xrStatus(m.at ? '마지막 확인 ' + m.stamp + (m.changed ? ' · 바뀐 다이아 ' + m.changed + '개 반영' : ' · 바뀐 다이아 없음') + ' · 12시간마다 자동' : '12시간마다 XROIS 근무표를 확인해서 바뀐 다이아를 근무표에 자동 반영해요.');
+  xrStatus(m.at ? '마지막 확인 ' + m.stamp + (m.changed ? ' · 바뀐 다이아 ' + m.changed + '개 반영' : ' · 바뀐 다이아 없음') + ' · 로그인할 때마다 확인' : '로그인할 때마다 XROIS 근무표를 확인해서, 바뀐 다이아가 있으면 바꿀지 물어봐요.');
 }
 
 /* force: 비밀번호 새로 저장 / [지금 확인] 버튼 */
@@ -21653,7 +21649,7 @@ function xrEnsureSpec(y, m, force) {
     orig.apply(this, arguments);
     try {
       var st = $('crew-status');
-      if (st && getCrewPw()) { var m = xrGet('meta', {}); st.innerHTML = m.fail ? '<span style="color:#c62828">XROIS 로그인 실패</span>' : (m.rosterAt ? '연동됨 · 12시간마다 자동 · 마지막 <b>' + esc(String(m.rosterAt).slice(5, 16)) + '</b>' : '연동됨 · 아직 불러오지 않음'); }
+      if (st && getCrewPw()) { var m = xrGet('meta', {}); st.innerHTML = m.fail ? '<span style="color:#c62828">XROIS 로그인 실패</span>' : (m.rosterAt ? '연동됨 · 로그인할 때마다 확인 · 마지막 <b>' + esc(String(m.rosterAt).slice(5, 16)) + '</b>' : '연동됨 · 아직 불러오지 않음'); }
       xrRenderStatus();
     } catch (e) {}
   };
