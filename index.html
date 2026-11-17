@@ -11977,6 +11977,7 @@ function fireAlarm(w, key, min) {
     ? '알람 테스트입니다. 소리·진동·알림이 오는지 확인하세요.'
     : (w.dia || (w.type === '주' ? '주간' : '야간')) + ' · 출근 ' + w.start + ' (' + alarmMinText(min).replace(' 전', '') + ' 전)';
   $('alarm-ring-body').innerHTML = (w.test ? '' : '출근 시간이 다가오고 있어요.<br>') + '<b>' + esc(msg) + '</b>';
+  try { $('alarm-ring-panel').querySelector('.dia-dialog-title').textContent = '출근 알람'; } catch (e) {}
   $('alarm-ring-panel').classList.add('active');
   var rounds = 0;
   function ring() {
@@ -11996,6 +11997,15 @@ function fireAlarm(w, key, min) {
     }
   } catch (e) {}
 }
+/* 앱(휴대폰 알람)이 울리는 중에 앱을 열면 → 같은 알람 화면을 띄움. [확인]을 누르면 휴대폰 알람도 멈춤 */
+window.rsAppRinging = function (title, body) {
+  if (window.rsBgMode) return;
+  var p = $('alarm-ring-panel'); if (!p) return;
+  var t = p.querySelector('.dia-dialog-title'); if (t) t.textContent = title || '알람';
+  $('alarm-ring-body').innerHTML = '<b>' + esc(body || '') + '</b>';
+  p.classList.add('active');
+};
+window.rsAppRingStopped = function () { /* 휴대폰 알람이 스스로 멈춰도 화면은 [확인]을 누를 때까지 둠 */ };
 function closeAlarmRing() {
   if (alarmRingTimer) { clearInterval(alarmRingTimer); alarmRingTimer = null; }
   try { rsAppCall('stopRing'); } catch (e) {}
@@ -12182,6 +12192,7 @@ function runMidCheck() {
 }
 function fireMidAlarm(a) {
   $('alarm-ring-body').innerHTML = '도중출무 시간이 다가오고 있어요.<br><b>' + esc(a.body) + '</b>';
+  try { $('alarm-ring-panel').querySelector('.dia-dialog-title').textContent = '도중출무 알람'; } catch (e) {}
   $('alarm-ring-panel').classList.add('active');
   var rounds = 0;
   function ring() { alarmBeep(); appVibrate([400, 200, 400, 200, 400]); }
