@@ -16345,6 +16345,13 @@ function appUpdVerNewer(a, b) {   /* b가 a보다 새 버전이면 true */
   for (var i = 0; i < 3; i++) { if ((y[i] || 0) !== (x[i] || 0)) return (y[i] || 0) > (x[i] || 0); }
   return false;
 }
+/* 새 APK 파일이 서버(GitHub)에 실제로 있는지 먼저 확인 → 없으면 업데이트 안내 · 버튼을 띄우지 않음 */
+function appUpdApkUrl(j) { return new URL(j.apk, location.href).href; }
+function appUpdApkOk(j) {
+  return fetch(appUpdApkUrl(j) + '?v=' + encodeURIComponent(j.version) + '&t=' + Date.now(), { method: 'HEAD', cache: 'no-store' })
+    .then(function (r) { return r.ok; }).catch(function () { return true; });   /* 확인 자체가 실패하면(인터넷 등) 막지 않음 */
+}
+var APPUPD_MISSING = '새 앱 파일(railsecretary.apk)이 아직 서버에 없어요. 관리자가 올리면 다시 눌러주세요.';
 function openAppUpdate() {
   if (!rsAppVersion()) { showToast('앱 업데이트는 철도비서 안드로이드 앱에서만 할 수 있어요.'); return; }
   $('appupd-panel').classList.add('active');
@@ -16354,8 +16361,12 @@ function openAppUpdate() {
   fetch(RS_APP_LATEST_URL + '?v=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
     appUpd.latest = j && j.version ? j : null;
     appUpd.state = appUpd.latest ? 'ready' : 'error';
-    if (!appUpd.latest) appUpd.msg = '최신 버전 정보를 가져오지 못했어요.';
-    appUpdRender();
+    if (!appUpd.latest) { appUpd.msg = '최신 버전 정보를 가져오지 못했어요.'; appUpdRender(); return; }
+    if (!appUpdVerNewer(rsAppVersion(), j.version) || !j.apk) { appUpdRender(); return; }
+    appUpdApkOk(j).then(function (ok) {
+      if (!ok) { appUpd.latest = Object.assign({}, j, { missing: true }); appUpd.msg = APPUPD_MISSING; appUpd.warn = true; }
+      appUpdRender();
+    });
   }).catch(function () { appUpd.state = 'error'; appUpd.msg = '인터넷 연결을 확인해 주세요.'; appUpdRender(); });
 }
 function closeAppUpdate() { $('appupd-panel').classList.remove('active'); }
@@ -16376,7 +16387,9 @@ function appUpdRender() {
       '<button type="button" class="appupd-go sub" onclick="appUpdStart()">허용했어요 · 업데이트</button>';
   } else {
     if (appUpd.msg) h += '<div class="appupd-msg ' + (st === 'error' || appUpd.warn ? 'warn' : '') + '">' + esc(appUpd.msg) + '</div>';
-    h += newer
+    h += newer && L.missing
+      ? '<button type="button" class="appupd-go sub" onclick="openAppUpdate()">다시 확인</button>'
+      : newer
       ? '<button type="button" class="appupd-go" onclick="appUpdStart()">' + esc(L.version) + ' 업데이트</button>'
       : (L ? '<div class="appupd-msg ok">최신 버전을 쓰고 있어요 ✓</div>' : '') + '<button type="button" class="appupd-go sub" onclick="openAppUpdate()">다시 확인</button>';
   }
@@ -16399,8 +16412,11 @@ function appUpdStart() {
       if (rsAppHas('openUrl')) rsAppCall('openUrl', bust); else location.href = bust;
       return;
     }
-    appUpd.state = 'download'; appUpd.pct = 0; appUpdRender();
-    rsAppCall('installUpdate', { url: url, version: String(j.version) });
+    appUpdApkOk(j).then(function (ok) {
+      if (!ok) { appUpd.latest = Object.assign({}, j, { missing: true }); appUpd.state = 'ready'; appUpd.msg = APPUPD_MISSING; appUpd.warn = true; appUpdRender(); return; }
+      appUpd.state = 'download'; appUpd.pct = 0; appUpdRender();
+      rsAppCall('installUpdate', { url: url, version: String(j.version) });
+    });
   }).catch(function () { appUpd.state = 'ready'; appUpd.msg = '최신 버전 정보를 가져오지 못했어요. 인터넷 연결을 확인해 주세요.'; appUpdRender(); });
 }
 /* 앱이 알려주는 진행 상황 */
@@ -16425,12 +16441,17 @@ function rsAppCheckUpdate() {
     var a = cur.split('.').map(Number), b = String(j.version).split('.').map(Number), newer = false;
     for (var i = 0; i < 3; i++) { if ((b[i] || 0) !== (a[i] || 0)) { newer = (b[i] || 0) > (a[i] || 0); break; } }
     if (!newer) return;
+    return appUpdApkOk(j).then(function (ok) { if (ok) rsAppUpdBar(j); });
+  }).catch(function () {});
+}
+function rsAppUpdBar(j) {
+  (function () {
     var bar = document.createElement('div'); bar.className = 'rsapp-upd';
     bar.innerHTML = '<b>새 앱 버전 ' + esc(j.version) + '</b><span>' + esc(j.notes || '앱 기능이 좋아졌어요.') + '</span><button type="button">받기</button><i role="button" aria-label="닫기">×</i>';
     bar.querySelector('button').onclick = function () { bar.remove(); openAppUpdate(); };   /* 환경설정 › 앱 업데이트와 같은 화면 (버튼 한 번) */
     bar.querySelector('i').onclick = function () { bar.remove(); };
     document.body.appendChild(bar);
-  }).catch(function () {});
+  })();
 }
 (function () {
   setTimeout(function () { rsAppSyncAlarms(); rsAppCheckUpdate(); }, 4000);
