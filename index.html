@@ -11985,7 +11985,7 @@ function fireAlarm(w, key, min) {
     ring();
   }, 3000);
   try {
-    if ('Notification' in window && Notification.permission === 'granted') {
+    if (rsAppHas('notify') || ('Notification' in window && Notification.permission === 'granted')) {
       appNotify(w.test ? '출근 알람 테스트' : '출근 알람', { body: msg, tag: w.test ? 'alarm-test-local' : 'alarm-' + key, requireInteraction: true });
     }
   } catch (e) {}
@@ -12181,7 +12181,7 @@ function fireMidAlarm(a) {
   ring();
   if (alarmRingTimer) clearInterval(alarmRingTimer);
   alarmRingTimer = setInterval(function () { if (++rounds >= 10) { clearInterval(alarmRingTimer); alarmRingTimer = null; return; } ring(); }, 3000);
-  try { if ('Notification' in window && Notification.permission === 'granted') appNotify('도중출무 알람', { body: a.body, tag: 'mid-' + a.key, requireInteraction: true }); } catch (e) {}
+  try { if (rsAppHas('notify') || ('Notification' in window && Notification.permission === 'granted')) appNotify('도중출무 알람', { body: a.body, tag: 'mid-' + a.key, requireInteraction: true }); } catch (e) {}
 }
 (function initMidAlarm() {
   setInterval(runMidCheck, 20000);
@@ -12432,6 +12432,11 @@ function pushWatchList(on) {
 /* 알람 설정에서 '꺼진 상태 알림 테스트' */
 function pushTestNow() {
   if (!getNotiPrefs().popup) { showToast('팝업 알림이 꺼져 있어요. 알림 설정에서 켜주세요.'); return; }
+  if (rsAppIn()) {   /* 앱: 브라우저 푸시 대신 휴대폰에 직접 예약 → 앱을 닫아도 울림 */
+    rsAppTestLater('alarm', '출근 알람 테스트', '앱이 꺼져 있어도 울리는지 확인하는 테스트예요.', 20);
+    showToast('20초 뒤에 울려요. 지금 앱을 닫아보세요.');
+    return;
+  }
   if (!pushSupported()) {
     showToast(/iPhone|iPad|iPod/.test(navigator.userAgent)
       ? '아이폰은 홈 화면에 추가해야 알림을 받아요.'
@@ -12815,7 +12820,7 @@ function passSaveNow(fromUi) {
       try { LS.setItem(passCfgKey(), JSON.stringify(c)); LS.setItem('passSync_' + u.employeeId, JSON.stringify({ at: Date.now(), days: days })); } catch (e) {}
       if ($('pass-saved')) $('pass-saved').textContent = '저장됨';
       if (fromUi) {
-        if (!('Notification' in window) || Notification.permission !== 'granted') showToast('알림 설정에서 알림을 허용해야 앱이 꺼져 있어도 울려요.');
+        if (!rsAppIn() && (!('Notification' in window) || Notification.permission !== 'granted')) showToast('알림 설정에서 알림을 허용해야 앱이 꺼져 있어도 울려요.');
         try { pushEnsureSub(true).then(function () { pushSyncAlarms(true); }); } catch (e) {}
       }
     } else if ($('pass-saved')) $('pass-saved').textContent = (r && r.message) || '저장하지 못했습니다.';
@@ -15911,6 +15916,16 @@ function sendBackgroundPushTest(kind) {
     showToast('휴대폰 팝업 알림을 먼저 켜주세요.');
     return;
   }
+  if (rsAppIn()) {
+    var tTitle = isPass ? '열차 통과·도착 알림 테스트' : '열차 운휴 알림 테스트';
+    rsAppTestLater(isPass ? 'pass' : 'nx', tTitle, '앱이 꺼져 있어도 휴대폰 알림이 오는지 확인하는 테스트예요.', 20);
+    backgroundPushTestStatus(resultId,
+      '앱 알림 테스트를 예약했어요. 지금 앱을 닫고 20초 기다려주세요. ' +
+      '※ ' + (isPass ? '통과·도착' : '운휴') + ' 실제 알림은 서버가 실시간으로 보내는 알림이라, 지금 앱 버전에서는 앱이 열려 있을 때 와요. ' +
+      '앱이 꺼져 있을 때도 받으려면 앱에 서버 알림(FCM) 연결이 필요해요.', false);
+    showToast('20초 뒤에 알림이 와요. 앱을 닫아보세요.');
+    return;
+  }
   if (!pushSupported()) {
     var unsupported = /iPhone|iPad|iPod/.test(navigator.userAgent)
       ? '아이폰은 Safari에서 홈 화면에 추가한 웹앱으로 실행해야 푸시를 받을 수 있습니다.'
@@ -16021,7 +16036,7 @@ function nxShowRing(items, isTest) {
   try { alarmBeep(); } catch (e) {}
   appVibrate([400, 200, 400]);
   try {
-    if ('Notification' in window && Notification.permission === 'granted') {
+    if (rsAppHas('notify') || ('Notification' in window && Notification.permission === 'granted')) {
       var nbody = items.map(function (it) { return nxDateText(it.date) + ' ' + (it.link ? it.link + ' ' + it.train + '열차' : it.train + '호') + ' 운휴'; }).join(', ');
       appNotify(isTest ? '열차 운휴 알림 (테스트)' : '열차 운휴 알림', { body: nbody, tag: isTest ? 'nx-test-local' : 'nx-' + items.map(function (it) { return it.date + it.train; }).join('-').slice(0, 50) });
     }
@@ -16278,15 +16293,25 @@ function rsAppSound(kind, title, body, repeat) {
 }
 /* 출근 · 도중출무 알람을 앱에 예약 (앱이 꺼져 있어도 휴대폰이 직접 울림) */
 var rsAppAlarmSig = '';
-function rsAppSyncAlarms() {
+var rsAppTestItem = null;   /* 알림 테스트로 잠깐 끼워 넣은 예약 (울리고 나면 자동으로 빠짐) */
+function rsAppIn() { return rsAppHas('setAlarms') && rsAppHas('notify'); }
+function rsAppTestLater(kind, title, body, sec) {
+  var o = rsAppSound(kind === 'alarm' ? 'alarm' : 'mid', title, body, kind === 'alarm' ? 3 : 1);
+  o.id = 'test-' + kind; o.at = Date.now() + (sec || 20) * 1000;
+  rsAppTestItem = o; rsAppAlarmSig = '';
+  rsAppSyncAlarms(true);
+}
+function rsAppSyncAlarms(force) {
   if (!rsAppHas('setAlarms')) return;
   try {
     var u = getCurrentUser(); if (!u || !u.token) { rsAppCall('setAlarms', []); rsAppAlarmSig = ''; return; }
-    if (!snapshotUsable()) return;
-    var list = pushAlarmList(getAlarmCfg()).concat(pushMidList()).map(function (a) {
+    if (rsAppTestItem && rsAppTestItem.at < Date.now() - 60000) rsAppTestItem = null;
+    if (!snapshotUsable() && !rsAppTestItem) return;
+    var list = (snapshotUsable() ? pushAlarmList(getAlarmCfg()).concat(pushMidList()) : []).map(function (a) {
       var o = rsAppSound(a.tag.indexOf('mid-') === 0 ? 'mid' : 'alarm', a.title, a.body, 10);
       o.id = a.tag; o.at = new Date(a.at).getTime(); return o;
     });
+    if (rsAppTestItem && rsAppTestItem.at > Date.now()) list.push(rsAppTestItem);
     var sig = JSON.stringify(list); if (sig === rsAppAlarmSig) return;
     rsAppAlarmSig = sig; rsAppCall('setAlarms', list);
   } catch (e) {}
@@ -16554,6 +16579,11 @@ function permRender() {
   else permSet('perm-vib', '지원 안 함', 'no');
   var pushOk = perm === 'granted' && typeof pushSupported === 'function' && pushSupported();
   permSet('perm-push', pushOk ? (LS.getItem('pushSubMark') ? '등록됨' : '허용됨') : (ios && !sa ? '홈 화면 앱' : '허용 필요'), pushOk ? 'ok' : 'mid');
+  if (rsAppIn()) {   /* 안드로이드 앱: 앱이 직접 알림·알람을 띄움 (브라우저 권한과 무관) */
+    perm = 'granted';
+    permSet('perm-noti', '앱 알림', 'ok'); permSet('perm-sound', '앱 알람', 'ok'); permSet('perm-vib', '사용 가능', 'ok');
+    permSet('perm-push', '앱 예약', 'ok');
+  }
   if (ios && !sa) {
     warn = '아이폰은 <b>홈 화면에 추가한 철도비서</b>에서만 알림 권한을 받을 수 있어요.<br>' +
            '사파리 아래 <b>공유 버튼(□↑) → 홈 화면에 추가</b> 후, 홈 화면 아이콘으로 열어서 이 화면을 다시 눌러주세요. (iOS 16.4 이상)';
@@ -16567,6 +16597,12 @@ function permRender() {
       '· 설정 › 알림 › 철도비서 › <b>사운드·배너</b> 켜기, 배너 스타일 <b>지속적</b><br>' +
       '· 설정 › 사운드 및 햅틱 › <b>벨소리/무음 모드에서 햅틱 재생</b> 켜기<br>' +
       '· 집중 모드(방해금지)에서는 철도비서를 <b>허용된 앱</b>에 추가';
+  } else if (rsAppIn()) {
+    guide = '<b>철도비서 앱 알림</b><br>' +
+      '· 출근 알람 · 도중출무 알람: 휴대폰에 직접 예약돼서 <b>앱을 닫아도</b> 울려요<br>' +
+      '· 열차 운휴 · 통과/도착 알림: 앱이 <b>열려 있을 때</b> 와요<br>' +
+      '· 설정 › 애플리케이션 › 철도비서 › 알림 <b>허용</b>, 배터리 <b>제한 없음</b><br>' +
+      '· 알람이 안 울리면: 설정 › 애플리케이션 › 철도비서 › <b>알람 및 리마인더</b> 허용';
   } else {
     guide = '<b>갤럭시 진동·소리 설정</b><br>' +
       '· 설정 › 소리 및 진동 › <b>소리 모드일 때 진동</b> 켜기<br>' +
@@ -16606,7 +16642,7 @@ function renderNotiSub() {
   var sub = $('perm-sub');
   if (!sub) return;
   var cfg = getAlarmCfg(), np = getNotiPrefs();
-  var perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+  var perm = rsAppIn() ? 'granted' : ('Notification' in window) ? Notification.permission : 'unsupported';
   var head = cfg.on ? '출근 ' + alarmMinText(cfg.min) + ' 알람' : '출근 알람 꺼짐';
   try { var mc = getMidCfg(); if (mc.on) head += ' · 도중출무 ' + alarmMinText(mc.min); } catch (e) {}
   if (perm === 'denied') sub.textContent = '※ ' + head + ' · 알림 차단됨';
@@ -16625,6 +16661,7 @@ function openPermPanel() {
 /* 앱이 꺼져 있을 때 휴대폰이 마지막으로 받은 알림 (sw.js가 기록) → 알림이 제때 오는지 확인용 */
 function pushLastRender() {
   var el = $('push-last');
+  if (el && rsAppIn()) { el.innerHTML = ''; el.style.display = 'none'; return; }
   if (!el || !('caches' in window)) return;
   caches.open('rs-prefs').then(function (c) { return c.match(new URL('lastpush.json', location.href).href); })
     .then(function (r) { return r ? r.json() : null; })
@@ -16639,6 +16676,12 @@ function pushLastRender() {
 function closePermPanel() { $('perm-panel').classList.remove('active'); permRender(); notiPrefsRender(); }
 /* 버튼 한 번으로: 알림 권한 요청 → 소리 준비 → 진동 확인 → 앱 꺼짐 알림 등록 */
 function permRequestAll() {
+  if (rsAppIn()) {   /* 앱: 권한은 앱이 처음 켤 때 받음 → 바로 확인 알림 */
+    try { appAudioUnlock(); } catch (e) {}
+    appNotify('철도비서 알림 확인', { body: '이렇게 알림이 옵니다.', tag: 'perm-test' }, true);
+    appVibrate([300, 150, 300]); rsAppAlarmSig = ''; rsAppSyncAlarms(); permRender();
+    showToast('앱 알림이 켜져 있어요.'); return;
+  }
   appAudioUnlock();                                                   /* 소리 사용 준비 */
   try { if (navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch (e) {}   /* 진동 확인 */
   var start = (typeof pushEnsureSub === 'function') ? pushEnsureSub(true)      /* 알림 권한 요청 + 푸시 등록 */
@@ -16664,6 +16707,7 @@ function permAutoPrompt(gen) {
     if (gen !== loginPopupGen) return;
     var u = getCurrentUser();
     if (!u.token || LS.getItem('permAsked_' + u.employeeId)) return;
+    if (rsAppIn()) return;
     if (!('Notification' in window) && !(permIsIOS() && !permIsStandalone())) return;
     if ('Notification' in window && Notification.permission !== 'default') return;
     if (document.querySelector('.dia-modal.active, .schedule-edit-modal.active, .route-viewer.active, .notice-popup.active, [id$="-panel"].active')) {
