@@ -931,7 +931,10 @@ html.ui-dark .swap-day .sd-gap.bad{background:#4a1f2b;color:#ff8fab}
 .swap-day .sd-duty{white-space:nowrap!important;word-break:keep-all!important;overflow-wrap:normal!important}
 .swap-day .sd-duty.duty-bi{color:#1a73e8}.swap-day .sd-duty.duty-none{color:#98a2b3}
 .swap-day.in-range{background:#dceeff;outline:1px solid #85bfff}
-.swap-day.range-edge{background:#1769d2;outline:2px solid #0f4fa8}
+.swap-day.range-edge{background:#1769d2;outline:2px solid #0f4fa8;position:relative}
+/* 시작·종료 글씨: 칸 맨 위 띠 (칸 크기·다른 글씨는 그대로) */
+.swap-day .sd-edge.sd-edge-top{position:absolute!important;top:0;left:0;right:0;display:block!important;margin:0!important;padding:1px 0 0!important;border-radius:5px 5px 0 0!important;background:rgba(0,0,0,.18)!important;color:#fff!important;font-size:7.5px!important;line-height:1.15!important;font-weight:800!important;text-align:center;white-space:nowrap;letter-spacing:-.6px!important;overflow:visible;transform:none}
+.swap-day.range-edge .sd-top{margin-top:7px}
 .swap-day.range-edge .sd-num,.swap-day.range-edge .sd-duty{color:#fff!important}
 .swap-day .sd-star{color:#e53935;font-size:9px}
 .swap-range-summary{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:12px;padding:9px 10px;background:#f5f8fc;border-radius:9px;font-size:12px;color:#475467}
@@ -7944,7 +7947,7 @@ function swapShowTeams() {
   $('group-swap-user-list').innerHTML = order.map(function (t) {
     var n = cnt[t] || 0;
     return '<button type="button" class="group-swap-user-btn swap-team-btn' + (n ? '' : ' empty') + '" onclick="swapPickTeam(\'' + t + '\')"' + (n ? '' : ' disabled') + '>' +
-      '<span>' + esc(t) + (t === mine ? ' <small class="swap-team-mine">내 조</small>' : '') + '</span><span class="group-swap-user-id">' + n + '명　›</span></button>';
+      (t === mine ? '<small class="swap-team-mine">내 조</small>' : '') + '<span class="swap-team-name">' + esc(t) + '</span><span class="group-swap-user-id">' + n + '명　›</span></button>';
   }).join('');
 }
 function swapPickTeam(team) {
@@ -8462,8 +8465,8 @@ function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
     html += '<button type="button" data-key="' + key + '"' +
       ' class="swap-day swap-pick-date' + (inRange ? ' in-range' : '') + (edge ? ' range-edge' : '') +
       '" onclick="selectSwapRangeDate(this.dataset.key)">' +
-      '<span class="sd-top"><span class="sd-num">' + d + '</span>' +
-      (edge ? '<span class="sd-edge">' + edge + '</span>' : '') + '</span>' +
+      (edge ? '<span class="sd-edge sd-edge-top">' + edge + '</span>' : '') +
+      '<span class="sd-top"><span class="sd-num">' + d + '</span></span>' +
       '<span class="sd-duty ' + cls + '">' + (info && info.manual ? '*' : '') + esc(label) + '</span></button>';   /* 위 달력에는 휴식시간 표시 안 함 (밑 표에서만) */
       }
   // 달마다 주 수가 달라져도 달력 높이가 변하지 않도록 6주(42칸) 고정
@@ -20074,7 +20077,8 @@ function closeIconPanel() { document.getElementById('icon-panel').classList.remo
 
 .dia-item .dia-base-note{display:block;font-size:9.5px;color:#b07a00;font-weight:700;margin-top:1px;white-space:nowrap}
 
-.swap-team-btn small.swap-team-mine{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;background:#e8f0fe;color:#1a73e8;font-size:11px;font-weight:700}
+#group-swap-select-panel #group-swap-user-list .swap-team-btn > small.swap-team-mine{display:inline-block!important;flex:none;margin:0 0 1px!important;font-size:9.5px!important;line-height:1.3!important;padding:0 6px!important}   /* 내 조: 버튼 맨 위 */
+.swap-team-btn small.swap-team-mine{display:inline-block;margin-left:0!important;padding:1px 7px;border-radius:9px;background:#e8f0fe;color:#1a73e8;font-size:11px;font-weight:700}
 .swap-team-btn.empty{opacity:.45}
 .swap-team-back{border:0;background:#eef3fb;color:#1a73e8;font:inherit;font-weight:700;font-size:12px;padding:3px 9px;border-radius:9px;margin-right:4px;cursor:pointer}
 
