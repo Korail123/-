@@ -1647,6 +1647,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="setting-grid">
       <button type="button" class="set-tile" onclick="openNoticePanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="공지사항" alt="" aria-hidden="true" decoding="async"><span class="set-label">공지사항</span></button>
       <button type="button" class="set-tile" onclick="openSuggestionPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="건의사항" alt="" aria-hidden="true" decoding="async"><span class="set-label">건의사항</span></button>
+      <button type="button" class="set-tile" id="set-appupd" hidden onclick="openAppUpdate()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="불러오기" alt="" aria-hidden="true" decoding="async"><span class="set-label">앱 업데이트</span></button>
       <button type="button" class="set-tile" onclick="openGuidePanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="사용가이드" alt="" aria-hidden="true" decoding="async"><span class="set-label">철도비서 사용가이드</span></button>
     </div>
   </section>
@@ -1662,6 +1663,13 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
   </section>
   <div id="app-version" class="app-ver" onclick="appVersionCheck(true)"></div>
+  <div id="appupd-panel" class="dia-modal" onclick="if(event.target===this)closeAppUpdate()">
+    <div class="dia-dialog appupd-dialog">
+      <div class="appupd-head"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="불러오기" alt="" aria-hidden="true">앱 업데이트</div>
+      <div id="appupd-body"></div>
+      <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeAppUpdate()">닫기</button></div>
+    </div>
+  </div>
   <div id="notice-panel" class="page-view board-page">
     <div class="board-page-inner">
       <div class="board-page-header"><div class="board-title-block"><img class="board-title-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="공지사항" alt="" decoding="async"><h1>공지사항</h1></div></div>
@@ -16283,6 +16291,87 @@ function rsAppSyncAlarms() {
     rsAppAlarmSig = sig; rsAppCall('setAlarms', list);
   } catch (e) {}
 }
+/* ============ 환경설정 › 앱 업데이트 (안드로이드 앱 안에서만 보임) ============
+   새 버전이 있으면 [업데이트] 한 번 → 앱이 APK를 직접 받아 설치 화면을 띄움 → [설치]만 누르면 끝
+   처음 한 번은 '출처를 알 수 없는 앱 설치' 허용이 필요 (설정 화면으로 바로 이동) */
+var appUpd = { latest: null, state: 'idle', pct: 0, msg: '' };
+function appUpdVerNewer(a, b) {   /* b가 a보다 새 버전이면 true */
+  var x = String(a || '0').split('.').map(Number), y = String(b || '0').split('.').map(Number);
+  for (var i = 0; i < 3; i++) { if ((y[i] || 0) !== (x[i] || 0)) return (y[i] || 0) > (x[i] || 0); }
+  return false;
+}
+function openAppUpdate() {
+  if (!rsAppVersion()) { showToast('앱 업데이트는 철도비서 안드로이드 앱에서만 할 수 있어요.'); return; }
+  $('appupd-panel').classList.add('active');
+  try { applyAppIcons(); } catch (e) {}
+  if (appUpd.state === 'download' || appUpd.state === 'install') { appUpdRender(); return; }
+  appUpd.state = 'checking'; appUpd.msg = ''; appUpdRender();
+  fetch(RS_APP_LATEST_URL + '?v=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+    appUpd.latest = j && j.version ? j : null;
+    appUpd.state = appUpd.latest ? 'ready' : 'error';
+    if (!appUpd.latest) appUpd.msg = '최신 버전 정보를 가져오지 못했어요.';
+    appUpdRender();
+  }).catch(function () { appUpd.state = 'error'; appUpd.msg = '인터넷 연결을 확인해 주세요.'; appUpdRender(); });
+}
+function closeAppUpdate() { $('appupd-panel').classList.remove('active'); }
+function appUpdRender() {
+  var box = $('appupd-body'); if (!box) return;
+  var cur = rsAppVersion() || '-', L = appUpd.latest, newer = !!(L && appUpdVerNewer(cur, L.version));
+  var h = '<div class="appupd-vers"><div><small>지금 앱</small><b>' + esc(cur) + '</b></div><div class="appupd-arrow">→</div><div' + (newer ? ' class="new"' : '') + '><small>최신 버전</small><b>' + esc(L ? L.version : (appUpd.state === 'checking' ? '확인 중…' : '-')) + '</b></div></div>';
+  if (L && L.notes) h += '<div class="appupd-notes">' + esc(L.notes) + '</div>';
+  var st = appUpd.state;
+  if (st === 'download' || st === 'install') {
+    h += '<div class="appupd-bar"><i style="width:' + Math.max(3, appUpd.pct) + '%"></i></div>' +
+      '<div class="appupd-msg">' + (st === 'download' ? '새 앱을 받는 중… ' + appUpd.pct + '%' : '설치 화면이 뜨면 <b>[설치]</b>를 눌러주세요.') + '</div>';
+  } else if (st === 'checking') {
+    h += '<div class="appupd-msg">최신 버전을 확인하는 중…</div>';
+  } else if (st === 'perm') {
+    h += '<div class="appupd-msg warn">처음 한 번만: <b>출처를 알 수 없는 앱 설치</b>에서 <b>철도비서</b>를 허용해 주세요. 허용하고 돌아와서 [업데이트]를 다시 누르면 돼요.</div>' +
+      '<button type="button" class="appupd-go" onclick="rsAppCall(\'openInstallSettings\')">허용하러 가기</button>' +
+      '<button type="button" class="appupd-go sub" onclick="appUpdStart()">허용했어요 · 업데이트</button>';
+  } else {
+    if (appUpd.msg) h += '<div class="appupd-msg ' + (st === 'error' || appUpd.warn ? 'warn' : '') + '">' + esc(appUpd.msg) + '</div>';
+    h += newer
+      ? '<button type="button" class="appupd-go" onclick="appUpdStart()">' + esc(L.version) + ' 업데이트</button>'
+      : (L ? '<div class="appupd-msg ok">최신 버전을 쓰고 있어요 ✓</div>' : '') + '<button type="button" class="appupd-go sub" onclick="openAppUpdate()">다시 확인</button>';
+  }
+  h += '<div class="appupd-foot">화면·기능 변경은 앱을 열면 자동으로 적용돼요. 이 업데이트는 알람·위젯 등 앱 자체가 바뀔 때만 필요해요.</div>';
+  box.innerHTML = h;
+}
+/* 업데이트는 항상 가장 최신 버전으로만: 누르는 순간 app-version.json을 다시 읽고, 그 버전 번호를 앱에 같이 넘김
+   (앱은 받은 APK의 버전이 이 번호와 다르면 = 옛 파일 · 캐시면 설치하지 않음) */
+function appUpdStart() {
+  if (rsAppHas('installUpdate') && rsAppCall('canInstall') === 'false') { appUpd.state = 'perm'; appUpdRender(); return; }
+  appUpd.state = 'checking'; appUpd.msg = ''; appUpd.warn = false; appUpdRender();
+  fetch(RS_APP_LATEST_URL + '?v=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+    if (!j || !j.version || !j.apk) throw new Error('x');
+    appUpd.latest = j;
+    if (!appUpdVerNewer(rsAppVersion(), j.version)) { appUpd.state = 'ready'; appUpd.msg = ''; appUpdRender(); return; }
+    var url = new URL(j.apk, location.href).href;
+    var bust = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + encodeURIComponent(j.version) + '&t=' + Date.now();
+    if (!rsAppHas('installUpdate')) {   /* 예전 앱: 브라우저로 내려받기 */
+      appUpd.state = 'ready'; appUpdRender();
+      if (rsAppHas('openUrl')) rsAppCall('openUrl', bust); else location.href = bust;
+      return;
+    }
+    appUpd.state = 'download'; appUpd.pct = 0; appUpdRender();
+    rsAppCall('installUpdate', { url: url, version: String(j.version) });
+  }).catch(function () { appUpd.state = 'ready'; appUpd.msg = '최신 버전 정보를 가져오지 못했어요. 인터넷 연결을 확인해 주세요.'; appUpdRender(); });
+}
+/* 앱이 알려주는 진행 상황 */
+window.rsAppUpdateProgress = function (pct, state, msg) {
+  appUpd.pct = +pct || 0;
+  if (state === 'error') { appUpd.state = 'ready'; appUpd.msg = msg || '업데이트하지 못했어요.'; appUpd.warn = true; }
+  else appUpd.state = state;
+  if ($('appupd-panel') && !$('appupd-panel').classList.contains('active') && state === 'error') showToast(appUpd.msg);
+  appUpdRender();
+};
+/* 앱 안이면 환경설정에 '앱 업데이트' 칸 보이기 */
+(function () {
+  function show() { var t = $('set-appupd'); if (t && rsAppVersion()) { t.hidden = false; try { setFlatBuild(); } catch (e) {} } }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();
+  setTimeout(show, 1500);
+})();
 /* 새 앱 버전 알림 (앱 안에서만) */
 function rsAppCheckUpdate() {
   var cur = rsAppVersion(); if (!cur || rsAppCheckUpdate.done) return; rsAppCheckUpdate.done = 1;
@@ -16293,7 +16382,7 @@ function rsAppCheckUpdate() {
     if (!newer) return;
     var bar = document.createElement('div'); bar.className = 'rsapp-upd';
     bar.innerHTML = '<b>새 앱 버전 ' + esc(j.version) + '</b><span>' + esc(j.notes || '앱 기능이 좋아졌어요.') + '</span><button type="button">받기</button><i role="button" aria-label="닫기">×</i>';
-    bar.querySelector('button').onclick = function () { if (rsAppHas('openUrl')) rsAppCall('openUrl', new URL(j.apk, location.href).href); else location.href = j.apk; };
+    bar.querySelector('button').onclick = function () { bar.remove(); openAppUpdate(); };   /* 환경설정 › 앱 업데이트와 같은 화면 (버튼 한 번) */
     bar.querySelector('i').onclick = function () { bar.remove(); };
     document.body.appendChild(bar);
   }).catch(function () {});
@@ -18076,6 +18165,29 @@ window.addEventListener('load', hookSwitch);
 .be-label{display:block;margin:0 2px 6px;font-size:13px;font-weight:800;color:#344054}
 .be-input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #d5dde7;border-radius:12px;background:#fff;font:inherit;font-size:15px;color:#111;outline:none}
 .be-input:focus{border-color:#1a73e8;box-shadow:0 0 0 3px rgba(26,115,232,.12)}
+#appupd-panel .appupd-dialog{max-width:380px}
+#appupd-panel .appupd-head{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:900;color:#1d2a3a;margin:2px 0 10px}
+#appupd-panel .appupd-head img{width:30px;height:30px;object-fit:contain}
+#appupd-panel .appupd-vers{display:flex;align-items:stretch;gap:8px}
+#appupd-panel .appupd-vers>div{flex:1;background:#f5f7fa;border:1px solid #e3e8ef;border-radius:12px;padding:8px 10px;text-align:center}
+#appupd-panel .appupd-vers>div.appupd-arrow{flex:0 0 auto;background:none;border:0;display:flex;align-items:center;color:#8a96a8;font-weight:900;padding:0}
+#appupd-panel .appupd-vers>div.new{background:#eef5ff;border-color:#bcd5f7}
+#appupd-panel .appupd-vers small{display:block;font-size:11px;color:#8a96a8;font-weight:700}
+#appupd-panel .appupd-vers b{display:block;font-size:19px;font-weight:900;color:#1d2a3a}
+#appupd-panel .appupd-vers>div.new b{color:#1769d2}
+#appupd-panel .appupd-notes{margin-top:8px;font-size:12.5px;line-height:1.6;color:#4e5968;background:#fafbfc;border-radius:10px;padding:7px 10px;white-space:pre-wrap}
+#appupd-panel .appupd-msg{margin-top:10px;font-size:13px;line-height:1.6;color:#33415c;text-align:center}
+#appupd-panel .appupd-msg.warn{color:#c2410c;text-align:left}
+#appupd-panel .appupd-msg.ok{color:#1f8a4c;font-weight:800}
+#appupd-panel .appupd-go{display:block;width:100%;height:44px;margin-top:10px;border:0;border-radius:12px;background:#1769d2;color:#fff;font-size:15px;font-weight:900;cursor:pointer}
+#appupd-panel .appupd-go.sub{background:#eef2f7;color:#33415c}
+#appupd-panel .appupd-bar{margin-top:12px;height:10px;border-radius:6px;background:#e6ebf2;overflow:hidden}
+#appupd-panel .appupd-bar i{display:block;height:100%;background:#1769d2;border-radius:6px;transition:width .3s}
+#appupd-panel .appupd-foot{margin-top:12px;font-size:11px;line-height:1.5;color:#8a96a8}
+html.ui-dark #appupd-panel .appupd-head,html.ui-dark #appupd-panel .appupd-vers b{color:#e9edf2}
+html.ui-dark #appupd-panel .appupd-vers>div{background:#1b1f25;border-color:#2f3640}
+html.ui-dark #appupd-panel .appupd-notes{background:#1b1f25;color:#c4ccd8}
+html.ui-dark #appupd-panel .appupd-msg{color:#c4ccd8}
 .dd-head-btns{display:inline-flex;align-items:center;gap:6px;flex:none}
 .dd-xr-btn{border:1px solid #bcd5f7;background:#eef5ff;color:#1769d2;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:800;line-height:1.2;cursor:pointer;white-space:nowrap}
 .dd-xr-btn:disabled{opacity:.6}
