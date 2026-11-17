@@ -845,7 +845,10 @@ box-shadow:0 1px 2px rgba(16,24,40,.04); transition:background .15s ease;
 html.ui-dark .swap-gap-note.idle{background:#1b1f25;border-color:#2f3640}
 .swap-gap-note .sgn-h{display:flex;align-items:center;justify-content:space-between;gap:6px}
 .swap-gap-note .sgn-seg{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:#6b7686;font-weight:700}
-.swap-gap-note .sgn-seg button{border:1px solid #d5dbe4;background:#fff;color:#4e5968;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:800;cursor:pointer}
+.swap-gap-note .sgn-seg button{border:1px solid #d5dbe4;background:#fff;color:#4e5968;border-radius:999px;padding:1px 7px;font-size:10.5px;line-height:18px;font-weight:800;cursor:pointer}
+.swap-gap-note .sgn-seg button.sgn-chk{margin-left:3px;background:#33415c;border-color:#33415c;color:#fff}
+.swap-gap-note .sgn-seg button.sgn-chk.done{background:#2f9e5b;border-color:#2f9e5b}
+.swap-gap-note.idle{padding:5px 10px}
 .swap-gap-note .sgn-seg button.on{background:#1769d2;border-color:#1769d2;color:#fff}
 html.ui-dark .swap-gap-note .sgn-seg button{background:#232830;border-color:#3a414c;color:#c9d3e0}
 html.ui-dark .swap-gap-note .sgn-seg button.on{background:#2f7cf6;border-color:#2f7cf6;color:#fff}
@@ -8223,10 +8226,10 @@ function swapDutyLabel(info) {
 var SWAP_REST_MIN = 13 * 60;
 /* 휴식시간 기준: 사용자가 13시간 / 15시간 중 고름 (이 폰에 저장) */
 function swapRestHours() { try { var v = parseInt(localStorage.getItem('rs_swap_rest_h'), 10); return v === 15 ? 15 : 13; } catch (e) { return 13; } }
-function swapSetRest(h) { try { localStorage.setItem('rs_swap_rest_h', String(h === 15 ? 15 : 13)); } catch (e) {} SWAP_REST_MIN = swapRestHours() * 60; swapGapChecked = ''; renderSwapCalendars(); }
+function swapSetRest(h) { try { localStorage.setItem('rs_swap_rest_h', String(h === 15 ? 15 : 13)); } catch (e) {} SWAP_REST_MIN = swapRestHours() * 60; renderSwapCalendars(); }   /* 체크한 뒤에는 기준만 바꿔도 바로 다시 확인 */
 /* [체크하기]를 눌러야 휴식시간 확인이 켜짐 (기간이나 기준을 바꾸면 다시 눌러야 함) */
 var swapGapChecked = '';
-function swapGapKey() { return swapRangeStart + '|' + swapRangeEnd + '|' + swapRestHours(); }
+function swapGapKey() { return swapRangeStart + '|' + swapRangeEnd; }
 function swapRunGapCheck() { if (!swapRangeStart || !swapRangeEnd) return; swapGapChecked = swapGapKey(); renderSwapCalendars(); }
 SWAP_REST_MIN = swapRestHours() * 60;
 var swapGapMarks = {};
@@ -8272,8 +8275,7 @@ function swapGapText(g) {
   if (!g) return '';
   if (g.unknown) return '?';
   if (g.gap < 0) return '겹침';
-  var h = Math.floor(g.gap / 60), m = Math.round(g.gap % 60);
-  return h + 'h' + (m ? m : '');
+  return Math.floor(g.gap / 60) + 'h';   /* 분은 빼고 시간만 */
 }
 function swapGapBadge(g) {
   if (!g) return '';
@@ -8299,8 +8301,8 @@ function swapGapGrid(list, startKey, endKey) {
   }
   var W = '일월화수목금토', n = cols.length, todayKey = todayKeyKST();
   var h = '<div class="cmp-grid sgx" style="grid-template-columns:40px repeat(' + n + ',minmax(0,1fr))">';
-  /* 줄: 1 내 휴식시간 · 2 날짜 · 3 내 근무 · 4 (점선) 상대 휴식시간 · 5 상대 근무 */
-  var HROW = 2;
+  /* 줄: 1 내 휴식시간 · 2 날짜 · 3 내 근무 · 4 (점선) 상대 휴식시간 · 5 날짜 · 6 상대 근무 */
+  [2, 5].forEach(function (HROW) {
   h += '<div class="cmp-corner" style="grid-row:' + HROW + ';grid-column:1"></div>';
   cols.forEach(function (k, i) {
     if (k === '…') { h += '<div class="cmp-dh sgx-skip" style="grid-row:' + HROW + ';grid-column:' + (i + 2) + '">…</div>'; return; }
@@ -8308,8 +8310,9 @@ function swapGapGrid(list, startKey, endKey) {
     var hol = holidayName(+p[0], +p[1] - 1, +p[2]), inR = k >= startKey && k <= endKey;
     h += '<div class="cmp-dh' + ((dw === 0 || hol) ? ' sun' : dw === 6 ? ' sat' : '') + (inR ? ' sgx-in' : '') + '" style="grid-row:' + HROW + ';grid-column:' + (i + 2) + '"><b>' + (+p[2]) + '</b><small>' + W.charAt(dw) + '</small></div>';
   });
+  });
   list.forEach(function (x, ri) {
-    var g = x.g, arcRow = ri === 0 ? 1 : 4, dutyRow = ri === 0 ? 3 : 5;
+    var g = x.g, arcRow = ri === 0 ? 1 : 4, dutyRow = ri === 0 ? 3 : 6;
     function arc(fromK, toK, gp) {
       if (!gp || !fromK || !toK) return '';
       var i1 = cols.indexOf(fromK), i2 = cols.indexOf(toK);
@@ -8466,11 +8469,12 @@ function renderSwapCalendars() {
   if (startKey && !endKey) status.textContent = '시작일을 선택했어요. 내 근무표 또는 상대 근무표에서 종료일을 선택하세요.';
   else if (startKey && endKey && (dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000 > 30) status.textContent = '한 번에 최대 31일까지만 교환할 수 있습니다.';
   else if (startKey && endKey) {
-    var seg = '<span class="sgn-seg">기준 ' + [13, 15].map(function (hh) { return '<button type="button" class="' + (swapRestHours() === hh ? 'on' : '') + '" onclick="swapSetRest(' + hh + ')">' + hh + '시간</button>'; }).join('') + '</span>';
-    status.innerHTML = esc(startKey + ' ~ ' + endKey + ' 기간이 선택되었습니다.') + (gapOn
-      ? '<div class="swap-gap-note' + (gapMsg.length ? ' bad' : '') + '"><div class="sgn-h"><span>교환 뒤 근무 · 휴식시간</span>' + seg + '</div>' + swapGapGrid(gapLines, startKey, endKey) + '</div>'
-      : '<div class="swap-gap-note idle"><div class="sgn-h"><span>휴식시간 확인</span>' + seg + '</div>' +
-        '<button type="button" class="sgn-check" onclick="swapRunGapCheck()">' + swapRestHours() + '시간 기준으로 체크하기</button></div>');
+    /* 한 줄: 휴식시간 확인 [13시간] [15시간] [체크] */
+    var seg = '<span class="sgn-seg">' + [13, 15].map(function (hh) { return '<button type="button" class="' + (swapRestHours() === hh ? 'on' : '') + '" onclick="swapSetRest(' + hh + ')">' + hh + '시간</button>'; }).join('') +
+      '<button type="button" class="sgn-chk' + (gapOn ? ' done' : '') + '" onclick="swapRunGapCheck()">' + (gapOn ? '✓ 체크' : '체크') + '</button></span>';
+    status.innerHTML = esc(startKey + ' ~ ' + endKey + ' 기간이 선택되었습니다.') +
+      '<div class="swap-gap-note' + (gapOn ? (gapMsg.length ? ' bad' : '') : ' idle') + '"><div class="sgn-h"><span>휴식시간 확인</span>' + seg + '</div>' +
+      (gapOn ? swapGapGrid(gapLines, startKey, endKey) : '') + '</div>';
   }
   else status.textContent = '달력에서 시작일을 한 번, 종료일을 한 번 누르면 기간이 한 번에 선택됩니다.';
   var btn = $('swap-submit');
