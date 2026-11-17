@@ -6459,10 +6459,61 @@ function memoSet(k, text) {
 function dayDetailHead(dateText) {
   var k = dateKeyForSelectedDay();
   var m = k ? memoGet(k) : null;
+  var xrOn = typeof crewLinked === 'function' && crewLinked();
   return '<div class="dd-date dd-date-row"><span>' + dateText + ' 상세 근무 정보</span>' +
+    '<span class="dd-head-btns">' +
+    (xrOn ? '<button type="button" class="dd-xr-btn" onclick="xrDayFetch()" aria-label="XROIS 연동">XROIS 연동</button>' : '') +
     '<button type="button" class="dd-memo-btn' + (m ? ' has' : '') + '" onclick="openDayMemo()" aria-label="메모장">' +
-      '<img src="' + appIcon('메모장') + '" alt="" aria-hidden="true">메모장</button></div>' +
+      '<img src="' + appIcon('메모장') + '" alt="" aria-hidden="true">메모장</button></span></div>' +
     (m ? '<button type="button" class="dd-memo-prev" onclick="openDayMemo()">' + esc(m.t) + '</button>' : '');
+}
+/* 근무표 상세 [XROIS 연동]: 그 날 XROIS 당월승무근무표의 다이아 → 승무근무표 현황(출근·퇴근·열차번호1·2·승무원) + 승무다이아(예상 행로표)
+   다이아가 철도비서 근무표와 다르면 그 날 근무도 XROIS 다이아로 바꿈 (로그인 1번) */
+var xrDayBusy = false;
+function xrDayFetch() {
+  var dk = dateKeyForSelectedDay();
+  if (!dk || xrDayBusy) return;
+  var pw = getCrewPw(), m = xrGet('meta', {});
+  if (!pw) { showToast('마이페이지 › CREW 연동에서 XROIS 비밀번호를 먼저 저장해주세요.'); return; }
+  if (m.fail && m.pwSig === xrSig(pw)) { showToast('XROIS 로그인 실패 상태예요. 마이페이지 CREW 연동에서 비밀번호를 다시 저장해주세요.'); return; }
+  var p = dk.split('-'), cur = (typeof getInfo === 'function' ? getInfo(+p[0], +p[1] - 1, +p[2]) : null) || {};
+  var curDia = xrNorm(cur.dia || '');
+  xrDayBusy = true;
+  var btn = document.querySelector('.dd-xr-btn'); if (btn) { btn.disabled = true; btn.textContent = '가져오는 중…'; }
+  showToast(xrDateLabel(dk) + ' XROIS에서 가져오는 중…');
+  function done() { xrDayBusy = false; try { renderDayDetail(); } catch (e) {} }
+  /* 다이아를 비워 보내면 서버가 당월승무근무표의 그 날 다이아로 조회 (예전 서버면 철도비서 다이아로 다시 한 번) */
+  xrCall({ action: 'xrDia', items: [{ dia: '', date: dk }], withRoster: true, withCrew: true }, function (err, d) {
+    var r = !err && d && (d.results || [])[0];
+    if (!r && curDia && (!err || err.code === 'BAD_REQUEST' || /DIA 번호/.test(err.message || ''))) {
+      xrCall({ action: 'xrDia', items: [{ dia: curDia, date: dk }], withRoster: true, withCrew: true }, function (err2, d2) { handle(err2, d2 && (d2.results || [])[0]); });
+      return;
+    }
+    handle(err, r);
+  });
+  function handle(err, r) {
+    if (err) {
+      if (err.code === 'LOGIN_FAILED') { var mm = xrGet('meta', {}); mm.fail = true; mm.pwSig = xrSig(pw); mm.ok = false; mm.msg = err.message; xrPut('meta', mm); try { xrRenderStatus(); } catch (e) {} }
+      showToast(err.message || 'XROIS에서 가져오지 못했어요.'); done(); return;
+    }
+    var wk = r && r.work, xd = xrNorm((r && r.dia) || (wk && wk.xroisDia) || '');
+    if (!r || !/^[0-9A-Z]{3,8}$/.test(xd)) {
+      showToast(xrDateLabel(dk) + ' XROIS 당월승무근무표에 다이아가 없어요' + (wk && wk.off ? ' (' + wk.off + ')' : '') + '.'); done(); return;
+    }
+    /* 철도비서 근무표와 다이아가 다르면 그 날 근무를 XROIS 다이아로 (교환 상대·충당 구분은 유지) */
+    if (xd !== curDia) {
+      var emp = getCurrentUser().employeeId, prevOv = xrMyOverride(emp, dk), known = diaByNumber(xd);
+      var night = known ? /야/.test(String(known.type || '')) : (rpMin(wk && wk.end) != null && rpMin(wk && wk.start) != null && rpMin(wk.end) < rpMin(wk.start));
+      var credit = prevOv && /충당/.test(String(prevOv[3] || '')) ? String(prevOv[3]) : '';
+      removeAutoNextDayOff(emp, snapShiftKey(dk, 1));
+      snapUpsertOverride(emp, dk, 'combined', xd, credit, prevOv ? String(prevOv[5] || '') : '', prevOv ? String(prevOv[6] || '') : '', night ? '야' : '주');
+      try { tdSet(dk, known ? '' : xd); } catch (e) {}
+      if (night) rsAutoNextOff(emp, snapShiftKey(dk, 1));
+    }
+    xrApplyDiaRes(dk, xd, r, false);
+    try { loadMyMonth(); } catch (e) {}
+    done();
+  }
 }
 function openDayMemo() {
   var k = dateKeyForSelectedDay();
@@ -18025,6 +18076,10 @@ window.addEventListener('load', hookSwitch);
 .be-label{display:block;margin:0 2px 6px;font-size:13px;font-weight:800;color:#344054}
 .be-input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #d5dde7;border-radius:12px;background:#fff;font:inherit;font-size:15px;color:#111;outline:none}
 .be-input:focus{border-color:#1a73e8;box-shadow:0 0 0 3px rgba(26,115,232,.12)}
+.dd-head-btns{display:inline-flex;align-items:center;gap:6px;flex:none}
+.dd-xr-btn{border:1px solid #bcd5f7;background:#eef5ff;color:#1769d2;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:800;line-height:1.2;cursor:pointer;white-space:nowrap}
+.dd-xr-btn:disabled{opacity:.6}
+html.ui-dark .dd-xr-btn{background:#1a2638;border-color:#2e4a74;color:#8cb8ff}
 .be-content{min-height:42vh;resize:vertical;line-height:1.7;word-break:keep-all}
 /* 글 쓰는 칸 = 글 보이는 칸 (폭 · 글자 크기 · 줄 간격 · 줄바꿈이 똑같아서 쓴 모양 그대로 보임) */
 html body #board-editor-content.be-content{box-sizing:border-box!important;width:100%!important;font-size:13px!important;line-height:1.6!important;padding:12px 9px!important;letter-spacing:normal!important;word-break:keep-all!important;overflow-wrap:anywhere!important;white-space:pre-wrap!important;font-family:inherit!important;tab-size:4}
