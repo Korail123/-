@@ -24691,9 +24691,15 @@ function rsBgStatusHtml() {
   return h;
 }
 var rsBg = { nxAt: 0, snapAt: 0, done: {} };
+/* 알림 설정(소리 · 진동 · 무음에서도 울리기)에 맞춘 알람 방식 */
+function rsAlertMode() {
+  var np = getNotiPrefs();
+  if (np.sound && np.vol > 0) return np.loud !== false ? 'alarm' : 'sound';
+  return np.vib ? 'vib' : 'quiet';
+}
+/* 앱 꺼짐 알림: 안드로이드 알람처럼 [끄기]를 누를 때까지 소리 · 진동 반복 (최대 30초) */
 function rsBgNotify(tag, title, body) {
-  rsAppCall('notify', { tag: tag, title: title, body: body });
-  try { if (getNotiPrefs().vib) rsAppCall('vibrate', [400, 200, 400, 200, 600]); } catch (e) {}
+  rsAppCall('notify', { tag: tag, title: title, body: body, mode: rsAlertMode(), insist: true, timeout: 30000 });
 }
 function rsBgTick() {
   var out = { next: 600, keep: true };
