@@ -4558,7 +4558,8 @@ function rsWidgetMonth(y, m, cb) {
       }
       var swap = info && (info.swapPartnerName || info.swapPartnerId) ? 1 : 0;
       /* 한 칸: 구분|색|공휴일|교환 */
-      out.push([label, tone, holidayName(y, m, d) ? 1 : 0, swap].join('|'));
+      var hn = holidayName(y, m, d) || '';
+      out.push([label, tone, hn ? 1 : 0, swap, String(hn).replace(/\|/g, ' ')].join('|'));   /* 위젯: 구분|색|공휴일|교환|공휴일 이름 */
       var credit = info && (info.creditStatus === '대기충당' || info.creditStatus === '운휴충당' || info.creditStatus === '휴무충당') ? info.creditStatus
         : (info && (info.status === '대기충당' || info.status === '운휴충당' || info.status === '휴무충당') ? info.status
         : (info && (info.label === '대기충당' || info.label === '운휴충당' || info.label === '휴무충당') ? info.label : ''));
@@ -5332,7 +5333,7 @@ function wgOff() {
   });
 }
 var rsWidgetTimer = null, rsWidgetLast = '';
-function rsWidgetPush(now) {
+function rsWidgetPush(now, around) {
   try { rsFeedSoon(); } catch (e) {}
   if (!window.RsWidget || typeof window.RsWidget.update !== 'function') return;
   if (rsWidgetTimer) clearTimeout(rsWidgetTimer);
@@ -5340,8 +5341,13 @@ function rsWidgetPush(now) {
     rsWidgetTimer = null;
     var u = getCurrentUser();
     if (!u || !u.token || u.employeeId === 'guest') { try { window.RsWidget.update(JSON.stringify({ months: {}, name: '', at: '' })); } catch (e) {} return; }
-    var t = todayKST(), list = [], left = 4, name = u.name || '';
-    for (var i = -1; i <= 2; i++) {
+    /* 위젯에서 넘겨 볼 수 있게: 지난 2달 ~ 앞으로 6달 (+ 위젯이 보고 있는 달 앞뒤) */
+    var t = todayKST(), list = [], name = u.name || '', offs = [];
+    for (var i = -2; i <= 6; i++) offs.push(i);
+    around = +around || 0;
+    for (var j = around - 1; j <= around + 1; j++) if (offs.indexOf(j) < 0) offs.push(j);
+    var left = offs.length;
+    offs.forEach(function (i) {
       var dt = new Date(t.y, t.m + i, 1);
       (function (y, m) {
         rsWidgetMonth(y, m, function (r) {
@@ -5357,7 +5363,7 @@ function rsWidgetPush(now) {
           try { window.RsWidget.update(payload); } catch (e) {}
         });
       })(dt.getFullYear(), dt.getMonth());
-    }
+    });
   }, now ? 0 : 1500);
 }
 (function () {
@@ -16673,7 +16679,7 @@ function permRender() {
     guide = '<b>철도비서 앱 알림</b><br>' +
       '· 출근 알람 · 도중출무 알람: 휴대폰에 직접 예약돼서 <b>앱을 닫아도</b> 울려요<br>' +
       (rsAppHas('bgWatch')
-        ? '· 열차 운휴 · 통과/도착 알림: <b>앱을 닫아도</b> 확인해요 (알림창에 \'알림 확인 중\' 표시)<br>' + rsBgStatusHtml()
+        ? '· 열차 운휴 · 통과/도착 알림: <b>앱을 닫아도</b> 확인해요<br>' + rsBgStatusHtml()
         : '· 열차 운휴 · 통과/도착 알림: 앱이 <b>열려 있을 때</b> 와요 (앱 업데이트 1.1.0부터 꺼져도 와요)<br>') +
       '· 설정 › 애플리케이션 › 철도비서 › 알림 <b>허용</b>, 배터리 <b>제한 없음</b><br>' +
       '· 알람이 안 울리면: 설정 › 애플리케이션 › 철도비서 › <b>알람 및 리마인더</b> 허용';
@@ -24684,7 +24690,7 @@ window.rsAppPermChanged = function () {
 function rsBgStatus() { try { return JSON.parse(rsAppCall('bgStatus') || '{}') || {}; } catch (e) { return {}; } }
 function rsBgStatusHtml() {
   var st = rsBgStatus(), h = '';
-  h += '· 앱 꺼짐 감시: <b>' + (st.on ? (st.running ? '켜짐' : '켜는 중') : '꺼짐 (운휴 알림 또는 통과 알림 역을 켜면 자동으로 켜져요)') + '</b>';
+  h += '· 앱 꺼짐 확인: <b>' + (st.on ? '켜짐' : '꺼짐 (운휴 알림 또는 통과 알림 역을 켜면 자동으로 켜져요)') + '</b>';
   if (st.last) { var d = new Date(Number(st.last) + 9 * 3600000); h += ' · 마지막 확인 ' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()); }
   h += '<br>';
   if (st.on && st.battery === false && !rsAppHas('perms')) h += '· <b style="color:#c62828">배터리 사용 제한</b>이 걸려 있으면 알림이 늦을 수 있어요 <button type="button" class="bg-batt-btn" onclick="rsAppCall(\'askBattery\')">제한 풀기</button><br>';
