@@ -8368,8 +8368,9 @@ function swapGapGrid(list, startKey, endKey) {
       var span = i2 - i1 + 1, inset = (50 / span).toFixed(2) + '%';
       /* 글자는 실제로 넘은 단계: 15시간 이상 → 15h O, 13시간 이상 → 13h O, 13시간 미만 → 13h X
          색은 고른 기준: 기준을 넘으면 초록, 13시간은 넘었지만 15시간 기준에 못 미치면 주황, 13시간 미만은 빨강 */
-      var c = gp.unknown ? 'unk' : gp.gap >= SWAP_REST_MIN ? 'ok' : gp.gap >= 13 * 60 ? 'mid' : 'bad';
-      var txt = gp.unknown ? '?' : gp.gap >= 15 * 60 ? '15h O' : gp.gap >= 13 * 60 ? '13h O' : '13h X';
+      /* 고른 기준만: 13시간 → 13h O / 13h X, 15시간 → 15h O / 15h X */
+      var c = gp.unknown ? 'unk' : gp.gap >= SWAP_REST_MIN ? 'ok' : 'bad';
+      var txt = gp.unknown ? '?' : swapRestHours() + 'h ' + (c === 'ok' ? 'O' : 'X');
       return '<div class="sgx-arc ' + c + '" style="grid-row:' + arcRow + ';grid-column:' + (i1 + 2) + ' / ' + (i2 + 3) + '"><span>' + txt + '</span><i style="left:' + inset + ';right:' + inset + '"></i></div>';
     }
     h += '<div class="sgx-lane' + (ri ? ' sgx-sep' : '') + '" style="grid-row:' + arcRow + ';grid-column:1 / -1"></div>';
@@ -8520,8 +8521,8 @@ function renderSwapCalendars() {
         return '<span class="sgn-' + c + '">' + lbl + ' ' + (x.unknown ? '시각 정보 없음' : swapGapText(x) + (c === 'ok' ? ' ✓' : ' ⚠')) + '</span>';
       }
       gapLines.push({ id: pr[0], other: pr[1], name: pr[2], g: g });
-      if (g.prev) { mk[g.prev.key] = g.prev; if (!g.prev.unknown && g.prev.gap < SWAP_REST_MIN) gapMsg.push(pr[2] + ': 직전 근무 퇴근 → 시작일 출근 ' + (g.prev.gap >= 13 * 60 ? '13h O (15h 미만)' : '13h X')); }
-      if (g.next) { var o = mk[g.next.key]; if (!o || o.unknown || (!g.next.unknown && g.next.gap < o.gap)) mk[g.next.key] = g.next; if (!g.next.unknown && g.next.gap < SWAP_REST_MIN) gapMsg.push(pr[2] + ': 종료일 퇴근 → 직후 근무 출근 ' + (g.next.gap >= 13 * 60 ? '13h O (15h 미만)' : '13h X')); }
+      if (g.prev) { mk[g.prev.key] = g.prev; if (!g.prev.unknown && g.prev.gap < SWAP_REST_MIN) gapMsg.push(pr[2] + ': 직전 근무 퇴근 → 시작일 출근 ' + swapRestHours() + 'h X'); }
+      if (g.next) { var o = mk[g.next.key]; if (!o || o.unknown || (!g.next.unknown && g.next.gap < o.gap)) mk[g.next.key] = g.next; if (!g.next.unknown && g.next.gap < SWAP_REST_MIN) gapMsg.push(pr[2] + ': 종료일 퇴근 → 직후 근무 출근 ' + swapRestHours() + 'h X'); }
     });
   }
   swapGapWarn = gapMsg;
