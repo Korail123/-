@@ -2094,6 +2094,13 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <li class="ns-dim"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="날씨_위치" alt="" aria-hidden="true" style="width:14px;height:14px;vertical-align:-2px;margin-right:3px"><span id="brief-loc-now"></span></li>
       </ul>
     </div>
+    <div class="ns-card brief-parts">
+      <div class="brief-wx-lab">브리핑에 보일 것</div>
+      <div class="ns-row"><span class="ns-k"><span><b class="ns-t">날씨</b><small>기온 · 최고/최저 · 강수확률</small></span></span><input type="checkbox" id="brief-p-wx" class="ns-switch" onchange="briefPartSet('wx',this.checked)"></div>
+      <div class="ns-row"><span class="ns-k"><span><b class="ns-t">근무 요약</b><small>다이아 · 출퇴근 시간 · 열차번호 · 행로표</small></span></span><input type="checkbox" id="brief-p-duty" class="ns-switch" onchange="briefPartSet('duty',this.checked)"></div>
+      <div class="ns-row"><span class="ns-k"><span><b class="ns-t">출퇴근 동료</b><small>내 출근 · 퇴근 앞뒤 30분에 같이 출퇴근</small></span></span><input type="checkbox" id="brief-p-mates" class="ns-switch" onchange="briefPartSet('mates',this.checked)"></div>
+      <div class="ns-row"><span class="ns-k"><span><b class="ns-t">동병상련</b><small>오늘 나처럼 출근하는 사람 · 퇴근하는 사람</small></span></span><input type="checkbox" id="brief-p-same" class="ns-switch" onchange="briefPartSet('same',this.checked)"></div>
+    </div>
     <div class="ns-card">
       <div class="brief-wx-lab">날씨 기준</div>
       <div class="brief-wx-seg" id="brief-wx-seg">
@@ -2121,6 +2128,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div id="brief-weather" class="brief-weather"></div>
     <div id="brief-duty" class="brief-duty"></div>
     <div id="brief-mates" class="brief-mates" hidden></div>
+    <div id="brief-same" class="brief-mates brief-same" hidden></div>
     <div class="dia-dialog-actions" style="gap:10px"><button type="button" class="dia-text-btn" onclick="closeBriefing();openBriefingSettings()">브리핑 설정</button><button type="button" class="dia-text-btn" onclick="closeBriefing()">확인</button></div>
   </div>
 </div>
@@ -6679,7 +6687,7 @@ function renderDayDetail() {
   if (startTime) html += '<div class="dd-row dd-icon-row"><img class="detail-art" src="' + appIcon('출근시간') + '" alt="" aria-hidden="true" decoding="async" loading="lazy"><span>출근 시간 : ' + esc(startTime) + (rsStartEstimated ? ' (예상)' : '') + '</span></div>';
   if (endTime) html += '<div class="dd-row dd-icon-row"><img class="detail-art" src="' + appIcon('퇴근시간') + '" alt="" aria-hidden="true" decoding="async" loading="lazy"><span>퇴근 시간 : ' + esc(endTime) + (rsEndEstimated ? ' (예상)' : '') + '</span></div>';
   var workDur = (startTime && endTime) ? workDurationText(startTime, endTime) : '';
-  if (workDur) html += '<div class="dd-row dd-icon-row"><img class="detail-art" src="' + appIcon('근무시간') + '" alt="" aria-hidden="true" decoding="async"><span>근무 시간 : ' + esc(workDur) + '</span></div>';
+  if (workDur) html += '<div class="dd-row dd-icon-row"><img class="detail-art" src="' + appIcon('근무시간') + '" alt="" aria-hidden="true" decoding="async"><span>구속 시간 : ' + esc(workDur) + '</span></div>';
   if (train1 || train2 || train3) {
     var train1Date = dateKeyForSelectedDay();
     var train2Date = train1Date;
@@ -6730,9 +6738,12 @@ function renderDayDetail() {
     var ddOfficial = diaNo ? rsOfficialRouteUrl(diaNo) : '';
     if (ddOfficial) { ddPlan = null; diaImageSrc = ddOfficial; }
     else if (!ddPlan && diaImageSrc) { ddPlan = { dia: diaNo, url: diaImageSrc }; }
+    if (ddPlan && !ddPlan.url) ddPlan = null;   /* 예상 행로표를 그릴 수 없으면 아래 '행로표 이미지가 없습니다' */
     if (ddPlan) {
       html += '<div class="dd-dia-image-wrap"><div class="dd-dia-image-title">행로표 <small class="dd-plan-tag">예상 행로표</small></div>' +
-        '<img class="dd-dia-image" src="' + ddPlan.url + '"' + routeArAttr(ddPlan.url, ddPlan.dia) + ' alt="DIA ' + esc(ddPlan.dia) + ' 행로표" onclick="openRouteViewer(\'' + esc(ddPlan.dia) + '\', this.src)" decoding="async"></div>';
+        '<img class="dd-dia-image" src="' + ddPlan.url + '"' + routeArAttr(ddPlan.url, ddPlan.dia) + ' alt="DIA ' + esc(ddPlan.dia) + ' 행로표" onclick="openRouteViewer(\'' + esc(ddPlan.dia) + '\', this.src)" decoding="async"' +
+        ' onerror="this.style.display=\'none\';var t=this.previousElementSibling;if(t)t.style.display=\'none\';var m=this.nextElementSibling;if(m)m.style.display=\'\'">' +
+        '<div class="dd-dia-image-missing" style="display:none">행로표 이미지가 없습니다.</div></div>';
     } else if (diaImageSrc) {
       html += '<div class="dd-dia-image-wrap">' +
         '<div class="dd-dia-image-title">행로표</div>' +
@@ -7681,7 +7692,22 @@ var briefLoginTimer = null;
 function briefKey(k) { return 'brief' + k + '_' + (getCurrentUser().employeeId || ''); }
 function briefEnabled() { try { return LS.getItem(briefKey('On')) === '1'; } catch (e) { return false; } }
 function briefSetEnabled(on) { try { if (on) LS.setItem(briefKey('On'), '1'); else LS.removeItem(briefKey('On')); } catch (e) {} }
+/* 브리핑에 보일 것 (날씨 · 근무 요약 · 출퇴근 동료 · 동병상련) ON/OFF · 이 폰에 저장 */
+function briefParts() {
+  var d = { wx: true, duty: true, mates: true, same: true };
+  try { var o = JSON.parse(LS.getItem(briefKey('Parts')) || '{}') || {}; Object.keys(d).forEach(function (k) { if (typeof o[k] === 'boolean') d[k] = o[k]; }); } catch (e) {}
+  return d;
+}
+function briefPartSet(k, on) {
+  var d = briefParts(); d[k] = !!on;
+  try { LS.setItem(briefKey('Parts'), JSON.stringify(d)); } catch (e) {}
+}
+function briefPartsRender() {
+  var d = briefParts();
+  ['wx', 'duty', 'mates', 'same'].forEach(function (k) { var el = $('brief-p-' + k); if (el) el.checked = d[k]; });
+}
 function openBriefingSettings() {
+  try { briefPartsRender(); } catch (e) {}
   $('brief-on').checked = briefEnabled();
   briefRenderSetSub();
   $('brief-set-panel').classList.add('active');
@@ -7901,6 +7927,46 @@ function briefRenderMates() {
     '</div>';
   box.hidden = false;
 }
+/* 동병상련: 오늘 나처럼 출근하는 사람 · 퇴근하는 사람 (내 근무그룹, 내가 쉬는 날은 안 보임)
+   출근: 오늘 출근하는 주간 · 야간 근무 / 퇴근: 오늘 퇴근하는 근무 (어제 야간의 오늘 아침 퇴근 포함) */
+function briefSame() {
+  var me = findMyMember();
+  if (!me || !snapshotUsable()) return null;
+  var dia = snapshot.raw.dia || [];
+  var mine = briefWorkEvents(me, dia);
+  var myIn = mine.filter(function (e) { return e.kind === '출근' && e.t >= 0 && e.t < 1440; })[0];
+  var myOut = mine.filter(function (e) { return e.kind === '퇴근' && e.t >= 0 && e.t < 1440; });
+  if (!myIn && !myOut.length) return { off: true };
+  var ins = [], outs = [];
+  (snapshot.raw.members || []).forEach(function (m) {
+    if (!m || m.employeeId === me.employeeId) return;
+    briefWorkEvents(m, dia).forEach(function (e) {
+      if (e.t < 0 || e.t >= 1440) return;
+      (e.kind === '출근' ? ins : outs).push({ name: m.name || m.employeeId, t: e.t, dia: e.dia, type: e.type });
+    });
+  });
+  var byT = function (a, b) { return a.t - b.t || String(a.name).localeCompare(String(b.name), 'ko'); };
+  ins.sort(byT); outs.sort(byT);
+  return { myIn: myIn || null, myOut: myOut[myOut.length - 1] || null, ins: ins, outs: outs };
+}
+function briefRenderSame() {
+  var box = $('brief-same'); if (!box) return;
+  var r = null; try { r = briefSame(); } catch (e) { r = null; }
+  if (!r || r.off) { box.hidden = true; box.innerHTML = ''; return; }
+  function rows(list, kind) {
+    if (!list.length) return '<div class="bm-none">오늘 ' + kind + '하는 사람이 없어요.</div>';
+    return list.map(function (x) {
+      return '<div class="bm-row"><div class="bm-l1"><b>' + esc(x.name) + '</b><span class="bm-kind ' + (kind === '출근' ? 'in' : 'out') + '">' + esc(x.type === '야' ? '야간' : '주간') + '</span></div>' +
+        '<div class="bm-l2"><span class="bm-time">' + esc(briefHM(x.t)) + '</span>' + (x.dia ? ' <small>' + esc(x.dia) + '</small>' : '') + '</div></div>';
+    }).join('');
+  }
+  box.innerHTML = '<div class="bm-title">동병상련 <small>오늘 나처럼 출근 · 퇴근하는 사람</small></div>' +
+    '<div class="bm-grid">' +
+      '<div class="bm-sec"><div class="bm-h">오늘 출근 ' + r.ins.length + '명' + (r.myIn ? ' <small>나 ' + esc(briefHM(r.myIn.t)) + '</small>' : '') + '</div>' + rows(r.ins, '출근') + '</div>' +
+      '<div class="bm-sec"><div class="bm-h">오늘 퇴근 ' + r.outs.length + '명' + (r.myOut ? ' <small>나 ' + esc(briefHM(r.myOut.t)) + '</small>' : '') + '</div>' + rows(r.outs, '퇴근') + '</div>' +
+    '</div>';
+  box.hidden = false;
+}
 function showBriefing(fromSettings) {
   var t = todayKST();
   var W = ['일', '월', '화', '수', '목', '금', '토'];
@@ -7924,12 +7990,17 @@ function showBriefing(fromSettings) {
     var rt = rsRouteFor(todayKeyKST(), duty.dia);
     if (rt) dh += '<div class="brief-route"><div class="brief-route-cap">' + (rt.official ? '행로표' : '예상 행로표') + ' <small>눌러서 크게 보기</small></div>' +
       '<img src="' + rt.url + '" alt="DIA ' + esc(rt.dia) + ' 행로표" onclick="openRouteViewer(\'' + esc(rt.dia) + '\', this.src)" decoding="async"></div>';
-    else if (duty.dia) dh += '<div class="brief-route"><div class="brief-route-cap">예상 행로표</div><div class="brief-route-none">아직 만들어진 행로표가 없어요.</div></div>';
+    else if (duty.dia) dh += '<div class="brief-route"><div class="brief-route-cap">예상 행로표</div><div class="brief-route-none">행로표 이미지가 없습니다.</div></div>';
   }
+  var parts = briefParts();
   $('brief-duty').innerHTML = dh;
-  briefRenderMates();
+  $('brief-duty').hidden = !parts.duty;
+  if (parts.mates) briefRenderMates(); else { $('brief-mates').hidden = true; $('brief-mates').innerHTML = ''; }
+  if (parts.same) briefRenderSame(); else { $('brief-same').hidden = true; $('brief-same').innerHTML = ''; }
   /* 날씨 */
   var wbox = $('brief-weather');
+  wbox.hidden = !parts.wx;
+  if (!parts.wx) { wbox.innerHTML = ''; $('brief-panel').classList.add('active'); return; }
   var wxSrc = briefWxSrc();
   wbox.innerHTML = '<div class="brief-w-loading">' + (wxSrc === 'gps' ? '현재 위치' : '청량리역') + ' 날씨를 불러오는 중...</div>';
   $('brief-panel').classList.add('active');
@@ -8695,7 +8766,7 @@ function piRow(k, v) {
 }
 /* 정보 팝업 항목명 앞에 아이콘 */
 function piKeyHtml(k) {
-  var map = { '출근 시간': '출근시간', '퇴근 시간': '퇴근시간', '근무 시간': '근무시간', '열차 번호': '열차번호', '열차번호': '열차번호',
+  var map = { '출근 시간': '출근시간', '퇴근 시간': '퇴근시간', '근무 시간': '근무시간', '구속 시간': '근무시간', '열차 번호': '열차번호', '열차번호': '열차번호',
               '다이아 번호': '다이아이름', '다이아 이름': '다이아이름', '근무 구분': '근무구분', '근무구분': '근무구분', '근무 교환': '근무교환', '승무원': '승무원' };
   var nm = map[String(k)];
   return nm ? '<img class="pi-ico" src="' + appIcon(nm) + '" alt="" aria-hidden="true" decoding="async">' + k : k;
@@ -8850,7 +8921,7 @@ function openGroupInfo(k, key) {
     }
     html += piRow('출근 시간', start ? start + (groupStartEstimated ? ' (예상)' : '') : '-');
     html += piRow('퇴근 시간', end ? end + (groupEndEstimated ? ' (예상)' : '') : '-');
-    html += piRow('근무 시간', workDurationText(start, end));
+    html += piRow('구속 시간', workDurationText(start, end));
     /* 근무표 상세정보와 동일하게 다이아의 열차번호를 표시하고 NXLogis 조회로 연결 */
     var gxT1 = groupXi ? (groupXi.t1 || (groupXi.trains || [])[0] || '') : '', gxT2 = groupXi ? (groupXi.t2 || (groupXi.trains || [])[1] || '') : '';
     var train1 = String(gxT1 || info.train1 || (meta && meta.train1) || (groupPlan && groupPlan.trains[0]) || '').trim();
@@ -9733,7 +9804,7 @@ function openPatternInfo(i) {
   html += row('근무 구분', infoFromNight ? '비번' : kind);
   html += row('출근 시간', start);
   html += row('퇴근 시간', end);
-  html += row('근무 시간', dur);
+  html += row('구속 시간', dur);
   var wRules = curWeekdayRules()[String(it.seq)];
   if (wRules && diaNo) {
     html += '<div class="pi-row" style="display:block"><span class="pi-k">근무표 요일별 적용 다이아</span></div>';
@@ -20207,6 +20278,19 @@ html body #main-section .menu-grid > .menu-btn > span{display:flex;align-items:f
 @keyframes ppRailMove{to{background-position:-12px 0}}
 #pass-pop-panel .pp-zone[hidden]{display:none!important}
 </style>
+<style id="stats-rest-style">
+.ss-rest{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:0 0 8px;padding:7px 10px;border-radius:12px;background:#f3f7fd;border:1px solid #dfe8f5}
+.ss-rest label{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;color:#1f3a66}
+.ss-rest input{width:16px;height:16px;accent-color:#2f6fd6}
+.ss-rest small{font-size:11px;color:#7a8696}
+.ss-rest-tag{font-size:10.5px;font-weight:800;color:#2f6fd6;background:#e8f1ff;border-radius:999px;padding:1px 7px;margin-left:4px}
+</style>
+<style id="brief-same-style">
+#brief-set-panel .brief-parts .ns-row{padding:8px 2px;border-top:1px solid #eef2f7}
+#brief-set-panel .brief-parts .ns-row:first-of-type{border-top:0}
+.brief-same .bm-h small{font-weight:700;color:#98a2b3;font-size:10.5px;margin-left:3px}
+.brief-same .bm-sec{max-height:240px;overflow:auto}
+</style>
 <style id="brief-mates-style">
 .brief-mates{margin:10px 0 4px;border:1px solid #e3e8f0;border-radius:14px;padding:10px 12px;background:#fbfcfe}
 .brief-mates .bm-title{font-size:13.5px;font-weight:800;color:#0b376d;margin-bottom:8px}
@@ -22029,6 +22113,22 @@ function xrEnsureSpec(y, m, force) {
    · 시간: XROIS 개인근무명세서 사업시간이 있으면 그 값, 없으면 출근~퇴근 시각
    · 야간근무처럼 자정을 넘는 근무는 실제 시각대로 주를 나눠서 셈
    · 근로기준법 제50조(1주 40시간) · 제53조(연장 12시간) · 제59조(운송업 특례: 서면합의 시 초과 가능, 대신 11시간 휴식) */
+/* 그 다이아의 휴게시간(분): 행로표 구간 중 '휴게' (XROIS 승무다이아 · 직접 만든 행로표에 있을 때만) */
+function rsRestMin(dia) {
+  var p = dia && typeof rpGet === 'function' ? rpGet(dia) : null;
+  if (!p || !Array.isArray(p.rows) || !p.rows.length) return { min: 0, known: false };
+  var sum = 0;
+  p.rows.forEach(function (r) {
+    if (String(r.kind || '').replace(/\s/g, '') !== '휴게') return;
+    var a = parseHM(r.dep), b = parseHM(r.arr);
+    if (isNaN(a) || isNaN(b)) return;
+    sum += ((b - a) + 1440) % 1440;
+  });
+  return { min: sum, known: true };
+}
+/* 내 근무통계: 휴게시간 빼고 보기 (이 폰에 저장) */
+function statsRestOff() { try { return LS.getItem('rs_stats_rest') === '1'; } catch (e) { return false; } }
+function statsRestSet(on) { try { if (on) LS.setItem('rs_stats_rest', '1'); else LS.removeItem('rs_stats_rest'); } catch (e) {} statsRender(); }
 function schShiftsAround(y, m) {
   var mb = typeof findMyMember === 'function' ? findMyMember() : null;
   if (!mb || typeof snapshotUsable !== 'function' || !snapshotUsable()) return null;
@@ -22050,7 +22150,8 @@ function schShiftsAround(y, m) {
     if (b <= a) b += 1440;
     var day0 = Math.round((new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()) - new Date(y, m, 1)) / 86400000);
     var s0 = day0 * 1440 + a, e0 = day0 * 1440 + b;
-    out.push({ key: key, s: s0, e: e0, work: xs && xs.tot > 0 ? xs.tot : (b - a), xr: !!(xs && xs.tot > 0), dia: diaNo });
+    var rest = rsRestMin(diaNo);
+    out.push({ key: key, s: s0, e: e0, work: xs && xs.tot > 0 ? xs.tot : (b - a), xr: !!(xs && xs.tot > 0), dia: diaNo, rest: rest.min, restKnown: rest.known });
   }
   return out;
 }
@@ -22116,7 +22217,15 @@ function schWeekRender() {
   var first = new Date(y, m, 1), lastD = new Date(y, m + 1, 0).getDate(), w0 = -first.getDay();
   /* 날짜별: 근무 분 · XROIS 휴일 · 연장 · 야간 (근무는 출근한 날에 넣음) */
   var byKey = {};
-  sh.forEach(function (x) { var o = byKey[x.key] || (byKey[x.key] = { min: 0, xr: false }); o.min += x.work; o.xr = o.xr || x.xr; });
+  var restOff = statsRestOff(), restTot = 0, restDays = 0, restMiss = 0;
+  sh.forEach(function (x) {
+    var o = byKey[x.key] || (byKey[x.key] = { min: 0, xr: false });
+    var w = x.work;
+    if (restOff && x.rest > 0) w = Math.max(0, w - x.rest);
+    o.min += w; o.xr = o.xr || x.xr;
+    var dd = new Date(x.key.replace(/-/g, '/'));
+    if (dd.getFullYear() === y && dd.getMonth() === m) { if (x.restKnown) { restDays++; restTot += x.rest; } else restMiss++; }
+  });
   function h1(min) { return Math.round(min / 6) / 10; }
   function hm(min) { var hh = Math.floor(min / 60), mm = Math.round(min % 60); return hh + '시간' + (mm ? ' ' + mm + '분' : ''); }
   var tot = { min: 0, hol: 0, ext: 0, nig: 0, days: 0, xr: 0 };
@@ -22144,7 +22253,9 @@ function schWeekRender() {
   }
   /* 맨 위: 이번 달 얼마나 일했나 */
   var sumBox = $('stats-sum');
-  if (sumBox) sumBox.innerHTML = '<div class="ss-top"><span>' + y + '년 ' + (m + 1) + '월 총 근무</span><b>' + hm(tot.min) + '</b><small>근무한 날 ' + tot.days + '일</small></div>' +
+  var restBar = '<div class="ss-rest"><label><input type="checkbox"' + (restOff ? ' checked' : '') + ' onchange="statsRestSet(this.checked)"><span>휴게시간 빼고 보기</span></label>' +
+    '<small>' + (restDays ? '휴게 ' + h1(restTot) + '시간 (' + restDays + '일)' : '휴게 정보 없음') + (restMiss ? ' · ' + restMiss + '일은 행로표가 없어 휴게를 모름' : '') + '</small></div>';
+  if (sumBox) sumBox.innerHTML = restBar + '<div class="ss-top"><span>' + y + '년 ' + (m + 1) + '월 총 근무' + (restOff ? ' <small class="ss-rest-tag">휴게 뺌</small>' : '') + '</span><b>' + hm(tot.min) + '</b><small>근무한 날 ' + tot.days + '일</small></div>' +
     '<div class="ss-row"><div class="ss-k ext"><span>연장근로</span><b>' + h1(tot.ext) + '<small>시간</small></b></div><div class="ss-k hol"><span>휴일근무</span><b>' + h1(tot.hol) + '<small>시간</small></b></div><div class="ss-k nig"><span>야간근로</span><b>' + h1(tot.nig) + '<small>시간</small></b></div></div>' +
     '<div class="ss-src">' + (tot.xr ? '근무시간 · 연장 · 휴일 · 야간은 <b>XROIS 개인근무명세서</b> 기준' + (tot.xr < tot.days ? ' (일부 날짜는 근무표 출근~퇴근 시각)' : '') : '근무표 출근~퇴근 시각 기준 · 연장 · 휴일 · 야간은 XROIS 개인근무명세서를 가져오면 보여요') + '</div>';
   /* 근무 사이 휴식 11시간 */
@@ -24477,9 +24588,16 @@ function schApplyView() {
 /* 하루 정보: 상세 근무와 같은 규칙 (XROIS 출근·퇴근·열차 우선 → 월 근무표 → 다이아 목록) */
 function schRowInfo(y, m, d) {
   var key = getDateKey(y, m, d), info = getInfo(y, m, d);
-  var o = { duty: '', dia: '', start: '', end: '', t1: '', t2: '', manual: false, swap: '' };
+  var o = { duty: '', dia: '', start: '', end: '', t1: '', t2: '', manual: false, swap: '', cls: '' };
   if (!info || !(info.label || info.type || info.status)) return o;
-  try { var duty = rsCalDuty(info, key, rsMySeqCtx()); if (duty) o.duty = rsLabelStyled(rsDutyShort(duty)); } catch (e) { o.duty = String(info.label || ''); }
+  try {
+    var duty = rsCalDuty(info, key, rsMySeqCtx());
+    if (duty) {
+      o.duty = rsLabelStyled(rsDutyShort(duty));
+      /* 색: 달력과 같은 규칙 (주 노랑 · 야 · 비 · X 파랑 · 휴 · 휴가 빨강) */
+      o.cls = rsDutyCls(duty, 't') || (toneOf(duty) === 'night' ? ' t-night' : '');
+    }
+  } catch (e) { o.duty = String(info.label || ''); }
   o.manual = !!info.manual;
   o.swap = String(info.swapPartnerName || '').trim();
   var isStatus = info.overrideType === 'status' && !info.nightCarryover;
@@ -24518,7 +24636,7 @@ function schRenderTable() {
     h += '<tr class="' + cls.join(' ') + '" onclick="schOpenDay(' + y + ',' + m + ',' + d + ')">' +
       '<td class="st-d' + dc + '"><b>' + (d < 10 ? '0' + d : d) + '</b><small>' + wk[dow] + '</small></td>' +
       '<td>' + (r.dia ? esc(r.dia) : dash) + '</td>' +
-      '<td class="st-duty">' + (r.duty ? (r.manual ? '*' : '') + esc(r.duty) + (r.swap ? '<i class="st-sw" title="' + esc(r.swap) + '님과 교환">⇄</i>' : '') : dash) + '</td>' +
+      '<td class="st-duty' + (r.cls || '') + '">' + (r.duty ? (r.manual ? '*' : '') + esc(r.duty) + (r.swap ? '<i class="st-sw" title="' + esc(r.swap) + '님과 교환">⇄</i>' : '') : dash) + '</td>' +
       '<td>' + (r.start ? esc(r.start) : dash) + '</td>' +
       '<td>' + (r.end ? esc(r.end) : dash) + '</td>' +
       '<td>' + (r.t1 ? esc(r.t1) : dash) + '</td>' +
