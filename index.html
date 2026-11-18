@@ -12802,11 +12802,24 @@ function passEval(route, w, now) {
             ② zone에 역 이름이 없을 때만: 바로 앞 역(i-1)에 실제 시각이 찍혔고 지정역은 아직 */
   var hasAct = function (x) { return x && x.act !== null && x.act !== undefined; };
   var zonePos = livePosition && !livePosition.estimated ? livePosition : null;
-  var passed = hasAct(s) || st.slice(i + 1).some(hasAct), zoneSoon = false;
+  var passed = hasAct(s) || st.slice(i + 1).some(hasAct), zoneSoon = false, estPassed = false;
+  /* 실제 시각 기록이 늦게 찍히거나 통과역이라 빠지는 경우가 많아서, 현재 위치(zone)로도 바로 판단
+     · 'A-B 간 운행중'에서 A가 지정역이거나 지정역보다 뒤 → 이미 지남
+     · 지정역보다 뒤 역에 정차 중 · 지정역에 정차(도착) → 지남
+     · 지정역이 A와 B 사이(기록 없는 통과역) → 예정 시각 + 지연이 지났으면 '지남(추정)' */
+  if (/운행\s*종료/.test(String(route.zone || ''))) passed = true;
+  if (!passed && !composing && zonePos) {
+    var zlo = Number(zonePos.idx), zhi = zonePos.hi != null ? Number(zonePos.hi) : zlo + 1;
+    if (zonePos.stopped ? zlo >= i : zlo >= i) passed = true;
+    else if (!zonePos.stopped && zlo < i && i < zhi && s.plan != null) {
+      var dl0 = Number(route.delay); if (!isFinite(dl0)) dl0 = 0;
+      if (Number(s.plan) + dl0 * 60000 <= now) { passed = true; estPassed = true; }
+    }
+  }
   if (composing) { zoneSoon = false; }
   else if (zonePos) {
-    var zk = Number(zonePos.idx);
-    if (!zonePos.stopped) zoneSoon = zk === i - 1;   /* 통과는 drv_date2(실제 시각)로만 판단 */
+    var zk = Number(zonePos.idx), zh = zonePos.hi != null ? Number(zonePos.hi) : zk + 1;
+    if (!zonePos.stopped) zoneSoon = zk < i && i <= zh;   /* 지정역을 향해 달리는 구간 */
   } else {
     zoneSoon = i > 0 && hasAct(st[i - 1]);
   }
@@ -12823,7 +12836,7 @@ function passEval(route, w, now) {
 
   var expect = s.plan !== null && s.plan !== undefined ? s.plan + Number(delay) * 60000 : null;
   var movingSegment = /간\s*(?:운행|이동)|운행\s*중/.test(String(route.zone || ''));
-  var approaching = !passed && movingSegment && displayCurrentIdx === i - 1;
+  var approaching = !passed && movingSegment && !!zoneSoon;
   var leadMinutes = (w.lead === null || w.lead === undefined || isNaN(Number(w.lead))) ? 0 : Number(w.lead);
   var withinScheduleLead = expect !== null && expect >= now - 2 * 60000 && expect - now <= leadMinutes * 60000;
   var soon = !passed && !!zoneSoon;   /* 예정 시각(withinScheduleLead)은 판단에 쓰지 않음 */
@@ -12855,7 +12868,7 @@ function passEval(route, w, now) {
   var preview = passTrackBetweenStations(st, trackStart, i);
 
   return {
-    idx: i, passed: passed, soon: soon, approaching: approaching, composing: composing,
+    idx: i, passed: passed, estPassed: estPassed, soon: soon, approaching: approaching, composing: composing,
     delay: Number(delay), expect: expect, plan: s.plan, act: s.act,
     prev: st.slice(Math.max(0, i - 2), i).map(function (x) { return x.name; }),
     next: st.slice(i + 1, i + 2).map(function (x) { return x.name; }),
@@ -12960,6 +12973,9 @@ function passLiveCheck(it, route) {
   var st = route && route.stations || [];
   if (!st.length) return null;
   var e = passEstimateIdx(route), idx = e.lastAct;
+  /* 실제 시각 기록보다 현재 위치(zone)가 빠르면 그걸로: 'A-B 간 운행중' → A를 지남 · 'A 정차중' → A 도착 */
+  try { var zp = passCurrentStation(route); if (zp && !zp.estimated && !zp.composing && Number(zp.idx) > idx) idx = Number(zp.idx); } catch (er) {}
+  if (/운행\s*종료/.test(String(route.zone || ''))) idx = st.length - 1;
   if (idx < 0) return null;
   var key = 'passLive_' + (getCurrentUser().employeeId || '') + '_' + it.date + '_' + it.train, old = -1;
   try { var v = LS.getItem(key); if (v != null) old = Number(v); } catch (er) {}
@@ -12971,10 +12987,11 @@ function passLiveCheck(it, route) {
 }
 /* 실시간 그림: [앞 역 · 지난 역 · 다음 역 · 그다음 역], 열차는 지난 역 바로 뒤 */
 function passLiveTrack(route, idx) {
-  var st = route.stations || [], from = Math.max(0, Math.min(idx - 1, st.length - 4)), names = [];
-  for (var i = from; i < Math.min(st.length, from + 4); i++) names.push(String(st[i].name || '').replace(/역$/, ''));
-  var off = idx - from;
-  return { trackNames: names, trackTargetOffset: off, trackCurrentOffset: off, prev: [], next: [] };
+  /* 방금 지난 역을 맨 오른쪽에 (다른 열차 알림 그림과 같게) */
+  var st = route.stations || [], names = [];
+  for (var i = Math.max(0, idx - 3); i <= idx; i++) names.push(String(st[i].name || '').replace(/역$/, ''));
+  while (names.length < 4) names.unshift('');
+  return { trackNames: names, trackTargetOffset: 3, trackCurrentOffset: 3, prev: [], next: [] };
 }
 function passLivePop(list) {
   var box = $('pass-live-pop'); if (!box || !list.length) return;
@@ -13105,7 +13122,7 @@ function passMonitorTick() {
             else if (!ev.passed && ev.approaching && moving && c.soon) kind = 'soon';
             if (!kind || !passMonitorCanShow(it.date, it.train, station, kind)) return;
             pages.push(Object.assign({ kind: kind, train: it.train, station: route.stations[idx].name, date: it.date,
-              note: infoSrc(it.train, route) + ' 운행기록 기준 · 마지막 확인 위치로 계산' }, ev));
+              note: infoSrc(it.train, route) + (ev.estPassed ? ' 현재 위치 · 예정 시각 기준 (통과 시각 추정)' : ' 운행기록 · 현재 위치 기준') }, ev));
           });
         }
       } catch (e) {}
@@ -13262,7 +13279,7 @@ function passCurrentStation(route) {
     var idxs = hits.map(function (h) { return h.i; }).sort(function (a, b) { return a - b; });
     var lo = idxs[0], hi = idxs[idxs.length - 1];
     if (/정차|도착/.test(z) && hi - lo <= 0) return { idx: lo, stopped: true, zone: zone };
-    return { idx: Math.min(lo, st.length - 2), stopped: false, zone: zone };
+    return { idx: Math.min(lo, st.length - 2), hi: hi, stopped: false, zone: zone };
   }
   if (hits.length === 1) {
     var k = hits[0].i;
@@ -13348,10 +13365,13 @@ function passTrackBetweenStations(st, currentIdx, targetIdx) {
   currentIdx = Math.max(0, Math.min(st.length - 1, Number(currentIdx) || 0));
   targetIdx = Math.max(0, Math.min(st.length - 1, Number(targetIdx) || 0));
   if (targetIdx <= currentIdx) {
-    var fallback = passTrackFromCurrent(st, currentIdx);
-    fallback.names[3] = st[targetIdx] ? st[targetIdx].name : fallback.names[3];
-    fallback.targetOffset = 3;
-    return fallback;
+    /* 지정역에 있거나 이미 지남: 지정역을 맨 오른쪽에, 그 앞의 역 3개를 왼쪽에 (같은 역이 두 번 나오지 않게) */
+    var back = [];
+    for (var b = Math.max(0, targetIdx - 3); b <= targetIdx; b++) back.push(st[b].name);
+    var lead = 4 - back.length, padded = [];
+    for (var q = 0; q < lead; q++) padded.push('');
+    padded = padded.concat(back);
+    return { names: padded, currentOffset: 3, targetOffset: 3 };
   }
   var inner = st.slice(currentIdx + 1, targetIdx).map(function (x) { return x.name; });
   var mids = passPickMiddleStations(inner, 2);
@@ -25298,7 +25318,7 @@ function rsBgPass(c, trains) {
             if (!kind || !passMonitorCanShow(it.date, it.train, station, kind)) return;
             var name = route.stations[idx].name;
             var title = it.train + '열차 ' + name + (kind === 'pass' ? ' 통과' : ' 곧 도착');
-            var body = (ev.currentText || '') + (ev.delay > 0 ? ' · ' + ev.delay + '분 지연' : '') + ' · ' + infoSrc(it.train, route) + ' 기준';
+            var body = (ev.currentText || '') + (ev.estPassed ? ' (추정)' : '') + (ev.delay > 0 ? ' · ' + ev.delay + '분 지연' : '') + ' · ' + infoSrc(it.train, route) + ' 기준';
             rsBgNotify('pass-' + it.date + '-' + it.train + '-' + name + '-' + kind, title, body);
           });
           if (allPassed || /운행종료|열차운휴/.test(String(route.zone || ''))) rsBg.done[it.date + '|' + it.train] = 1;   /* 다 지나간 열차는 그만 확인 */
