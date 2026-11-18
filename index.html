@@ -1467,6 +1467,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div id="calendar-title" class="sch-title" style="cursor:pointer;touch-action:manipulation" title="한 번 누르면 오늘, 길게 누르면 연/월 선택"></div>
     <button type="button" id="next-month" class="sch-nav" onclick="changeMonth(1)">▶</button>
   </div>
+  <div class="sch-viewbar"><div class="sch-viewseg" role="tablist" aria-label="근무표 보기"><button type="button" id="sch-v-cal" role="tab" onclick="schSetView('cal')">달력</button><button type="button" id="sch-v-tbl" role="tab" onclick="schSetView('tbl')">표</button></div></div>
   <div id="sch-status" class="status-message" style="margin-top:0"></div>
     <div id="calendar-card" class="sch-card">
     <div class="sch-weekdays">
@@ -1480,8 +1481,8 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
     <div id="calendar-grid" class="sch-grid"></div>
   </div>
-  <div class="sch-tools"><button type="button" class="sch-png-btn sch-tool-sm" onclick="schSavePng()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>PNG 저장</button><button type="button" class="sch-png-btn sch-tool-sm" onclick="openMarkOrder()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h10M5 12h7M5 18h4M18 5v14m0 0l-3-3m3 3l3-3"/></svg>표시 순위</button><button type="button" class="sch-png-btn sch-tool-sm" onclick="openLabelStyle()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h7M4 12h5M4 17h7M14 17l3-10 3 10M15.2 13.5h3.6"/></svg>표현 방식</button><div class="sch-viewseg" role="tablist" aria-label="근무표 보기"><button type="button" id="sch-v-cal" role="tab" onclick="schSetView('cal')">달력</button><button type="button" id="sch-v-tbl" role="tab" onclick="schSetView('tbl')">표</button></div></div>
   <div id="sch-table-wrap" class="sch-table-wrap" hidden></div>
+  <div class="sch-tools"><button type="button" class="sch-png-btn sch-tool-sm" onclick="schSavePng()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>PNG 저장</button><button type="button" class="sch-png-btn sch-tool-sm" onclick="openMarkOrder()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h10M5 12h7M5 18h4M18 5v14m0 0l-3-3m3 3l3-3"/></svg>표시 순위</button><button type="button" class="sch-png-btn sch-tool-sm" onclick="openLabelStyle()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h7M4 12h5M4 17h7M14 17l3-10 3 10M15.2 13.5h3.6"/></svg>표현 방식</button></div>
   <div id="label-style-panel" class="dia-modal" onclick="if(event.target===this)closeLabelStyle()">
     <div class="dia-dialog ns-dialog">
       <div class="dia-dialog-title">근무 표현 방식</div>
@@ -2188,7 +2189,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="freight-only-note"><b>여객열차 알림은 잠시 멈췄어요.</b> 화물열차(3000 · 5000 · 6000 · 7000번대)만 알려드려요.</div>
     <div id="pass-card" class="pv2">
       <div class="pv2-sec">
-        <div class="pv2-h">열차 <small>파란색은 오늘 근무표 열차</small></div>
+        <div class="pv2-h">열차 <small>체크한 열차만 알림</small></div>
         <div id="pass-trains" class="pass-tags"></div>
         <div class="pv2-add"><input id="pass-train-in" maxlength="12" placeholder="열차번호 추가" autocomplete="off" onkeydown="if(event.key==='Enter')passAdd('trains')"><button type="button" onclick="passAdd('trains')" aria-label="열차 추가">＋</button></div>
       </div>
@@ -2201,6 +2202,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <div class="pv2-h">알림</div>
         <label class="pv2-tog"><input type="checkbox" id="pass-soon" onchange="passOptChanged()"><span>진입 중</span></label>
         <label class="pv2-tog"><input type="checkbox" id="pass-pass" onchange="passOptChanged()"><span>통과</span></label>
+        <label class="pv2-tog pv2-live"><input type="checkbox" id="pass-live" onchange="passOptChanged()"><span>실시간</span></label>
         <div id="pass-lead" class="pv2-lead"></div>
       </div>
       <div id="pass-today" class="pv2-today"></div>
@@ -12869,7 +12871,11 @@ var PASS_DEFAULT_TRAINS = ['3224', '3226', '1208'];
 var passCfg = null, passSaveTimer = null;
 function passCfgKey() { return 'passCfg_' + (getCurrentUser().employeeId || ''); }
 function passCfgLocal() { try { return JSON.parse(LS.getItem(passCfgKey()) || 'null'); } catch (e) { return null; } }
-function passCfgDefault() { return { trains: [], stations: [], lead: 0, soon: true, pass: true }; }
+function passCfgDefault() { return { trains: [], stations: [], lead: 0, soon: true, pass: true, off: [], liveOn: false }; }
+/* 근무표 열차 중 끈 것 · 실시간(역 지날 때마다) 켠 열차 */
+function passOffList(c) { return c && Array.isArray(c.off) ? c.off : []; }
+function passLiveOn(c) { return !!(c && (c.liveOn || (Array.isArray(c.live) && c.live.length))); }
+function passIsLive(c, train) { return passLiveOn(c); }   /* 실시간: 알림 받는 열차 모두 */
 function passTrainKey(t) { return String(t || '').toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, ''); }
 /* 근무표(오늘)에 있는 감시 열차 */
 function passMyDays(cfg) {
@@ -12882,7 +12888,8 @@ function passMyDays(cfg) {
     seen[key] = true;
     out.push({ date: String(date || today), train: normalized });
   }
-  try { nxCollectTrains(1).forEach(function (x) { if (!x.link) add(x.train, x.date); }); } catch (e) {}
+  var off = passOffList(cfg);
+  try { nxCollectTrains(1).forEach(function (x) { if (!x.link && off.indexOf(passTrainKey(x.train)) < 0) add(x.train, x.date); }); } catch (e) {}
   (cfg && Array.isArray(cfg.trains) ? cfg.trains : []).forEach(function (train) { add(train, today); });
   return out;
 }
@@ -12900,7 +12907,8 @@ function passCardRender() {
   passRender();
   var u = getCurrentUser();
   api({ action: 'passcfg_get', employeeId: u.employeeId, token: u.token }, function (r) {
-    if (r && r.success && r.cfg) { passCfg = { trains: Array.isArray(r.cfg.trains) ? r.cfg.trains : (passCfg.trains || []), stations: r.cfg.stations || [], lead: 0, soon: r.cfg.soon !== false, pass: r.cfg.pass !== false }; }
+    if (r && r.success && r.cfg) { var lc = passCfgLocal() || {}; passCfg = { trains: Array.isArray(r.cfg.trains) ? r.cfg.trains : (passCfg.trains || []), stations: r.cfg.stations || [], lead: 0, soon: r.cfg.soon !== false, pass: r.cfg.pass !== false,
+        off: Array.isArray(r.cfg.off) ? r.cfg.off : passOffList(lc), liveOn: r.cfg.liveOn != null ? !!r.cfg.liveOn : passLiveOn(lc) }; }
     else if (r && r.success && !r.cfg && !passCfgLocal()) { passCfg = passCfgDefault(); passSaveSoon(); }
     try { LS.setItem(passCfgKey(), JSON.stringify(passCfg)); } catch (e) {}
     passRender();
@@ -12912,24 +12920,70 @@ function passRender() {
   c.lead = 0;
   var days = passMyDays(c), t = todayKST(), today = getDateKey(t.y, t.m, t.d);
   var rosterTrains = [];
-  try { nxCollectTrains(1).forEach(function (x) { if (!x.link && x.date === today) rosterTrains.push(passTrainKey(x.train)); }); } catch (e) {}
-  var trainTags = [];
-  rosterTrains.forEach(function (train) { trainTags.push('<span class="on">' + esc(train) + '<small>근무표</small></span>'); });
-  (c.trains || []).forEach(function (train, i) { trainTags.push('<span>' + esc(train) + '<button type="button" onclick="passRemove(\'trains\',' + i + ')" aria-label="삭제">✕</button></span>'); });
-  $('pass-trains').innerHTML = trainTags.length ? trainTags.join('') : '<small>근무표 열차가 없어요. 열차번호를 직접 추가하세요.</small>';
+  try { nxCollectTrains(1).forEach(function (x) { var k = passTrainKey(x.train); if (!x.link && x.date === today && alertTrainOk(k) && rosterTrains.indexOf(k) < 0) rosterTrains.push(k); }); } catch (e) {}
+  var off = passOffList(c);
+  var rows = [];
+  rosterTrains.forEach(function (train) {
+    var isOff = off.indexOf(train) >= 0;
+    rows.push('<div class="pt-row' + (isOff ? ' off' : '') + '"><label class="pt-chk"><input type="checkbox"' + (isOff ? '' : ' checked') + ' onchange="passToggleRoster(\'' + esc(train) + '\',this.checked)"><b>' + esc(train) + '</b><small>근무표</small></label></div>');
+  });
+  (c.trains || []).forEach(function (train, i) {
+    rows.push('<div class="pt-row"><label class="pt-chk"><input type="checkbox" checked disabled><b>' + esc(train) + '</b><small>직접</small></label>' +
+      '<button type="button" class="pt-del" onclick="passRemove(\'trains\',' + i + ')" aria-label="삭제">✕</button></div>');
+  });
+  $('pass-trains').innerHTML = rows.length ? rows.join('') : '<small>근무표 열차가 없어요. 열차번호를 직접 추가하세요.</small>';
   $('pass-stations').innerHTML = c.stations.length ? c.stations.map(function (x, i) {
     return '<span>' + esc(x) + '<button type="button" onclick="passRemove(\'stations\',' + i + ')" aria-label="삭제">✕</button></span>';
   }).join('') : '<small>알림 받을 역을 추가하세요.</small>';
   $('pass-soon').checked = !!c.soon;
+  if ($('pass-live')) $('pass-live').checked = passLiveOn(c);
   $('pass-pass').checked = !!c.pass;
   $('pass-lead').style.visibility = c.soon ? '' : 'hidden';
   $('pass-lead').innerHTML = '';
-  $('pass-today').innerHTML = !c.stations.length
-    ? '역을 하나 이상 추가해야 알림이 와요.'
-    : days.length
+  var lives = passLiveOn(c) ? days.map(function (d) { return d.train; }) : [];
+  $('pass-today').innerHTML = (!c.stations.length && !lives.length && !passLiveOn(c))
+    ? '역을 추가하거나 열차의 <b>실시간</b>을 켜야 알림이 와요.'
+    : (lives.length ? '실시간 <b>' + lives.map(esc).join(', ') + '</b> · 역을 지날 때마다 알려요<br>' : '') + (!c.stations.length ? '' : days.length
       ? '오늘 확인할 열차 <b>' + days.map(function (d) { return esc(d.train); }).join(', ') + '</b>'
-      : '오늘 근무표에 확인할 열차가 없어요.';
+      : '오늘 근무표에 확인할 열차가 없어요.');
 }
+function passToggleRoster(train, on) {
+  var k = passTrainKey(train), off = passOffList(passCfg).slice(), i = off.indexOf(k);
+  if (on && i >= 0) off.splice(i, 1);
+  if (!on && i < 0) off.push(k);
+  passCfg.off = off;
+  passRender(); passSaveSoon();
+}
+
+/* 실시간: 마지막으로 실제 지난 역이 바뀌면 'OOOO열차 OO역 통과중' (같은 역은 한 번만) */
+function passLiveCheck(it, route) {
+  var st = route && route.stations || [];
+  if (!st.length) return null;
+  var e = passEstimateIdx(route), idx = e.lastAct;
+  if (idx < 0) return null;
+  var key = 'passLive_' + (getCurrentUser().employeeId || '') + '_' + it.date + '_' + it.train, old = -1;
+  try { var v = LS.getItem(key); if (v != null) old = Number(v); } catch (er) {}
+  if (idx <= old) return null;
+  try { LS.setItem(key, String(idx)); } catch (er) {}
+  var name = String(st[idx].name || '').replace(/역$/, '');
+  return { idx: idx, train: it.train, station: name, last: idx >= st.length - 1, title: it.train + '열차 ' + name + '역 통과중',
+           body: (route.delay > 0 ? route.delay + '분 지연 · ' : '') + infoSrc(it.train, route) + ' 기준' };
+}
+/* 실시간 그림: [앞 역 · 지난 역 · 다음 역 · 그다음 역], 열차는 지난 역 바로 뒤 */
+function passLiveTrack(route, idx) {
+  var st = route.stations || [], from = Math.max(0, Math.min(idx - 1, st.length - 4)), names = [];
+  for (var i = from; i < Math.min(st.length, from + 4); i++) names.push(String(st[i].name || '').replace(/역$/, ''));
+  var off = idx - from;
+  return { trackNames: names, trackTargetOffset: off, trackCurrentOffset: off, prev: [], next: [] };
+}
+function passLivePop(list) {
+  var box = $('pass-live-pop'); if (!box || !list.length) return;
+  $('pass-live-title').textContent = list[list.length - 1].title;
+  $('pass-live-sub').textContent = list.length > 1 ? list.map(function (x) { return x.title; }).join(' · ') : list[0].body;
+  box.classList.add('active');
+  try { alarmBeep(); } catch (e) {} try { appVibrate([300, 150, 300]); } catch (e) {}
+}
+function passLiveClose() { var b = $('pass-live-pop'); if (b) b.classList.remove('active'); }
 function passAdd(kind) {
   var inp = $(kind === 'trains' ? 'pass-train-in' : 'pass-station-in');
   var v = String(inp.value || '').trim();
@@ -12948,8 +13002,11 @@ function passAdd(kind) {
 }
 function passRemove(kind, i) { passCfg[kind].splice(i, 1); passRender(); passSaveSoon(); }
 function passOptChanged() {
+  var wasLive = passLiveOn(passCfg);
   passCfg.soon = $('pass-soon').checked; passCfg.pass = $('pass-pass').checked;
-  if (!passCfg.soon && !passCfg.pass) showToast('진입 중 · 통과가 모두 꺼져 있으면 알림이 오지 않아요.');
+  passCfg.liveOn = $('pass-live') ? $('pass-live').checked : false; delete passCfg.live;
+  if (passCfg.liveOn && !wasLive) showToast('실시간: 열차가 역을 지날 때마다 알려드려요.');
+  if (!passCfg.soon && !passCfg.pass && !passCfg.liveOn) showToast('진입 중 · 통과 · 실시간이 모두 꺼져 있으면 알림이 오지 않아요.');
   passRender(); passSaveSoon();
 }
 function passSaveSoon() {
@@ -12964,7 +13021,7 @@ function passSaveNow(fromUi) {
   if (!c || !u.token) return;
   var days = passMyDays(c);
   api({ action: 'passcfg_save', employeeId: u.employeeId, token: u.token, trains: c.trains, stations: c.stations,
-        lead: c.lead, soon: c.soon, pass: c.pass, days: days }, function (r) {
+        lead: c.lead, soon: c.soon, pass: c.pass, off: passOffList(c), liveOn: passLiveOn(c), days: days }, function (r) {
     if (r && r.success) {
       try { LS.setItem(passCfgKey(), JSON.stringify(c)); LS.setItem('passSync_' + u.employeeId, JSON.stringify({ at: Date.now(), days: days })); } catch (e) {}
       if ($('pass-saved')) $('pass-saved').textContent = '저장됨';
@@ -13016,16 +13073,27 @@ function passMonitorTick() {
   var u = getCurrentUser();
   if (!u || !u.token || !passAllowed()) return;
   var c = passCfgLocal() || passCfg || passCfgDefault();
-  if (!c || !c.stations || !c.stations.length || (!c.soon && !c.pass)) return;
+  var stOn = !!(c && c.stations && c.stations.length && (c.soon || c.pass));
+  if (!c || (!stOn && !passLiveOn(c))) return;
   var t = todayKST(), today = getDateKey(t.y, t.m, t.d);
-  var trains = passMyDays(c).filter(function (x) { return x.date === today; });
+  var trains = passMyDays(c).filter(function (x) { return x.date === today && (stOn || passIsLive(c, x.train)); });
   if (!trains.length) return;
   passMonitorBusy = true;
-  var pages = [], left = trains.length;
+  var pages = [], lives = [], left = trains.length;
   trains.forEach(function (it) {
     passRoute(it.train, it.date, false, function (route) {
       try {
-        if (route && route.success && Array.isArray(route.stations)) {
+        if (route && route.success && Array.isArray(route.stations) && passIsLive(c, it.train)) {
+          var lv = passLiveCheck(it, route);
+          if (lv) {
+            var lev = null; try { lev = passEval(route, { idx: lv.idx, station: route.stations[lv.idx].name, lead: 0 }, Date.now()); } catch (e) {}
+            lives.push(Object.assign({ kind: 'pass', live: true, train: it.train, station: route.stations[lv.idx].name, date: it.date,
+              note: infoSrc(it.train, route) + ' 운행기록 기준 · 실시간' }, lev || {}, passLiveTrack(route, lv.idx), { passed: true }));
+          }
+        }
+      } catch (e) {}
+      try {
+        if (stOn && route && route.success && Array.isArray(route.stations)) {
           var moving = /간\s*(?:운행|이동)|운행\s*중/.test(String(route.zone || ''));
           c.stations.forEach(function (station) {
             var idx = route.stations.findIndex(function (x) { return passSame(x.name, station); });
@@ -13043,6 +13111,7 @@ function passMonitorTick() {
       } catch (e) {}
       if (--left === 0) {
         passMonitorBusy = false;
+        pages = lives.concat(pages);
         if (pages.length) {
           passPages = pages;
           passPageIdx = 0;
@@ -15335,15 +15404,16 @@ function passDraw(d, quiet) {
   badge.textContent = d.composing ? '조성대기' : d.phase === 'boarding' ? '운행대기' : d.phase === 'before' ? '출발 전' : d.phase === 'done' ? '운행 종료' : d.waiting ? '연결대기' : (d.overview ? '실시간 열차 위치' :
     (kind === 'pass' ? '지정역 통과' :
       (d.approaching ? '지정역 진입 중' : kind === 'soon' ? '진입 중' : '현재 위치')));
-  $('pp-title').innerHTML = '<b>' + esc(d.train) + '</b>열차';
+  $('pp-title').innerHTML = d.live ? '<b>' + esc(d.train) + '</b>열차 ' + esc(String(d.station || '').replace(/역$/, '')) + '역 통과중' : '<b>' + esc(d.train) + '</b>열차';
+  if (d.live) { badge.className = 'pp-badge k-live'; badge.textContent = '실시간'; }
   var currentLabel = d.currentText || d.station || '-';
   var dateLabel = d.date ? String(d.date).replace(/-/g, '.') : '';
   $('pp-date').textContent = dateLabel;   /* 현재 위치는 아래 운행 정보 › 운행 상태로 옮김 */
   var rows = [];
   if (!d.overview) {
-    rows.push('<div class="pp-row"><span>알림 대상 역</span><b>' + esc(d.station || '-') + '</b></div>');
+    rows.push('<div class="pp-row"><span>' + (d.live ? '통과 역' : '알림 대상 역') + '</span><b>' + esc(d.station || '-') + '</b></div>');
     rows.push('<div class="pp-row"><span>운행 상태</span><b>' + esc(d.composing ? '조성 대기 중' : (d.zone || currentLabel || '-')) + '</b></div>');
-    rows.push('<div class="pp-row"><span>지정역까지</span><b>' + (d.passed ? '통과 완료' : (d.remainingStops == null ? '-' : d.remainingStops + '정거장')) + '</b></div>');
+    if (!d.live) rows.push('<div class="pp-row"><span>지정역까지</span><b>' + (d.passed ? '통과 완료' : (d.remainingStops == null ? '-' : d.remainingStops + '정거장')) + '</b></div>');
     if (d.composing) rows.push('<div class="pp-row"><span>현재 상태</span><b>조성대기</b></div>');
   } else {
     rows.push('<div class="pp-row"><span>운행 상태</span><b>' + (d.composing ? '조성 대기 중' : d.phase === 'boarding' ? '운행 대기 중' : d.phase === 'before' ? '출발 전' : d.phase === 'done' ? '운행 종료' : d.waiting ? '연결 대기 중 (출발 전)' : esc(d.zone || currentLabel || (d.stopped ? '역 정차 중' : '역 사이 운행 중'))) + '</b></div>');
@@ -17555,6 +17625,9 @@ to{transform:translate3d(calc(-1 * var(--train-w)),0,0)}
 .pp-badge.k-pass{background:#e6f6ec;color:#257a45}
 .pp-badge.k-now{background:#e9f2ff;color:#2f5aa8}
 .pp-badge.k-cancel{background:#fff0f0;color:#c62828}
+.pp-badge.k-live{background:#e5484d;color:#fff}
+.pp-badge.k-live::before{content:'●';font-size:8px;margin-right:4px;vertical-align:2px;animation:ppLiveBlink 1.2s infinite}
+@keyframes ppLiveBlink{50%{opacity:.25}}
 .pp-badge.k-compose{background:#eef4ff;color:#355ea8}
 .pp-title{margin:8px 0 10px;font-size:18px;font-weight:800;color:#1b2b45;letter-spacing:-.3px}
 .pp-title b{font-weight:900}
@@ -19460,6 +19533,8 @@ height: calc(90px + env(safe-area-inset-bottom));
 #pass-panel .pv2-tog span{display:inline-block;padding:8px 16px;border-radius:999px;border:1px solid #dfe5ee;background:#fff;color:#667085;font-size:13.5px;font-weight:800}
 #pass-panel .pv2-tog input:checked + span{background:#2f6fd6;border-color:#2f6fd6;color:#fff}
 #pass-panel .pv2-tog input:checked + span::before{content:'✓ '}
+#pass-panel .pv2-live input:checked + span{background:#e5484d;border-color:#e5484d}
+#pass-panel .pv2-live input:checked + span::before{content:'● ';font-size:9px;vertical-align:1px}
 #pass-panel .pv2-lead:empty{display:none}
 #pass-panel .pv2-today{margin:-2px 4px 0;font-size:12px;color:#667085}
 #pass-panel .pv2-today b{color:#2f6fd6}
@@ -24723,6 +24798,7 @@ function schRowInfo(y, m, d) {
   if (!diaNo && diaByNumber(info.label)) diaNo = String(info.label);
   var meta = diaNo ? diaByNumber(diaNo) : null;
   o.dia = diaNo;
+  o.crew = ''; o.crewSolo = false;
   o.start = info.start || (meta && meta.start) || '';
   o.end = info.end || (meta && meta.end) || '';
   o.t1 = info.train1 || (meta && meta.train1) || '';
@@ -24736,13 +24812,21 @@ function schRowInfo(y, m, d) {
       if (a) o.t1 = a; if (b) o.t2 = b;
     }
   } catch (e) {}
+  /* 같이 타는 승무원 (상세 근무의 '승무원'과 같은 규칙 · XROIS 연동한 사람만) */
+  try {
+    if (diaNo && !info.nightCarryover && typeof crewLinked === 'function' && crewLinked()) {
+      var cp = crewPick(key, diaNo, [o.t1, o.t2].filter(Boolean), getCurrentUser().name);
+      if (cp && (cp.level === 1 || cp.level === 2) && cp.mates && cp.mates.length) o.crew = cp.mates.join(', ');
+      else if (cp && cp.found) o.crewSolo = true;
+    }
+  } catch (e) {}
   return o;
 }
 function schRenderTable() {
   var tw = $('sch-table-wrap'); if (!tw) return;
   var y = calendarYear, m = calendarMonth, last = new Date(y, m + 1, 0).getDate(), t = todayKST();
   var wk = ['일', '월', '화', '수', '목', '금', '토'];
-  var h = '<table class="sch-tbl"><thead><tr><th>날짜</th><th>다이아</th><th>구분</th><th>출근</th><th>퇴근</th><th>열차1</th><th>열차2</th></tr></thead><tbody>';
+  var h = '<table class="sch-tbl"><thead><tr><th>날짜</th><th>구분</th><th>출근</th><th>퇴근</th><th>열차1</th><th>열차2</th><th>승무원</th></tr></thead><tbody>';
   for (var d = 1; d <= last; d++) {
     var dow = new Date(y, m, d).getDay(), hn = holidayName(y, m, d), r = schRowInfo(y, m, d);
     var cls = [];
@@ -24752,12 +24836,12 @@ function schRenderTable() {
     var dash = '<span class="st-no">-</span>';
     h += '<tr class="' + cls.join(' ') + '" onclick="schOpenDay(' + y + ',' + m + ',' + d + ')">' +
       '<td class="st-d' + dc + '"><b>' + (d < 10 ? '0' + d : d) + '</b><small>' + wk[dow] + '</small></td>' +
-      '<td>' + (r.dia ? esc(r.dia) : dash) + '</td>' +
       '<td class="st-duty' + (r.cls || '') + '">' + (r.duty ? (r.manual ? '*' : '') + esc(r.duty) + (r.swap ? '<i class="st-sw" title="' + esc(r.swap) + '님과 교환">⇄</i>' : '') : dash) + '</td>' +
       '<td>' + (r.start ? esc(r.start) : dash) + '</td>' +
       '<td>' + (r.end ? esc(r.end) : dash) + '</td>' +
       '<td>' + (r.t1 ? esc(r.t1) : dash) + '</td>' +
-      '<td>' + (r.t2 ? esc(r.t2) : dash) + '</td></tr>';
+      '<td>' + (r.t2 ? esc(r.t2) : dash) + '</td>' +
+      '<td class="st-crew">' + (r.crew ? esc(r.crew) : (r.crewSolo ? '<span class="st-no">단독</span>' : dash)) + '</td></tr>';
   }
   tw.innerHTML = h + '</tbody></table>';
 }
@@ -24767,14 +24851,16 @@ function schOpenDay(y, m, d) {
   renderDayDetail();
   var dd = $('day-detail'), body = $('sch-day-body');
   if (!dd || !body) return;
+  if (dd.parentNode && dd.parentNode.id !== 'sch-day-body') { dd.__homeP = dd.parentNode; dd.__homeN = dd.nextSibling; }   /* 닫을 때 원래 자리로 */
   dd.hidden = false;
   body.appendChild(dd);
   $('sch-day-modal').classList.add('active');
 }
 function schCloseDay() {
   var dd = $('day-detail'), tw = $('sch-table-wrap');
-  if (dd && tw && dd.parentNode && dd.parentNode.id === 'sch-day-body') {
-    tw.parentNode.insertBefore(dd, tw.nextSibling);
+  if (dd && dd.parentNode && dd.parentNode.id === 'sch-day-body') {
+    if (dd.__homeP) dd.__homeP.insertBefore(dd, dd.__homeN && dd.__homeN.parentNode === dd.__homeP ? dd.__homeN : null);
+    else if (tw) tw.parentNode.appendChild(dd);
   }
   $('sch-day-modal').classList.remove('active');
   schApplyView();
@@ -24788,13 +24874,32 @@ function schCloseDay() {
 .sch-tools{gap:6px!important}
 .sch-tools .sch-tool-sm{white-space:nowrap;font-size:11.5px!important;padding:8px 3px!important;gap:3px!important;letter-spacing:-.02em}
 .sch-tools .sch-tool-sm svg{width:13px;height:13px;flex:0 0 13px}
-.sch-tools .sch-viewseg{flex:1 1 0;display:flex;border:1.5px solid #c9dbf7;border-radius:999px;background:#fff;padding:2px;min-width:0}
-.sch-viewseg button{flex:1 1 0;border:0;background:transparent;color:#2f6fd6;font-size:12px;font-weight:800;padding:5px 0;border-radius:999px;cursor:pointer;white-space:nowrap}
+.sch-viewbar{display:flex;justify-content:flex-start;margin:-4px 2px 4px}
+.sch-viewbar .sch-viewseg{display:inline-flex;border:1.5px solid #c9dbf7;border-radius:999px;background:#fff;padding:2px}
+.sch-viewseg button{width:46px;border:0;background:transparent;color:#2f6fd6;font-size:12px;font-weight:800;padding:4px 0;border-radius:999px;cursor:pointer;white-space:nowrap}
 .sch-viewseg button.on{background:#2f6fd6;color:#fff}
 .sch-table-wrap{margin:0 2px 10px}
+#pass-trains{display:flex;flex-direction:column;gap:6px}
+#pass-trains .pt-row{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #dfe5ee;border-radius:12px;padding:7px 8px 7px 10px}
+#pass-trains .pt-row.off{background:#f6f7f9}
+#pass-trains .pt-row.off b{color:#98a2b3;text-decoration:line-through}
+#pass-trains .pt-chk{display:flex;align-items:center;gap:7px;flex:1;min-width:0;cursor:pointer}
+#pass-trains .pt-chk input{width:17px;height:17px;margin:0;accent-color:#2f6fd6}
+#pass-trains .pt-chk b{font-size:14px;color:#1f2a44}
+#pass-trains .pt-chk small{display:inline;font-size:11px;color:#98a2b3;font-weight:600}
+#pass-trains .pt-live{border:1px solid #cfd8e6;background:#fff;color:#667085;border-radius:999px;font-size:12px;font-weight:800;padding:4px 11px;cursor:pointer;width:auto;height:auto;line-height:1.3}
+#pass-trains .pt-live.on{background:#e5484d;border-color:#e5484d;color:#fff}
+#pass-trains .pt-live.on::before{content:'●';font-size:8px;margin-right:4px;vertical-align:2px}
+#pass-trains .pt-live:disabled{opacity:.4;cursor:default}
+#pass-trains .pt-del{border:0;background:#eef1f6;color:#98a2b3;width:22px;height:22px;border-radius:50%;font-size:10px;padding:0;cursor:pointer}
+.plp-dialog{text-align:center;max-width:320px}
+.plp-badge{display:inline-block;background:#e5484d;color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:3px 10px;margin-bottom:10px}
+.plp-title{font-size:19px;font-weight:900;color:#1f2a44;margin-bottom:6px}
+.plp-sub{font-size:12.5px;color:#667085;margin-bottom:6px}
 .sch-tbl{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border-radius:14px;overflow:hidden;font-size:12.5px;table-layout:fixed;box-shadow:0 1px 4px rgba(20,35,60,.06)}
 .sch-tbl th{background:#f1f5fb;color:#56657a;font-weight:800;font-size:11.5px;padding:8px 1px;border-bottom:1px solid #e3e9f2;position:sticky;top:0;z-index:1}
-.sch-tbl th:first-child{width:15%}.sch-tbl th:nth-child(3){width:12%}
+.sch-tbl th:first-child{width:15%}.sch-tbl th:nth-child(2){width:10%}.sch-tbl th:nth-child(7){width:21%}
+.sch-tbl td.st-crew{white-space:normal;font-size:11px;line-height:1.25;word-break:keep-all;overflow-wrap:anywhere}
 .sch-tbl td{text-align:center;padding:7px 1px;border-bottom:1px solid #f0f2f6;color:#2b2f36;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sch-tbl tbody tr{cursor:pointer}
 .sch-tbl tbody tr:active td{background:#eef4ff}
@@ -25060,7 +25165,7 @@ function rsBgWant() {
     if (!getNotiPrefs().popup) return false;
     if (getNxCfg().on) return true;
     var c = passCfgLocal();
-    return !!(c && c.stations && c.stations.length && (c.soon || c.pass));
+    return !!(c && ((c.stations && c.stations.length && (c.soon || c.pass)) || passLiveOn(c)));
   } catch (e) { return false; }
 }
 var rsBgSig = '';
@@ -25141,9 +25246,10 @@ function rsBgTick() {
     if (!snapshotUsable()) { out.next = 60; return JSON.stringify(out); }
     if (getNxCfg().on && now - rsBg.nxAt >= 9.5 * 60000) { rsBg.nxAt = now; rsBgNx(); }
     var c = passCfgLocal();
-    if (c && c.stations && c.stations.length && (c.soon || c.pass)) {
+    var stOn = !!(c && c.stations && c.stations.length && (c.soon || c.pass));
+    if (c && (stOn || passLiveOn(c))) {
       var t = todayKST(), today = getDateKey(t.y, t.m, t.d);
-      var trains = passMyDays(c).filter(function (x) { return x.date === today && !rsBg.done[x.date + '|' + x.train]; });
+      var trains = passMyDays(c).filter(function (x) { return x.date === today && !rsBg.done[x.date + '|' + x.train] && (stOn || passIsLive(c, x.train)); });
       if (trains.length) { out.next = 60; rsBgPass(c, trains); }
     }
   } catch (e) {}
@@ -25174,8 +25280,13 @@ function rsBgPass(c, trains) {
       try {
         if (route && route.success && Array.isArray(route.stations)) {
           var moving = /간\s*(?:운행|이동)|운행\s*중/.test(String(route.zone || ''));
-          var allPassed = true;
-          c.stations.forEach(function (station) {
+          var allPassed = true, live = passIsLive(c, it.train);
+          if (live) {
+            var lv = passLiveCheck(it, route);
+            if (lv) rsAppCall('notify', { tag: 'plive-' + it.date + '-' + it.train, title: lv.title, body: lv.body, mode: rsAlertMode(), insist: false, timeout: 10000, vol: getNotiPrefs().vol });
+            if (!lv || !lv.last) allPassed = false;
+          }
+          (c.stations || []).forEach(function (station) {
             var idx = route.stations.findIndex(function (x) { return passSame(x.name, station); });
             if (idx < 0) return;
             var ev = passEval(route, { idx: idx, station: station, lead: 0 }, Date.now());
