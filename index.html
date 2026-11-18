@@ -1480,7 +1480,13 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
     <div id="calendar-grid" class="sch-grid"></div>
   </div>
-  <div class="sch-tools"><button type="button" class="sch-png-btn sch-tool-sm" onclick="schSavePng()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>PNG 저장</button><button type="button" class="sch-png-btn sch-tool-sm" onclick="openMarkOrder()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h10M5 12h7M5 18h4M18 5v14m0 0l-3-3m3 3l3-3"/></svg>표시 순위</button><button type="button" class="sch-png-btn sch-tool-sm" onclick="openLabelStyle()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h7M4 12h5M4 17h7M14 17l3-10 3 10M15.2 13.5h3.6"/></svg>표현 방식</button></div>
+  <div class="sch-tools"><button type="button" class="sch-png-btn sch-tool-sm" onclick="schSavePng()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>PNG 저장</button><button type="button" class="sch-png-btn sch-tool-sm" onclick="openMarkOrder()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h10M5 12h7M5 18h4M18 5v14m0 0l-3-3m3 3l3-3"/></svg>표시 순위</button><button type="button" class="sch-png-btn sch-tool-sm" onclick="openLabelStyle()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h7M4 12h5M4 17h7M14 17l3-10 3 10M15.2 13.5h3.6"/></svg>표현 방식</button><div class="sch-viewseg" role="tablist" aria-label="근무표 보기"><button type="button" id="sch-v-cal" role="tab" onclick="schSetView('cal')">달력</button><button type="button" id="sch-v-tbl" role="tab" onclick="schSetView('tbl')">표</button></div></div>
+  <div id="sch-table-wrap" class="sch-table-wrap" hidden></div>
+  <div id="sch-day-modal" class="dia-modal" onclick="if(event.target===this)schCloseDay()">
+    <div class="dia-dialog sch-day-dialog"><div id="sch-day-body"></div>
+      <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="schCloseDay()">닫기</button></div>
+    </div>
+  </div>
   <div id="label-style-panel" class="dia-modal" onclick="if(event.target===this)closeLabelStyle()">
     <div class="dia-dialog ns-dialog">
       <div class="dia-dialog-title">근무 표현 방식</div>
@@ -2133,6 +2139,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <div id="nx-panel" class="dia-modal" onclick="if(event.target===this)closeNxSettings()">
   <div class="dia-dialog ns-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차운휴알림" alt="" aria-hidden="true">열차 운휴 알림</div>
+    <div class="freight-only-note"><b>여객열차 알림은 잠시 멈췄어요.</b> 화물열차(3000 · 5000 · 6000 · 7000번대)만 알려드려요.</div>
     <div class="ns-card">
       <div class="ns-row">
         <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차운휴알림" alt="" aria-hidden="true"><span><b class="ns-t">운휴 알림</b><small>내 근무 열차가 운휴되면 알려드려요</small></span></span>
@@ -2165,6 +2172,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="dia-dialog ns-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차통과알림" alt="" aria-hidden="true">열차통과/도착 알림</div>
     <div class="pv2-sub">정한 역에 <b>진입 중</b>·<b>통과</b>하면 알려줘요.</div>
+    <div class="freight-only-note"><b>여객열차 알림은 잠시 멈췄어요.</b> 화물열차(3000 · 5000 · 6000 · 7000번대)만 알려드려요.</div>
     <div id="pass-card" class="pv2">
       <div class="pv2-sec">
         <div class="pv2-h">열차 <small>파란색은 오늘 근무표 열차</small></div>
@@ -2313,7 +2321,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <div id="trainq-panel" class="dia-modal" style="z-index:405" onclick="if(event.target===this)closeTrainQuery()">
   <div class="dia-dialog ns-dialog tq-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차운행조회" alt="" aria-hidden="true">열차운행정보 조회</div>
-    <div class="tq-sub" style="word-break:keep-all">날짜와 열차번호를 넣으면 열차의 <b>운행 위치</b>를 불러와 보여줘요.<br>화물열차는 <b>Logis.Korail</b>, 그 외 열차는 <b>NXLogis</b>에서 가져와요.</div>
+    <div class="tq-sub" style="word-break:keep-all">날짜와 열차번호를 넣으면 열차의 <b>운행 위치</b>를 불러와 보여줘요.<br>화물열차는 <b>Logis.Korail</b>, 그 외 열차는 <b>NXLogis 웹</b>을 열어 보여줘요.</div>
     <div class="tq-sec">
       <label class="tq-lab" for="tq-day">날짜</label>
       <input id="tq-day" type="hidden">
@@ -2326,6 +2334,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       </div>
       <label class="tq-lab" for="tq-in">열차번호</label>
       <input id="tq-in" class="tq-field" inputmode="text" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="예: 3224 · K1001 · 1001A" autocomplete="off" oninput="tqPrefetch()" onkeydown="if(event.key==='Enter')trainQueryInput()" onblur="this.value=this.value.toUpperCase()">
+      <div class="tq-hint">앱에서 바로: 3000 · 5000 · 6000 · 7000번대 (앞에 알파벳 가능)</div>
       <div id="tq-msg" class="tq-msg"></div>
       <button type="button" class="tq-main" onclick="trainQueryInput()">조회</button>
     </div>
@@ -4311,6 +4320,7 @@ function loadMyMonth(force) {
 }
 function renderCalendar() {
   try { if (window.RsWidget) rsWidgetPush(); else rsFeedSoon(); } catch (e) {}
+  try { schApplyView(); } catch (e) {}
   var titleEl = $('calendar-title');
   if (titleEl) titleEl.textContent = calendarYear + '년 ' + (calendarMonth + 1) + '월';
   var grid = $('calendar-grid');
@@ -12666,6 +12676,7 @@ function tqPrefetch() {
     var el = $('tq-in'); if (!el) return;
     var v = String(el.value || '').replace(/[^0-9A-Za-z-]/g, '').toUpperCase();
     if (v.replace(/\D/g, '').length < 3) return;
+    if (!tqIsLogisTrain(v)) return;   /* 여객열차 등은 NXLogis 웹으로 → 미리 받지 않음 */
     var day = ($('tq-day') && $('tq-day').value) || trainQueryToday();
     try { passRoute(v, day, false, function () {}); } catch (e) {}
   }, 450);
@@ -12776,7 +12787,7 @@ function passMyDays(cfg) {
   var t = todayKST(), today = getDateKey(t.y, t.m, t.d);
   function add(train, date) {
     var normalized = passTrainKey(train), key = String(date || today) + '|' + normalized;
-    if (!normalized || seen[key]) return;
+    if (!normalized || seen[key] || !alertTrainOk(normalized)) return;   /* 여객열차 알림 잠시 중지 (화물열차만) */
     seen[key] = true;
     out.push({ date: String(date || today), train: normalized });
   }
@@ -14567,11 +14578,28 @@ function trainQueryInput() {
   passShowTrainAnim(v, day);
 }
 /* 열차번호 하나를 눌렀을 때 (NXLogis 조회알림 = 애니메이션): 지정역과 상관없이 현재 위치만 */
+/* 앱 안에서 조회하는 열차: 화물열차 번호대 3000 · 5000(5900) · 6000 · 7000번대 (앞에 알파벳 한 글자 가능) → logis.korail
+   그 외(여객열차 등)는 NXLogis가 철도비서 서버를 막아서(2026-11-18, Cloudflare 403) NXLogis 웹사이트를 열어 직접 검색 */
+/* 알림(지정역 통과/도착 · 열차 운휴)은 당분간 화물열차 번호대만 (NXLogis가 서버 접속을 막음 · 2026-11-18)
+   다시 여객열차까지 하려면 ALERT_FREIGHT_ONLY = false */
+var ALERT_FREIGHT_ONLY = true;
+function alertTrainOk(no) { return !ALERT_FREIGHT_ONLY || tqIsLogisTrain(no); }
+function tqIsLogisTrain(v) { return /^[A-Z]?[3567]\d{3}$/.test(String(v || '').replace(/\s/g, '').toUpperCase()); }
+function tqOpenNxWeb(train, dateKey) {
+  var d = String(dateKey || '').replace(/[^0-9]/g, '');
+  if (d.length !== 8) { var t = todayKST(); d = String(t.y) + pad2(t.m + 1) + pad2(t.d); }
+  var url = 'https://nxlogis.kr/?act=SearchTrainInfo&q=' + encodeURIComponent(String(train || '').toUpperCase()) + '&d=' + d + '&h=&q2=&q3=';
+  showToast(String(train).toUpperCase() + '열차는 NXLogis 웹에서 조회해요.');
+  if (rsAppHas('openUrl')) { rsAppCall('openUrl', url); return; }
+  var w = null; try { w = window.open(url, '_blank', 'noopener'); } catch (e) {}
+  if (!w) location.href = url;
+}
 function passShowTrainAnim(train, dateKey) {
   var d = String(dateKey || '').replace(/[^0-9]/g, '');
   var t = todayKST();
   var key = d.length === 8 ? d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8) : getDateKey(t.y, t.m, t.d);
   var tno = String(train).toUpperCase();
+  if (!tqIsLogisTrain(tno)) { tqOpenNxWeb(tno, key); return; }
   try { showPassPopup({ kind: 'err', loading: true, train: tno, date: key, msg: infoSrc(tno) + '에서 운행 정보를 불러오는 중…' }, true); } catch (e) {}
   passRunCheck([{ date: key, train: tno }], passCfg || passCfgLocal() || passCfgDefault(), true, { quietToast: true });
 }
@@ -15605,6 +15633,7 @@ function nxCollectTrains(daysOverride) {
     var m = raw.match(/[A-Za-z]+\d{1,6}|\d{1,6}/);
     if (!m) return;
     var trainNo = m[0].toUpperCase();
+    if (!alertTrainOk(trainNo)) return;   /* 여객열차 알림 잠시 중지 (화물열차만) */
     var id = dateKey + '|' + trainNo;
     if (seen[id]) return;
     seen[id] = true;
@@ -24424,6 +24453,128 @@ html.ui-dark #kl-panel .kl-re{background:#232a35;color:#e4e7ec}
 .rsapp-upd button{grid-row:1/3;grid-column:2;height:40px;padding:0 16px;border:0;border-radius:12px;background:#2f6fd6;color:#fff;font:inherit;font-weight:800}
 .rsapp-upd i{grid-row:1/3;grid-column:3;font-style:normal;font-size:22px;color:#98a2b3;padding:0 4px;cursor:pointer}
 </style>
+<script id="sch-table-view">
+/* ============ 근무표 보기: 달력 / 표 ============
+   표: 그 달 전체를 한 줄에 하루씩 (날짜·요일 | 다이아 | 구분 | 출근 | 퇴근 | 열차1 | 열차2)
+   줄을 누르면 그 날짜의 상세 근무(달력에서 날짜를 누를 때와 같은 내용)를 팝업으로 · 이 폰에만 저장 */
+function schView() { try { return LS.getItem('rs_sch_view') === 'tbl' ? 'tbl' : 'cal'; } catch (e) { return 'cal'; } }
+function schSetView(v) {
+  try { LS.setItem('rs_sch_view', v === 'tbl' ? 'tbl' : 'cal'); } catch (e) {}
+  schApplyView();
+}
+function schApplyView() {
+  var tbl = schView() === 'tbl';
+  var cal = $('calendar-card'), dd = $('day-detail'), tw = $('sch-table-wrap');
+  if (!tw) return;
+  if (cal) cal.hidden = tbl;
+  if (dd && dd.parentNode && dd.parentNode.id !== 'sch-day-body') dd.hidden = tbl;
+  tw.hidden = !tbl;
+  var a = $('sch-v-cal'), b = $('sch-v-tbl');
+  if (a) { a.classList.toggle('on', !tbl); a.setAttribute('aria-selected', String(!tbl)); }
+  if (b) { b.classList.toggle('on', tbl); b.setAttribute('aria-selected', String(tbl)); }
+  if (tbl) schRenderTable();
+}
+/* 하루 정보: 상세 근무와 같은 규칙 (XROIS 출근·퇴근·열차 우선 → 월 근무표 → 다이아 목록) */
+function schRowInfo(y, m, d) {
+  var key = getDateKey(y, m, d), info = getInfo(y, m, d);
+  var o = { duty: '', dia: '', start: '', end: '', t1: '', t2: '', manual: false, swap: '' };
+  if (!info || !(info.label || info.type || info.status)) return o;
+  try { var duty = rsCalDuty(info, key, rsMySeqCtx()); if (duty) o.duty = rsLabelStyled(rsDutyShort(duty)); } catch (e) { o.duty = String(info.label || ''); }
+  o.manual = !!info.manual;
+  o.swap = String(info.swapPartnerName || '').trim();
+  var isStatus = info.overrideType === 'status' && !info.nightCarryover;
+  if (isStatus) return o;
+  var diaNo = String(info.dia || '').trim();
+  if (!diaNo && diaByNumber(info.label)) diaNo = String(info.label);
+  var meta = diaNo ? diaByNumber(diaNo) : null;
+  o.dia = diaNo;
+  o.start = info.start || (meta && meta.start) || '';
+  o.end = info.end || (meta && meta.end) || '';
+  o.t1 = info.train1 || (meta && meta.train1) || '';
+  o.t2 = info.train2 || (meta && meta.train2) || '';
+  try {
+    var xi = typeof xrGet === 'function' ? xrGet('info', {})[key] : null;
+    if (xi && diaNo && xrNorm(xi.dia) === xrNorm(diaNo)) {
+      if (xi.start && !xi.est) o.start = xi.start;
+      if (xi.end && !xi.est) o.end = xi.end;
+      var a = xi.t1 || (xi.trains || [])[0] || '', b = xi.t2 || (xi.trains || [])[1] || '';
+      if (a) o.t1 = a; if (b) o.t2 = b;
+    }
+  } catch (e) {}
+  return o;
+}
+function schRenderTable() {
+  var tw = $('sch-table-wrap'); if (!tw) return;
+  var y = calendarYear, m = calendarMonth, last = new Date(y, m + 1, 0).getDate(), t = todayKST();
+  var wk = ['일', '월', '화', '수', '목', '금', '토'];
+  var h = '<table class="sch-tbl"><thead><tr><th>날짜</th><th>다이아</th><th>구분</th><th>출근</th><th>퇴근</th><th>열차1</th><th>열차2</th></tr></thead><tbody>';
+  for (var d = 1; d <= last; d++) {
+    var dow = new Date(y, m, d).getDay(), hn = holidayName(y, m, d), r = schRowInfo(y, m, d);
+    var cls = [];
+    if (t.y === y && t.m === m && t.d === d) cls.push('today');
+    if (dow === 0 && d > 1) cls.push('wk');
+    var dc = (dow === 0 || hn) ? ' sun' : dow === 6 ? ' sat' : '';
+    var dash = '<span class="st-no">-</span>';
+    h += '<tr class="' + cls.join(' ') + '" onclick="schOpenDay(' + y + ',' + m + ',' + d + ')">' +
+      '<td class="st-d' + dc + '"><b>' + (d < 10 ? '0' + d : d) + '</b><small>' + wk[dow] + '</small></td>' +
+      '<td>' + (r.dia ? esc(r.dia) : dash) + '</td>' +
+      '<td class="st-duty">' + (r.duty ? (r.manual ? '*' : '') + esc(r.duty) + (r.swap ? '<i class="st-sw" title="' + esc(r.swap) + '님과 교환">⇄</i>' : '') : dash) + '</td>' +
+      '<td>' + (r.start ? esc(r.start) : dash) + '</td>' +
+      '<td>' + (r.end ? esc(r.end) : dash) + '</td>' +
+      '<td>' + (r.t1 ? esc(r.t1) : dash) + '</td>' +
+      '<td>' + (r.t2 ? esc(r.t2) : dash) + '</td></tr>';
+  }
+  tw.innerHTML = h + '</tbody></table>';
+}
+/* 줄 누르기 → 그 날짜 상세 근무를 팝업으로 (달력의 상세 근무 칸을 팝업 안으로 옮겨서 그대로 씀) */
+function schOpenDay(y, m, d) {
+  selDate = { y: y, m: m, d: d };
+  renderDayDetail();
+  var dd = $('day-detail'), body = $('sch-day-body');
+  if (!dd || !body) return;
+  dd.hidden = false;
+  body.appendChild(dd);
+  $('sch-day-modal').classList.add('active');
+}
+function schCloseDay() {
+  var dd = $('day-detail'), tw = $('sch-table-wrap');
+  if (dd && tw && dd.parentNode && dd.parentNode.id === 'sch-day-body') {
+    tw.parentNode.insertBefore(dd, tw.nextSibling);
+  }
+  $('sch-day-modal').classList.remove('active');
+  schApplyView();
+}
+</script>
+<style id="sch-table-style">
+.freight-only-note{margin:0 0 10px;padding:9px 12px;border-radius:12px;background:#fff6e5;border:1px solid #f5d79c;color:#7a5a12;font-size:12px;line-height:1.5;word-break:keep-all}
+.freight-only-note b{color:#b26b00}
+.tq-hint{font-size:11.5px;color:#7a8696;margin:5px 2px 0;line-height:1.45}
+.tq-hint b{color:#2f6fd6}
+.sch-tools{gap:6px!important}
+.sch-tools .sch-tool-sm{white-space:nowrap;font-size:11.5px!important;padding:8px 3px!important;gap:3px!important;letter-spacing:-.02em}
+.sch-tools .sch-tool-sm svg{width:13px;height:13px;flex:0 0 13px}
+.sch-tools .sch-viewseg{flex:1 1 0;display:flex;border:1.5px solid #c9dbf7;border-radius:999px;background:#fff;padding:2px;min-width:0}
+.sch-viewseg button{flex:1 1 0;border:0;background:transparent;color:#2f6fd6;font-size:12px;font-weight:800;padding:5px 0;border-radius:999px;cursor:pointer;white-space:nowrap}
+.sch-viewseg button.on{background:#2f6fd6;color:#fff}
+.sch-table-wrap{margin:0 2px 10px}
+.sch-tbl{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border-radius:14px;overflow:hidden;font-size:12.5px;table-layout:fixed;box-shadow:0 1px 4px rgba(20,35,60,.06)}
+.sch-tbl th{background:#f1f5fb;color:#56657a;font-weight:800;font-size:11.5px;padding:8px 1px;border-bottom:1px solid #e3e9f2;position:sticky;top:0;z-index:1}
+.sch-tbl th:first-child{width:15%}.sch-tbl th:nth-child(3){width:12%}
+.sch-tbl td{text-align:center;padding:7px 1px;border-bottom:1px solid #f0f2f6;color:#2b2f36;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sch-tbl tbody tr{cursor:pointer}
+.sch-tbl tbody tr:active td{background:#eef4ff}
+.sch-tbl tr.wk td{border-top:2px solid #dde7f5}
+.sch-tbl tr.today td{background:#e7f1ff;font-weight:800}
+.sch-tbl td.st-d{line-height:1.15}
+.sch-tbl td.st-d b{font-size:13px;margin-right:2px}.sch-tbl td.st-d small{font-size:10.5px;color:#7a8696}
+.sch-tbl td.st-d.sun b,.sch-tbl td.st-d.sun small{color:#e03131}
+.sch-tbl td.st-d.sat b,.sch-tbl td.st-d.sat small{color:#2f6fd6}
+.sch-tbl td.st-duty{font-weight:800}
+.sch-tbl .st-no{color:#c3cad4}
+.sch-tbl .st-sw{font-style:normal;color:#2f6fd6;margin-left:1px;font-size:11px}
+.sch-day-dialog{max-height:86vh;overflow:auto}
+.sch-day-dialog #day-detail{margin:0;box-shadow:none}
+</style>
 <script id="team-label-jibu">
 /* 화면 글자 속 '입환조'를 '지부조'로 바꿔 보여줌 (값 · 저장은 그대로라 근무표 · 다이아 · 서버와 계속 맞음)
    게시판 글 · 댓글 · 입력 칸은 사용자가 쓴 그대로 둠 */
@@ -24743,7 +24894,7 @@ function rsAlertMode() {
 }
 /* 앱 꺼짐 알림: 안드로이드 알람처럼 [끄기]를 누를 때까지 소리 · 진동 반복 (최대 30초) */
 function rsBgNotify(tag, title, body) {
-  rsAppCall('notify', { tag: tag, title: title, body: body, mode: rsAlertMode(), insist: true, timeout: 30000 });
+  rsAppCall('notify', { tag: tag, title: title, body: body, mode: rsAlertMode(), insist: true, timeout: 30000, vol: getNotiPrefs().vol });
 }
 function rsBgTick() {
   var out = { next: 600, keep: true };
