@@ -1482,11 +1482,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   </div>
   <div class="sch-tools"><button type="button" class="sch-png-btn sch-tool-sm" onclick="schSavePng()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>PNG 저장</button><button type="button" class="sch-png-btn sch-tool-sm" onclick="openMarkOrder()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h10M5 12h7M5 18h4M18 5v14m0 0l-3-3m3 3l3-3"/></svg>표시 순위</button><button type="button" class="sch-png-btn sch-tool-sm" onclick="openLabelStyle()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h7M4 12h5M4 17h7M14 17l3-10 3 10M15.2 13.5h3.6"/></svg>표현 방식</button><div class="sch-viewseg" role="tablist" aria-label="근무표 보기"><button type="button" id="sch-v-cal" role="tab" onclick="schSetView('cal')">달력</button><button type="button" id="sch-v-tbl" role="tab" onclick="schSetView('tbl')">표</button></div></div>
   <div id="sch-table-wrap" class="sch-table-wrap" hidden></div>
-  <div id="sch-day-modal" class="dia-modal" onclick="if(event.target===this)schCloseDay()">
-    <div class="dia-dialog sch-day-dialog"><div id="sch-day-body"></div>
-      <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="schCloseDay()">닫기</button></div>
-    </div>
-  </div>
   <div id="label-style-panel" class="dia-modal" onclick="if(event.target===this)closeLabelStyle()">
     <div class="dia-dialog ns-dialog">
       <div class="dia-dialog-title">근무 표현 방식</div>
@@ -2079,6 +2074,16 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="uiReset()">기본값</button><button type="button" class="dia-text-btn" onclick="closeUiPanel()">닫기</button></div>
   </div>
 </div>
+<div id="rest-code-panel" class="dia-modal" onclick="if(event.target===this)this.classList.remove('active')">
+    <div class="dia-dialog ns-dialog"><div class="dia-dialog-title">XROIS 휴게 칸 고르기</div><div id="rest-code-body"></div>
+      <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="$('rest-code-panel').classList.remove('active')">닫기</button></div>
+    </div>
+  </div>
+<div id="sch-day-modal" class="dia-modal" onclick="if(event.target===this)schCloseDay()">
+    <div class="dia-dialog sch-day-dialog"><div id="sch-day-body"></div>
+      <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="schCloseDay()">닫기</button></div>
+    </div>
+  </div>
 <div id="brief-set-panel" class="dia-modal" onclick="if(event.target===this)closeBriefingSettings()">
   <div class="dia-dialog ns-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="오늘의브리핑" alt="" aria-hidden="true">오늘의 브리핑</div>
@@ -3193,7 +3198,7 @@ function onSnapshotUpdated() {
     return !!(e && e.classList.contains('active'));
   }
   if (active('schedule-section')) loadMyMonth();
-  if (active('group-section')) loadGroupSchedule(false);
+  if (active('group-section')) loadGroupSchedule(!!($('group-table-body') && $('group-table-body').__h));   /* 표가 있으면 조용히 (모아서 한 번) */
   if (active('vacation-management-section')) renderVacation();
   if (active('payslip-section') && typeof renderPayslip === 'function') renderPayslip();
 }
@@ -7212,6 +7217,7 @@ function groupHardRefresh() {
   var finish = function () {
     groupHardBusy = false;
     if (groupSectionActive()) loadGroupSchedule(true);
+    else groupSoonPending = false;
   };
   syncPending(function () {
     snapForceFull = true;
@@ -7255,6 +7261,17 @@ function goGroupThisWeek() {
   groupData = null;
   loadGroupSchedule(false);
 }
+/* 근무그룹: 자동 새로고침 · 서버 응답으로 다시 그릴 때는 모아서 한 번만 (중간 상태가 잠깐 보였다가 바뀌는 것 방지)
+   통째로 새로 받는 중(groupHardBusy)에는 기다렸다가 끝난 뒤 한 번 */
+var groupSoonTimer = null, groupSoonPending = false;
+function renderGroupTableSoon() {
+  if (!groupSectionActive()) return;
+  var body = $('group-table-body');
+  if (!body || !body.__h) { renderGroupTable(); return; }   /* 아직 표가 없으면 바로 */
+  if (groupHardBusy) { groupSoonPending = true; return; }
+  if (groupSoonTimer) clearTimeout(groupSoonTimer);
+  groupSoonTimer = setTimeout(function () { groupSoonTimer = null; groupSoonPending = false; if (groupSectionActive()) renderGroupTable(); }, 350);
+}
 function loadGroupSchedule(silent) {
   var user = getCurrentUser();
   if (user && user.token && typeof rsShareFetch === 'function') {
@@ -7264,7 +7281,7 @@ function loadGroupSchedule(silent) {
     rsShareFetch(function () {
       var after = '';
       try { after = JSON.stringify(rsSharedRouteCache || null); } catch (e) {}
-      if (after !== shareBefore && groupSectionActive()) renderGroupTable();
+      if (after !== shareBefore && groupSectionActive()) renderGroupTableSoon();
     });
   }
   var status = $('group-status');
@@ -7281,19 +7298,19 @@ function loadGroupSchedule(silent) {
   if (cached) {
     try { groupData = buildLocalRange('group', startKey, endKey); } catch (e) {}
   }
-  renderGroupTable();
+  if (silent) renderGroupTableSoon(); else renderGroupTable();
   if (!cached && !silent) status.textContent = '근무표를 불러오는 중...';
   fetchData('group', startKey, endKey, !!silent, function (r, fromCache) {
     if (groupWeekDays()[0].key !== startKey) return;
     if (!r || !r.success) {
       /* 실패해도 이미 그려진 명단은 지우지 않고 다시 불러오기 버튼을 보여줌 */
       if (!silent || !groupData) status.textContent = (r && r.message) || '불러오지 못했습니다.';
-      renderGroupTable();
+      if (silent) renderGroupTableSoon(); else renderGroupTable();
       return;
     }
     status.textContent = '';
     groupData = r;
-    renderGroupTable();
+    if (silent) renderGroupTableSoon(); else renderGroupTable();
   });
 }
 function groupCellClass(label, isStatus) {
@@ -7449,13 +7466,14 @@ function renderGroupTable() {
     headHtml += '<th class="' + hcls + '" onclick="selectGroupDate(\'' + dd.key + '\')"' + style + '>' +
                 names[dd.dow] + '<br>' + dd.d + '</th>';
   }
-  headRow.innerHTML = headHtml;
+  if (headRow.__h !== headHtml) { headRow.innerHTML = headHtml; headRow.__h = headHtml; }   /* 같은 내용이면 다시 그리지 않음 (글자가 바뀌거나 움직이지 않게) */
   var summary = $('group-summary');
   /* 명단 데이터가 비어 있으면 폰에 있는 근무 데이터로 즉시 다시 만든다 */
   if ((!groupData || !groupData.members || !groupData.members.length) && snapshotUsable()) {
     try { groupData = buildLocalRange('group', days[0].key, days[6].key); } catch (e) {}
   }
   if (!groupData || !groupData.members || !groupData.members.length) {
+    bodyEl.__h = ''; footEl.__h = '';
     bodyEl.innerHTML = '<tr><td colspan="8" style="padding:18px 8px;text-align:center;color:#667085;font-size:13px;">' +
       '명단을 불러오는 중입니다.<br><button type="button" onclick="groupData=null;loadGroupSchedule(false)" ' +
       'style="margin-top:8px;padding:7px 14px;border:0;border-radius:8px;background:#1769d2;color:#fff;font-weight:bold;">다시 불러오기</button></td></tr>';
@@ -7531,14 +7549,15 @@ function renderGroupTable() {
     }
     html += '</tr>';
   }
-  bodyEl.innerHTML = html;
+  var bodySame = bodyEl.__h === html;
+  if (!bodySame) { bodyEl.innerHTML = html; bodyEl.__h = html; }
   var foot = '<tr><td class="name-col">휴가·휴무·X</td>';
   for (var c = 0; c < 7; c++) {
     foot += '<td' + (days[c].key === selKey ? ' class="g-sel g-sel-b"' : '') + '>' + counts[c] + '명</td>';
   }
   foot += '</tr>';
-  footEl.innerHTML = foot;
-  fitGroupTableText();
+  if (footEl.__h !== foot) { footEl.innerHTML = foot; footEl.__h = foot; }
+  if (!bodySame) fitGroupTableText();
   var selIdx = 0;
   for (var q = 0; q < 7; q++) {
     if (days[q].key === selKey) selIdx = q;
@@ -7546,7 +7565,7 @@ function renderGroupTable() {
   if (summary) {
     var sd = days[selIdx];
     summary.style.display = 'block';
-    summary.innerHTML =
+    var sumHtml =
       '<div class="current-dia-label" style="white-space:nowrap;font-size:clamp(9px,3vw,11px)">' +
       (sd.m + 1) + '월 ' + sd.d + '일(' + names[sd.dow] + ') 휴가·휴무·X (전체 ' + members.length + '명 중)</div>' +
       '<div class="current-dia-value">' + counts[selIdx] + '명</div>' +
@@ -7554,6 +7573,7 @@ function renderGroupTable() {
         ? '<div style="margin-top:6px;font-size:14px;color:#444;line-height:1.7;white-space:normal;word-break:keep-all">' +
           esc(leaveNames[selIdx].join(', ')) + '</div>'
         : '');
+    if (summary.__h !== sumHtml) { summary.innerHTML = sumHtml; summary.__h = sumHtml; }
   }
 }
 /* ============ 근무그룹: 근무표 비교 (내 근무 ↔ 상대 근무, 1주일씩 가로로) ============ */
@@ -20279,6 +20299,28 @@ html body #main-section .menu-grid > .menu-btn > span{display:flex;align-items:f
 #pass-pop-panel .pp-zone[hidden]{display:none!important}
 </style>
 <style id="stats-rest-style">
+.ss-top b .ss-mi{font-style:normal;font-size:13px;font-weight:800;color:#e8590c;margin-left:6px;vertical-align:middle;letter-spacing:0}
+.ss-restnote{font-size:11.5px;color:#7a8696;text-align:center;margin:-2px 0 10px;line-height:1.6}
+.ss-restnote .ss-rest-btn{margin-left:4px;padding:2px 9px;font-size:11px}
+.sc-c{cursor:pointer}
+.sc-c:active{background:#eef4ff}
+#sch-week .sc-c{position:relative;padding-bottom:11px}
+.sc-h .sc-mi{position:absolute;left:0;right:0;bottom:2px;text-align:center;font-style:normal;font-size:8.5px;font-weight:800;color:#e8590c;line-height:1.1;letter-spacing:-.03em}
+.ss-rest-btn{flex:0 0 auto;padding:4px 10px;border-radius:999px;border:1px solid #c9dbf7;background:#fff;color:#2f6fd6;font-size:11.5px;font-weight:800}
+.rc-note{font-size:12.5px;color:#4b5a70;line-height:1.55;margin:0 2px 10px}
+.rc-none{font-size:13px;color:#7a8696;text-align:center;padding:18px 6px;line-height:1.6}
+.rc-pick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.rc-btn{padding:6px 11px;border-radius:999px;border:1.5px solid #c9dbf7;background:#fff;color:#2f6fd6;font-size:12px;font-weight:800}
+.rc-btn.on{background:#2f6fd6;color:#fff;border-color:#2f6fd6}
+.rc-btn.guess{border-color:#f0a020;color:#b26b00}
+.rc-btn.off{color:#7a8696;border-color:#dfe5ee}.rc-btn.off.on{background:#7a8696;color:#fff}
+.rc-tbl-wrap{max-height:46vh;overflow:auto;border:1px solid #e3e9f2;border-radius:12px}
+.rc-tbl{width:100%;border-collapse:collapse;font-size:11.5px;font-variant-numeric:tabular-nums}
+.rc-tbl th{position:sticky;top:0;background:#f1f5fb;color:#56657a;padding:6px 3px;font-weight:800;line-height:1.15}
+.rc-tbl th small{display:block;font-size:9.5px;font-weight:700;color:#8a96a8}
+.rc-tbl td{text-align:center;padding:5px 3px;border-top:1px solid #f0f2f6;color:#2b2f36}
+.rc-tbl .on{background:#e7f1ff;color:#1c4fa0;font-weight:800}
+.rc-no{color:#c3cad4}
 .ss-rest{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:0 0 8px;padding:7px 10px;border-radius:12px;background:#f3f7fd;border:1px solid #dfe8f5}
 .ss-rest label{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;color:#1f3a66}
 .ss-rest input{width:16px;height:16px;accent-color:#2f6fd6}
@@ -22126,8 +22168,81 @@ function rsRestMin(dia) {
   });
   return { min: sum, known: true };
 }
+/* 휴게시간: ① XROIS 개인근무명세서의 휴게 칸(구분별 사업시간 pjtTnum○○○ 중 '휴게' 칸) → ② 없으면 행로표 '휴게' 구간
+   휴게 칸 번호는 XROIS가 칸 이름을 주지 않아서, 근무통계 › [휴게 칸 고르기]에서 한 번 골라 둠 (이 폰에 저장) */
+var XR_KNOWN_CODES = { '100': '준비', '200': '운전/입환', '300': '편승', '800': '정리', 'B00': '승계' };
+function xrRestCode() { try { return LS.getItem('rs_xr_rest_code') || ''; } catch (e) { return ''; } }
+function rsRestFor(key, dia) {
+  /* XROIS 개인근무명세서(+를 누르면 보이는 휴게)만 씀 · 없으면 미반영 */
+  var sp = typeof xrGet === 'function' ? xrGet('spec', {})[key] : null;
+  if (!sp) return { min: 0, known: false, src: '' };
+  if (sp.rest !== undefined && sp.rest !== null) return { min: +sp.rest || 0, known: true, src: 'xrois' };
+  var code = xrRestCode();
+  if (code) {
+    var v = code.indexOf('t:') === 0 ? (sp.t || {})[code.slice(2)] : (sp.c || {})[code];
+    return { min: +v || 0, known: true, src: 'xrois' };
+  }
+  return { min: 0, known: false, src: '' };
+}
+/* 서버가 휴게 칸을 이름으로 찾았는지 (찾았으면 고를 필요 없음) */
+function xrRestAuto() { try { var sp = xrGet('spec', {}); return Object.keys(sp).some(function (k) { return sp[k] && sp[k].rest !== undefined; }); } catch (e) { return false; } }
+/* XROIS 명세서에 나온 칸 번호와 날짜별 분 (휴게 칸 고르기 화면용) */
+function xrRestCodeRows(y, m) {
+  var sp = typeof xrGet === 'function' ? xrGet('spec', {}) : {}, codes = {}, rows = [];
+  var last = new Date(y, m + 1, 0).getDate();
+  for (var d = 1; d <= last; d++) {
+    var k = getDateKey(y, m, d), x = sp[k];
+    if (!x || !x.c) continue;
+    var cc = {}; Object.keys(x.c).forEach(function (c) { cc[c] = x.c[c]; });
+    Object.keys(x.t || {}).forEach(function (c) { cc['t:' + c] = x.t[c]; });
+    Object.keys(cc).forEach(function (c) { codes[c] = (codes[c] || 0) + 1; });
+    var mb = typeof findMyMember === 'function' ? findMyMember() : null, info = null;
+    try { if (mb && snapshotUsable()) info = snapDayWithAuto(k, mb, snapshot.raw.dia || [], snapshot.ovMap); } catch (e) {}
+    var rt = rsRestMin(String((info && info.dia) || x.dia || '').toUpperCase());
+    rows.push({ key: k, d: d, c: cc, tot: +x.tot || 0, routeRest: rt.known ? rt.min : null });
+  }
+  return { codes: Object.keys(codes).sort(), rows: rows };
+}
+/* 행로표 '휴게'와 분이 같은 칸이 있으면 그 칸을 휴게 칸으로 짐작 */
+function xrRestCodeGuess(info) {
+  var score = {};
+  info.rows.forEach(function (r) {
+    if (r.routeRest == null || r.routeRest <= 0) return;
+    Object.keys(r.c).forEach(function (c) { if (Math.abs((+r.c[c] || 0) - r.routeRest) <= 1) score[c] = (score[c] || 0) + 1; });
+  });
+  var best = Object.keys(score).sort(function (a, b) { return score[b] - score[a]; })[0];
+  return best || '';
+}
+function openRestCode() {
+  var y = typeof statsY === 'number' ? statsY : todayKST().y, m = typeof statsM === 'number' ? statsM : todayKST().m;
+  var info = xrRestCodeRows(y, m), cur = xrRestCode(), guess = xrRestCodeGuess(info);
+  var box = $('rest-code-body');
+  if (!info.rows.length) {
+    box.innerHTML = '<div class="rc-none">' + (m + 1) + '월 XROIS 개인근무명세서가 아직 없어요.<br>XROIS 연동이 되어 있으면 로그인할 때 가져와요.</div>';
+  } else {
+    var codeName = function (c) { return XR_KNOWN_CODES[c] ? c + ' (' + XR_KNOWN_CODES[c] + ')' : c.replace(/^t:/, ''); };
+    var hm = function (v) { v = +v || 0; return Math.floor(v / 60) + ':' + pad2(Math.round(v % 60)); };
+    var h = '<div class="rc-note">XROIS 개인근무명세서 화면의 <b>휴게</b> 시간과 같은 숫자가 있는 칸을 골라주세요.' + (guess ? '<br>행로표의 휴게와 같은 칸: <b>' + esc(codeName(guess)) + '</b>' : '') + '</div>';
+    h += '<div class="rc-pick">' + info.codes.map(function (c) {
+      return '<button type="button" class="rc-btn' + (c === cur ? ' on' : '') + (c === guess && !cur ? ' guess' : '') + '" onclick="restCodeSet(\'' + c + '\')">' + esc(codeName(c)) + '</button>';
+    }).join('') + '<button type="button" class="rc-btn off' + (!cur ? ' on' : '') + '" onclick="restCodeSet(\'\')">안 씀</button></div>';
+    h += '<div class="rc-tbl-wrap"><table class="rc-tbl"><thead><tr><th>날짜</th>' + info.codes.map(function (c) { return '<th' + (c === cur ? ' class="on"' : '') + '>' + esc(c.replace(/^t:/, '')) + (XR_KNOWN_CODES[c] ? '<small>' + esc(XR_KNOWN_CODES[c]) + '</small>' : '') + '</th>'; }).join('') + '<th>행로표<small>휴게</small></th></tr></thead><tbody>';
+    info.rows.forEach(function (r) {
+      h += '<tr><td>' + (m + 1) + '/' + r.d + '</td>' + info.codes.map(function (c) { var v = r.c[c]; return '<td' + (c === cur ? ' class="on"' : '') + '>' + (v ? hm(v) : '<span class="rc-no">-</span>') + '</td>'; }).join('') +
+        '<td>' + (r.routeRest != null ? hm(r.routeRest) : '<span class="rc-no">-</span>') + '</td></tr>';
+    });
+    h += '</tbody></table></div>';
+    box.innerHTML = h;
+  }
+  $('rest-code-panel').classList.add('active');
+}
+function restCodeSet(c) {
+  try { if (c) LS.setItem('rs_xr_rest_code', c); else LS.removeItem('rs_xr_rest_code'); } catch (e) {}
+  showToast(c ? '휴게 칸을 ' + c + '번으로 정했어요.' : 'XROIS 휴게 칸을 쓰지 않아요 (행로표 휴게만).');
+  openRestCode(); statsRender();
+}
 /* 내 근무통계: 휴게시간 빼고 보기 (이 폰에 저장) */
-function statsRestOff() { try { return LS.getItem('rs_stats_rest') === '1'; } catch (e) { return false; } }
+function statsRestOff() { return true; }   /* 내 근무통계는 항상 휴게시간을 뺀 시간 */
 function statsRestSet(on) { try { if (on) LS.setItem('rs_stats_rest', '1'); else LS.removeItem('rs_stats_rest'); } catch (e) {} statsRender(); }
 function schShiftsAround(y, m) {
   var mb = typeof findMyMember === 'function' ? findMyMember() : null;
@@ -22150,8 +22265,8 @@ function schShiftsAround(y, m) {
     if (b <= a) b += 1440;
     var day0 = Math.round((new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()) - new Date(y, m, 1)) / 86400000);
     var s0 = day0 * 1440 + a, e0 = day0 * 1440 + b;
-    var rest = rsRestMin(diaNo);
-    out.push({ key: key, s: s0, e: e0, work: xs && xs.tot > 0 ? xs.tot : (b - a), xr: !!(xs && xs.tot > 0), dia: diaNo, rest: rest.min, restKnown: rest.known });
+    var rest = rsRestFor(key, diaNo);
+    out.push({ key: key, s: s0, e: e0, work: xs && xs.tot > 0 ? xs.tot : (b - a), xr: !!(xs && xs.tot > 0), dia: diaNo, rest: rest.min, restKnown: rest.known, restSrc: rest.src });
   }
   return out;
 }
@@ -22217,14 +22332,15 @@ function schWeekRender() {
   var first = new Date(y, m, 1), lastD = new Date(y, m + 1, 0).getDate(), w0 = -first.getDay();
   /* 날짜별: 근무 분 · XROIS 휴일 · 연장 · 야간 (근무는 출근한 날에 넣음) */
   var byKey = {};
-  var restOff = statsRestOff(), restTot = 0, restDays = 0, restMiss = 0;
+  var restOff = statsRestOff(), restTot = 0, restDays = 0, restMiss = 0, restXr = 0;
   sh.forEach(function (x) {
-    var o = byKey[x.key] || (byKey[x.key] = { min: 0, xr: false });
+    var o = byKey[x.key] || (byKey[x.key] = { min: 0, xr: false, miss: false });
+    if (!x.restKnown) o.miss = true;
     var w = x.work;
     if (restOff && x.rest > 0) w = Math.max(0, w - x.rest);
     o.min += w; o.xr = o.xr || x.xr;
     var dd = new Date(x.key.replace(/-/g, '/'));
-    if (dd.getFullYear() === y && dd.getMonth() === m) { if (x.restKnown) { restDays++; restTot += x.rest; } else restMiss++; }
+    if (dd.getFullYear() === y && dd.getMonth() === m) { if (x.restKnown) { restDays++; restTot += x.rest; if (x.restSrc === 'xrois') restXr++; } else restMiss++; }
   });
   function h1(min) { return Math.round(min / 6) / 10; }
   function hm(min) { var hh = Math.floor(min / 60), mm = Math.round(min % 60); return hh + '시간' + (mm ? ' ' + mm + '분' : ''); }
@@ -22241,10 +22357,11 @@ function schWeekRender() {
       wk.min += min; wk.hol += hol; wk.ext += ext;
       if (inM) { tot.min += min; tot.hol += hol; tot.ext += ext; tot.nig += nig; if (min > 0) tot.days++; if (o && o.xr) tot.xr++; }
       var lb = statsDayLabel(key);
-      rows += '<div class="sc-c' + (inM ? '' : ' out') + (key === todayKey ? ' today' : '') + (i === 0 ? ' sun' : i === 6 ? ' sat' : '') + '">' +
+      rows += '<div class="sc-c' + (inM ? '' : ' out') + (key === todayKey ? ' today' : '') + (i === 0 ? ' sun' : i === 6 ? ' sat' : '') + '"' +
+        ' onclick="schOpenDay(' + dt.getFullYear() + ',' + dt.getMonth() + ',' + dt.getDate() + ')" role="button">' +
         '<span class="sc-d">' + dt.getDate() + '</span>' +
         '<span class="sc-l ' + lb.c + '">' + esc(lb.t) + '</span>' +
-        (min > 0 ? '<b class="sc-h">' + h1(min) + '</b>' : '<b class="sc-h none">·</b>') + '</div>';   /* 날짜 칸은 숫자만 (XROIS 사업시간 = 연장 포함) */
+        (min > 0 ? '<b class="sc-h">' + h1(min) + (o && o.miss ? '<i class="sc-mi">미반영</i>' : '') + '</b>' : '<b class="sc-h none">·</b>') + '</div>';   /* 날짜 칸은 숫자만 (XROIS 사업시간 = 연장 포함) */
     }
     var over = wk.min > 52 * 60;
     rows += '<div class="sc-sum' + (over ? ' over' : '') + '"><b>' + h1(wk.min) + '</b><small>시간</small>' +
@@ -22253,9 +22370,9 @@ function schWeekRender() {
   }
   /* 맨 위: 이번 달 얼마나 일했나 */
   var sumBox = $('stats-sum');
-  var restBar = '<div class="ss-rest"><label><input type="checkbox"' + (restOff ? ' checked' : '') + ' onchange="statsRestSet(this.checked)"><span>휴게시간 빼고 보기</span></label>' +
-    '<small>' + (restDays ? '휴게 ' + h1(restTot) + '시간 (' + restDays + '일)' : '휴게 정보 없음') + (restMiss ? ' · ' + restMiss + '일은 행로표가 없어 휴게를 모름' : '') + '</small></div>';
-  if (sumBox) sumBox.innerHTML = restBar + '<div class="ss-top"><span>' + y + '년 ' + (m + 1) + '월 총 근무' + (restOff ? ' <small class="ss-rest-tag">휴게 뺌</small>' : '') + '</span><b>' + hm(tot.min) + '</b><small>근무한 날 ' + tot.days + '일</small></div>' +
+  var restNote = '<div class="ss-restnote">휴게시간을 뺀 시간' + (restDays ? ' · 휴게 ' + h1(restTot) + '시간 (' + restDays + '일)' : '') + ' · XROIS 개인근무명세서 기준' +
+    (restMiss && !xrRestAuto() ? ' <button type="button" class="ss-rest-btn" onclick="openRestCode()">' + (xrRestCode() ? '휴게 칸 ' + esc(xrRestCode().replace(/^t:/, '')) : '휴게 칸 고르기') + '</button>' : '') + '</div>';
+  if (sumBox) sumBox.innerHTML = '<div class="ss-top"><span>' + y + '년 ' + (m + 1) + '월 총 근무</span><b>' + hm(tot.min) + (restMiss ? '<em class="ss-mi">(미반영 ' + restMiss + '일)</em>' : '') + '</b><small>근무한 날 ' + tot.days + '일</small></div>' + restNote +
     '<div class="ss-row"><div class="ss-k ext"><span>연장근로</span><b>' + h1(tot.ext) + '<small>시간</small></b></div><div class="ss-k hol"><span>휴일근무</span><b>' + h1(tot.hol) + '<small>시간</small></b></div><div class="ss-k nig"><span>야간근로</span><b>' + h1(tot.nig) + '<small>시간</small></b></div></div>' +
     '<div class="ss-src">' + (tot.xr ? '근무시간 · 연장 · 휴일 · 야간은 <b>XROIS 개인근무명세서</b> 기준' + (tot.xr < tot.days ? ' (일부 날짜는 근무표 출근~퇴근 시각)' : '') : '근무표 출근~퇴근 시각 기준 · 연장 · 휴일 · 야간은 XROIS 개인근무명세서를 가져오면 보여요') + '</div>';
   /* 근무 사이 휴식 11시간 */
@@ -22269,7 +22386,7 @@ function schWeekRender() {
       rest.push(tt(sh[k - 1].e) + ' 퇴근 → ' + tt(sh[k].s) + ' 출근 (휴식 ' + h1(gap) + '시간)');
     }
   }
-  box.innerHTML = '<div class="sw-h"><b>날짜별 근무시간</b><small>칸 숫자 = 그날 근무시간(연장 포함, 시간)</small></div>' +
+  box.innerHTML = '<div class="sw-h"><b>날짜별 근무시간</b><small>칸 숫자 = 그날 근무시간(휴게 뺌 · 연장 포함, 시간)</small></div>' +
     '<div class="sc-grid">' + head + rows + '</div>' +
     '<div class="sc-total"><span>' + (m + 1) + '월 총 근무시간</span><b>' + hm(tot.min) + '</b><small>연장 ' + h1(tot.ext) + ' · 휴일 ' + h1(tot.hol) + ' · 야간 ' + h1(tot.nig) + '시간</small></div>' +
     (rest.length ? '<div class="sw-rest"><b>근무 사이 휴식 11시간 미만</b><br>' + rest.map(esc).join('<br>') + '</div>' : '') +
