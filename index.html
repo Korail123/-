@@ -25709,11 +25709,13 @@ html.ui-dark #ptr .ptr-t{background:rgba(35,42,53,.9);color:#a9c4ff}
 /* ===== 매거진 커버 브리핑 (메인) ===== */
 var MMCN_WX_KEY = 'mmWx';
 function mmcnWx(cb) {
-  try { var c = JSON.parse(localStorage.getItem(MMCN_WX_KEY) || 'null'); if (c && Date.now() - c.t < 30 * 60000) { cb(c.w, c.n); return; } } catch (e) {}
+  /* 실시간: 10분마다 새로 받음 (그 사이엔 저장한 값) */
+  try { var c = JSON.parse(localStorage.getItem(MMCN_WX_KEY) || 'null'); if (c && Date.now() - c.t < 10 * 60000) { cb(c.w, c.n, c.t); return; } } catch (e) {}
   var loc = (typeof briefWxSrc === 'function' && briefWxSrc() === 'gps' && briefLastLoc()) || BRIEF_CR_LOC;   /* 메인에서는 위치를 새로 묻지 않음 */
   briefFetchWeather(loc, function (w) {
-    if (w) try { localStorage.setItem(MMCN_WX_KEY, JSON.stringify({ t: Date.now(), w: w, n: loc.name || '' })); } catch (e) {}
-    cb(w, loc.name || '');
+    var now = Date.now();
+    if (w) try { localStorage.setItem(MMCN_WX_KEY, JSON.stringify({ t: now, w: w, n: loc.name || '' })); } catch (e) {}
+    cb(w, loc.name || '', now);
   });
 }
 function mmcnRender() {
@@ -25726,9 +25728,10 @@ function mmcnRender() {
   var wx = tr.__wx, wt = wx ? briefWeatherText(wx.code) : null, r = function (n) { return n == null ? '-' : Math.round(n); };
   var cards = [];
   /* 1장: 날짜 · 요일 · 날씨 */
-  cards.push('<div class="mm-cv c1"><div class="k">TODAY</div><div class="big">' + (t.m + 1) + '.' + t.d + '<small>' + W[dow] + '요일</small></div>' +
+  var wxAt = tr.__wxT ? new Date(tr.__wxT) : null, wxAtTxt = wxAt ? ('0' + wxAt.getHours()).slice(-2) + ':' + ('0' + wxAt.getMinutes()).slice(-2) : '';
+  cards.push('<div class="mm-cv c1"><div class="k">TODAY' + (wx && wxAtTxt ? '<em class="wx-live"><i></i>' + wxAtTxt + ' 실시간</em>' : '') + '</div><div class="big">' + (t.m + 1) + '.' + t.d + '<small>' + W[dow] + '요일</small></div>' +
     '<div class="ln">' + (wx ? e(wt[1]) + ' · ' + r(wx.temp) + '°' : '날씨 확인 중') + '</div><div class="sub">' + (wx ? e(briefWeatherTips(wx, wt[0], duty && duty.off)[0][1]) : '') + '</div>' +
-    (wx ? '<img class="art" src="' + appIcon('날씨_' + wt[0]) + '" alt="">' : '') +
+    (wx ? (typeof wxAnimSvg === 'function' ? wxAnimSvg(wt[0], wt[1], wx) : '<img class="art" src="' + appIcon('날씨_' + wt[0]) + '" alt="">') : '') +
     (wx ? '<div class="chips"><span>최고 ' + r(wx.max) + '°</span><span>최저 ' + r(wx.min) + '°</span><span>강수 ' + r(wx.pop) + '%</span></div>' : '') + '</div>');
   /* 2장: 다이아 · 근무구분 · 출근 · 퇴근 · 열차 */
   if (!duty) cards.push('<div class="mm-cv c2"><div class="k">TODAY DUTY</div><div class="ln">근무표를 불러오는 중...</div></div>');
@@ -25769,18 +25772,23 @@ function mmcnRender() {
       if (i !== tr.__i) { tr.__i = i; var d = document.querySelectorAll('#mm-cn-dots i'); [].forEach.call(d, function (x, k) { x.classList.toggle('on', k === i); }); }
     }, { passive: true });
     mmcnRender();
-    mmcnWx(function (w) { if (w) { tr.__wx = w; mmcnRender(); } });
+    function wxLoad() { mmcnWx(function (w, n, at) { if (w) { tr.__wx = w; tr.__wxT = at || Date.now(); mmcnRender(); } }); }
+    wxLoad();
     setInterval(function () { if (document.getElementById('main-section').classList.contains('active')) mmcnRender(); }, 60000);
+    /* 실시간 날씨: 메인화면이 보이는 동안 10분마다 · 앱으로 돌아올 때 다시 확인 */
+    setInterval(function () { if (!document.hidden && document.getElementById('main-section').classList.contains('active')) wxLoad(); }, 10 * 60000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) wxLoad(); });
+    window.mmWxReload = wxLoad;
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   var o = window.switchSection;
   if (typeof o === 'function') window.switchSection = function (id) { var r = o.apply(this, arguments); if (id === 'main-section') try { mmcnRender(); } catch (e) {} snowSync(); return r; };
 })();
 
-/* ===== 눈 내림 (메인화면 · 라이트 모드에서만, 화면이 보일 때만) ===== */
+/* ===== 메인화면 떨어지는 효과 (지금은 단풍 · 화면이 보일 때만) ===== */
 var snowCv = null, snowRaf = 0, snowFl = [];
 function snowWant() {
-  if (document.documentElement.classList.contains('ui-dark') || document.hidden) return false;
+  if (document.hidden) return false;   /* 단풍은 다크 모드에서도 */
   try { if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return false; } catch (e) {}
   var m = document.getElementById('main-section');
   return !!(m && m.classList.contains('active'));
@@ -25795,13 +25803,37 @@ function snowSize() {
   if (!snowCv) return;
   var d = Math.min(2, window.devicePixelRatio || 1), w = innerWidth, h = innerHeight;
   snowCv.width = w * d; snowCv.height = h * d; snowCv.__d = d;
-  var n = Math.round(Math.min(46, w * h / 16000));
+  var n = Math.round(Math.min(20, w * h / 17000));   /* 단풍은 눈보다 적게 */
   while (snowFl.length < n) snowFl.push(snowNew(w, h, true));
   snowFl.length = n;
 }
+/* ===== 단풍 내림 (10번 원근감 단풍: 앞은 크고 선명 · 뒤는 작고 흐릿) ===== */
+var LEAF_PATH = 'M50 4L56 21L66 15L63 37L78 27L80 35L95 32L88 47L96 51L73 67L77 76L54 71L53 96L47 96L46 71L23 76L27 67L4 51L12 47L5 32L20 35L22 27L37 37L34 15L44 21Z';
+var LEAF_COLORS = ['#d93a26', '#e5502b', '#f08424', '#e8a23a', '#c9302c'];
+var leafSprites = {};
+function leafSprite(color, blur) {
+  var key = color + '|' + blur; if (leafSprites[key]) return leafSprites[key];
+  var S = 96, pad = Math.ceil(blur * 2) + 2, cv = document.createElement('canvas');
+  cv.width = cv.height = S + pad * 2;
+  var c = cv.getContext('2d'), p = new Path2D(LEAF_PATH);
+  c.translate(pad, pad); c.scale(S / 100, S / 100);
+  if (blur > 0.3) {   /* 그림자로 흐림 효과 (모든 폰에서 동작) */
+    c.save(); c.translate(-2000, 0); c.shadowColor = color; c.shadowBlur = blur * 2.2; c.shadowOffsetX = 2000 * S / 100; c.fillStyle = color; c.fill(p); c.restore();
+  } else {
+    c.fillStyle = color; c.fill(p);
+    c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 2.2; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(50, 92); c.lineTo(50, 24); c.moveTo(50, 60); c.lineTo(26, 45); c.moveTo(50, 60); c.lineTo(74, 45); c.stroke();
+  }
+  cv.__pad = pad; cv.__S = S;
+  return (leafSprites[key] = cv);
+}
 function snowNew(w, h, any) {
-  var z = Math.random();   /* 멀리(작고 느림) ~ 가까이(크고 빠름) */
-  return { x: Math.random() * w, y: any ? Math.random() * h : -10, r: 0.9 + z * 2.6, v: 0.25 + z * 0.75, a: Math.random() * 6.28, s: 0.004 + Math.random() * 0.012, o: 0.45 + z * 0.5, big: z > 0.93 };
+  var z = Math.random();   /* 0 멀리 ~ 1 가까이 */
+  var size = 12 + z * 30;
+  var blur = z < 0.35 ? (0.35 - z) * 9 : (z > 0.85 ? (z - 0.85) * 14 : 0);   /* 아주 멀거나 아주 가까우면 흐릿 */
+  return { x: Math.random() * w, y: any ? Math.random() * h : -50, size: size, v: 0.35 + z * 0.9, a: Math.random() * 6.28, s: 0.008 + Math.random() * 0.014,
+    rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.03, flip: Math.random() * 6.28, vf: 0.015 + Math.random() * 0.03,
+    o: 0.5 + z * 0.45, spr: leafSprite(LEAF_COLORS[Math.floor(Math.random() * LEAF_COLORS.length)], Math.round(blur * 2) / 2), z: z };
 }
 function snowStep() {
   snowRaf = 0;
@@ -25810,18 +25842,14 @@ function snowStep() {
   c.setTransform(d, 0, 0, d, 0, 0); c.clearRect(0, 0, w, h);
   for (var i = 0; i < snowFl.length; i++) {
     var f = snowFl[i];
-    f.a += f.s; f.y += f.v; f.x += Math.sin(f.a) * 0.45;
-    if (f.y > h + 10 || f.x < -20 || f.x > w + 20) { snowFl[i] = snowNew(w, h, false); continue; }
-    c.globalAlpha = f.o;
-    if (f.big) {   /* 가끔 보이는 눈꽃 결정 */
-      c.save(); c.translate(f.x, f.y); c.rotate(f.a * 0.6); c.strokeStyle = '#ffffff'; c.lineWidth = 1.1; c.shadowColor = 'rgba(120,160,225,.7)'; c.shadowBlur = 4;
-      for (var k = 0; k < 6; k++) { c.rotate(Math.PI / 3); c.beginPath(); c.moveTo(0, 0); c.lineTo(0, f.r * 2.6); c.moveTo(0, f.r * 1.6); c.lineTo(f.r * 0.7, f.r * 2.1); c.moveTo(0, f.r * 1.6); c.lineTo(-f.r * 0.7, f.r * 2.1); c.stroke(); }
-      c.restore();
-    } else {
-      c.beginPath(); c.arc(f.x, f.y, f.r, 0, 6.283); c.fillStyle = '#ffffff'; c.shadowColor = 'rgba(120,160,225,.75)'; c.shadowBlur = 3; c.fill();
-    }
+    f.a += f.s; f.y += f.v; f.x += Math.sin(f.a) * (0.5 + f.z * 0.6); f.rot += f.vr + Math.sin(f.a) * 0.004; f.flip += f.vf;
+    if (f.y > h + 50 || f.x < -60 || f.x > w + 60) { snowFl[i] = snowNew(w, h, false); continue; }
+    var sp = f.spr, k = f.size / sp.__S, full = sp.width * k;
+    c.save(); c.globalAlpha = f.o; c.translate(f.x, f.y); c.rotate(f.rot); c.scale(0.35 + 0.65 * Math.abs(Math.cos(f.flip)), 1);   /* 뒤집히며 팔랑팔랑 */
+    c.drawImage(sp, -full / 2, -full / 2, full, full);
+    c.restore();
   }
-  c.globalAlpha = 1; c.shadowBlur = 0;
+  c.globalAlpha = 1;
   snowRaf = requestAnimationFrame(snowStep);
 }
 window.addEventListener('resize', function () { if (snowCv) snowSize(); });
@@ -26652,6 +26680,78 @@ function mpGoTab(t) {
   try { localStorage.setItem('rs_main_tab', t); } catch (e) {}
   if (typeof goHome === 'function') goHome(); else switchSection('main-section');
   setTimeout(function () { try { mmApply(); if (window.mmFitLabels) mmFitLabels(); } catch (e) {} }, 0);
+}
+</script>
+<style id="wx-anim-ui">
+/* 메인 날씨 카드: 실시간 표시 + 날씨 애니메이션 */
+#main-section .mm-cv.c1 .k .wx-live{display:inline-flex;align-items:center;gap:4px;margin-left:8px;font-style:normal;font-size:9.5px;letter-spacing:.5px;font-weight:800;color:#2f6fd6;background:rgba(255,255,255,.6);padding:2px 7px;border-radius:99px;vertical-align:1px}
+#main-section .mm-cv.c1 .k .wx-live i{width:6px;height:6px;border-radius:50%;background:#34c759;animation:wxLive 1.6s ease-in-out infinite}
+@keyframes wxLive{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
+#main-section .mm-cv .wxa{position:absolute;right:10px;top:26px;width:92px;height:92px;overflow:visible;pointer-events:none}
+.wxa .sun-rays{transform-origin:50px 50px;animation:wxSpin 18s linear infinite}
+.wxa .sun-core{transform-origin:50px 50px;animation:wxPulse 3.2s ease-in-out infinite}
+.wxa .sun-glow{transform-origin:50px 50px;animation:wxGlow 3.2s ease-in-out infinite}
+@keyframes wxSpin{to{transform:rotate(360deg)}}
+@keyframes wxPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@keyframes wxGlow{0%,100%{opacity:.35;transform:scale(1)}50%{opacity:.6;transform:scale(1.15)}}
+.wxa .cl-a{animation:wxDrift 7s ease-in-out infinite}
+.wxa .cl-b{animation:wxDrift 9s ease-in-out infinite reverse}
+@keyframes wxDrift{0%,100%{transform:translateX(-4px)}50%{transform:translateX(5px)}}
+.wxa .drop{animation:wxRain 1s linear infinite;opacity:0}
+@keyframes wxRain{0%{transform:translate(0,-6px);opacity:0}15%{opacity:1}100%{transform:translate(-4px,26px);opacity:0}}
+.wxa .flake{animation:wxSnow 3.2s linear infinite;opacity:0}
+@keyframes wxSnow{0%{transform:translate(0,-4px);opacity:0}15%{opacity:1}50%{transform:translate(4px,12px)}100%{transform:translate(-3px,28px);opacity:0}}
+.wxa .bolt{animation:wxBolt 3.4s ease-in-out infinite}
+@keyframes wxBolt{0%,62%,72%,100%{opacity:0}64%,70%{opacity:1}66%{opacity:.3}}
+.wxa .fog{animation:wxFog 5s ease-in-out infinite}
+@keyframes wxFog{0%,100%{transform:translateX(-6px);opacity:.55}50%{transform:translateX(6px);opacity:.95}}
+.wxa .star{animation:wxTwinkle 2.4s ease-in-out infinite}
+@keyframes wxTwinkle{0%,100%{opacity:.25}50%{opacity:1}}
+.wxa .moon{animation:wxPulse 4s ease-in-out infinite;transform-origin:52px 46px}
+@media (prefers-reduced-motion: reduce){.wxa *{animation:none!important}.wxa .drop,.wxa .flake{opacity:1}}
+</style>
+<script id="wx-anim-js">
+/* 날씨 종류별 움직이는 그림 (맑음 · 구름조금 · 흐림 · 안개 · 이슬비 · 비 · 눈 · 뇌우, 밤엔 달) */
+function wxAnimSvg(kind, desc, w) {
+  var h = new Date().getHours(), night = h < 6 || h >= 18;
+  if (window.__wxHour != null) { h = window.__wxHour; night = h < 6 || h >= 18; }
+  var defs = '<defs><radialGradient id="wxSun" cx="50%" cy="45%" r="55%"><stop offset="0" stop-color="#fff3b0"/><stop offset=".55" stop-color="#ffd23f"/><stop offset="1" stop-color="#ffab1f"/></radialGradient>' +
+    '<linearGradient id="wxCl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dfe9f6"/></linearGradient>' +
+    '<linearGradient id="wxClD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9c6d8"/><stop offset="1" stop-color="#8c9bb2"/></linearGradient>' +
+    '<radialGradient id="wxMoon" cx="40%" cy="40%" r="60%"><stop offset="0" stop-color="#fffbe6"/><stop offset="1" stop-color="#f3dc8a"/></radialGradient></defs>';
+  function sun(cx, cy, r, sc) {
+    var rays = ''; for (var i = 0; i < 8; i++) { var a = i * Math.PI / 4, x1 = 50 + Math.cos(a) * (r + 7), y1 = 50 + Math.sin(a) * (r + 7), x2 = 50 + Math.cos(a) * (r + 15), y2 = 50 + Math.sin(a) * (r + 15); rays += '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '"/>'; }
+    return '<g transform="translate(' + (cx - 50 * sc) + ' ' + (cy - 50 * sc) + ') scale(' + sc + ')"><circle class="sun-glow" cx="50" cy="50" r="' + (r + 10) + '" fill="#ffd23f" opacity=".4"/>' +
+      '<g class="sun-rays" stroke="#ffb51f" stroke-width="5" stroke-linecap="round">' + rays + '</g><circle class="sun-core" cx="50" cy="50" r="' + r + '" fill="url(#wxSun)"/></g>';
+  }
+  function moon(cx, cy) {
+    return '<g class="moon"><path d="M' + (cx + 6) + ' ' + (cy - 20) + 'a22 22 0 1 0 16 30a18 18 0 1 1 -16 -30z" fill="url(#wxMoon)" stroke="#e7c35c" stroke-width="1.5"/></g>' +
+      '<circle class="star" cx="18" cy="22" r="2.2" fill="#fff6c9"/><circle class="star" cx="82" cy="18" r="1.8" fill="#fff6c9" style="animation-delay:.8s"/><circle class="star" cx="86" cy="62" r="1.6" fill="#fff6c9" style="animation-delay:1.5s"/>';
+  }
+  function cloud(cls, x, y, sc, dark) {
+    return '<g class="' + cls + '"><g transform="translate(' + x + ' ' + y + ') scale(' + sc + ')"><path d="M18 46h48a16 16 0 0 0 0-32a22 22 0 0 0-41-6a15 15 0 0 0-7 38z" fill="url(#' + (dark ? 'wxClD' : 'wxCl') + ')" stroke="' + (dark ? '#6f7f99' : '#9fb6d6') + '" stroke-width="2"/></g></g>';
+  }
+  function drops(n, color, heavy) {
+    var o = '', xs = [30, 44, 58, 72, 37, 65, 51];
+    for (var i = 0; i < n; i++) o += '<line class="drop" x1="' + xs[i % xs.length] + '" y1="66" x2="' + (xs[i % xs.length] - 3) + '" y2="' + (heavy ? 76 : 73) + '" stroke="' + color + '" stroke-width="' + (heavy ? 3.2 : 2.6) + '" stroke-linecap="round" style="animation-delay:' + (i * 0.17).toFixed(2) + 's;animation-duration:' + (heavy ? 0.7 : 1) + 's"/>';
+    return o;
+  }
+  function flakes(n) {
+    var o = '', xs = [30, 46, 62, 74, 38, 54, 68];
+    for (var i = 0; i < n; i++) o += '<g class="flake" style="animation-delay:' + (i * 0.45).toFixed(2) + 's"><circle cx="' + xs[i % xs.length] + '" cy="68" r="2.8" fill="#ffffff" stroke="#9fc3ef" stroke-width="1"/></g>';
+    return o;
+  }
+  var g = '';
+  if (kind === '맑음') g = night ? moon(48, 46) : sun(50, 48, 18, 1);
+  else if (kind === '구름조금') g = (night ? '<g transform="translate(14 -6) scale(.7)">' + moon(48, 46) + '</g>' : sun(62, 34, 15, .82)) + cloud('cl-a', 6, 34, .9);
+  else if (kind === '흐림') g = cloud('cl-b', 22, 14, .78, true) + cloud('cl-a', 4, 32, .95);
+  else if (kind === '안개') g = cloud('cl-a', 8, 18, .9) + '<g stroke="#a9bbd6" stroke-width="4" stroke-linecap="round"><line class="fog" x1="16" y1="74" x2="70" y2="74"/><line class="fog" x1="28" y1="84" x2="84" y2="84" style="animation-delay:1.2s"/></g>';
+  else if (kind === '이슬비') g = cloud('cl-a', 8, 14, .92) + drops(4, '#5aa6f0', false);
+  else if (kind === '비') { var heavy = /강한/.test(desc || ''); g = cloud('cl-a', 8, 12, .95, heavy) + drops(heavy ? 7 : 5, '#3d8fe8', heavy); }
+  else if (kind === '눈') g = cloud('cl-a', 8, 12, .95) + flakes(6);
+  else if (kind === '뇌우') g = cloud('cl-a', 8, 10, .98, true) + '<path class="bolt" d="M52 58L42 76h9l-5 16l15-21h-9l6-13z" fill="#ffd23f" stroke="#e8a51c" stroke-width="1.5" stroke-linejoin="round"/>' + drops(4, '#5aa6f0', false);
+  else g = cloud('cl-a', 8, 24, .95);
+  return '<svg class="wxa" viewBox="0 0 100 100" aria-hidden="true">' + defs + g + '</svg>';
 }
 </script>
 </body>
