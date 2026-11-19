@@ -1481,7 +1481,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="mm-tabs" role="tablist" aria-label="메인 메뉴 분류">
     <button type="button" role="tab" data-tab="work" onclick="mmSetTab('work')">근무</button>
     <button type="button" role="tab" data-tab="conv" onclick="mmSetTab('conv')">편의</button>
-    <button type="button" role="tab" data-tab="my" onclick="mmSetTab('my')">MY</button>
+    <button type="button" data-tab="my" class="mm-my-go" onclick="openMyPage()" aria-label="마이페이지로 이동">MY</button>
   </div>
   <div class="menu-grid mm-grid">
     <button type="button" class="menu-btn" data-tab="work" onclick="openSchedule()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무표" alt="" aria-hidden="true" decoding="async"><span>근무표</span></button>
@@ -1646,7 +1646,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="sch-note" style="margin:10px 4px 14px">※ 야간+비번은 1일, 야간·주간 동일 휴가는 3일로 계산합니다.</div>
 </div>
 <div id="vacation-section" class="page-view">
-  <h1 class="screen-title"><span class="page-heading-icon" aria-hidden="true"><img class="heading-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="마이페이지" alt="" decoding="async"></span>마이페이지</h1>
+  <div class="mm-tabs mp-tabs" role="tablist" aria-label="메인 메뉴"><button type="button" data-tab="work" onclick="mpGoTab('work')">근무</button><button type="button" data-tab="conv" onclick="mpGoTab('conv')">편의</button><button type="button" data-tab="my" class="on" aria-selected="true">MY</button></div>
   <div id="mypage-profile" class="mypage-profile"></div>
   <div class="mp-sec" data-sec="join"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('join')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="입사직급" alt="" aria-hidden="true">입사일 · 직급 · 조 설정<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
   <div class="mypage-box">
@@ -25551,8 +25551,10 @@ html body #main-container > #main-section.page-view.active > .menu-grid.mm-grid 
 </style>
 <script id="main-ui1-js">
 /* 메인 탭: 근무 · 편의 · MY (이 폰에 마지막 탭 기억) */
-function mmTab() { var t = 'work'; try { t = localStorage.getItem('rs_main_tab') || 'work'; } catch (e) {} return /^(work|conv|my)$/.test(t) ? t : 'work'; }
+function mmTab() { var t = 'work'; try { t = localStorage.getItem('rs_main_tab') || 'work'; } catch (e) {} return /^(work|conv)$/.test(t) ? t : 'work'; }
 function mmSetTab(t) {
+  /* MY는 탭이 아니라 마이페이지로 바로 이동 */
+  if (t === 'my') { if (typeof openMyPage === 'function') openMyPage(); return; }
   try { localStorage.setItem('rs_main_tab', t); } catch (e) {}
   mmApply();
 }
@@ -26219,25 +26221,34 @@ html body #main-container > #main-section.page-view.active > .menu-grid.mm-grid 
 html body #main-container > #main-section.page-view.active > .menu-grid.mm-grid > button.menu-btn .menu-one-line{overflow:visible!important;text-overflow:clip!important;font-size:var(--mm-lfs,12px)!important;padding:0 3px!important;letter-spacing:-.2px}
 html body #main-container > #main-section.page-view.active > .menu-grid.mm-grid > button.menu-btn .mm-wrap{white-space:normal!important;word-break:keep-all;line-height:1.2}
 html body #bottom-nav.bottom-nav .bn-btn{overflow:visible!important;text-overflow:clip!important;white-space:nowrap!important;font-size:var(--bn-lfs,10px)!important;letter-spacing:-.3px}
-/* 일주일 날씨 팝업: 가로형 (7일을 옆으로 나란히) */
-#weekly-wx-panel .ww-card{width:min(560px,100%)!important;border-radius:22px!important;padding:16px 12px 12px!important}
-#weekly-wx-panel .ww-head strong{font-size:16px!important}
-#weekly-wx-panel .ww-place{margin:3px 0 12px!important}
-#weekly-wx-panel .ww-list{display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;gap:5px!important}
-#weekly-wx-panel .ww-item{display:flex!important;flex-direction:column!important;align-items:center!important;gap:5px!important;padding:10px 2px 9px!important;border-radius:14px!important;background:#f3f7fc!important;border:1px solid transparent;text-align:center!important}
-#weekly-wx-panel .ww-item.today{background:#e6f0ff!important;border-color:#9cc3f5!important}
-#weekly-wx-panel .ww-day{font-size:11px!important;font-weight:800;letter-spacing:-.3px;line-height:1.25;white-space:normal!important}
-#weekly-wx-panel .ww-day b{display:block;font-size:10px;color:#2f6fd6;font-weight:900}
-#weekly-wx-panel .ww-ico{width:30px!important;height:30px!important}
-#weekly-wx-panel .ww-desc{font-size:9.5px!important;color:#5b6b85}
-#weekly-wx-panel .ww-temps{display:flex!important;flex-direction:column!important;gap:1px!important;font-size:13px!important}
-#weekly-wx-panel .ww-temps small{font-size:12px!important;order:0}
-#weekly-wx-panel .ww-temps small::after{content:none!important}
-#weekly-wx-panel .ww-rain{font-size:10px!important}
-#weekly-wx-panel .ww-foot{font-size:10.5px!important;margin-top:10px!important}
-html.ui-dark #weekly-wx-panel .ww-item{background:#2c3e56!important}
-html.ui-dark #weekly-wx-panel .ww-item.today{background:#294765!important;border-color:#4a76b0!important}
-html.ui-dark #weekly-wx-panel .ww-day b{color:#8fb8ff}
+/* 일주일 날씨 팝업: 날짜별로 왼쪽 → 오른쪽 (7칸 나란히) */
+html body #weekly-wx-panel .ww-card{width:min(560px,100%)!important;border-radius:22px!important;padding:16px 12px 12px!important}
+html body #weekly-wx-panel .ww-head strong{font-size:16px!important}
+html body #weekly-wx-panel .ww-place{margin:3px 0 12px!important}
+html body #weekly-wx-panel .ww-list{display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;gap:5px!important}
+html body #weekly-wx-panel .ww-item{display:flex!important;flex-direction:column!important;align-items:center!important;gap:5px!important;padding:10px 2px 9px!important;border-radius:14px!important;background:#f3f7fc!important;border:1px solid transparent;text-align:center!important}
+html body #weekly-wx-panel .ww-item.today{background:#e6f0ff!important;border-color:#9cc3f5!important}
+html body #weekly-wx-panel .ww-day{font-size:11px!important;font-weight:800;letter-spacing:-.3px;line-height:1.25;white-space:normal!important}
+html body #weekly-wx-panel .ww-day b{display:block;font-size:10px;color:#2f6fd6;font-weight:900}
+html body #weekly-wx-panel .ww-ico{width:30px!important;height:30px!important}
+html body #weekly-wx-panel .ww-desc{font-size:9.5px!important;color:#5b6b85}
+html body #weekly-wx-panel .ww-temps{display:flex!important;flex-direction:column!important;gap:1px!important;font-size:13px!important}
+html body #weekly-wx-panel .ww-temps small{font-size:12px!important;order:0}
+html body #weekly-wx-panel .ww-temps small::after{content:none!important}
+html body #weekly-wx-panel .ww-rain{font-size:10px!important}
+html body #weekly-wx-panel .ww-foot{font-size:10.5px!important;margin-top:10px!important}
+html.ui-dark body #weekly-wx-panel .ww-item{background:#2c3e56!important}
+html.ui-dark body #weekly-wx-panel .ww-item.today{background:#294765!important;border-color:#4a76b0!important}
+html.ui-dark body #weekly-wx-panel .ww-day b{color:#8fb8ff}
+html body #weekly-wx-panel .ww-item > *{grid-row:auto!important}
+html body #weekly-wx-panel .ww-ico,html body #weekly-wx-panel .ww-item > span:nth-child(2){width:30px!important;height:30px!important}
+html body #weekly-wx-panel .ww-day{display:block!important;text-align:center}
+html body #weekly-wx-panel .ww-day b{display:block!important;background:none!important;color:#2f6fd6!important;padding:0!important;font-size:10px!important}
+html body #weekly-wx-panel .ww-desc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center!important}
+html body #weekly-wx-panel .ww-temps em{font-style:normal;color:#e5484d}
+html body #weekly-wx-panel .ww-temps small{color:#2f7be5;min-width:0!important;text-align:center!important}
+html body #weekly-wx-panel .ww-rain{text-align:center!important}
+@media(max-width:360px){html body #weekly-wx-panel .ww-list{gap:3px!important}html body #weekly-wx-panel .ww-day{font-size:10px!important}html body #weekly-wx-panel .ww-desc{display:none}}
 </style>
 <script id="swipe-ui-js">
 /* ===== 브리핑 카드: 무한 좌우 넘김 (1장 ↔ 마지막 장 연결) · 1장 누르면 청량리역 1주일 날씨 ===== */
@@ -26256,7 +26267,7 @@ html.ui-dark #weekly-wx-panel .ww-day b{color:#8fb8ff}
     c.onclick = function (ev) {
       if (moved) { ev.preventDefault(); ev.stopPropagation(); return; }
       if (c.classList.contains('c1')) { if (typeof openWeeklyWeather === 'function') openWeeklyWeather(); }      /* 날씨 → 청량리역 1주일 날씨 */
-      else if (c.classList.contains('c2')) { if (typeof openSchedule === 'function') openSchedule(); }           /* 근무 → 근무표 */
+      else if (c.classList.contains('c2')) { if (typeof openTodayDia === 'function') openTodayDia(); }           /* 근무 → 오늘 다이아 상세 팝업 */
       else if (c.classList.contains('c3') || c.classList.contains('c4')) { if (typeof openGroupSection === 'function') openGroupSection(); }   /* 같이 출퇴근 · 동병상련 → 근무그룹 */
       else if (typeof showBriefing === 'function') showBriefing(true);
     };
@@ -26310,7 +26321,7 @@ html.ui-dark #weekly-wx-panel .ww-day b{color:#8fb8ff}
 
 /* ===== 근무 · 편의 · MY: 칸 영역을 좌우로 밀면 탭 이동 (근무→편의→MY→근무) ===== */
 (function () {
-  var ORDER = ['work', 'conv', 'my'];
+  var ORDER = ['work', 'conv'];   /* MY는 마이페이지로 바로 이동하므로 밀기는 근무 ↔ 편의 */
   function step(d) {
     if (typeof mmTab !== 'function' || typeof mmSetTab !== 'function') return;
     var i = ORDER.indexOf(mmTab()); if (i < 0) i = 0;
@@ -26551,5 +26562,97 @@ html.set-grid body #main-container #settings-section #set-flat .set-tile .set-la
 html body #bottom-nav.bottom-nav[data-count] button.bn-btn > span.bn-ico img,html body #bottom-nav.bottom-nav button.bn-btn .nav-art{width:24px!important;height:24px!important}
 html body #bottom-nav.bottom-nav .bn-btn{font-weight:700!important}
 </style>
+<div id="today-dia-panel" role="dialog" aria-modal="true" aria-label="오늘 근무 다이아 상세" onclick="if(event.target===this)closeTodayDia()">
+  <div class="td-card">
+    <div class="td-head"><div><small>TODAY DUTY</small><strong id="td-title">오늘 근무</strong></div><button class="td-close" type="button" aria-label="닫기" onclick="closeTodayDia()">×</button></div>
+    <div class="td-body" id="td-body"></div>
+    <button type="button" class="td-go" onclick="closeTodayDia();openSchedule()">근무표에서 보기 ›</button>
+  </div>
+</div>
+<style id="today-dia-ui">
+/* 메인 브리핑 '오늘 근무' 카드 → 오늘 다이아 상세 팝업 (근무표의 다이아 상세를 그대로 보여줌) */
+#today-dia-panel{display:none;position:fixed;inset:0;z-index:400;align-items:center;justify-content:center;padding:14px;background:rgba(15,29,50,.48);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+#today-dia-panel.active{display:flex;animation:tdFade .2s ease}
+@keyframes tdFade{from{opacity:0}to{opacity:1}}
+#today-dia-panel .td-card{width:min(440px,100%);max-height:86vh;display:flex;flex-direction:column;background:#f1f2f4;border-radius:22px;box-shadow:0 18px 50px rgba(10,30,60,.3);overflow:hidden;animation:tdUp .25s cubic-bezier(.2,.8,.25,1)}
+@keyframes tdUp{from{transform:translateY(18px);opacity:.6}to{transform:none;opacity:1}}
+#today-dia-panel .td-head{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 8px}
+#today-dia-panel .td-head small{display:block;font-size:10.5px;font-weight:800;letter-spacing:2.4px;color:#3c82d8;opacity:.8}
+#today-dia-panel .td-head strong{font-size:18px;font-weight:900;color:#173257}
+#today-dia-panel .td-close{width:36px;height:36px;border:0;border-radius:50%;background:#e4ecf7;color:#2f6fd6;font-size:22px;line-height:1;cursor:pointer}
+#today-dia-panel .td-body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 14px 6px;flex:1}
+#today-dia-panel .td-body #day-detail{margin:0!important;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
+#today-dia-panel .td-go{margin:6px 14px 14px;height:44px;border:0;border-radius:14px;background:#2f6fd6;color:#fff;font:inherit;font-size:14.5px;font-weight:800;cursor:pointer}
+html.ui-dark #today-dia-panel .td-card{background:#14181e}
+/* 팝업 안에서 연 창(열차 정보 · 메모장 · 행로표 등)이 위에 보이도록 */
+body:has(#today-dia-panel.active) #pass-pop-panel{z-index:11001!important}
+html.ui-dark #today-dia-panel .td-head strong{color:#e8eef8}
+html.ui-dark #today-dia-panel .td-close{background:#243246;color:#8fb8ff}
+</style>
+<script id="today-dia-js">
+/* 오늘 다이아 상세: 근무표의 상세(#day-detail)를 오늘 날짜로 그려서 팝업 안으로 잠시 옮김 → 닫으면 제자리로 */
+(function () {
+  var home = null, prevSel = null;
+  window.openTodayDia = function () {
+    var dd = document.getElementById('day-detail'), body = document.getElementById('td-body'), pn = document.getElementById('today-dia-panel');
+    if (!dd || !body || !pn) { if (typeof openSchedule === 'function') openSchedule(); return; }
+    var t = todayKST(), W = ['일', '월', '화', '수', '목', '금', '토'];
+    document.getElementById('td-title').textContent = '오늘 근무 · ' + (t.m + 1) + '월 ' + t.d + '일 (' + W[new Date(t.y, t.m, t.d).getDay()] + ')';
+    if (!pn.classList.contains('active')) {
+      prevSel = selDate ? { y: selDate.y, m: selDate.m, d: selDate.d } : null;
+      home = { parent: dd.parentNode, next: dd.nextSibling };
+      body.appendChild(dd);
+    }
+    selDate = { y: t.y, m: t.m, d: t.d };
+    try { renderDayDetail(); } catch (e) { dd.innerHTML = '<div class="dd-empty">오늘 근무 정보를 불러오지 못했습니다.</div>'; }
+    pn.classList.add('active'); body.scrollTop = 0;
+  };
+  window.closeTodayDia = function () {
+    var dd = document.getElementById('day-detail'), pn = document.getElementById('today-dia-panel');
+    if (pn) pn.classList.remove('active');
+    if (dd && home && home.parent) { home.parent.insertBefore(dd, home.next && home.next.parentNode === home.parent ? home.next : null); }
+    home = null;
+    if (prevSel) { selDate = prevSel; prevSel = null; try { renderDayDetail(); } catch (e) {} }
+  };
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { var pn = document.getElementById('today-dia-panel'); if (pn && pn.classList.contains('active')) closeTodayDia(); } });
+})();
+</script>
+<style id="mp-logout-ui">
+#vacation-section .mp-logout-row{display:flex;align-items:center;gap:12px;width:100%;min-height:54px;margin:0 0 14px;padding:0 14px;border:1px solid #e6ecf4;border-radius:15px;background:#fff;font:inherit;font-size:15px;font-weight:700;color:#e5484d;cursor:pointer;text-align:left;box-shadow:0 1px 3px rgba(16,40,80,.04)}
+#vacation-section .mp-logout-row img{width:28px;height:28px;flex:0 0 28px}
+html.ui-dark #vacation-section .mp-logout-row{background:#1b2027;border-color:#2a313b;color:#ff6b6b}
+#main-section .mm-tabs button.mm-my-go{position:relative}
+</style>
+<script id="mp-logout-js">
+/* MY → 마이페이지로 바로 가므로, 로그아웃은 마이페이지 맨 아래에 */
+(function () {
+  function add() {
+    var sec = document.getElementById('vacation-section'); if (!sec || document.getElementById('mp-logout-row')) return;
+    var list = sec.querySelectorAll(':scope > .mp-sec'); var last = list[list.length - 1]; if (!last) return;
+    var b = document.createElement('button'); b.type = 'button'; b.id = 'mp-logout-row'; b.className = 'mp-logout-row';
+    b.innerHTML = '<img data-icon="로그아웃" alt="" aria-hidden="true"><span>로그아웃</span>';
+    b.onclick = function () { if (typeof logout === 'function') logout(); };
+    last.parentNode.insertBefore(b, last.nextSibling);
+    try { applyAppIcons(b); } catch (e) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();
+})();
+</script>
+<style id="mp-tabs-ui">
+/* 마이페이지 위: 제목 대신 근무 · 편의 · MY (메인과 같은 모양) */
+html body #vacation-section .mp-tabs{display:flex;gap:2px;padding:3px;margin:42px auto 16px;width:170px;box-sizing:border-box;max-width:none;border-radius:999px;background:rgba(255,255,255,.7);border:0;box-shadow:none}
+html body #vacation-section .mp-tabs button{flex:0 0 55px;width:55px;height:28px;border:0;border-radius:999px;background:transparent;color:#6d80a3;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer;padding:0}
+html body #vacation-section .mp-tabs button.on{background:#4f7fe0;color:#fff;box-shadow:none}
+html.ui-dark body #vacation-section .mp-tabs{background:rgba(255,255,255,.08)}
+html.ui-dark body #vacation-section .mp-tabs button{color:#9fb0cc}
+html.ui-dark body #vacation-section .mp-tabs button.on{background:#4f7fe0;color:#fff}
+</style>
+<script id="mp-tabs-js">
+function mpGoTab(t) {
+  try { localStorage.setItem('rs_main_tab', t); } catch (e) {}
+  if (typeof goHome === 'function') goHome(); else switchSection('main-section');
+  setTimeout(function () { try { mmApply(); if (window.mmFitLabels) mmFitLabels(); } catch (e) {} }, 0);
+}
+</script>
 </body>
 </html>
