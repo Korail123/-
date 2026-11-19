@@ -2962,7 +2962,10 @@ function buildSnapIndex() {
   var rows = (snapshot && snapshot.raw && snapshot.raw.overrides) || [];
   for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
-    if (!row || row[9] === 'shadow' || row[8] === 'shadow') continue;
+    /* 'shadow' 줄 = 내가 교환해서 바뀐 상대방 근무 (서버 반영 전까지 이 폰에서 먼저 보여줌) → 화면에 반영해야 함
+       (전에는 건너뛰어서 교환해도 상대방 근무가 그대로 보였음) */
+    if (!row) continue;
+    var isShadow = row[9] === 'shadow' || row[8] === 'shadow';
     var rType = String(row[2] == null ? '' : row[2]).trim();
     var rDia = row[3] == null ? '' : row[3];
     var rStatus = row[4] == null ? '' : row[4];
@@ -2977,7 +2980,8 @@ function buildSnapIndex() {
       updatedAt: row[5],
       partnerId: row[6] || '',
       partnerName: row[7] || '',
-      dutyStatus: row[8] || ''
+      dutyStatus: row[8] === 'shadow' ? '' : (row[8] || ''),
+      shadow: isShadow || undefined
     };
   }
   snapshot.ovMap = map;
@@ -6928,7 +6932,7 @@ function openScheduleEdit(y, m, d) {
     b.className =
       'schedule-edit-option' +
       (info && info.manual && ((info.overrideType === 'status' && info.status === name) || info.dutyStatus === name) ? ' selected' : '');
-    b.textContent = name;
+    b.textContent = name === '육아휴직' ? '육아휴가' : name;   /* 저장 값은 그대로 */
     b.onclick = function () {
       /* 이미 선택된 항목을 한 번 더 누르면 선택 취소 */
       var wasSelected = b.classList.contains('selected');
@@ -7326,7 +7330,7 @@ function groupCellClass(label, isStatus) {
 /* 근무그룹 표는 근무표 달력의 근무구분만 동일하게 표시합니다.
    교환 상대·휴무충당·대기충당 등 상세 정보는 칸 클릭 팝업에서만 표시합니다. */
 /* 근무표 · 근무그룹 표시용: 최대 2글자 (별표 * 는 글자 수에서 뺌). 휴무·휴일 → 휴, 출산휴가 → 출산 … */
-var RS_DUTY_SHORT = { '휴무': '휴', '휴일': '휴', '휴무일': '휴', '주간': '주', '야간': '야', '비번': '비', '육아휴직': '육아', '출산휴가': '출산', '특별휴가': '특별',
+var RS_DUTY_SHORT = { '휴무': '휴', '휴일': '휴', '휴무일': '휴', '주간': '주', '야간': '야', '비번': '비', '육아휴직': '육아', '육아휴가': '육아', '출산휴가': '출산', '특별휴가': '특별',
   '돌봄휴가': '돌봄', '경조휴가': '경조', '대체휴무': '대체', '보상휴가': '보상', '대기충당': '대기', '휴무충당': '충당', '운휴충당': '운휴' };
 function rsDutyShort(label) {
   var t = String(label == null ? '' : label).trim();
@@ -7357,7 +7361,7 @@ function rsCalDuty(info, dateKey, seqCtx) {
   else if (/^(비|비번)$/i.test(rawDuty)) d = '비';
   else if (info.overrideType === 'status' && rawDuty && !/^(대기충당|휴무충당|운휴충당)$/i.test(rawDuty)) d = /^(휴|휴무|휴일)$/i.test(rawDuty) ? '휴' : rawDuty;
   else if (/^(휴|휴무|휴일)$/i.test(rawDuty)) d = '휴';
-  else if (/^(휴가|연차|반차|병가|공가|특별휴가|출산휴가|육아휴직|돌봄|돌봄휴가|휴직|경조휴가|대체휴무|보상휴가)$/i.test(rawDuty)) d = rawDuty;
+  else if (/^(휴가|연차|반차|병가|공가|특별휴가|출산휴가|육아휴직|육아휴가|돌봄|돌봄휴가|휴직|경조휴가|대체휴무|보상휴가)$/i.test(rawDuty)) d = rawDuty;
   else if (/^(주|야|비|휴|X)$/.test(String(info.label || '').trim())) d = String(info.label).trim();
   else if (info.overrideType === 'status') d = dutyOf(info.type) || dutyOf(info.label) || '';
   if (!d && info.label) {
@@ -9459,7 +9463,7 @@ function changeVacYear(diff) {
 var VAC_TYPES = [
   { key: '연차', label: '연차휴가', color: '#e53935' },
   { key: '출산휴가', label: '출산휴가', color: '#e0357f' },
-  { key: '육아휴직', label: '육아휴직', color: '#f97316' },
+  { key: '육아휴직', label: '육아휴가', color: '#f97316' },   /* 저장 값(key)은 그대로, 화면 이름만 육아휴가 */
   { key: '돌봄', label: '돌봄휴직', color: '#a855f7' },
   { key: '병가', label: '병가', color: '#0a84c8' },
   { key: '공가', label: '공가', color: '#14b8a6' }
@@ -21287,7 +21291,7 @@ function rpCalendarDutyLabel(info) {
   var status = String(info.status || '').trim();
   var type = String(info.dutyStatus || info.type || '').trim();
   var label = String(info.label || '').trim();
-  var vacation = /^(연차|반차|병가|공가|특별휴가|출산휴가|육아휴직|돌봄|돌봄휴가|휴직|경조휴가|대체휴무|보상휴가|휴가)$/;
+  var vacation = /^(연차|반차|병가|공가|특별휴가|출산휴가|육아휴직|육아휴가|돌봄|돌봄휴가|휴직|경조휴가|대체휴무|보상휴가|휴가)$/;
   /* 근무 변경 창에서 설정한 휴가·휴무는 다른 근무 구분보다 우선합니다. */
   if (info.overrideType === 'status' && status && !/^(주|주간|야|야간|비|비번|X|대기충당|휴무충당|운휴충당)$/.test(status)) {
     return /^(휴|휴무|휴일)$/.test(status) ? '휴' : status;
@@ -24936,14 +24940,16 @@ function schCloseDay() {
 .sch-day-dialog #day-detail{margin:0;box-shadow:none}
 </style>
 <script id="team-label-jibu">
-/* 화면 글자 속 '입환조'를 '지부조'로 바꿔 보여줌 (값 · 저장은 그대로라 근무표 · 다이아 · 서버와 계속 맞음)
+/* 화면 글자 속 '입환조'→'지부조', '육아휴직'→'육아휴가'로 바꿔 보여줌 (값 · 저장은 그대로라 근무표 · 다이아 · 서버와 계속 맞음)
    게시판 글 · 댓글 · 입력 칸은 사용자가 쓴 그대로 둠 */
 (function () {
-  var FROM = /입환조/g, TO = '지부조';
+  var MAP = { '입환조': '지부조', '육아휴직': '육아휴가' };
+  var FROM = /입환조|육아휴직/g, TO = function (w) { return MAP[w] || w; };
+  function has(v) { return v.indexOf('입환조') >= 0 || v.indexOf('육아휴직') >= 0; }
   var SKIP = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, INPUT: 1, OPTION: 0, CODE: 1 };
   var KEEP = '.bp-content,.bp-c-text,.bp-title,#board-editor-content,#board-editor-subject,.board-list-table';
   function fix(n) {
-    if (!n || n.nodeType !== 3 || n.nodeValue.indexOf('입환조') < 0) return;
+    if (!n || n.nodeType !== 3 || !has(n.nodeValue)) return;
     var p = n.parentElement; if (!p || SKIP[p.tagName] || (p.closest && p.closest(KEEP))) return;
     n.nodeValue = n.nodeValue.replace(FROM, TO);
   }
