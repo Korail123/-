@@ -3886,6 +3886,9 @@ function applyShadowToSnapshot() {
         srv = rows[i]; break;
       }
     }
+    /* 서버에 교환 시각 이후(1분 여유)에 저장된 기록이 있으면 서버가 맞음 → 보관본 정리
+       (서버는 교환 때 두 사람 기록을 바로 씀. 표기만 조금 달라도 보관본이 14일 동안 남아 덮어쓰던 문제 방지) */
+    if (srv && stampOrder(srv[5]) >= s.t - 60000) return;
     if (s.type === 'clear') {
       if (!srv) return;
     } else if (
