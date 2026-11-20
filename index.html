@@ -3237,6 +3237,15 @@ function snapVersionFor(owner) {
     : '';
 }
 /* 서버와 동기화. 내가 가진 버전(ver)을 보내서 바뀐 게 없으면 "변경 없음"만 받는다. cb(ok, 오류메시지) */
+/* 조별 순서표 보관 (조 이름별로 따로) */
+function rsTeamDiaKey(team) { return 'rs_team_dia_v1_' + String(team || ''); }
+function rsTeamDiaSave(team, r) {
+  if (!team || !Array.isArray(r.dia) || !r.dia.length) return;
+  try { localStorage.setItem(rsTeamDiaKey(team), JSON.stringify({ at: Date.now(), dia: r.dia, weekdayRules: r.weekdayRules || {}, femaleRules: r.femaleRules || null, females: Array.isArray(r.females) ? r.females : null })); } catch (e) {}
+}
+function rsTeamDiaCache(team) {
+  try { var c = JSON.parse(localStorage.getItem(rsTeamDiaKey(team)) || 'null'); return (c && Array.isArray(c.dia) && c.dia.length) ? c : null; } catch (e) { return null; }
+}
 function refreshSnapshot(force, cb) {
   var user = getCurrentUser();
   if (!user.token) {
@@ -3259,15 +3268,25 @@ function refreshSnapshot(force, cb) {
   var verUse = snapForceFull ? '' : snapVersionFor(owner);
   snapForceFull = false;
   function snapFetch(cb2) {
-    if (snapTeamMissing) return api({ action: 'getSnapshot', employeeId: owner, token: user.token, ver: verUse }, cb2);
+    /* 조마다 자기 순서표로만 순환: 받은 조별 순서표는 조 이름별로 이 폰에 따로 저장해 두고,
+       조별 근무표를 못 받으면 '내 조'가 마지막으로 받은 순서표로만 계산 (다른 조 순서표를 절대 섞지 않음) */
+    var mt0 = (typeof myTeam === 'function' && myTeam()) || '부기관사조';
+    function plain(r1) {
+      if (!r1 || !r1.success || r1.unchanged || mt0 === '부기관사조') return cb2(r1);
+      var c = rsTeamDiaCache(mt0);
+      if (!c) return cb2({ success: false, message: mt0 + ' 근무표를 불러오지 못했어요. 잠시 후 다시 열어 주세요.' });
+      r1.dia = c.dia; r1.team = mt0; r1.weekdayRules = c.weekdayRules || {};
+      if (c.femaleRules) r1.femaleRules = c.femaleRules;
+      if (c.females) r1.females = c.females;
+      r1.version = String(r1.version || '') + '|' + mt0 + '|cache';
+      cb2(r1);
+    }
+    if (snapTeamMissing) return api({ action: 'getSnapshot', employeeId: owner, token: user.token, ver: verUse }, plain);
     api({ action: 'getTeamSnapshot', employeeId: owner, token: user.token, ver: verUse }, function (r0) {
+      if (r0 && r0.success && !r0.unchanged && Array.isArray(r0.dia)) rsTeamDiaSave(r0.team || mt0, r0);
       if (r0 && (r0.success || r0.errorCode === 'AUTH')) return cb2(r0);
-      /* 다른 조(1종조 · 2종조 · 디젤조 · 지부조 · 팀장조)는 조별 근무표를 못 받았을 때 부기관사조 순서표로 대신 그리지 않음
-         (예전: 한 번 실패하면 부기관사조 다이아로 2종조 근무표를 계산해서 근무패턴이 틀어짐) */
-      var mt0 = (typeof myTeam === 'function' && myTeam()) || '부기관사조';
-      if (mt0 !== '부기관사조') return cb2(r0 || { success: false, message: '조별 근무표를 불러오지 못했어요. 잠시 후 다시 열어 주세요.' });
-      snapTeamMissing = true;
-      api({ action: 'getSnapshot', employeeId: owner, token: user.token, ver: '' }, cb2);
+      if (mt0 === '부기관사조') snapTeamMissing = true;
+      api({ action: 'getSnapshot', employeeId: owner, token: user.token, ver: '' }, plain);
     });
   }
   snapFetch(function (r) {
@@ -3418,13 +3437,17 @@ function rotationOf(list) {
     '12101', '12942', 'X', '12551', '휴무', '휴무',
     '12201', '12401', '12403', '12403~', '휴무', '휴무'
   ];
-  var seqSeen = {};
+  var seqSeen = {}, isBugi = (rsRulesTeamOverride || curTeam()) === '부기관사조';
+  /* 같은 순서 번호가 두 번 나오면 두 번째부터는 순서 없는 것으로 */
+  out.forEach(function (x) { var n = parseInt(String(x && x.seq != null ? x.seq : ''), 10); if (!isNaN(n)) { if (seqSeen[n]) x.__dupSeq = 1; else seqSeen[n] = 1; } });
+  seqSeen = {};
   out.sort(function (a, b) {
     var aSeq = parseInt(String(a && a.seq != null ? a.seq : ''), 10);
     var bSeq = parseInt(String(b && b.seq != null ? b.seq : ''), 10);
-    var aValid = !isNaN(aSeq) && aSeq >= 1 && aSeq <= rotMaxSeq() && !seqSeen['a' + aSeq];
-    var bValid = !isNaN(bSeq) && bSeq >= 1 && bSeq <= rotMaxSeq() && !seqSeen['b' + bSeq];
+    var aValid = !isNaN(aSeq) && aSeq >= 1 && aSeq <= rotMaxSeq() && !a.__dupSeq;
+    var bValid = !isNaN(bSeq) && bSeq >= 1 && bSeq <= rotMaxSeq() && !b.__dupSeq;
     if (aValid && bValid) return aSeq - bSeq;
+    if (!isBugi) return aValid ? -1 : bValid ? 1 : 0;   /* 다른 조는 순서 번호로만 (부기관사조 기본 순서를 쓰지 않음) */
     var ad = String(a && (a.dia || a.type) || '').trim().toUpperCase();
     var bd = String(b && (b.dia || b.type) || '').trim().toUpperCase();
     var ai = defaultDiaOrder.indexOf(ad), bi = defaultDiaOrder.indexOf(bd);
@@ -27356,12 +27379,13 @@ function ghDiaLoad(force) {
 })();
 </script>
 <script id="team-snap-guard-js">
-/* 이 폰에 남아 있는 근무표가 '조 정보 없는 부기관사조 순서표'인데 내 조가 다른 조면 조별 근무표로 다시 받음 */
+/* 이 폰에 남아 있는 근무표가 내 조 순서표가 아니면(조 정보 없음 · 다른 조) 내 조 근무표로 다시 받음 */
 (function () {
   function chk() {
     try {
       var mt = (typeof myTeam === 'function' && myTeam()) || '부기관사조';
-      if (mt === '부기관사조' || !snapshotUsable() || (snapshot.raw && snapshot.raw.team)) return;
+      if (!snapshotUsable() || !snapshot.raw) return;
+      if (snapshot.raw.team ? snapshot.raw.team === mt : mt === '부기관사조') return;   /* 내 조 순서표가 맞으면 그대로 */
       snapForceFull = true; snapTeamMissing = false;
       refreshSnapshot(true, function () { try { applyMetaFromSnapshot(); loadMyMonth(); renderCalendar(); renderDayDetail(); } catch (e) {} });
     } catch (e) {}
