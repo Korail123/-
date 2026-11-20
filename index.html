@@ -26882,7 +26882,7 @@ html.ui-dark .st27-sub span{background:#252c36;color:#c9d3e0}
 html.ui-dark .st27-sub span b{color:#e8eef8}
 </style>
 <script id="stats27-js">
-/* 날짜별 근무 + 근무시간 = 퇴근 − (출근 + 휴게) */
+/* 날짜별 근무 + 근무시간: XROIS 개인근무명세서 '시간'이 있는 날만 표시 · 합계도 그날들만 */
 function st27Day(key, mb) {
   var info = null; try { info = snapDayWithAuto(key, mb, snapshot.raw.dia || [], snapshot.ovMap); } catch (e) {}
   if (!info) return null;
@@ -26905,11 +26905,14 @@ function st27Day(key, mb) {
       try { rr = rsRestFor(key, info.dia); if (!rr.known) { var r2 = rsRestMin(info.dia); if (r2.known && r2.min) rr = r2; } } catch (e) {}
       rest = rr.known ? (rr.min || 0) : 0; restKnown = !!rr.known;
       if (min && rest) min = Math.max(0, min - rest);
+      min = 0;   /* 근무시간은 XROIS 개인근무명세서가 있는 날만 (아래에서 채움) */
     } else if (tp === '비') { g = 'off'; lab = '비'; }
     else if (tp === '휴') { g = 'rest'; lab = '휴'; }
     else if (tp === 'X') { g = 'x'; lab = 'X'; }
     else lab = tp;
   }
+  /* XROIS 개인근무명세서 '시간'(총 사업시간 · 휴게 이미 빠짐)이 있으면 그 값을 그대로 */
+  try { var xs = typeof xrGet === 'function' ? xrGet('spec', {})[key] : null; if (xs && +xs.tot > 0) { min = Math.round(+xs.tot); restKnown = true; rest = +xs.rest || 0; } } catch (e) {}
   if (typeof rsLabelStyled === 'function' && /^(주|야|비|휴)$/.test(lab)) lab = rsLabelStyled(lab);
   return { g: g, lab: lab.length > 3 ? lab.slice(0, 3) : lab, min: min, rest: rest, restKnown: restKnown };
 }
@@ -26956,6 +26959,7 @@ function st27Render() {
         (x && x.min ? '<small class="' + (x.restKnown ? '' : 'est') + '">' + hm(x.min) + '</small>' : '') + '</div>';
     }
     var over = wk > 52 * 60;
+    if (!wk) { cg += '<div class="st27-wk none"><b>–</b></div>'; continue; }   /* 명세서 없는 주는 비워 둠 */
     cg += '<div class="st27-wk' + (over ? ' over' : '') + '"><b>' + Math.floor(wk / 60) + '<i>h</i></b>' + (wk % 60 ? '<small>' + (wk % 60) + '분</small>' : '<small>&nbsp;</small>') + '<span>' + (over ? '52h 초과' : '52h 이내') + '</span></div>';
   }
   html += '<div class="st27-card"><div class="st27-cw">' + ['일', '월', '화', '수', '목', '금', '토'].map(function (w, i) { return '<b class="' + (i === 0 ? 'su' : i === 6 ? 'sa' : '') + '">' + w + '</b>'; }).join('') + '<b class="wh">주 합계</b></div><div class="st27-cg">' + cg + '</div></div>';
@@ -26975,6 +26979,8 @@ function st27Render() {
 #stats-section .st27-wk small{font-size:9px;font-weight:800;color:#3f8f55}
 #stats-section .st27-wk span{font-size:8.5px;font-weight:900;color:#1f7a3a;margin-top:2px;white-space:nowrap}
 #stats-section .st27-wk.over{background:#fde7e8}
+#stats-section .st27-wk.none{background:#f3f5f8}
+#stats-section .st27-wk.none b{color:#b8c1cd}
 #stats-section .st27-wk.over b,#stats-section .st27-wk.over small,#stats-section .st27-wk.over span{color:#d1343a}
 #stats-section .st27-c span{padding:0 4px!important}
 #stats-section .st27-c.oth{opacity:.38}
