@@ -1671,7 +1671,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   </div></div>
 <div class="mp-sec" data-sec="crew"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('crew')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="CREW연동" alt="" aria-hidden="true">CREW 연동<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
   <div class="mypage-box">
-    <div class="mp-note">XROIS(xcrew.korail.com) 비밀번호를 저장해 두면, <b>철도비서에 로그인할 때마다</b> <b>XROIS 당월승무근무표</b>로 다이아를 맞추고, <b>승무근무표 현황</b>에서 함께 타는 <b>승무원</b> 정보를 가져옵니다. (승무원은 이번 달 근무일)</div>
+    <div class="cc-chips"><span>다이아 자동</span><span>승무원 표시</span><span>🔒 폰에만 저장</span></div>
     <div class="mp-field"><span>로그인 사원번호</span><b id="crew-id">-</b></div>
     <label class="mp-field"><span>XROIS 비밀번호</span><input type="password" id="crew-pw" autocomplete="off" placeholder="비밀번호 입력" style="width:150px"></label>
     <div class="mp-crew-btns">
@@ -1680,8 +1680,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <button type="button" class="crew-refresh crew-off" onclick="clearCrewLogin()">연동 해제</button>
     </div>
     <div id="crew-status" class="mp-crew-status"></div>
-    <div class="mp-xr"><div><b>XROIS 다이아 확인 (로그인할 때)</b><small id="xr-status">로그인할 때마다 XROIS 근무표를 확인해서, 바뀐 다이아가 있으면 바꿀지 물어봐요.</small></div></div>
-    <div class="mp-note" style="margin-top:8px">※ 비밀번호는 이 폰(브라우저)에만 저장되고, 서버에는 저장되지 않습니다. 공용 기기에서는 사용하지 마세요.</div>
+    <small id="xr-status" class="cc-xr"></small>
   </div>
   </div></div>
 </div>
@@ -2597,6 +2596,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <div id="group-swap-select-panel" class="dia-modal" style="z-index:179" onclick="if(event.target===this)closeGroupSwapSelector()">
   <div class="group-swap-select-dialog">
     <div class="dia-dialog-title swap-title"><img id="swap-select-ico" class="cmp-ico cmp-ico-lg" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무교환" data-ic-center alt="" aria-hidden="true" decoding="async"><span id="swap-select-title">누구와 바꾸시겠습니까?</span></div>
+    <div class="sx-wrap"><div class="sx-box"><svg class="sx-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><input id="swap-search" class="sx-in" type="text" placeholder="이름으로 찾기" autocomplete="off" oninput="swapSearchRender()" onfocus="swapPreloadNames();swapSearchRender()"><button type="button" id="swap-search-x" class="sx-x" onclick="swapSearchClear(true)" aria-label="지우기">✕</button></div><div id="swap-search-drop" class="sx-drop"></div></div>
     <div id="swap-select-note" class="swap-note">근무를 교환할 그룹원을 선택해 주세요.</div>
     <div id="group-swap-user-list" class="group-swap-user-list"></div>
     <div class="dia-dialog-actions" style="padding-top:16px"><button type="button" class="dia-text-btn" onclick="closeGroupSwapSelector()">취소</button></div>
@@ -21866,10 +21866,10 @@ function xrCall(body, cb) {
 function xrStatus(text, bad) { var el = $('xr-status'); if (el) { el.textContent = text; el.classList.toggle('bad', !!bad); } }
 function xrRenderStatus() {
   var m = xrGet('meta', {});
-  if (!getCrewPw()) { xrStatus('CREW 연동 비밀번호를 저장하면 로그인할 때마다 XROIS 다이아를 확인해요.'); return; }
-  if (m.fail) { xrStatus('XROIS 로그인 실패 · 비밀번호를 다시 저장하면 다시 확인해요. (계정 잠김 방지로 자동 확인 멈춤)', true); return; }
+  if (!getCrewPw()) { xrStatus(''); return; }
+  if (m.fail) { xrStatus('XROIS 로그인 실패 · 비밀번호를 다시 저장해 주세요. (자동 확인 멈춤)', true); return; }
   if (m.msg && !m.ok) { xrStatus(m.msg, true); return; }
-  xrStatus(m.at ? '마지막 확인 ' + m.stamp + (m.changed ? ' · 바뀐 다이아 ' + m.changed + '개 반영' : ' · 바뀐 다이아 없음') + ' · 로그인할 때마다 확인' : '로그인할 때마다 XROIS 근무표를 확인해서, 바뀐 다이아가 있으면 바꿀지 물어봐요.');
+  xrStatus(m.at ? '마지막 확인 ' + m.stamp + (m.changed ? ' · 바뀐 다이아 ' + m.changed + '개 반영' : ' · 바뀐 다이아 없음') : '');
 }
 
 /* force: 비밀번호 새로 저장 / [지금 확인] 버튼 */
@@ -27195,6 +27195,112 @@ function leaderGuideGo() {
       var p = document.getElementById('leader-guide'); if (p) p.classList.add('active');
     } catch (e) {}
   }, 2000);
+})();
+</script>
+<style id="crew-chips-ui">
+html body .mp-sec[data-sec="crew"] .cc-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+html body .mp-sec[data-sec="crew"] .cc-chips span{font-size:11.5px;font-weight:700;color:#2f6fd6;background:#eaf2ff;border-radius:999px;padding:4px 10px;white-space:nowrap}
+html body .mp-sec[data-sec="crew"] .cc-xr{display:block;margin-top:4px;font-size:11.5px;color:#5b6678;line-height:1.45;word-break:keep-all}
+html body .mp-sec[data-sec="crew"] .cc-xr:empty{display:none}
+html body .mp-sec[data-sec="crew"] .cc-xr.bad{color:#c62828}
+html.dark body .mp-sec[data-sec="crew"] .cc-chips span,body.dark .mp-sec[data-sec="crew"] .cc-chips span{background:rgba(47,111,214,.18);color:#8db6ff}
+</style>
+<style id="swap-search-ui">
+html body #group-swap-select-panel .sx-wrap{position:relative;margin:4px 0 10px}
+html body #group-swap-select-panel .sx-box{display:flex;align-items:center;gap:8px;height:42px;padding:0 12px;border:1.5px solid #d6deea;border-radius:12px;background:#fff;transition:border-color .15s}
+html body #group-swap-select-panel .sx-box:focus-within{border-color:#2f6fd6}
+html body #group-swap-select-panel .sx-ic{width:18px;height:18px;color:#8a96a8;flex:0 0 auto}
+html body #group-swap-select-panel .sx-in{flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:15px;font-weight:600;color:#13294b;padding:0}
+html body #group-swap-select-panel .sx-in::placeholder{color:#a3adbb;font-weight:500}
+html body #group-swap-select-panel .sx-x{display:none;flex:0 0 auto;width:20px;height:20px;border:0;border-radius:50%;background:#b8c2d0;color:#fff;font-size:11px;line-height:20px;padding:0;cursor:pointer}
+html body #group-swap-select-panel .sx-wrap.has-q .sx-x{display:block}
+html body #group-swap-select-panel .sx-drop{display:none;position:absolute;left:0;right:0;top:48px;z-index:20;max-height:300px;overflow-y:auto;background:#fff;border:1px solid #d9e1ec;border-radius:14px;box-shadow:0 12px 30px rgba(19,41,75,.18);padding:6px}
+html body #group-swap-select-panel .sx-drop.open{display:block}
+html body #group-swap-select-panel .sx-it{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;padding:11px 10px;border:0;border-radius:10px;background:transparent;font-size:14px;color:#13294b;text-align:left;cursor:pointer}
+html body #group-swap-select-panel .sx-it:first-child,html body #group-swap-select-panel .sx-it:active{background:#f1f6ff}
+html body #group-swap-select-panel .sx-it b{font-weight:800}
+html body #group-swap-select-panel .sx-it mark{background:none;color:#2f6fd6;font-weight:800}
+html body #group-swap-select-panel .sx-team{font-style:normal;font-size:11px;font-weight:700;color:#5b6678;background:#eef1f5;border-radius:999px;padding:2px 8px;margin-left:6px;white-space:nowrap}
+html body #group-swap-select-panel .sx-id{font-size:12px;color:#8a96a8;white-space:nowrap}
+html body #group-swap-select-panel .sx-empty{padding:12px 10px;font-size:13px;color:#8a96a8;text-align:center}
+html.dark body #group-swap-select-panel .sx-box,html.dark body #group-swap-select-panel .sx-drop{background:#1d2533;border-color:#33405a}
+html.dark body #group-swap-select-panel .sx-in,html.dark body #group-swap-select-panel .sx-it{color:#e6ecf5}
+html.dark body #group-swap-select-panel .sx-it:first-child{background:rgba(47,111,214,.18)}
+html.dark body #group-swap-select-panel .sx-team{background:#2a3446;color:#b7c3d6}
+</style>
+<script id="swap-search-js">
+var swapNameCache = {}, swapNameLoading = 0, swapAutoPick = null;
+function swapTeamLabel(t) { return (typeof TEAM_LABEL === 'object' && TEAM_LABEL[t]) || t; }
+function swapSearchPool() {
+  var me = String(getCurrentUser().employeeId || ''), mine = curTeam(), seen = {}, out = [];
+  function add(m, t) { if (!m) return; var id = String(m.employeeId || ''); if (!id || id === me || seen[id]) return; seen[id] = 1; out.push({ id: id, name: String(m.name || id), team: t }); }
+  (groupRows || []).forEach(function (m) { add(m, mine); });
+  Object.keys(swapNameCache).forEach(function (t) { if (t !== mine) (swapNameCache[t] || []).forEach(function (m) { add(m, t); }); });
+  return out;
+}
+function swapPreloadNames() {
+  var u = getCurrentUser(); if (!u.token) return;
+  var mine = curTeam(), cnt = {};
+  Object.keys(rsTeams || {}).forEach(function (id) { if (String(id) !== String(u.employeeId)) cnt[rsTeams[id]] = (cnt[rsTeams[id]] || 0) + 1; });
+  RS_TEAMS.forEach(function (t) {
+    if (t === mine || !cnt[t] || swapNameCache[t]) return;
+    swapNameCache[t] = []; swapNameLoading++;
+    api({ action: 'getTeamSnapshot', employeeId: u.employeeId, token: u.token, team: t }, function (r) {
+      swapNameLoading--;
+      if (r && r.success && Array.isArray(r.members)) swapNameCache[t] = r.members; else delete swapNameCache[t];
+      swapSearchRender();
+    });
+  });
+}
+function swapSearchRender() {
+  var inp = $('swap-search'), drop = $('swap-search-drop'); if (!inp || !drop) return;
+  var q = inp.value.trim(), wrap = inp.closest('.sx-wrap');
+  if (wrap) wrap.classList.toggle('has-q', !!q);
+  if (!q) { drop.classList.remove('open'); drop.innerHTML = ''; return; }
+  var ql = q.toLowerCase();
+  var hits = swapSearchPool().filter(function (p) { return p.name.toLowerCase().indexOf(ql) >= 0 || p.id.indexOf(q) === 0; })
+    .sort(function (a, b) { return (a.name.indexOf(q) - b.name.indexOf(q)) || a.name.localeCompare(b.name, 'ko'); }).slice(0, 8);
+  window._swapHits = hits;
+  if (!hits.length) { drop.innerHTML = '<div class="sx-empty">' + (swapNameLoading ? '다른 조 이름을 불러오는 중…' : '찾는 이름이 없어요') + '</div>'; drop.classList.add('open'); return; }
+  drop.innerHTML = hits.map(function (p, i) {
+    var k = p.name.toLowerCase().indexOf(ql), nm = k >= 0 ? esc(p.name.slice(0, k)) + '<mark>' + esc(p.name.slice(k, k + q.length)) + '</mark>' + esc(p.name.slice(k + q.length)) : esc(p.name);
+    return '<button type="button" class="sx-it" onclick="swapSearchPick(' + i + ')"><span><b>' + nm + '</b><em class="sx-team">' + esc(swapTeamLabel(p.team)) + '</em></span><span class="sx-id">' + esc(p.id) + '</span></button>';
+  }).join('');
+  drop.classList.add('open');
+}
+function swapSearchClear(focus) {
+  var inp = $('swap-search'); if (!inp) return; inp.value = ''; swapSearchRender(); if (focus) inp.focus();
+}
+function swapSearchPick(i) {
+  var p = (window._swapHits || [])[i]; if (!p) return;
+  swapSearchClear(false);
+  if (p.team === curTeam()) {
+    var mem = (groupRows || []).filter(function (m) { return String(m.employeeId) === p.id; })[0];
+    if (!mem) { showToast('선택한 사람을 찾을 수 없어요.'); return; }
+    swapOther = null; swapSelectableMembers = [mem]; chooseGroupSwapTargetByIndex(0); return;
+  }
+  swapAutoPick = { team: p.team, id: p.id };
+  swapSelStep = 'team'; swapPickTeam(p.team);
+}
+(function () {
+  var oShow = swapShowUsers;
+  window.swapShowUsers = swapShowUsers = function (team, rows) {
+    oShow.apply(this, arguments);
+    var ap = swapAutoPick; swapAutoPick = null;
+    if (!ap || ap.team !== team) return;
+    for (var i = 0; i < swapSelectableMembers.length; i++) if (String(swapSelectableMembers[i].employeeId) === ap.id) { chooseGroupSwapTargetByIndex(i); return; }
+    showToast('선택한 사람을 찾을 수 없어요.');
+  };
+  var oOpen = openGroupSwapSelector;
+  window.openGroupSwapSelector = openGroupSwapSelector = function () {
+    swapNameCache = {}; swapNameLoading = 0; swapAutoPick = null;
+    oOpen.apply(this, arguments);
+    swapSearchClear(false);
+    setTimeout(swapPreloadNames, 600);
+  };
+  document.addEventListener('click', function (e) {
+    var d = $('swap-search-drop'); if (d && d.classList.contains('open') && !e.target.closest('#group-swap-select-panel .sx-wrap')) d.classList.remove('open');
+  }, true);
 })();
 </script>
 </body>
