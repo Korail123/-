@@ -26835,5 +26835,112 @@ html body #day-detail .dd-cover.c-day b,html body #day-detail .dd-cover.c-day .b
 html body #main-container:has(> #vacation-section.page-view.active) > div.top-bar{padding-top:34px!important}
 html body #main-container #vacation-section .mp-tabs{margin-top:14px!important}
 </style>
+<style id="stats27-ui">
+/* 내 근무 통계 · 27번: 비율 도넛 + 달력 (날짜마다 근무구분 + 그날 근무시간) */
+#stats-section > h1{display:none!important}
+#stats-section > .sch-head{position:relative;padding-top:16px!important;margin:6px 0 12px!important}
+#stats-section > .sch-head::before{content:'MONTHLY STATS';position:absolute;left:0;right:0;top:0;text-align:center;font-size:10.5px;font-weight:800;letter-spacing:2.6px;color:#3c82d8;opacity:.75}
+#stats-section #stats-title{font-size:24px!important;font-weight:900!important;letter-spacing:-.6px!important;color:#173257!important}
+#stats-section .sch-nav{color:#6f8fb8!important;-webkit-text-fill-color:#6f8fb8!important;font-size:14px!important}
+#stats-section.st27 > .stats-card,#stats-section.st27 > #sch-week{display:none!important}
+#st27{display:flex;flex-direction:column;gap:12px;margin-bottom:12px}
+.st27-card{background:#fff;border-radius:20px;padding:14px;box-shadow:0 6px 16px rgba(50,110,180,.08)}
+.st27-top{display:flex;align-items:center;gap:16px}
+.st27-donut{width:118px;height:118px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;transition:background .4s}
+.st27-donut>div{width:82px;height:82px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+.st27-donut small{font-size:10px;color:#6b7a90;font-weight:700}
+.st27-donut b{font-size:26px;font-weight:900;color:#173257;margin:3px 0 2px;letter-spacing:-.5px}
+.st27-donut b em{font-style:normal;font-size:12px;margin-left:1px}
+.st27-donut span{font-size:10.5px;color:#5b6b85;font-weight:700}
+.st27-lg{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.st27-lg div{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:700;color:#4a5872}
+.st27-lg i{width:9px;height:9px;border-radius:50%;flex:none}
+.st27-lg b{margin-left:auto;color:#1d2b45;font-size:15px;font-weight:900}
+.st27-sub{display:flex;gap:6px;margin-top:12px;padding-top:10px;border-top:1px dashed #e3e8ef;flex-wrap:wrap}
+.st27-sub span{font-size:11.5px;font-weight:800;color:#4a5872;background:#f3f6fa;border-radius:99px;padding:4px 10px}
+.st27-sub span b{color:#173257}
+.st27-cw,.st27-cg{display:grid;grid-template-columns:repeat(7,1fr)}
+.st27-cw{text-align:center;margin-bottom:4px}
+.st27-cw b{font-size:10.5px;color:#8a96a8;font-weight:800}
+.st27-cw b.su{color:#e5484d}.st27-cw b.sa{color:#2f7be5}
+.st27-cg{gap:2px}
+.st27-c{height:58px;border-radius:10px;display:flex;flex-direction:column;align-items:center;padding-top:4px;gap:2px;cursor:default}
+.st27-c em{font-style:normal;font-size:11.5px;font-weight:700;color:#3c4a60;line-height:1.1}
+.st27-c.su em,.st27-c.hol em{color:#e5484d}.st27-c.sa em{color:#2f7be5}
+.st27-c span{font-size:10.5px;font-weight:900;color:#fff;border-radius:6px;padding:0 5px;line-height:1.45;max-width:100%;overflow:hidden;white-space:nowrap}
+.st27-c small{font-size:9.5px;font-weight:800;color:#5b6b85;font-variant-numeric:tabular-nums;line-height:1}
+.st27-c.td{box-shadow:inset 0 0 0 2px #2f6fd6}
+.st27-c.empty{visibility:hidden}
+.st27-note{font-size:11px;color:#8a96a8;margin:6px 4px 0;text-align:right}
+html.ui-dark .st27-card{background:#1b2027;box-shadow:none}
+html.ui-dark .st27-donut>div{background:#1b2027}
+html.ui-dark .st27-donut b,html.ui-dark .st27-lg b,html.ui-dark #stats-section #stats-title{color:#e8eef8!important}
+html.ui-dark .st27-lg div,html.ui-dark .st27-c em{color:#c9d3e0}
+html.ui-dark .st27-sub span{background:#252c36;color:#c9d3e0}
+html.ui-dark .st27-sub span b{color:#e8eef8}
+</style>
+<script id="stats27-js">
+/* 날짜별 근무 + 근무시간(퇴근 − 출근, 휴게시간 빼지 않음) */
+function st27Day(key, mb) {
+  var info = null; try { info = snapDayWithAuto(key, mb, snapshot.raw.dia || [], snapshot.ovMap); } catch (e) {}
+  if (!info) return null;
+  var g = 'x', lab = '', min = 0;
+  if (info.overrideType === 'status') {
+    var sn = String(info.status || info.label || '').trim();
+    if (/^(비|비번)$/.test(sn)) { g = 'off'; lab = '비'; }
+    else if (/^휴무$/.test(sn)) { g = 'rest'; lab = '휴'; }
+    else if (sn === 'X') { g = 'x'; lab = 'X'; }
+    else { g = 'leave'; lab = sn.replace(/휴가$/, '') || sn; }
+  } else {
+    var tp = String(info.type || info.label || '').trim();
+    if (tp === '주' || tp === '야') {
+      g = tp === '주' ? 'day' : 'night'; lab = tp;
+      var meta = info.dia ? diaByNumber(info.dia) : null;
+      var a = parseHM(info.start || (meta && meta.start)), b = parseHM(info.end || (meta && meta.end));
+      if (!isNaN(a) && !isNaN(b)) { min = b - a; if (min <= 0) min += 1440; }
+    } else if (tp === '비') { g = 'off'; lab = '비'; }
+    else if (tp === '휴') { g = 'rest'; lab = '휴'; }
+    else if (tp === 'X') { g = 'x'; lab = 'X'; }
+    else lab = tp;
+  }
+  if (typeof rsLabelStyled === 'function' && /^(주|야|비|휴)$/.test(lab)) lab = rsLabelStyled(lab);
+  return { g: g, lab: lab.length > 3 ? lab.slice(0, 3) : lab, min: min };
+}
+var ST27_COL = { day: '#f5a623', night: '#2f6fd6', off: '#79aef5', x: '#79aef5', rest: '#e5484d', leave: '#ff9c9e' };
+function st27Render() {
+  var sec = document.getElementById('stats-section'); if (!sec) return;
+  var box = document.getElementById('st27');
+  if (!box) { box = document.createElement('div'); box.id = 'st27'; var hd = sec.querySelector('.sch-head'); hd.parentNode.insertBefore(box, hd.nextSibling); }
+  sec.classList.add('st27');
+  var mb = typeof findMyMember === 'function' ? findMyMember() : null;
+  if (!mb || !(typeof snapshotUsable === 'function' && snapshotUsable())) { box.innerHTML = '<div class="st27-card" style="text-align:center;color:#8a96a8;font-size:13px">근무표를 불러오는 중이에요.</div>'; return; }
+  var y = statsY, m = statsM, last = new Date(y, m + 1, 0).getDate(), first = new Date(y, m, 1).getDay();
+  var st = myMonthStats() || {}, work = rsLabelStyle && rsLabelStyle() === 'work';
+  var parts = [[work ? '일근' : '주간', st.day || 0, ST27_COL.day], [work ? '박' : '야간', st.night || 0, ST27_COL.night], [work ? '가일' : '비번', (st.off || 0) + (st.x || 0), ST27_COL.off], [work ? 'S' : '휴무', st.rest || 0, ST27_COL.rest], ['휴가', st.leave || 0, ST27_COL.leave]];
+  var tot = parts.reduce(function (a, p) { return a + p[1]; }, 0), acc = 0, seg = [];
+  parts.forEach(function (p) { if (!p[1]) return; var a = acc / tot * 100; acc += p[1]; seg.push(p[2] + ' ' + a.toFixed(2) + '% ' + (acc / tot * 100).toFixed(2) + '%'); });
+  var bg = seg.length ? 'conic-gradient(' + seg.join(',') + ')' : '#eef2f7';
+  var h = Math.floor((st.minutes || 0) / 60), mm = (st.minutes || 0) % 60;
+  var leaveTxt = Object.keys(st.leaveKinds || {}).map(function (k) { return esc(k) + ' ' + st.leaveKinds[k]; }).join(' · ');
+  var html = '<div class="st27-card"><div class="st27-top"><div class="st27-donut" style="background:' + bg + '"><div><small>총 근무</small><b>' + h + '<em>h</em></b><span>' + (mm ? mm + '분' : '') + '</span></div></div>' +
+    '<div class="st27-lg">' + parts.map(function (p) { return '<div><i style="background:' + p[2] + '"></i>' + p[0] + '<b>' + p[1] + '</b></div>'; }).join('') + '</div></div>' +
+    '<div class="st27-sub"><span>근무일 <b>' + ((st.day || 0) + (st.night || 0)) + '일</b></span><span>근무교환 <b>' + (st.swaps || 0) + '회</b></span>' + (leaveTxt ? '<span>' + leaveTxt + '</span>' : '') + '</div></div>';
+  var t = todayKST(), cg = '';
+  for (var e = 0; e < first; e++) cg += '<div class="st27-c empty"></div>';
+  for (var d = 1; d <= last; d++) {
+    var key = getDateKey(y, m, d), x = st27Day(key, mb), dow = (first + d - 1) % 7, hol = typeof holidayName === 'function' && holidayName(y, m, d);
+    var cls = 'st27-c' + (dow === 0 ? ' su' : dow === 6 ? ' sa' : '') + (hol ? ' hol' : '') + (t.y === y && t.m === m && t.d === d ? ' td' : '');
+    cg += '<div class="' + cls + '"><em>' + d + '</em>' + (x && x.lab ? '<span style="background:' + (ST27_COL[x.g] || '#9aa6b8') + '">' + esc(x.lab) + '</span>' : '') +
+      (x && x.min ? '<small>' + Math.floor(x.min / 60) + ':' + ('0' + (x.min % 60)).slice(-2) + '</small>' : '') + '</div>';
+  }
+  html += '<div class="st27-card"><div class="st27-cw">' + ['일', '월', '화', '수', '목', '금', '토'].map(function (w, i) { return '<b class="' + (i === 0 ? 'su' : i === 6 ? 'sa' : '') + '">' + w + '</b>'; }).join('') + '</div><div class="st27-cg">' + cg + '</div>' +
+    '<div class="st27-note">근무시간 = 퇴근 − 출근 (휴게시간은 빼지 않음)</div></div>';
+  box.innerHTML = html;
+}
+(function () {
+  var o = window.statsRender;
+  if (typeof o === 'function') window.statsRender = statsRender = function () { var r = o.apply(this, arguments); try { st27Render(); } catch (e) {} return r; };
+})();
+</script>
 </body>
 </html>
