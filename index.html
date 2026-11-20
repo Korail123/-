@@ -27786,12 +27786,7 @@ function dbsEvents(mb, dia, baseKey) {
 }
 function dbsBase() {
   var me = findMyMember(), dia = snapshot.raw.dia || [], t = todayKST(), k0 = getDateKey(t.y, t.m, t.d);
-  if (!me) return k0;
-  for (var i = 0; i < 8; i++) {
-    var k = snapShiftKey(k0, i), e = dbsEvents(me, dia, k);
-    if (e.some(function (x) { return x.kind === '출근' && x.t >= 0 && x.t < 1440; })) return k;
-  }
-  return k0;
+  return k0;   /* 항상 오늘 기준 (쉬는 날이면 다음 출근일로 넘기지 않음) */
 }
 function dbsBuild() {
   if (!snapshotUsable()) return null;
@@ -27832,8 +27827,12 @@ function dbsRender() {
   if (!d) { body.innerHTML = '<div class="dbs-none">근무표를 불러오는 중...</div>'; return; }
   var t = todayKST(), isToday = d.base === getDateKey(t.y, t.m, t.d);
   $('dbs-sub').textContent = teamLabel(curTeam()) + ' · ' + (isToday ? '오늘 ' : '다음 출근일 ') + dbsDateText(d.base);
-  $('dbs-n1').textContent = d.ins.length; var T2 = null; try { T2 = dbsToday2(); } catch (e) {} $('dbs-n2').textContent = T2 && !T2.off ? T2.cnt : 0;
+  var T2 = null; try { T2 = dbsToday2(); } catch (e) {} $('dbs-n2').textContent = T2 && !T2.off ? T2.cnt : 0;
+  $('dbs-n1').textContent = T2 && !T2.off && T2.myIn ? d.ins.length : 0;
   if (dbsCur === 1) {
+    var T1 = null; try { T1 = dbsToday2(); } catch (e) {}
+    if (!T1 || T1.off) { body.innerHTML = '<div class="dbs-none">오늘은 쉬는 날이라 보여줄 사람이 없어요.<br><small>' + esc((T1 && T1.label) || '휴무') + '</small></div>'; $('dbs-n1').textContent = 0; return; }
+    if (!T1.myIn) { body.innerHTML = '<div class="dbs-none">오늘은 출근하지 않아요.<br><small>비번</small></div>'; $('dbs-n1').textContent = 0; return; }
     if (!d.ins.length) { body.innerHTML = '<div class="dbs-none">출근하는 사람이 없어요.</div>'; return; }
     body.innerHTML = '<div class="dbs-list">' + d.ins.map(function (x) {
       return '<button type="button" class="dbs-row' + (x.me ? ' me' : '') + '" onclick="dbsInfo(\'' + esc(x.id) + '\')"><span class="dbs-tm">' + dbsHM(x.t) + '</span><b>' + esc(x.name) + dbsMeTag(x) + '</b></button>';
@@ -28052,6 +28051,16 @@ html body #dbs-pop .dbs-ti.me b::after{content:'나';display:inline-block;margin
 html body #dbs-pop .dbs-ti em:not(.dbs-me){grid-column:2;justify-self:start;margin:0!important;font-size:10.5px!important;padding:1px 7px!important}
 html body #dbs-pop .dbs-ti em.base{display:none!important}
 html body #dbs-pop .dbs-ch{font-size:11.5px}html body #dbs-pop .dbs-ch b{font-size:16px}
+</style>
+<style id="cal-size-up">
+/* 근무표 달력 조금 크게: 칸 높이 · 날짜 · 근무구분 글씨 키움 */
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell:not(#zz){min-height:calc((100cqw - 18px) / 7 + 12px)!important;padding:5px 0 5px!important}
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell.empty:not(#zz){min-height:calc((100cqw - 18px) / 7 + 12px)!important}
+html body #main-container #schedule-section #calendar-grid .cell-top:not(#zz){height:18px!important;flex:0 0 18px!important}
+html body #main-container #schedule-section #calendar-grid .cell-num:not(#zz){width:19px!important;height:19px!important;font-size:12px!important}
+html body #main-container #schedule-section #calendar-grid .cell-lbl:not(#zz){height:24px!important;flex:0 0 24px!important;line-height:24px!important;font-size:17px!important}
+html body #main-container #schedule-section #calendar-grid .cell-lbl.rs-duty2:not(#zz),html body #main-container #schedule-section #calendar-grid .cell-lbl.rs-leave-long:not(#zz){font-size:13px!important}
+html body #main-container #schedule-section .sch-week span,html body #main-container #schedule-section #sch-week span{font-size:12.5px}
 </style>
 </body>
 </html>
