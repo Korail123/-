@@ -1723,7 +1723,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="setting-grid">
       <button type="button" class="set-tile" onclick="openDiaSelector()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무설정" alt="" aria-hidden="true" decoding="async"><span class="set-label">근무설정</span></button>
       <button type="button" class="set-tile" onclick="openPassSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차통과알림" alt="" aria-hidden="true" decoding="async"><span class="set-label">열차통과/도착 알림</span><span class="tile-sw" data-qs="pass" role="switch" aria-checked="false" aria-label="열차통과/도착 알림 켜기/끄기" tabindex="0"><i></i></span></button>
-      <button type="button" class="set-tile" onclick="openNxViewSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="NXLogis조회" alt="" aria-hidden="true" decoding="async"><span class="set-label">열차운행정보 조회방식</span></button>
       <button type="button" class="set-tile" onclick="openPermPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="알람설정" alt="" aria-hidden="true" decoding="async"><span class="set-label">출근/출무 알림 설정</span><small id="perm-sub" class="set-sub" hidden></small><span class="tile-sw" data-qs="perm" role="switch" aria-checked="false" aria-label="출근/출무 알림 켜기/끄기" tabindex="0"><i></i></span></button>
       <button type="button" class="set-tile" onclick="openNxSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차운휴알림" alt="" aria-hidden="true" decoding="async"><span class="set-label">열차 운휴 알림</span><small id="nx-sub" class="set-sub" hidden></small><span class="tile-sw" data-qs="nx" role="switch" aria-checked="false" aria-label="열차 운휴 알림 켜기/끄기" tabindex="0"><i></i></span></button>
     </div>
@@ -2409,7 +2408,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <div id="trainq-panel" class="dia-modal" style="z-index:405" onclick="if(event.target===this)closeTrainQuery()">
   <div class="dia-dialog ns-dialog tq-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차운행조회" alt="" aria-hidden="true">열차운행정보 조회</div>
-    <div class="tq-sub" style="word-break:keep-all">날짜와 열차번호를 넣으면 열차의 <b>운행 위치</b>를 불러와 보여줘요.<br><b>화물열차만</b> 조회할 수 있어요.</div>
+    <div class="tq-sub" style="word-break:keep-all">날짜와 열차번호를 넣으면 열차의 <b>운행 위치</b>를 보여줘요.<br>화물열차는 <b>Logis.Korail</b>, 그 밖의 열차는 <b>NXLogis</b>로 열려요.</div>
     <div class="tq-sec">
       <label class="tq-lab" for="tq-day">날짜</label>
       <input id="tq-day" type="hidden">
@@ -6015,7 +6014,6 @@ var FAV_ITEMS = [
   { g: '환경설정', k: 'perm', label: '출근/출무 알림 설정', short: '출근/출무알림', icon: '알람설정', fn: function () { openPermPanel(); } },
   { g: '환경설정', k: 'nx', label: '열차 운휴 알림', short: '운휴알림', icon: '열차운휴알림', fn: function () { openNxSettings(); } },
   { g: '환경설정', k: 'pass', label: '열차통과/도착 알림', short: '통과알림', icon: '열차통과알림', fn: function () { openPassSettings(); } },
-  { g: '환경설정', k: 'nxview', label: '열차운행정보 조회방식', short: '운행조회', icon: 'NXLogis조회', fn: function () { openNxViewSettings(); } },
   { g: '환경설정', k: 'anim', label: '애니메이션 효과', short: '애니메이션', icon: '애니메이션효과', fn: function () { openAnimSettings(); } },
   { g: '메인화면', k: 'brief', label: '오늘의 브리핑', short: '브리핑', icon: '오늘의브리핑', fn: function () { showBriefing(true); } },
   { g: '환경설정', k: 'ui', label: '화면 설정', short: '화면', icon: '화면설정', fn: function () { openUiPanel(); } },
@@ -6130,7 +6128,7 @@ function favSave() {
 }
 /* NXLogis 조회알림 설정 (이 폰에만): direct = 사이트 열기(기본), anim = 애니메이션 팝업 */
 function nxViewKey() { return 'nxView_' + ((getCurrentUser() || {}).employeeId || ''); }
-function getNxViewMode() { try { return LS.getItem(nxViewKey()) === 'anim' ? 'anim' : 'direct'; } catch (e) { return 'direct'; } }
+function getNxViewMode() { return 'anim'; }   /* 조회방식 설정은 없앰: 화물열차는 Logis.Korail 애니메이션, 그 외는 NXLogis를 앱 안 창으로 */
 function openNxViewSettings() {
   var mode = getNxViewMode();
   document.querySelectorAll('#nxview-panel input[name="nxview"]').forEach(function (r) { r.checked = r.value === mode; });
@@ -6155,6 +6153,7 @@ function openNxLogisDirect(trainNo, selectedDateKey) {
   var dateKey = String(selectedDateKey || dateKeyForSelectedDay() || '').trim();
   if (!n) return false;
   var url = nxLogisTrainUrl(n, dateKey);
+  if (typeof nxwOpen === 'function') { nxwOpen(url, n.toUpperCase()); return false; }   /* 앱 안의 창으로 */
   // 데스크톱에서는 크기를 지정한 팝업 창으로 열기
   var popup = window.open(url, 'nxlogisTrainSearch', 'popup=yes,width=1100,height=800,resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=yes,status=no');
   if (!popup) {
@@ -14938,7 +14937,6 @@ function trainQueryInput() {
   var v = String($('tq-in').value || '').replace(/\s/g, '').toUpperCase();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) { $('tq-msg').textContent = '날짜를 골라주세요.'; return; }
   if (!/^(?=.*\d)[A-Z0-9-]{1,8}$/.test(v)) { $('tq-msg').textContent = '열차번호를 숫자와 영문으로 입력해 주세요. (예: 3224)'; return; }
-  if (!tqIsLogisTrain(v)) { $('tq-msg').textContent = '화물열차만 조회할 수 있어요.'; return; }
   closeTrainQuery();
   tqBackOnClose = true;   /* 조회 결과 창을 닫으면 열차운행정보 조회 창으로 돌아감 */
   passShowTrainAnim(v, day);
@@ -14955,10 +14953,7 @@ function tqOpenNxWeb(train, dateKey) {
   var d = String(dateKey || '').replace(/[^0-9]/g, '');
   if (d.length !== 8) { var t = todayKST(); d = String(t.y) + pad2(t.m + 1) + pad2(t.d); }
   var url = 'https://nxlogis.kr/?act=SearchTrainInfo&q=' + encodeURIComponent(String(train || '').toUpperCase()) + '&d=' + d + '&h=&q2=&q3=';
-  showToast(String(train).toUpperCase() + '열차는 NXLogis 웹에서 조회해요.');
-  if (rsAppHas('openUrl')) { rsAppCall('openUrl', url); return; }
-  var w = null; try { w = window.open(url, '_blank', 'noopener'); } catch (e) {}
-  if (!w) location.href = url;
+  nxwOpen(url, String(train || '').toUpperCase());   /* 앱 안의 창으로 */
 }
 function passShowTrainAnim(train, dateKey) {
   var d = String(dateKey || '').replace(/[^0-9]/g, '');
@@ -15402,6 +15397,7 @@ function passRunCheck(list, c, overviewOnly, opts) {
       }
 
       if (page && j && j._staleMin && page.kind !== 'err') page.note = '⚠ 서버 응답이 늦어 ' + j._staleMin + '분 전 정보를 보여줘요. 열차를 누르면 다시 불러와요.' + (page.note ? ' ' + page.note : '');
+      if (page && !page.stations && j && Array.isArray(j.stations)) page.stations = j.stations.map(function (x) { return { name: x.name, plan: x.plan, act: x.act, delay: x.delay }; });   /* 열차시간표 실시간 위치용 */
       if (page) { page.trainKind = String((j && (j.kind || j.trnKind || j.trn_kind)) || ''); page.trainType = passTrainType(page.trainKind, it.train); pages[n] = page; }
       if (--left === 0) {
         pages = pages.filter(Boolean);
@@ -15445,6 +15441,8 @@ function passPage(dir) {
   passPageIdx = (passPageIdx + dir + passPages.length) % passPages.length;
   passShowPage(true);
 }
+/* 역의 계획 도착 시각 (조회 결과의 역별 시각) */
+function ppPlanOf(d, nm) { var k = String(nm || '').replace(/\s+/g, ''), st = (d && d.stations) || []; for (var i = 0; i < st.length; i++) if (String(st[i].name || '').replace(/\s+/g, '') === k && st[i].plan) return st[i].plan; return null; }
 function passShowPage(quiet) {
   passLiveStart();
   if (!passSmooth) passLiveLabel();
@@ -15698,11 +15696,11 @@ function passReplay() {
     var empty = !String(nm || '').trim();
     var target = d.overview ? (d.stopped && i === ti) : (i === ti);
     var gone = !empty && (i < ti || (d.overview && !d.stopped && i === ti));   /* 운행 중이면 출발한 역도 지난 역 */
+    var pl0 = !empty && ppPlanOf(d, nm);
     return '<div class="pp-stop' + (empty ? ' empty' : '') + (gone ? ' gone' : '') + (target ? ' tgt' : '') +
-      '" style="left:' + xs[i].toFixed(1) + 'px"><i></i><span>' + (empty ? '' : esc(nm)) + '</span></div>';
+      '" style="left:' + xs[i].toFixed(1) + 'px"><i></i><span>' + (empty ? '' : esc(nm)) + (pl0 ? '<em class="pp-pt">' + passHm(pl0) + '</em>' : '') + '</span></div>';
   }).join('');
   var tgt = $('pp-stops').querySelector('.tgt');
-
   var xStart, xEnd, dur, ease;
   /* 열차 가운데가 놓일 자리: 역에 있으면 그 역 바로 위, 역 사이를 달리는 중이면 두 역의 한가운데 */
   var passedNow = passed || (d.overview && d.stopped) || coupling;
@@ -28409,22 +28407,59 @@ function passTimetable() {
   ttOpen(String(d.train).toUpperCase(), day);
 }
 function ttDateLabel(dk) { var p = dk.split('-'); return (+p[1]) + '월 ' + (+p[2]) + '일(' + '일월화수목금토'.charAt(new Date(+p[0], +p[1] - 1, +p[2]).getDay()) + ')'; }
+/* 열차시간표 빠르게: 결과 팝업이 뜨는 순간 미리 받아 두고(오늘 · 그 열차), 받은 것은 폰에 하루 보관 → 누르면 바로 표시 */
+var TT_MEM = {}, TT_WAIT = {};
+function ttCacheKey(no, day) { return 'rs_tt_v1_' + no + '_' + day; }
+function ttCacheGet(no, day) {
+  var k = ttCacheKey(no, day), m = TT_MEM[k]; if (m) return m;
+  try { var o = JSON.parse(localStorage.getItem(k) || 'null'); if (o && o.j && Date.now() - o.at < 24 * 3600000) { TT_MEM[k] = o.j; return o.j; } } catch (e) {}
+  return null;
+}
+function ttCachePut(no, day, j) {
+  var k = ttCacheKey(no, day); TT_MEM[k] = j;
+  try {
+    localStorage.setItem(k, JSON.stringify({ at: Date.now(), j: j }));
+    Object.keys(localStorage).forEach(function (x) { if (x.indexOf('rs_tt_v1_') === 0 && x.slice(-10) !== day) localStorage.removeItem(x); });   /* 지난 날짜는 지움 */
+  } catch (e) {}
+}
+function ttFetch(no, day, cb) {
+  var c = ttCacheGet(no, day); if (c) { if (cb) cb(c); return; }
+  var k = ttCacheKey(no, day);
+  if (TT_WAIT[k]) { if (cb) TT_WAIT[k].push(cb); return; }
+  var u = getCurrentUser(); if (!u || !u.token) { if (cb) cb({ success: false, message: '로그인 후 이용해 주세요.' }); return; }
+  TT_WAIT[k] = cb ? [cb] : [];
+  var h = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY };
+  if (/^eyJ/.test(SUPABASE_KEY)) h.Authorization = 'Bearer ' + SUPABASE_KEY;
+  var ctl = null, tm = null;
+  try { ctl = new AbortController(); tm = setTimeout(function () { ctl.abort(); }, 45000); } catch (e) {}
+  var done = function (j) { if (tm) clearTimeout(tm); if (j && j.success) ttCachePut(no, day, j); var l = TT_WAIT[k] || []; delete TT_WAIT[k]; l.forEach(function (f) { try { f(j); } catch (e) {} }); };
+  fetch(SUPABASE_URL + '/functions/v1/' + TT_FN, { method: 'POST', headers: h, body: JSON.stringify({ employeeId: u.employeeId, token: u.token, trainNo: no, date: day }), signal: ctl ? ctl.signal : undefined })
+    .then(function (r) { return r.json().catch(function () { return { success: false, message: '응답을 읽지 못했어요. (' + r.status + ')' }; }); })
+    .then(done)
+    .catch(function () { done({ success: false, message: '서버에 연결하지 못했어요. 잠시 뒤 다시 해 주세요.' }); });
+}
+function ttToday() { var t = todayKST(); return getDateKey(t.y, t.m, t.d); }
+function ttPrefetch(no) { no = String(no || '').toUpperCase(); if (no) ttFetch(no, ttToday(), null); }
 function ttOpen(v, day) {
   var u = getCurrentUser(); if (!u || !u.token) { showToast('로그인 후 이용해 주세요.'); return; }
   $('pass-pop-panel').classList.remove('active'); ttBackOnClose = true;   /* 결과 화면은 잠시 숨김 (애니메이션 · 갱신은 그대로) */
   $('tt-title').textContent = v + ' 열차시간표';
   $('tt-sub').textContent = ttDateLabel(day) + ' 기준';
-  $('tt-body').innerHTML = '<div class="tt-empty">시간표를 불러오는 중…</div>';
   $('tt-pop').classList.add('active');
-  var h = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY };
-  if (/^eyJ/.test(SUPABASE_KEY)) h.Authorization = 'Bearer ' + SUPABASE_KEY;
-  var ctl = null, tm = null;
-  try { ctl = new AbortController(); tm = setTimeout(function () { ctl.abort(); }, 45000); } catch (e) {}
-  fetch(SUPABASE_URL + '/functions/v1/' + TT_FN, { method: 'POST', headers: h, body: JSON.stringify({ employeeId: u.employeeId, token: u.token, trainNo: v, date: day }), signal: ctl ? ctl.signal : undefined })
-    .then(function (r) { return r.json().catch(function () { return { success: false, message: '응답을 읽지 못했어요. (' + r.status + ')' }; }); })
-    .then(function (j) { if (tm) clearTimeout(tm); ttRender(j, v, day); })
-    .catch(function () { if (tm) clearTimeout(tm); ttRender({ success: false, message: '서버에 연결하지 못했어요. 잠시 뒤 다시 해 주세요.' }, v, day); });
+  var c = ttCacheGet(v, day);
+  if (c) { ttRender(c, v, day); return; }   /* 미리 받아 둔 시간표: 바로 */
+  ttRender({ success: false, message: '시간표를 불러오는 중…' }, v, day);   /* 조회 결과의 역별 시각으로 먼저 보여 주고 */
+  ttFetch(v, day, function (j) { if ($('tt-pop').classList.contains('active') && ttLast && ttLast.no === v) ttRender(j && j.success ? j : (ttLast.j && ttLast.j.fallback ? { success: false } : j), v, day); });   /* 받으면 바꿔 끼움 */
 }
+/* 조회 결과 팝업이 뜨면 그 열차 시간표를 뒤에서 미리 받음 */
+(function () {
+  var o = passShowPage;
+  window.passShowPage = passShowPage = function () {
+    var r = o.apply(this, arguments);
+    try { if (passPopData && passPopData.train && passPopData.kind !== 'err') setTimeout(function () { ttPrefetch(passPopData.train); }, 300); } catch (e) {}
+    return r;
+  };
+})();
 var ttLast = null, ttTick = null;
 function ttMin(t) { var m = /^(\d{1,2}):(\d{2})/.exec(String(t || '')); return m ? (+m[1]) * 60 + (+m[2]) : null; }
 function ttHm(m) { m = ((Math.round(m) % 1440) + 1440) % 1440; return pad2(Math.floor(m / 60)) + ':' + pad2(m % 60); }
@@ -28434,11 +28469,16 @@ function ttRender(j, no, day) {
   var b = $('tt-body'); if (!b) return;
   ttLast = { j: j, no: no, day: day };
   if (ttTick) { clearInterval(ttTick); ttTick = null; }
+  /* 조회 결과(Logis.Korail)의 지금 지연 · 역별 계획/실제 시각 */
+  var pd = (typeof passPopData !== 'undefined' && passPopData && String(passPopData.train || '').toUpperCase() === no) ? passPopData : null;
+  /* 공공데이터 시간표를 못 받았거나 없는 열차면 → 조회 결과의 역별 계획 시각으로 시간표를 만들어 실시간 위치를 보여 줌 */
+  if ((!j || !j.success || !j.found) && pd && pd.stations && pd.stations.length > 1) {
+    j = { success: true, found: true, fallback: true, dataset: 'Logis.Korail 운행계획', groups: [{ kind: '', updown: '', line: '', days: '', runs: true,
+      stops: pd.stations.map(function (x, i) { return { seq: i + 1, station: x.name, arr: x.plan ? passHm(x.plan) : '', dep: '', reason: '' }; }) }] };
+  }
   if (!j || !j.success) { b.innerHTML = '<div class="tt-empty">' + esc((j && j.message) || '시간표를 불러오지 못했어요.') + '</div>'; return; }
   if (!j.found) { b.innerHTML = '<div class="tt-empty"><b>' + esc(no) + '</b> 열차는 화물열차 운행 시간표에 없어요.<br>여객열차이거나 임시열차일 수 있어요.</div>' + ttSrc(j); return; }
   var g = j.groups.filter(function (x) { return x.runs === true; })[0] || j.groups[0];
-  /* 조회 결과(Logis.Korail)의 지금 지연 · 역별 실제 시각 */
-  var pd = (typeof passPopData !== 'undefined' && passPopData && String(passPopData.train || '').toUpperCase() === no) ? passPopData : null;
   var delay = pd && pd.delay !== null && pd.delay !== undefined && pd.delay !== '' && isFinite(Number(pd.delay)) ? Math.round(Number(pd.delay)) : null;
   var act = {};
   ((pd && pd.stations) || []).forEach(function (x) { if (x && x.act !== null && x.act !== undefined) act[ttStNorm(x.name)] = x.act; });
@@ -28483,7 +28523,7 @@ function ttRender(j, no, day) {
   ttTick = setInterval(function () { if (!$('tt-pop').classList.contains('active')) { clearInterval(ttTick); ttTick = null; return; } if (ttLast) ttRender(ttLast.j, ttLast.no, ttLast.day); }, 60000);   /* 1분마다 위치 다시 계산 */
 }
 function ttLocoSrc() { try { return (PASS_TRAIN_ART && (PASS_TRAIN_ART.dloco || PASS_TRAIN_ART.eloco)) || ''; } catch (e) { return ''; } }
-function ttSrc(j) { return '<div class="tt-src">시각표: 공공데이터포털 ' + esc(j.dataset || '한국철도공사_화물열차운행 시간표') + ' · 주황색은 실제 도착 시각(Logis.Korail), 예상은 시각표에 지금 지연을 더한 값이에요.</div>'; }
+function ttSrc(j) { return '<div class="tt-src">시각표: ' + (j && j.fallback ? 'Logis.Korail 운행계획' : '공공데이터포털 ' + esc((j && j.dataset) || '한국철도공사_화물열차운행 시간표')) + ' · 주황색은 실제 도착 시각(Logis.Korail), 예상은 시각표에 지금 지연을 더한 값이에요.</div>'; }
 </script>
 <style id="tab-swipe-ui">
 /* 근무 ↔ 편의 ↔ MY 밀기 전환 */
@@ -28584,6 +28624,55 @@ window.openGroupFolders = openGroupFolders = function () { gfNewOpen = false; re
   try { IC_CENTER_CACHE = {}; } catch (e) {}
   try { applyAppIcons(document); } catch (e) {}
 })();
+</script>
+<style id="nxw-ui">
+/* 애니메이션 안: 선로 바로 밑에 역 이름 + 계획 도착 시각 (빈 땅 없이) · 산은 선로에 딱 붙게 */
+#pass-pop-panel .pp-track{height:133px!important}
+#pass-pop-panel .pp-track .pp-wx,#pass-pop-panel .pp-track .pp-train,#pass-pop-panel .pp-track #pp-compose-scene{bottom:38px!important}
+#pass-pop-panel .pp-track .pp-hills{bottom:37px!important}
+#pass-pop-panel .pp-track .pp-rail{bottom:36px!important}
+#pass-pop-panel .pp-track .pp-standby{bottom:35px!important}
+#pass-pop-panel .pp-track .pp-stop{bottom:32px!important}
+#pass-pop-panel .pp-track .pp-stop span{top:5px!important;line-height:1.1!important}
+#pass-pop-panel .pp-track .pp-stop span{color:#fff!important;font-weight:800!important;text-shadow:0 1px 2px rgba(10,25,55,.55)}
+#pass-pop-panel .pp-track .pp-stop span .pp-pt{display:block;margin-top:2px;font-style:normal;font-size:10px;font-weight:800;color:rgba(255,255,255,.88);font-variant-numeric:tabular-nums;letter-spacing:.2px}
+#pass-pop-panel .pp-times{display:none!important}
+/* 선로 아래 어두운 띠는 없앰 · 글씨색은 시간대에 맞춰 (낮·아침 진한 남색 / 저녁·밤 흰색, 1분마다 풍경과 같이 바뀜) */
+#pass-pop-panel .pp-track.tod-day .pp-stop span,#pass-pop-panel .pp-track.tod-dawn .pp-stop span{color:#1d2b45!important;text-shadow:0 0 3px rgba(255,255,255,.9),0 0 1px #fff!important}
+#pass-pop-panel .pp-track.tod-day .pp-stop span .pp-pt,#pass-pop-panel .pp-track.tod-dawn .pp-stop span .pp-pt{color:#3c4a60!important}
+/* 아래 버튼 3개 같은 크기 */
+#pass-pop-panel .pp-btns3{grid-template-columns:1fr 1fr 1fr!important}
+/* NXLogis 앱 안 창 */
+#nxw-panel{position:fixed;inset:0;z-index:2147482000;background:#fff;display:none;flex-direction:column}
+#nxw-panel.active{display:flex}
+#nxw-panel .nxw-top{display:flex;align-items:center;gap:8px;height:52px;padding:0 8px 0 4px;border-bottom:1px solid #e8ecf2;padding-top:env(safe-area-inset-top);box-sizing:content-box}
+#nxw-panel .nxw-top button{border:0;background:none;font-family:inherit;cursor:pointer}
+#nxw-panel .nxw-back{width:44px;height:44px;font-size:26px;color:#1d2b45}
+#nxw-panel .nxw-t{flex:1;min-width:0;font-size:16px;font-weight:800;color:#1d2b45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#nxw-panel .nxw-t small{display:block;font-size:11px;font-weight:700;color:#8a96a8}
+#nxw-panel .nxw-ext{height:34px;padding:0 12px;border-radius:999px;background:#eef2f7!important;color:#2f6fd6;font-weight:800;font-size:12.5px}
+#nxw-panel iframe{flex:1;width:100%;border:0;background:#f5f7fa}
+#nxw-panel .nxw-tip{position:absolute;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));padding:10px 12px;border-radius:12px;background:rgba(29,43,69,.92);color:#fff;font-size:12.5px;line-height:1.45;display:none}
+#nxw-panel .nxw-tip.on{display:block}
+</style>
+<div id="nxw-panel" role="dialog" aria-label="NXLogis">
+  <div class="nxw-top"><button type="button" class="nxw-back" onclick="nxwClose()" aria-label="닫기">‹</button><div class="nxw-t"><span id="nxw-title">NXLogis</span><small>nxlogis.kr</small></div><button type="button" class="nxw-ext" onclick="nxwExternal()">브라우저로</button></div>
+  <iframe id="nxw-frame" title="NXLogis" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+  <div class="nxw-tip" id="nxw-tip">화면이 비어 있으면 NXLogis가 앱 안 표시를 막은 거예요. 오른쪽 위 [브라우저로]를 눌러 주세요.</div>
+</div>
+<script id="nxw-js">
+/* NXLogis를 앱처럼: 철도비서 안의 전체 화면 창 (안드로이드 앱이면 앱의 열기 기능 사용) */
+var nxwUrl = '', nxwTipT = null;
+function nxwOpen(url, train) {
+  nxwUrl = url;
+  if (typeof rsAppHas === 'function' && rsAppHas('openUrl')) { rsAppCall('openUrl', url); return; }
+  $('nxw-title').textContent = (train ? train + '열차 · ' : '') + 'NXLogis';
+  var f = $('nxw-frame'); f.src = 'about:blank'; setTimeout(function () { f.src = url; }, 30);
+  $('nxw-panel').classList.add('active');
+  var tip = $('nxw-tip'); tip.classList.remove('on'); clearTimeout(nxwTipT); nxwTipT = setTimeout(function () { tip.classList.add('on'); }, 4000);
+}
+function nxwClose() { $('nxw-panel').classList.remove('active'); try { $('nxw-frame').src = 'about:blank'; } catch (e) {} clearTimeout(nxwTipT); }
+function nxwExternal() { var w = null; try { w = window.open(nxwUrl, '_blank', 'noopener'); } catch (e) {} if (!w) location.href = nxwUrl; }
 </script>
 </body>
 </html>
