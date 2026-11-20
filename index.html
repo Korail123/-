@@ -28731,8 +28731,8 @@ function nxwExternal() { var w = null; try { w = window.open(nxwUrl, '_blank', '
 #pv-panel .pv-ck{margin-left:auto;width:22px;height:22px;border-radius:50%;border:2px solid #c9ced6;flex:none}
 #pv-panel .pv-opt.on .pv-ck{border:6px solid #2f6fd6}
 /* 지도 방식 */
-#pass-pop-panel .pp-map{position:relative;height:210px;border-radius:15px;overflow:hidden;border:1px solid #e5edf7;background:#eef3f8}
-#pass-pop-panel .pp-map .leaflet-container{width:100%;height:100%;font-family:inherit}
+#pass-pop-panel .pp-map{position:relative;height:280px;border-radius:15px;overflow:hidden;border:1px solid #e5edf7;background:#eef3f8}
+#pass-pop-panel .pp-map svg{display:block}#pass-pop-panel .pp-map .pm-n{font-size:14.5px;font-weight:800;fill:#1d2b45}#pass-pop-panel .pp-map .pm-t{font-size:11.5px;font-weight:600;fill:#5b6678}#pass-pop-panel .pp-map .pm-t.act{fill:#e8590c}#pass-pop-panel .pp-map .pm-d{font-size:12px;font-weight:800;fill:#fff}
 #pass-pop-panel .pp-map-note{position:absolute;left:8px;bottom:6px;z-index:500;font-size:10px;color:#5b6678;background:rgba(255,255,255,.85);border-radius:6px;padding:1px 6px}
 .pm-st{font-size:10.5px;font-weight:800;color:#1d2b45;background:rgba(255,255,255,.92);border:0;border-radius:6px;padding:1px 5px;box-shadow:0 1px 2px rgba(0,0,0,.15);white-space:nowrap}
 .pm-st::before{display:none}
@@ -28771,17 +28771,6 @@ function passStLL(name) {
   if (typeof DNM_REF !== 'undefined') { for (var k in DNM_REF) if (k.indexOf(n + '|') === 0) return DNM_REF[k]; }
   return PASS_ST_LL[n] || null;
 }
-var LEAF_STATE = 0, LEAF_Q = [];
-function leafLoad(cb) {
-  if (window.L && window.L.map) { cb(); return; }
-  LEAF_Q.push(cb); if (LEAF_STATE) return; LEAF_STATE = 1;
-  var css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(css);
-  var js = document.createElement('script'); js.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
-  js.onload = function () { LEAF_STATE = 2; var q = LEAF_Q; LEAF_Q = []; q.forEach(function (f) { try { f(); } catch (e) {} }); };
-  js.onerror = function () { LEAF_STATE = 0; LEAF_Q = []; };
-  document.head.appendChild(js);
-}
-var passMapObj = null;
 function passMapApply(d) {
   var track = $('pp-track'), box = $('pp-map');
   var st = (d && d.stations) || [];
@@ -28804,40 +28793,60 @@ function passMapApply(d) {
   if (!use) { if (box) box.hidden = true; if (track) track.hidden = false; return; }
   if (!box) { box = document.createElement('div'); box.id = 'pp-map'; box.className = 'pp-map'; track.parentNode.insertBefore(box, track.nextSibling); }
   track.hidden = true; box.hidden = false;
-  leafLoad(function () {
-    if (passMapObj) { try { passMapObj.remove(); } catch (e) {} passMapObj = null; }
-    box.innerHTML = '<div class="pp-map-note">역 위치는 대략적인 좌표예요</div>';
-    var m = L.map(box, { zoomControl: false, attributionControl: true });
-    passMapObj = m;
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 16, subdomains: 'abcd', attribution: '© OpenStreetMap · © CARTO' }).addTo(m);
-    /* 지난 역 · 지금 위치 (실제 시각이 찍힌 마지막 역 → 없으면 계획 시각 기준) */
-    var now = Date.now(), dl = Number(d.delay) || 0, passed = -1;
-    st.forEach(function (x, i) { if (x.act) passed = i; });
-    if (passed < 0) st.forEach(function (x, i) { if (x.plan && x.plan + dl * 60000 <= now) passed = i; });
-    var frac = 0.5;
-    if (passed >= 0 && passed < st.length - 1 && st[passed].plan && st[passed + 1].plan) {
-      var a = (st[passed].act || st[passed].plan + dl * 60000), c = st[passed + 1].plan + dl * 60000;
-      if (c > a) frac = Math.max(0.05, Math.min(0.95, (now - a) / (c - a)));
-    }
-    var line = pts.map(function (p) { return p.ll; });
-    L.polyline(line, { color: '#9fb3cf', weight: 5, opacity: .9 }).addTo(m);
-    if (passed >= 0) L.polyline(line.slice(0, passed + 1), { color: '#2f6fd6', weight: 5 }).addTo(m);
-    var cur = passed < 0 ? line[0] : passed >= line.length - 1 ? line[line.length - 1] : [line[passed][0] + (line[passed + 1][0] - line[passed][0]) * frac, line[passed][1] + (line[passed + 1][1] - line[passed][1]) * frac];
-    if (passed >= 0 && passed < line.length - 1) L.polyline([line[passed], cur], { color: '#2f6fd6', weight: 5 }).addTo(m);
-    var lo = Math.max(0, passed - 1), hi = Math.min(st.length - 1, passed + 2);
-    st.forEach(function (x, i) {
-      var done = i <= passed;
-      var mk = L.circleMarker(line[i], { radius: i === 0 || i === st.length - 1 ? 6 : 4.5, color: done ? '#2f6fd6' : '#5b6678', weight: 2, fillColor: done ? '#2f6fd6' : '#fff', fillOpacity: 1 }).addTo(m);
-      if (i >= lo && i <= hi || i === 0 || i === st.length - 1) mk.bindTooltip(esc(x.name) + (x.plan ? '<em>' + passHm(x.plan) + '</em>' : ''), { permanent: true, direction: 'top', offset: [0, -6], className: 'pm-st' });
-    });
-    var img = (window.PASS_TRAIN_ART && (PASS_TRAIN_ART.dloco || PASS_TRAIN_ART.eloco)) || '';
-    var dTxt = d.delay === null || d.delay === undefined || d.delay === '' ? '' : (dl > 0 ? '+' + dl + '분' : dl < 0 ? dl + '분' : '정시');
-    L.marker(cur, { icon: L.divIcon({ className: 'pm-train', html: (dTxt ? '<b>' + dTxt + '</b>' : '') + '<img src="' + img + '" alt="">', iconSize: [44, 20], iconAnchor: [22, 10] }), zIndexOffset: 1000 }).addTo(m);
-    var near = line.slice(Math.max(0, passed - 2), Math.min(line.length, passed + 4));
-    if (near.length < 2) near = line;
-    m.fitBounds(L.latLngBounds(near.concat([cur])).pad(0.25));
-    setTimeout(function () { try { m.invalidateSize(); } catch (e) {} }, 60);
+  passMapDraw(box, d, st, pts.map(function (p) { return p.ll; }));
+}
+/* 지도 방식(후보 4): 앱 안에서 그리는 한반도 + 열차 주변 확대 + 미니맵 — 지도 서버 필요 없음 */
+var PASS_KR = [[37.70,126.10],[37.78,126.65],[38.00,127.10],[38.25,127.60],[38.60,128.35],[38.20,128.65],[37.80,128.90],[37.45,129.15],[37.00,129.40],[36.50,129.45],[36.05,129.42],[36.08,129.57],[35.50,129.45],[35.25,129.25],[35.05,129.00],[34.90,128.60],[34.85,128.10],[34.70,127.70],[34.50,127.30],[34.30,126.50],[34.60,126.25],[35.00,126.40],[35.60,126.50],[36.00,126.75],[36.40,126.50],[36.80,126.15],[37.00,126.55],[37.25,126.80],[37.50,126.55]];
+function passMapDraw(box, d, st, line) {
+  var W = box.clientWidth || 320, H = box.clientHeight || 280, K = Math.cos(36.5 * Math.PI / 180);
+  var now = Date.now(), dl = Number(d.delay) || 0, passed = -1;
+  st.forEach(function (x, i) { if (x.act) passed = i; });
+  if (passed < 0) st.forEach(function (x, i) { if (x.plan && x.plan + dl * 60000 <= now) passed = i; });
+  var frac = 0.5;
+  if (passed >= 0 && passed < st.length - 1 && st[passed].plan && st[passed + 1].plan) {
+    var a0 = (st[passed].act || st[passed].plan + dl * 60000), c0 = st[passed + 1].plan + dl * 60000;
+    if (c0 > a0) frac = Math.max(0.05, Math.min(0.95, (now - a0) / (c0 - a0)));
+  }
+  var cur = passed < 0 ? line[0] : passed >= line.length - 1 ? line[line.length - 1] : [line[passed][0] + (line[passed + 1][0] - line[passed][0]) * frac, line[passed][1] + (line[passed + 1][1] - line[passed][1]) * frac];
+  /* 열차 앞뒤 역만 크게 */
+  var lo = Math.max(0, passed - 1), hi = Math.min(line.length - 1, Math.max(passed, 0) + 2);
+  var near = line.slice(lo, hi + 1).concat([cur]);
+  var la = near.map(function (q) { return q[0]; }), lg = near.map(function (q) { return q[1] * K; });
+  var y1 = Math.max.apply(null, la), y0 = Math.min.apply(null, la), x0 = Math.min.apply(null, lg), x1 = Math.max.apply(null, lg);
+  var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, padL = 92, padR = 34, padT = 34, padB = 40;
+  var sc = Math.min((W - padL - padR) / Math.max(x1 - x0, 0.05), (H - padT - padB) / Math.max(y1 - y0, 0.05));
+  var ox = padL + (W - padL - padR) / 2, oy = padT + (H - padT - padB) / 2;
+  function P(q) { return [ox + (q[1] * K - cx) * sc, oy - (q[0] - cy) * sc]; }
+  function pl(arr, f) { return arr.map(function (q) { var v = f(q); return v[0].toFixed(1) + ',' + v[1].toFixed(1); }).join(' '); }
+  var lp = line.map(P), cp = P(cur), passLine = passed >= 0 ? line.slice(0, passed + 1).concat(passed < line.length - 1 ? [cur] : []) : [];
+  var dTxt = d.delay === null || d.delay === undefined || d.delay === '' ? '' : (dl > 0 ? '+' + dl + '분' : dl < 0 ? dl + '분' : '정시');
+  var g = '<rect width="' + W + '" height="' + H + '" fill="#c9daf0"/><polygon points="' + pl(PASS_KR, P) + '" fill="#eef0f3" stroke="#fff" stroke-width="2"/>';
+  g += '<polyline points="' + pl(line, P) + '" fill="none" stroke="#7d848e" stroke-width="9" stroke-linejoin="round" stroke-linecap="round"/>';
+  if (passLine.length > 1) g += '<polyline points="' + pl(passLine, P) + '" fill="none" stroke="#2f6fed" stroke-width="9" stroke-linejoin="round" stroke-linecap="round"/>';
+  var LB = [[cp[0] + 13, cp[1] - 22]];
+  st.forEach(function (x, i) {
+    var q = lp[i]; if (q[0] < -60 || q[0] > W + 60 || q[1] < -40 || q[1] > H + 40) return;
+    var done = i <= passed, right = q[0] < 80;
+    var hit = function (rt) { var lx = rt ? q[0] + 13 : q[0] - 93; return LB.some(function (b) { return Math.abs(b[1] - q[1]) < 32 && lx < b[0] + 80 && lx + 80 > b[0]; }) || lp.some(function (o, j) { return j !== i && o[0] > lx - 8 && o[0] < lx + 88 && o[1] > q[1] - 20 && o[1] < q[1] + 30; }); };
+    if (hit(right)) right = !right;
+    var skip = hit(right) || (right ? q[0] + 93 > W - 84 && q[1] < 104 : false);
+    g += '<circle cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="7" fill="#fff" stroke="' + (done ? '#2f6fed' : '#7d848e') + '" stroke-width="3.5"/>';
+    if (skip) return;
+    LB.push([right ? q[0] + 13 : q[0] - 93, q[1]]);
+    var an = right ? 'start' : 'end', tx = right ? q[0] + 13 : q[0] - 13;
+    var tm = x.act ? passHm(x.act) : x.plan ? '예상 ' + passHm(x.plan + dl * 60000) : '';
+    g += '<text x="' + tx.toFixed(1) + '" y="' + (q[1] + 4).toFixed(1) + '" text-anchor="' + an + '" class="pm-n">' + esc(x.name) + '</text>';
+    if (tm) g += '<text x="' + tx.toFixed(1) + '" y="' + (q[1] + 19).toFixed(1) + '" text-anchor="' + an + '" class="pm-t' + (x.act ? ' act' : '') + '">' + tm + '</text>';
   });
+  g += '<circle cx="' + cp[0].toFixed(1) + '" cy="' + cp[1].toFixed(1) + '" r="15" fill="#e8590c" opacity=".22"><animate attributeName="r" values="10;19;10" dur="1.6s" repeatCount="indefinite"/></circle>';
+  g += '<circle cx="' + cp[0].toFixed(1) + '" cy="' + cp[1].toFixed(1) + '" r="9" fill="#e8590c" stroke="#fff" stroke-width="3"/>';
+  if (dTxt) { var bx = Math.min(cp[0] + 13, W - 60); g += '<g transform="translate(' + bx.toFixed(1) + ',' + (cp[1] - 32).toFixed(1) + ')"><rect width="52" height="21" rx="10.5" fill="#e8590c"/><text x="26" y="15" text-anchor="middle" class="pm-d">' + dTxt + '</text></g>'; }
+  /* 미니맵 */
+  var mW = 74, mH = 92, mb = [38.65, 125.95, 34.25, 129.65];
+  function M(q) { return [3 + (q[1] - mb[1]) / (mb[3] - mb[1]) * (mW - 6), 3 + (mb[0] - q[0]) / (mb[0] - mb[2]) * (mH - 6)]; }
+  var mc = M(cur);
+  g += '<g transform="translate(' + (W - mW - 8) + ',8)"><rect width="' + mW + '" height="' + mH + '" rx="9" fill="#fff" fill-opacity=".94" stroke="#d5dbe5"/><polygon points="' + pl(PASS_KR, M) + '" fill="#e3e6ea"/><polyline points="' + pl(line, M) + '" fill="none" stroke="#7d848e" stroke-width="2"/>' + (passLine.length > 1 ? '<polyline points="' + pl(passLine, M) + '" fill="none" stroke="#2f6fed" stroke-width="2"/>' : '') + '<circle cx="' + mc[0].toFixed(1) + '" cy="' + mc[1].toFixed(1) + '" r="3.8" fill="#e8590c" stroke="#fff" stroke-width="1.3"/></g>';
+  box.innerHTML = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">' + g + '</svg><div class="pp-map-note">역 위치는 대략적인 좌표예요</div>';
 }
 /* 조회 결과 팝업이 그려질 때마다 표현방식 적용 */
 (function () {
