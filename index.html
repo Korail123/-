@@ -26871,7 +26871,9 @@ html body #main-container #vacation-section .mp-tabs{margin-top:14px!important}
 .st27-c small{font-size:9.5px;font-weight:800;color:#5b6b85;font-variant-numeric:tabular-nums;line-height:1}
 .st27-c.td{box-shadow:inset 0 0 0 2px #2f6fd6}
 .st27-c.empty{visibility:hidden}
-.st27-note{font-size:11px;color:#8a96a8;margin:6px 4px 0;text-align:right}
+.st27-note{font-size:11px;color:#8a96a8;margin:6px 4px 0;text-align:right;line-height:1.5}
+.st27-c small.est,.st27-note .est-k{color:#a7b1c0!important}
+.st27-note .est-k{font-weight:800}
 html.ui-dark .st27-card{background:#1b2027;box-shadow:none}
 html.ui-dark .st27-donut>div{background:#1b2027}
 html.ui-dark .st27-donut b,html.ui-dark .st27-lg b,html.ui-dark #stats-section #stats-title{color:#e8eef8!important}
@@ -26880,11 +26882,11 @@ html.ui-dark .st27-sub span{background:#252c36;color:#c9d3e0}
 html.ui-dark .st27-sub span b{color:#e8eef8}
 </style>
 <script id="stats27-js">
-/* 날짜별 근무 + 근무시간(퇴근 − 출근, 휴게시간 빼지 않음) */
+/* 날짜별 근무 + 근무시간 = 퇴근 − (출근 + 휴게) */
 function st27Day(key, mb) {
   var info = null; try { info = snapDayWithAuto(key, mb, snapshot.raw.dia || [], snapshot.ovMap); } catch (e) {}
   if (!info) return null;
-  var g = 'x', lab = '', min = 0;
+  var g = 'x', lab = '', min = 0, rest = 0, restKnown = false;
   if (info.overrideType === 'status') {
     var sn = String(info.status || info.label || '').trim();
     if (/^(비|비번)$/.test(sn)) { g = 'off'; lab = '비'; }
@@ -26898,15 +26900,20 @@ function st27Day(key, mb) {
       var meta = info.dia ? diaByNumber(info.dia) : null;
       var a = parseHM(info.start || (meta && meta.start)), b = parseHM(info.end || (meta && meta.end));
       if (!isNaN(a) && !isNaN(b)) { min = b - a; if (min <= 0) min += 1440; }
+      /* 휴게: ① XROIS 개인근무명세서 휴게 → ② 행로표 '휴게' 구간 → 없으면 미반영 */
+      var rr = { min: 0, known: false };
+      try { rr = rsRestFor(key, info.dia); if (!rr.known) { var r2 = rsRestMin(info.dia); if (r2.known && r2.min) rr = r2; } } catch (e) {}
+      rest = rr.known ? (rr.min || 0) : 0; restKnown = !!rr.known;
+      if (min && rest) min = Math.max(0, min - rest);
     } else if (tp === '비') { g = 'off'; lab = '비'; }
     else if (tp === '휴') { g = 'rest'; lab = '휴'; }
     else if (tp === 'X') { g = 'x'; lab = 'X'; }
     else lab = tp;
   }
   if (typeof rsLabelStyled === 'function' && /^(주|야|비|휴)$/.test(lab)) lab = rsLabelStyled(lab);
-  return { g: g, lab: lab.length > 3 ? lab.slice(0, 3) : lab, min: min };
+  return { g: g, lab: lab.length > 3 ? lab.slice(0, 3) : lab, min: min, rest: rest, restKnown: restKnown };
 }
-var ST27_COL = { day: '#f5a623', night: '#2f6fd6', off: '#79aef5', x: '#79aef5', rest: '#e5484d', leave: '#ff9c9e' };
+var ST27_COL = { day: '#f5a623', night: '#2f6fd6', off: '#2f6fd6', x: '#2f6fd6', rest: '#e5484d', leave: '#e5484d' };   /* 주간·일근 = 노랑 · 야간·비번·가일·박·X = 파랑 · 휴무·휴가 = 빨강 */
 function st27Render() {
   var sec = document.getElementById('stats-section'); if (!sec) return;
   var box = document.getElementById('st27');
@@ -26918,23 +26925,40 @@ function st27Render() {
   var st = myMonthStats() || {}, work = rsLabelStyle && rsLabelStyle() === 'work';
   var parts = [[work ? '일근' : '주간', st.day || 0, ST27_COL.day], [work ? '박' : '야간', st.night || 0, ST27_COL.night], [work ? '가일' : '비번', (st.off || 0) + (st.x || 0), ST27_COL.off], [work ? 'S' : '휴무', st.rest || 0, ST27_COL.rest], ['휴가', st.leave || 0, ST27_COL.leave]];
   var tot = parts.reduce(function (a, p) { return a + p[1]; }, 0), acc = 0, seg = [];
-  parts.forEach(function (p) { if (!p[1]) return; var a = acc / tot * 100; acc += p[1]; seg.push(p[2] + ' ' + a.toFixed(2) + '% ' + (acc / tot * 100).toFixed(2) + '%'); });
+  /* 같은 색끼리 붙어도 구분되게 칸 사이에 얇은 흰 틈 */
+  parts.forEach(function (p) { if (!p[1]) return; var a = acc / tot * 100; acc += p[1]; var b = acc / tot * 100, g = seg.length || true ? 0.6 : 0; seg.push(p[2] + ' ' + a.toFixed(2) + '% ' + (b - g).toFixed(2) + '%', '#fff ' + (b - g).toFixed(2) + '% ' + b.toFixed(2) + '%'); });
   var bg = seg.length ? 'conic-gradient(' + seg.join(',') + ')' : '#eef2f7';
-  var h = Math.floor((st.minutes || 0) / 60), mm = (st.minutes || 0) % 60;
+  /* 총 근무시간 = 날짜별 (퇴근 − 출근 − 휴게) 합 */
+  var days = {}, totMin = 0, restTot = 0, restDays = 0, missDays = 0;
+  for (var dd = 1; dd <= last; dd++) { var kk = getDateKey(y, m, dd), xx = st27Day(kk, mb); days[dd] = xx;
+    if (xx && xx.min) { totMin += xx.min; if (xx.restKnown) { restTot += xx.rest; if (xx.rest) restDays++; } else missDays++; } }
+  var h = Math.floor(totMin / 60), mm = totMin % 60;
   var leaveTxt = Object.keys(st.leaveKinds || {}).map(function (k) { return esc(k) + ' ' + st.leaveKinds[k]; }).join(' · ');
   var html = '<div class="st27-card"><div class="st27-top"><div class="st27-donut" style="background:' + bg + '"><div><small>총 근무</small><b>' + h + '<em>h</em></b><span>' + (mm ? mm + '분' : '') + '</span></div></div>' +
     '<div class="st27-lg">' + parts.map(function (p) { return '<div><i style="background:' + p[2] + '"></i>' + p[0] + '<b>' + p[1] + '</b></div>'; }).join('') + '</div></div>' +
-    '<div class="st27-sub"><span>근무일 <b>' + ((st.day || 0) + (st.night || 0)) + '일</b></span><span>근무교환 <b>' + (st.swaps || 0) + '회</b></span>' + (leaveTxt ? '<span>' + leaveTxt + '</span>' : '') + '</div></div>';
-  var t = todayKST(), cg = '';
-  for (var e = 0; e < first; e++) cg += '<div class="st27-c empty"></div>';
-  for (var d = 1; d <= last; d++) {
-    var key = getDateKey(y, m, d), x = st27Day(key, mb), dow = (first + d - 1) % 7, hol = typeof holidayName === 'function' && holidayName(y, m, d);
-    var cls = 'st27-c' + (dow === 0 ? ' su' : dow === 6 ? ' sa' : '') + (hol ? ' hol' : '') + (t.y === y && t.m === m && t.d === d ? ' td' : '');
-    cg += '<div class="' + cls + '"><em>' + d + '</em>' + (x && x.lab ? '<span style="background:' + (ST27_COL[x.g] || '#9aa6b8') + '">' + esc(x.lab) + '</span>' : '') +
-      (x && x.min ? '<small>' + Math.floor(x.min / 60) + ':' + ('0' + (x.min % 60)).slice(-2) + '</small>' : '') + '</div>';
+    '<div class="st27-sub"><span>근무일 <b>' + ((st.day || 0) + (st.night || 0)) + '일</b></span><span>근무교환 <b>' + (st.swaps || 0) + '회</b></span><span>휴가 <b>' + (st.leave || 0) + '일</b></span></div></div>';
+  /* 달력: 7칸 + 맨 오른쪽 '주 합계' (52시간 넘으면 빨강) */
+  var t = todayKST(), cg = '', cells = [];
+  /* 앞뒤 달 날짜도 연한 글씨로 채워서 주 합계를 7일로 계산 */
+  var pv = new Date(y, m, 0), nx = new Date(y, m + 1, 1);
+  for (var e = first; e > 0; e--) cells.push({ y: pv.getFullYear(), m: pv.getMonth(), d: pv.getDate() - e + 1, o: 1 });
+  for (var d = 1; d <= last; d++) cells.push({ y: y, m: m, d: d, o: 0 });
+  for (var nd = 1; cells.length % 7; nd++) cells.push({ y: nx.getFullYear(), m: nx.getMonth(), d: nd, o: 1 });
+  function hm(mn) { return Math.floor(mn / 60) + ':' + ('0' + (mn % 60)).slice(-2); }
+  for (var w = 0; w < cells.length; w += 7) {
+    var wk = 0, wkEst = false;
+    for (var j = 0; j < 7; j++) {
+      var cc = cells[w + j], d2 = cc.d;
+      var x = cc.o ? st27Day(getDateKey(cc.y, cc.m, cc.d), mb) : days[d2], dow = j, hol = typeof holidayName === 'function' && holidayName(cc.y, cc.m, d2);
+      if (x && x.min) { wk += x.min; if (!x.restKnown) wkEst = true; }
+      var cls = 'st27-c' + (cc.o ? ' oth' : '') + (dow === 0 ? ' su' : dow === 6 ? ' sa' : '') + (hol ? ' hol' : '') + (t.y === cc.y && t.m === cc.m && t.d === d2 ? ' td' : '');
+      cg += '<div class="' + cls + '"><em>' + (cc.o && d2 === 1 ? (cc.m + 1) + '/' : '') + d2 + '</em>' + (x && x.lab ? '<span style="background:' + (ST27_COL[x.g] || '#9aa6b8') + '">' + esc(x.lab) + '</span>' : '') +
+        (x && x.min ? '<small class="' + (x.restKnown ? '' : 'est') + '">' + hm(x.min) + '</small>' : '') + '</div>';
+    }
+    var over = wk > 52 * 60;
+    cg += '<div class="st27-wk' + (over ? ' over' : '') + '"><b>' + Math.floor(wk / 60) + '<i>h</i></b>' + (wk % 60 ? '<small>' + (wk % 60) + '분</small>' : '<small>&nbsp;</small>') + '<span>' + (over ? '52h 초과' : '52h 이내') + '</span></div>';
   }
-  html += '<div class="st27-card"><div class="st27-cw">' + ['일', '월', '화', '수', '목', '금', '토'].map(function (w, i) { return '<b class="' + (i === 0 ? 'su' : i === 6 ? 'sa' : '') + '">' + w + '</b>'; }).join('') + '</div><div class="st27-cg">' + cg + '</div>' +
-    '<div class="st27-note">근무시간 = 퇴근 − 출근 (휴게시간은 빼지 않음)</div></div>';
+  html += '<div class="st27-card"><div class="st27-cw">' + ['일', '월', '화', '수', '목', '금', '토'].map(function (w, i) { return '<b class="' + (i === 0 ? 'su' : i === 6 ? 'sa' : '') + '">' + w + '</b>'; }).join('') + '<b class="wh">주 합계</b></div><div class="st27-cg">' + cg + '</div></div>';
   box.innerHTML = html;
 }
 (function () {
@@ -26942,5 +26966,20 @@ function st27Render() {
   if (typeof o === 'function') window.statsRender = statsRender = function () { var r = o.apply(this, arguments); try { st27Render(); } catch (e) {} return r; };
 })();
 </script>
+<style id="stats27-week">
+#stats-section .st27-cw,#stats-section .st27-cg{grid-template-columns:repeat(7,minmax(0,1fr)) 54px!important}
+#stats-section .st27-cw b.wh{color:#5b6b85;font-size:10px}
+#stats-section .st27-wk{height:58px;margin-left:4px;border-radius:10px;background:#eef6ee;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1}
+#stats-section .st27-wk b{font-size:15px;font-weight:900;color:#1f7a3a}
+#stats-section .st27-wk b i{font-style:normal;font-size:10px;margin-left:1px}
+#stats-section .st27-wk small{font-size:9px;font-weight:800;color:#3f8f55}
+#stats-section .st27-wk span{font-size:8.5px;font-weight:900;color:#1f7a3a;margin-top:2px;white-space:nowrap}
+#stats-section .st27-wk.over{background:#fde7e8}
+#stats-section .st27-wk.over b,#stats-section .st27-wk.over small,#stats-section .st27-wk.over span{color:#d1343a}
+#stats-section .st27-c span{padding:0 4px!important}
+#stats-section .st27-c.oth{opacity:.38}
+html.ui-dark #stats-section .st27-wk{background:#1d3324}
+html.ui-dark #stats-section .st27-wk.over{background:#3b1d20}
+</style>
 </body>
 </html>
