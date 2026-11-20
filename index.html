@@ -26987,5 +26987,112 @@ function st27Render() {
 html.ui-dark #stats-section .st27-wk{background:#1d3324}
 html.ui-dark #stats-section .st27-wk.over{background:#3b1d20}
 </style>
+<style id="mpcal-ui">
+/* 마이페이지 · 근무교환 내역 / 근무 변경 기록: 펼치면 달력으로 */
+.mpc{background:#f7f9fc;border-radius:16px;padding:10px 8px 8px;margin:4px 0 10px}
+.mpc-h{display:flex;align-items:center;justify-content:space-between;padding:0 6px 6px}
+.mpc-h b{font-size:15px;font-weight:900;color:#173257}
+.mpc-h button{border:0;background:transparent;color:#6f8fb8;font-size:14px;padding:4px 10px;cursor:pointer}
+.mpc-w,.mpc-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.mpc-w{text-align:center;margin-bottom:3px}
+.mpc-w i{font-style:normal;font-size:10.5px;font-weight:800;color:#8a96a8}
+.mpc-w i:first-child{color:#e5484d}.mpc-w i:last-child{color:#2f7be5}
+.mpc-g{gap:2px}
+.mpc-c{min-height:50px;border-radius:9px;display:flex;flex-direction:column;align-items:center;padding-top:4px;gap:2px;border:0;background:transparent;font:inherit;cursor:default}
+.mpc-c em{font-style:normal;font-size:11.5px;font-weight:700;color:#3c4a60}
+.mpc-c.su em{color:#e5484d}.mpc-c.sa em{color:#2f7be5}
+.mpc-c.td em{width:20px;height:20px;line-height:20px;border-radius:50%;background:#2f6fd6;color:#fff!important}
+.mpc-c.has{background:#fff;cursor:pointer;box-shadow:0 1px 3px rgba(16,40,80,.06)}
+.mpc-c.sel{box-shadow:inset 0 0 0 2px #2f6fd6}
+.mpc-c span{max-width:100%;font-size:10px;letter-spacing:-.3px;font-weight:900;line-height:1.35;padding:0 4px;border-radius:5px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mpc-c span.sw{background:#2f7be5}.mpc-c span.ch{background:#f39c33}
+.mpc-c small{font-size:9px;font-weight:800;color:#8a96a8}
+.mpc-c.empty{visibility:hidden}
+.mpc-d{margin-top:8px;padding:10px 12px;border-radius:12px;background:#fff;font-size:13px;color:#1f2a44;line-height:1.5}
+.mpc-d:empty{display:none}
+.mpc-d b{color:#173257}
+.mpc-d .r{display:flex;gap:8px;align-items:baseline;padding:3px 0}
+.mpc-d .r small{color:#8a96a8;margin-left:auto;font-size:11px}
+.mpc-sum{font-size:11.5px;color:#6b7a90;text-align:right;padding:6px 6px 0}
+.mpc-list-t{font-size:12px;font-weight:800;color:#8a96a8;margin:2px 4px 4px}
+html.ui-dark .mpc{background:#161b22}
+html.ui-dark .mpc-c.has,html.ui-dark .mpc-d{background:#1f2630}
+html.ui-dark .mpc-c em,html.ui-dark .mpc-h b,html.ui-dark .mpc-d,html.ui-dark .mpc-d b{color:#e3e8ef}
+</style>
+<script id="mpcal-js">
+/* 공통 달력: items = [{date:'YYYY-MM-DD', tag:'⇄ 김철수', cls:'sw'|'ch', detail:'...html', when:''}] */
+var MPC = { swaps: null, hist: null };
+function mpcState(key, items) {
+  var st = MPC[key];
+  if (!st) {
+    var t = todayKST(), y = t.y, m = t.m;
+    /* 이번 달에 기록이 없으면 가장 최근 기록이 있는 달부터 */
+    var ym = y + '-' + ('0' + (m + 1)).slice(-2);
+    if (items.length && !items.some(function (x) { return x.date.slice(0, 7) === ym; })) {
+      var last = items.map(function (x) { return x.date; }).sort().pop(); y = +last.slice(0, 4); m = +last.slice(5, 7) - 1;
+    }
+    st = MPC[key] = { y: y, m: m, sel: '' };
+  }
+  return st;
+}
+function mpcHtml(key, items) {
+  var st = mpcState(key, items), y = st.y, m = st.m, by = {};
+  items.forEach(function (x) { (by[x.date] = by[x.date] || []).push(x); });
+  var first = new Date(y, m, 1).getDay(), last = new Date(y, m + 1, 0).getDate(), t = todayKST(), g = '', cnt = 0;
+  for (var e = 0; e < first; e++) g += '<div class="mpc-c empty"></div>';
+  for (var d = 1; d <= last; d++) {
+    var k = getDateKey(y, m, d), arr = by[k] || [], dow = (first + d - 1) % 7; if (arr.length) cnt++;
+    var cls = 'mpc-c' + (dow === 0 ? ' su' : dow === 6 ? ' sa' : '') + (t.y === y && t.m === m && t.d === d ? ' td' : '') + (arr.length ? ' has' : '') + (st.sel === k ? ' sel' : '');
+    g += '<button type="button" class="' + cls + '"' + (arr.length ? ' onclick="mpcPick(\'' + key + '\',\'' + k + '\')"' : ' tabindex="-1"') + '><em>' + d + '</em>' +
+      (arr.length ? '<span class="' + arr[0].cls + '">' + esc(arr[0].tag) + '</span>' + (arr.length > 1 ? '<small>+' + (arr.length - 1) + '</small>' : '') : '') + '</button>';
+  }
+  var sel = st.sel && st.sel.slice(0, 7) === y + '-' + ('0' + (m + 1)).slice(-2) ? (by[st.sel] || []) : [];
+  var det = sel.map(function (x) { return '<div class="r">' + x.detail + (x.when ? '<small>' + esc(x.when) + '</small>' : '') + '</div>'; }).join('');
+  return '<div class="mpc"><div class="mpc-h"><button type="button" onclick="mpcMove(\'' + key + '\',-1)" aria-label="이전 달">◀</button><b>' + y + '년 ' + (m + 1) + '월</b><button type="button" onclick="mpcMove(\'' + key + '\',1)" aria-label="다음 달">▶</button></div>' +
+    '<div class="mpc-w"><i>일</i><i>월</i><i>화</i><i>수</i><i>목</i><i>금</i><i>토</i></div><div class="mpc-g">' + g + '</div>' +
+    '<div class="mpc-d">' + det + '</div><div class="mpc-sum">이번 달 ' + cnt + '일 · 날짜를 누르면 자세히</div></div>';
+}
+function mpcMove(key, dlt) { var st = MPC[key]; if (!st) return; var x = new Date(st.y, st.m + dlt, 1); st.y = x.getFullYear(); st.m = x.getMonth(); st.sel = ''; mpcRedraw(key); }
+function mpcPick(key, k) { var st = MPC[key]; if (!st) return; st.sel = st.sel === k ? '' : k; mpcRedraw(key); }
+function mpcRedraw(key) { if (key === 'swaps') mpcSwaps(); else mpcHist(); }
+/* 근무교환 내역 → 달력 */
+function mpcSwapItems() {
+  var mb = findMyMember(); if (!mb || !snapshotUsable()) return null;
+  var prefix = mb.employeeId + '|', out = [];
+  Object.keys(snapshot.ovMap || {}).forEach(function (k) {
+    if (k.indexOf(prefix) !== 0) return;
+    var ov = snapshot.ovMap[k]; if (!ov || !(ov.partnerName || ov.partnerId)) return;
+    var date = k.slice(prefix.length), info = null; try { info = snapDayWithAuto(date, mb, snapshot.raw.dia || [], snapshot.ovMap); } catch (e) {}
+    var who = String(ov.partnerName || ov.partnerId), lab = info ? String(info.label || '') : '', dia = info && info.dia && info.overrideType !== 'status' ? ' · DIA ' + info.dia : '';
+    out.push({ date: date, tag: who, cls: 'sw', detail: '<b>' + (+date.slice(5, 7)) + '/' + (+date.slice(8)) + '</b> <span>' + esc(who) + '님과 교환</span> <span style="color:#2f6fd6;font-weight:800">' + esc(lab + dia) + '</span>' });
+  });
+  return out;
+}
+function mpcSwaps() {
+  var box = document.getElementById('mypage-swaps'); if (!box) return;
+  var items = mpcSwapItems(); if (!items || !items.length) return;
+  var old = box.querySelector('.mpc'); if (old) old.remove();
+  var lt = box.querySelector('.mpc-list-t'); if (lt) lt.remove();
+  box.insertAdjacentHTML('afterbegin', mpcHtml('swaps', items) + '<div class="mpc-list-t">최근 교환 목록</div>');
+}
+/* 근무 변경 기록 → 달력 */
+function mpcHist() {
+  var box = document.getElementById('mypage-history'); if (!box || !histCache || !histCache.length) return;
+  var items = histCache.map(function (it) {
+    var act = it[1], newL = act === 'clear' ? '원래 근무' : histLabel(it[6], it[7], it[8]);
+    var oldL = act === 'clear' ? histLabel(it[2], it[3], it[4]) : (act === 'set' && (it[2] || it[3] || it[4]) ? histLabel(it[2], it[3], it[4]) : (act === 'initial' ? '' : '원래 근무'));
+    var partner = act === 'clear' ? '' : (it[9] || '');
+    return { date: it[0], tag: partner ? partner : String(newL).replace('원래 근무', '원래').replace(/다이아$/, ''), cls: partner ? 'sw' : 'ch', when: String(it[10] || '').slice(5).replace('-', '/') + ' 변경',
+      detail: '<b>' + (+it[0].slice(5, 7)) + '/' + (+it[0].slice(8)) + '</b> ' + (oldL ? '<span style="color:#8a96a8;text-decoration:line-through">' + esc(oldL) + '</span> → ' : '') + '<span style="font-weight:800">' + esc(newL) + '</span>' + (partner ? ' <span style="color:#2f7be5;font-weight:800">⇄ ' + esc(partner) + '</span>' : '') };
+  });
+  var old = box.querySelector('.mpc'); if (old) old.remove();
+  var lt = box.querySelector('.mpc-list-t'); if (lt) lt.remove();
+  box.insertAdjacentHTML('afterbegin', mpcHtml('hist', items) + '<div class="mpc-list-t">최근 변경 목록</div>');
+}
+(function () {
+  var o1 = window.renderMySwaps; if (typeof o1 === 'function') window.renderMySwaps = renderMySwaps = function () { var r = o1.apply(this, arguments); try { mpcSwaps(); } catch (e) {} return r; };
+  var o2 = window.histDraw; if (typeof o2 === 'function') window.histDraw = histDraw = function () { var r = o2.apply(this, arguments); try { mpcHist(); } catch (e) {} return r; };
+})();
+</script>
 </body>
 </html>
