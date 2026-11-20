@@ -2233,7 +2233,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <div id="nx-panel" class="dia-modal" onclick="if(event.target===this)closeNxSettings()">
   <div class="dia-dialog ns-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차운휴알림" alt="" aria-hidden="true">열차 운휴 알림</div>
-    <div class="freight-only-note"><b>여객열차 알림은 잠시 멈췄어요.</b> 화물열차(3000 · 5000 · 6000 · 7000번대)만 알려드려요.</div>
+    <div class="freight-only-note"><b>여객열차 알림은 잠시 멈췄어요.</b> 화물열차만 알려드려요.</div>
     <div class="ns-card">
       <div class="ns-row">
         <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차운휴알림" alt="" aria-hidden="true"><span><b class="ns-t">운휴 알림</b><small>내 근무 열차가 운휴되면 알려드려요</small></span></span>
@@ -2266,7 +2266,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="dia-dialog ns-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차통과알림" alt="" aria-hidden="true">열차통과/도착 알림</div>
     <div class="pv2-sub">정한 역에 <b>진입 중</b>·<b>통과</b>하면 알려줘요.</div>
-    <div class="freight-only-note"><b>여객열차 알림은 잠시 멈췄어요.</b> 화물열차(3000 · 5000 · 6000 · 7000번대)만 알려드려요.</div>
+    <div class="freight-only-note"><b>여객열차 알림은 잠시 멈췄어요.</b> 화물열차만 알려드려요.</div>
     <div id="pass-card" class="pv2">
       <div class="pv2-sec">
         <div class="pv2-h">열차 <small>체크한 열차만 알림</small></div>
@@ -2416,7 +2416,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <div id="trainq-panel" class="dia-modal" style="z-index:405" onclick="if(event.target===this)closeTrainQuery()">
   <div class="dia-dialog ns-dialog tq-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차운행조회" alt="" aria-hidden="true">열차운행정보 조회</div>
-    <div class="tq-sub" style="word-break:keep-all">날짜와 열차번호를 넣으면 열차의 <b>운행 위치</b>를 불러와 보여줘요.<br>화물열차는 <b>Logis.Korail</b>, 그 외 열차는 <b>NXLogis 웹</b>을 열어 보여줘요.</div>
+    <div class="tq-sub" style="word-break:keep-all">날짜와 열차번호를 넣으면 열차의 <b>운행 위치</b>를 불러와 보여줘요.<br><b>화물열차만</b> 조회할 수 있어요.</div>
     <div class="tq-sec">
       <label class="tq-lab" for="tq-day">날짜</label>
       <input id="tq-day" type="hidden">
@@ -2428,8 +2428,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
         <div class="tq-cal-foot"><button type="button" onclick="tqCalPickToday()">오늘</button></div>
       </div>
       <label class="tq-lab" for="tq-in">열차번호</label>
-      <input id="tq-in" class="tq-field" inputmode="text" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="예: 3224 · K1001 · 1001A" autocomplete="off" oninput="tqPrefetch()" onkeydown="if(event.key==='Enter')trainQueryInput()" onblur="this.value=this.value.toUpperCase()">
-      <div class="tq-hint">앱에서 바로: 3000 · 5000 · 6000 · 7000번대 (앞에 알파벳 가능)</div>
+      <input id="tq-in" class="tq-field" inputmode="text" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="예: 3224" autocomplete="off" oninput="tqPrefetch()" onkeydown="if(event.key==='Enter')trainQueryInput()" onblur="this.value=this.value.toUpperCase()">
       <div id="tq-msg" class="tq-msg"></div>
       <button type="button" class="tq-main" onclick="trainQueryInput()">조회</button>
     </div>
@@ -14882,7 +14881,8 @@ function trainQueryInput() {
   var day = String($('tq-day').value || '');
   var v = String($('tq-in').value || '').replace(/\s/g, '').toUpperCase();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) { $('tq-msg').textContent = '날짜를 골라주세요.'; return; }
-  if (!/^(?=.*\d)[A-Z0-9-]{1,8}$/.test(v)) { $('tq-msg').textContent = '열차번호를 숫자와 영문으로 입력해 주세요. (예: 3224, K1001)'; return; }
+  if (!/^(?=.*\d)[A-Z0-9-]{1,8}$/.test(v)) { $('tq-msg').textContent = '열차번호를 숫자와 영문으로 입력해 주세요. (예: 3224)'; return; }
+  if (!tqIsLogisTrain(v)) { $('tq-msg').textContent = '화물열차만 조회할 수 있어요.'; return; }
   closeTrainQuery();
   passShowTrainAnim(v, day);
 }
@@ -27094,5 +27094,10 @@ function mpcHist() {
   var o2 = window.histDraw; if (typeof o2 === 'function') window.histDraw = histDraw = function () { var r = o2.apply(this, arguments); try { mpcHist(); } catch (e) {} return r; };
 })();
 </script>
+<style id="pattern-white">
+/* 근무패턴: 칸 바탕을 흰색으로 (오늘 칸은 파란색 그대로) */
+html body #pattern-section #pattern-list > .dia-item:not(.selected){background:#fff!important;border-color:#e6ecf4!important;box-shadow:0 1px 3px rgba(16,40,80,.05)!important}
+html.ui-dark body #pattern-section #pattern-list > .dia-item:not(.selected){background:#1b2027!important;border-color:#2a313b!important}
+</style>
 </body>
 </html>
