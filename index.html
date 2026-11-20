@@ -8980,6 +8980,20 @@ function xrGroupPlanFetch(dia, dk, onDone) {
   });
   return true;
 }
+function rsGroupRosterRow(dateKey, diaNo, name) {
+  /* XROIS 승무근무표 현황에서 그 날 그 다이아 줄 (이름이 들어 있는 줄 우선) → { start, end, t1, t2, trains } */
+  if (typeof crewRosterLoad !== 'function') return null;
+  var day = crewRosterLoad()[dateKey]; if (!day || !day.rows) return null;
+  var want = crewNorm(diaNo), mk = crewMask(name || '');
+  var rows = day.rows.filter(function (r) { return crewNorm(r.dia) === want; });
+  if (!rows.length) return null;
+  var r = rows.filter(function (x) { return mk && (x.crew || []).some(function (c) { return crewNorm(c) === crewNorm(mk); }); })[0] || (rows.length === 1 ? rows[0] : null);
+  if (!r) return null;
+  var ok = function (t) { t = String(t || '').trim(); return t && t !== '-' ? t : ''; };
+  var t1 = ok(r.train1), t2 = ok(r.train2);
+  if (!t1 && !t2 && !r.start && !r.end) return null;
+  return { start: r.start || '', end: r.end || '', t1: t1, t2: t2, trains: [t1, t2].filter(Boolean), src: 'roster' };
+}
 function openGroupInfo(k, key) {
   var mem = groupRows[k];
   var panel = $('group-info-panel');
@@ -9041,21 +9055,20 @@ function openGroupInfo(k, key) {
     var start = String(info.start || (meta && meta.start) || '').trim();
     var end = String(info.end || (meta && meta.end) || '').trim();
     var groupPlan = !infoFromNight ? rsEstimatedPlan(diaNo, key, mem.employeeId) : null;
-    /* 공유된 행로표가 없고 목록에도 없는 다이아면: 이 폰에 대신 만들어 둔 것 → 없으면 XROIS에서 대신 가져와 다시 그림 */
+    /* 다른 사람 근무는 그 사람이 공유한 자료로만 보여 줌 (보는 사람 폰이 XROIS에 따로 접속하지 않음)
+       예전에 이 폰에 받아 둔 것이 있으면 그것만 사용 */
     var groupWaitXr = false;
     if (!infoFromNight && diaNo && !meta && (!groupPlan || (!(groupPlan.rows || []).length && !groupPlan.xr))) {
       var viaPlan = xrGroupPlanGet(diaNo, key);
       if (viaPlan) groupPlan = viaPlan;
-      else groupWaitXr = xrGroupPlanFetch(diaNo, key, function (ok) {
-        var gp = $('group-info-panel');
-        if (ok && gp && gp.classList.contains('active') && groupSelKey === key && groupRows[k] && String(groupRows[k].employeeId) === String(mem.employeeId)) openGroupInfo(k, key);
-      });
     }
     var groupStartEstimated = false, groupEndEstimated = false;
     /* 본인이면 이 폰의 XROIS 정보(그 날 그 다이아) */
     var groupXi = null;
     try { var gMe = getCurrentUser(); if (gMe && String(mem.employeeId) === String(gMe.employeeId) && typeof xrGet === 'function') { var gx = xrGet('info', {})[key]; if (gx && xrNorm(gx.dia) === xrNorm(diaNo)) groupXi = gx; } } catch (e) {}
     if (!groupXi && groupPlan && groupPlan.xr) groupXi = groupPlan.xr;
+    /* 다른 사람: 내 폰에 있는 XROIS 승무근무표 현황(그 날 · 그 다이아 줄)의 열차번호 · 출퇴근을 우선 (근무 당일 바뀐 열차 반영) */
+    if (!groupXi && !infoFromNight && diaNo && !(gMe && String(mem.employeeId) === String(gMe.employeeId))) { try { var gRos = rsGroupRosterRow(key, diaNo, mem.name); if (gRos) groupXi = gRos; } catch (e) {} }
     /* XROIS에서 가져온 그 날 그 다이아의 출근 · 퇴근은 무조건 XROIS 기준 (행로표로 계산한 시각보다 우선) */
     if (groupXi && !groupXi.est) {
       if (groupXi.start) start = groupXi.start;
@@ -20906,10 +20919,38 @@ var rsRouteShareAvailable = null;
 var rsRouteShareSyncing = false;
 var rsRouteFetchAt = 0;
 var rsRouteFetching = false;
+/* XROIS에서 받은 날짜별 근무(출근 · 퇴근 · 열차번호)를 공유 자료에 붙임 → 근무그룹에서 다른 사람도 그 날 XROIS 기준으로 봄
+   (행로표가 없는 정규 다이아도 xrOnly 항목으로 같이 올림 · 이 폰의 행로표 목록에는 넣지 않음) */
+function rsXrShareDays() {
+  var out = {};
+  try {
+    if (typeof xrGet !== 'function' || typeof crewLinked !== 'function' || !crewLinked()) return out;
+    var info = xrGet('info', {}), t = todayKST(), from = getDateKey(t.y, t.m, 1), nx = new Date(t.y, t.m + 2, 0), to = getDateKey(nx.getFullYear(), nx.getMonth(), nx.getDate());
+    Object.keys(info).sort().forEach(function (k) {
+      var i = info[k]; if (k < from || k > to || !i || i.est || i.src === 'shared') return;
+      var dia = xrNorm(i.dia); if (!/^[0-9A-Z]{3,8}$/.test(dia)) return;
+      var tr = i.trains || [], t1 = String(i.t1 || tr[0] || '').trim(), t2 = String(i.t2 || tr[1] || '').trim();
+      if (!(i.start || i.end || t1 || t2)) return;
+      (out[dia] || (out[dia] = {}))[k] = { start: i.start || '', end: i.end || '', t1: t1, t2: t2 };
+    });
+  } catch (e) {}
+  return out;
+}
+function rsShareWithXr(routes) {
+  var days = rsXrShareDays(), r = {};
+  Object.keys(routes || {}).forEach(function (d) { var e = routes[d]; if (!e) return; var c = {}; for (var k in e) if (Object.prototype.hasOwnProperty.call(e, k)) c[k] = e[k]; r[d] = c; });
+  Object.keys(days).forEach(function (dia) {
+    var e = r[dia] || (r[dia] = { rows: [], xrOnly: true, at: Date.now() });
+    var m = {}; Object.keys(e.xrDates || {}).forEach(function (k) { m[k] = e.xrDates[k]; });
+    Object.keys(days[dia]).forEach(function (k) { m[k] = days[dia][k]; });
+    e.xrDates = m;
+  });
+  return r;
+}
 function rsShareStoreOwn() {
   var u = getCurrentUser();
   if (!u || !u.token || !u.employeeId || typeof rpAll !== 'function') return;
-  var routes = rpAll(), dates = rpDates();
+  var routes = rsShareWithXr(rpAll()), dates = rpDates();
   /* 로컬 저장을 우선 완료한 뒤 비동기로 송신합니다. 용량 제한은 서버에서 재검증됩니다. */
   rsRouteShareSyncing = true;
   api({ action: 'saveRoute', employeeId: u.employeeId, token: u.token,
@@ -20948,7 +20989,7 @@ function rsShareFetch(cb) {
       if (mine && mine.routes && typeof rpAll === 'function') {
         var own = rpAll(), changed = false;
         Object.keys(mine.routes).forEach(function (dia) {
-          if (!own[dia] && mine.routes[dia] && Array.isArray(mine.routes[dia].rows)) {
+          if (!own[dia] && mine.routes[dia] && !mine.routes[dia].xrOnly && Array.isArray(mine.routes[dia].rows)) {
             own[dia] = mine.routes[dia]; changed = true;
           }
         });
@@ -20974,7 +21015,7 @@ function rsEstimatedPlan(diaNo, dateKey, employeeId) {
   if ((!saved || !Array.isArray(saved.rows) || !saved.rows.length) && rsSharedRouteCache[owner] && rsSharedRouteCache[owner].routes) {
     saved = rsSharedRouteCache[owner].routes[dia] || null;
   }
-  if (!saved || ((!Array.isArray(saved.rows) || !saved.rows.length) && !saved.xr)) return null;
+  if (!saved || ((!Array.isArray(saved.rows) || !saved.rows.length) && !saved.xr && !(dateKey && saved.xrDates && saved.xrDates[dateKey]))) return null;
   /* 날짜가 명시적으로 다른 DIA에 묶여 있으면 가져오지 않습니다.
      DIA 번호가 같으면 근무표 변경 → 행로표 만들기 순서와 관계없이 사용할 수 있습니다. */
   try {
@@ -22285,7 +22326,7 @@ function xrApplyDiaRes(dk, dia, r, quiet) {
     rows.forEach(function (x) { if (/운전/.test(x.kind) && x.train && x.train !== 'K' && trains.indexOf(x.train) < 0) trains.push(x.train); });
   }
   if (!t1) t1 = trains[0] || ''; if (!t2) t2 = trains[1] || '';
-  var info = xrGet('info', {}); info[dk] = { dia: dia, start: start, end: end, trains: trains, t1: t1, t2: t2, est: est }; xrPut('info', info);
+  var info = xrGet('info', {}); info[dk] = { dia: dia, start: start, end: end, trains: trains, t1: t1, t2: t2, est: est }; xrPut('info', info); try { if (!est) setTimeout(xrStampRouteTimes, 300); } catch (e) {}
   /* 그 날 승무원 (승무근무표 현황) */
   if (Array.isArray(r.crew)) { var ros = xrGet('roster', {}); ros[dk] = r.crew.map(function (x) { return { dia: xrNorm(x.dia), trains: x.trains || [], crew: x.crew || [] }; });   /* 승무원 찾기용 */ xrPut('roster', ros); var mt = xrGet('meta', {}); mt.rosterAt = stampNow(); xrPut('meta', mt); }
   /* 예상 행로표 저장 + 그 날에 넣기 (승무다이아 내역이 있을 때) */
@@ -23751,7 +23792,7 @@ function xrTimeFor(dk, dia, owner, saved) {
   }
   if (saved) {
     var d = saved.xrDates && saved.xrDates[dk];
-    if (d && (d.start || d.end)) return { start: d.start || '', end: d.end || '', t1: (saved.xr && saved.xr.t1) || '', t2: (saved.xr && saved.xr.t2) || '', date: dk };
+    if (d && (d.start || d.end || d.t1 || d.t2)) return { start: d.start || '', end: d.end || '', t1: d.t1 || (saved.xr && saved.xr.t1) || '', t2: d.t1 ? (d.t2 || '') : ((saved.xr && saved.xr.t2) || ''), date: dk };
     if (saved.xr && saved.xr.date === dk && !saved.xr.est) return saved.xr;
   }
   return null;
@@ -23771,7 +23812,12 @@ function xrStampRouteTimes() {
     });
     if (JSON.stringify(m) !== old) { e.xrDates = m; changed = true; }
   });
-  if (changed) { try { rpSaveAll(a); } catch (e) {} try { if (typeof rsShareQueue === 'function') rsShareQueue(); } catch (e) {} }
+  if (changed) { try { rpSaveAll(a); } catch (e) {} }
+  /* 행로표가 없는 정규 다이아도: XROIS 날짜별 근무가 바뀌었으면 서버 공유 */
+  var sigKey = 'rs_xr_sharesig_' + (getCurrentUser().employeeId || ''), sig = '';
+  try { sig = xrSig(JSON.stringify(rsXrShareDays())); } catch (e) {}
+  var oldSig = ''; try { oldSig = localStorage.getItem(sigKey) || ''; } catch (e) {}
+  if (changed || sig !== oldSig) { try { localStorage.setItem(sigKey, sig); } catch (e) {} try { if (typeof rsShareQueue === 'function') rsShareQueue(); } catch (e) {} }
 }
 /* 이미 이번 달 XROIS 근무를 받아 둔 사람: 앱을 열 때 한 번 XROIS 기준으로 맞춤 */
 (function () {
@@ -28122,6 +28168,36 @@ function wxAnimSvg(kind, desc, w) {
   return '<svg class="wxa wx3" viewBox="0 0 100 100" aria-hidden="true"><defs>' + defs + '</defs>' + g + '</svg>';
 }
 window.wxAnimSvg = wxAnimSvg;
+</script>
+<style id="tabs-same-size">
+/* 메인(근무 · 편의)과 MY 화면의 근무/편의/MY 탭을 완전히 같은 크기 · 위치로 (MY 들어갈 때 살짝 움직이던 것 고정) */
+html body #main-section .mm-tabs,html body #vacation-section .mp-tabs{display:flex!important;width:170px!important;max-width:none!important;box-sizing:border-box!important;padding:3px!important;gap:2px!important;margin-left:auto!important;margin-right:auto!important;border:0!important;border-radius:999px!important}
+html body #main-section .mm-tabs button,html body #vacation-section .mp-tabs button{flex:0 0 55px!important;width:55px!important;min-width:0!important;height:28px!important;padding:0!important;margin:0!important;border:0!important;font-size:12.5px!important;font-weight:800!important;letter-spacing:normal!important;line-height:28px!important;box-sizing:border-box!important}
+</style>
+<style id="board-white-bg">
+/* 공지사항 · 건의사항 (목록 · 글 보기 · 글쓰기): 바탕 전체 흰색 (라이트 모드) */
+html.rs-board-on:not(.ui-dark):not(#zz):not(#yy):not(#xx),
+html.rs-board-on:not(.ui-dark):not(#zz):not(#yy):not(#xx) body,
+html.rs-board-on:not(.ui-dark):not(#zz):not(#yy):not(#xx) body #main-container,
+html:not(.ui-dark):not(#zz):not(#yy):not(#xx) body #main-container > .board-page.active,
+html:not(.ui-dark):not(#zz):not(#yy):not(#xx) body #main-container > .board-page.active > .board-page-inner{background:#fff!important;background-image:none!important}
+</style>
+<script id="board-white-bg-js">
+/* 게시판 화면이 열려 있는 동안만 html에 rs-board-on (화면을 바꾸면 자동으로 원래 바탕) */
+(function () {
+  function sync() {
+    var on = !!document.querySelector('#main-container > .board-page.active');
+    document.documentElement.classList.toggle('rs-board-on', on);
+    var tc = document.querySelector('meta[name="theme-color"]');
+    if (tc && !document.documentElement.classList.contains('ui-dark')) tc.setAttribute('content', on ? '#ffffff' : '#f1f2f4');
+  }
+  function start() {
+    var mc = document.getElementById('main-container'); if (!mc) return;
+    new MutationObserver(sync).observe(mc, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    sync();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
 </script>
 </body>
 </html>
