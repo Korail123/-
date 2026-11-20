@@ -2428,6 +2428,13 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeTrainQuery()">닫기</button></div>
   </div>
 </div>
+<div id="tt-pop" class="dia-modal" style="z-index:407" onclick="if(event.target===this)ttClose()">
+  <div class="dia-dialog ns-dialog tt-dialog">
+    <div class="tt-head"><div><div class="tt-title" id="tt-title">열차시간표</div><div class="tt-sub" id="tt-sub"></div></div></div>
+    <div class="tt-body" id="tt-body"></div>
+    <button type="button" class="tt-ok" onclick="ttClose()">확인</button>
+  </div>
+</div>
 <div id="dst-panel" class="dia-modal" style="z-index:406" onclick="if(event.target===this)closeDstPanel()">
   <div class="dia-dialog ns-dialog dst-dialog">
     <div class="dst-head">
@@ -2526,9 +2533,10 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="pp-details-heading"><span>운행 정보</span><i></i></div>
     <div id="pp-info" class="pp-info"></div>
     <div id="pp-zone" class="pp-zone"></div>
-    <div class="dia-dialog-actions" style="gap:10px">
-      <button type="button" class="dia-text-btn" onclick="passOpenNx()" style="margin-right:auto">NXLogis</button>
-      <button type="button" class="dia-text-btn pass-save" onclick="closePassPop()">확인</button>
+    <div class="pp-btns3">
+      <button type="button" class="pp-b pp-b-nx" onclick="passOpenNx()">NXLogis</button>
+      <button type="button" class="pp-b pp-b-tt" onclick="passTimetable()">열차시간표</button>
+      <button type="button" class="pp-b pp-b-x" onclick="closePassPop()">닫기</button>
     </div>
   </div>
 </div>
@@ -28298,6 +28306,91 @@ function xr2Apply() {
   xrCloseChanges();
   oToast(on ? on + '일 근무를 XROIS 기준으로 바꿨어요.' + (off ? ' (' + off + '일은 그대로)' : '') + ' 다이아 정보를 가져오는 중…' : '근무표를 그대로 두었어요.');
 }
+</script>
+<style id="tt-ui">
+/* 열차번호 조회 결과 팝업: 버튼 3개 (NXLogis · 열차시간표 · 닫기) */
+#pass-pop-panel .pp-btns3{display:grid;grid-template-columns:1fr 1fr 0.75fr;gap:8px;margin-top:14px}
+#pass-pop-panel .pp-b{height:46px;border:0;border-radius:14px;font-family:inherit;font-size:14.5px;font-weight:800;cursor:pointer;white-space:nowrap;padding:0 4px}
+#pass-pop-panel .pp-b-nx{background:#2f6fd6;color:#fff}
+#pass-pop-panel .pp-b-tt{background:#e6efff;color:#1d4fae}
+#pass-pop-panel .pp-b-x{background:#eef1f5;color:#5b6678}
+/* 열차시간표 결과 */
+#tt-pop .tt-dialog{border-radius:22px!important;padding:20px 16px 14px!important;max-height:86vh;display:flex;flex-direction:column}
+.tt-title{font-size:19px;font-weight:800;color:#1d2b45;letter-spacing:-.3px}
+.tt-sub{font-size:12.5px;color:#7a8696;margin-top:3px;line-height:1.45}
+.tt-body{overflow-y:auto;margin-top:12px;flex:1;min-height:60px}
+.tt-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tt-tags span{font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:999px;background:#eef1f5;color:#4a5568}
+.tt-tags span.ok{background:#e6f6ec;color:#17803d}.tt-tags span.no{background:#fdecec;color:#c0392b}
+.tt-grp{margin-bottom:16px}
+.tt-list{position:relative;padding-left:20px}
+.tt-list:before{content:"";position:absolute;left:5px;top:10px;bottom:10px;width:2px;background:#dbe5f5}
+.tt-st{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 52px 52px;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid #f0f2f6}
+.tt-st:last-child{border-bottom:0}
+.tt-st:before{content:"";position:absolute;left:-19px;top:50%;margin-top:-5px;width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #2f6fd6;box-sizing:border-box}
+.tt-st.end:before{background:#2f6fd6}
+.tt-st b{font-size:14px;font-weight:800;color:#1d2b45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tt-st small{display:block;font-size:10.5px;color:#9aa4b2;font-weight:700}
+.tt-st span{font-size:13.5px;font-weight:800;color:#1d2b45;text-align:right;font-variant-numeric:tabular-nums}
+.tt-st span.mu{color:#b0b8c4}
+.tt-colh{display:grid;grid-template-columns:minmax(0,1fr) 52px 52px;gap:6px;padding:0 0 4px 20px;font-size:11px;font-weight:700;color:#8a96a8}
+.tt-colh i{font-style:normal;text-align:right}
+.tt-empty{padding:26px 6px;text-align:center;color:#7a8696;font-size:13.5px;line-height:1.6}
+.tt-src{font-size:11px;color:#9aa4b2;margin-top:6px;line-height:1.5}
+.tt-ok{display:block;width:100%;height:46px;margin-top:10px;border:0;border-radius:12px;background:#2f6fd6;color:#fff;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer}
+</style>
+<script id="tt-js">
+/* 열차시간표: 고른 날짜 · 열차번호로 공공데이터포털 화물열차운행 시간표 (서버 함수 timetable · 인증키는 서버 Secret에만) */
+var TT_FN = 'timetable', ttBackOnClose = false;
+function ttClose() {
+  $('tt-pop').classList.remove('active');
+  if (ttBackOnClose) { ttBackOnClose = false; try { $('pass-pop-panel').classList.add('active'); } catch (e) {} }   /* 조회 결과 화면으로 돌아감 */
+}
+/* 조회 결과 팝업의 [열차시간표]: 그 결과의 날짜 · 열차번호로 */
+function passTimetable() {
+  var d = passPopData || {};
+  if (!d.train) { showToast('열차번호를 알 수 없어요.'); return; }
+  var t = todayKST(), day = /^\d{4}-\d{2}-\d{2}$/.test(String(d.date || '')) ? d.date : getDateKey(t.y, t.m, t.d);
+  ttOpen(String(d.train).toUpperCase(), day);
+}
+function ttDateLabel(dk) { var p = dk.split('-'); return (+p[1]) + '월 ' + (+p[2]) + '일(' + '일월화수목금토'.charAt(new Date(+p[0], +p[1] - 1, +p[2]).getDay()) + ')'; }
+function ttOpen(v, day) {
+  var u = getCurrentUser(); if (!u || !u.token) { showToast('로그인 후 이용해 주세요.'); return; }
+  $('pass-pop-panel').classList.remove('active'); ttBackOnClose = true;   /* 결과 화면은 잠시 숨김 (애니메이션 · 갱신은 그대로) */
+  $('tt-title').textContent = v + ' 열차시간표';
+  $('tt-sub').textContent = ttDateLabel(day) + ' 기준';
+  $('tt-body').innerHTML = '<div class="tt-empty">시간표를 불러오는 중…</div>';
+  $('tt-pop').classList.add('active');
+  var h = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY };
+  if (/^eyJ/.test(SUPABASE_KEY)) h.Authorization = 'Bearer ' + SUPABASE_KEY;
+  var ctl = null, tm = null;
+  try { ctl = new AbortController(); tm = setTimeout(function () { ctl.abort(); }, 45000); } catch (e) {}
+  fetch(SUPABASE_URL + '/functions/v1/' + TT_FN, { method: 'POST', headers: h, body: JSON.stringify({ employeeId: u.employeeId, token: u.token, trainNo: v, date: day }), signal: ctl ? ctl.signal : undefined })
+    .then(function (r) { return r.json().catch(function () { return { success: false, message: '응답을 읽지 못했어요. (' + r.status + ')' }; }); })
+    .then(function (j) { if (tm) clearTimeout(tm); ttRender(j, v, day); })
+    .catch(function () { if (tm) clearTimeout(tm); ttRender({ success: false, message: '서버에 연결하지 못했어요. 잠시 뒤 다시 해 주세요.' }, v, day); });
+}
+function ttRender(j, no, day) {
+  var b = $('tt-body'); if (!b) return;
+  if (!j || !j.success) { b.innerHTML = '<div class="tt-empty">' + esc((j && j.message) || '시간표를 불러오지 못했어요.') + '</div>'; return; }
+  if (!j.found) { b.innerHTML = '<div class="tt-empty"><b>' + esc(no) + '</b> 열차는 화물열차 운행 시간표에 없어요.<br>여객열차이거나 임시열차일 수 있어요.</div>' + ttSrc(j); return; }
+  var html = '';
+  j.groups.forEach(function (g) {
+    var tags = [];
+    if (g.kind) tags.push('<span>' + esc(g.kind) + '</span>');
+    if (g.updown) tags.push('<span>' + esc(g.updown) + '</span>');
+    if (g.line) tags.push('<span>' + esc(g.line) + '</span>');
+    if (g.days) tags.push('<span class="' + (g.runs === true ? 'ok' : g.runs === false ? 'no' : '') + '">' + esc(g.days) + (g.runs === true ? ' · ' + esc(j.weekday) + '요일 운행' : g.runs === false ? ' · ' + esc(j.weekday) + '요일 운행 안 함' : '') + '</span>');
+    var n = g.stops.length;
+    html += '<div class="tt-grp"><div class="tt-tags">' + tags.join('') + '</div><div class="tt-colh"><i style="text-align:left">역</i><i>도착</i><i>출발</i></div><div class="tt-list">' +
+      g.stops.map(function (st, i) {
+        var end = i === 0 || i === n - 1;
+        return '<div class="tt-st' + (end ? ' end' : '') + '"><b>' + esc(st.station) + (st.reason ? '<small>' + esc(st.reason) + '</small>' : '') + '</b><span class="' + (st.arr ? '' : 'mu') + '">' + esc(st.arr || '-') + '</span><span class="' + (st.dep ? '' : 'mu') + '">' + esc(st.dep || '-') + '</span></div>';
+      }).join('') + '</div></div>';
+  });
+  b.innerHTML = html + ttSrc(j);
+}
+function ttSrc(j) { return '<div class="tt-src">출처: 공공데이터포털 ' + esc(j.dataset || '한국철도공사_화물열차운행 시간표') + ' · 정해진 시간표라 당일 지연 · 운휴는 반영되지 않아요.</div>'; }
 </script>
 </body>
 </html>
