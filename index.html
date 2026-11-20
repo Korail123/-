@@ -28996,5 +28996,86 @@ function passMapBind(box) {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
 </script>
+<style id="noti-ios-list">
+.gl-grp{font-size:12px;font-weight:800;color:#8a96a8;margin:14px 4px 6px;letter-spacing:.2px}
+.gl-grp+.ns-card,.gl-grp+.gl-card{margin-top:0!important}
+.gl-card{margin:0;padding:0 14px!important;border-radius:18px;background:#f6f8fc;overflow:hidden}
+.gl-row{display:flex;align-items:center;gap:8px;width:100%;min-height:50px;padding:0;border:0;border-top:1px solid #e7ebf2;background:none;font-family:inherit;text-align:left;cursor:pointer;color:#1d2b45}
+.gl-card>.gl-row:first-child{border-top:0}
+.gl-row b{font-size:15px;font-weight:700}
+.gl-row em{margin-left:auto;font-style:normal;font-size:12.5px;color:#8a96a8;white-space:nowrap}
+.gl-row em.warn{color:#e8590c;font-weight:700}
+.gl-row i{font-style:normal;color:#b3bccb;font-size:20px;line-height:1;width:14px;text-align:center;transition:transform .2s}
+.gl-row[aria-expanded="true"] i{transform:rotate(90deg)}
+.gl-body{padding:0 0 12px}
+.gl-body[hidden]{display:none!important}
+.gl-body>.ns-card,.gl-body>.nk-card{margin:0!important;padding:0!important;background:none!important;border:0!important}
+.gl-body .ns-card-title,.gl-body .nk-title{display:none}
+.gl-body .perm-warn,.gl-body .bg-watch-info{margin:0 0 6px}
+.gl-body .ns-points{margin:0;padding-left:18px}
+.gl-body .freight-only-note{margin:0 0 8px}
+</style>
+<script id="noti-ios-list-js">
+/* 출근/출무 · 운휴 알림 팝업: 아이폰 설정식 목록 (한 줄 + ›, 누르면 그 줄 아래로 펼침) */
+(function () {
+  function row(card, title, sumId, nodes) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'gl-row'; b.setAttribute('aria-expanded', 'false');
+    b.innerHTML = '<b>' + title + '</b><em' + (sumId ? ' id="' + sumId + '"' : '') + '></em><i aria-hidden="true">›</i>';
+    var body = document.createElement('div'); body.className = 'gl-body'; body.hidden = true;
+    nodes.forEach(function (n) { if (n) body.appendChild(n); });
+    b.onclick = function () { glOpen(b, body.hidden); };
+    card.appendChild(b); card.appendChild(body); return b;
+  }
+  function grp(txt, before) { var g = document.createElement('div'); g.className = 'gl-grp'; g.textContent = txt; before.parentNode.insertBefore(g, before); return g; }
+  function card(after) { var c = document.createElement('div'); c.className = 'ns-card gl-card'; after.parentNode.insertBefore(c, after.nextSibling); return c; }
+  window.glOpen = function (b, open) { b.setAttribute('aria-expanded', open ? 'true' : 'false'); b.nextElementSibling.hidden = !open; };
+  /* 출근/출무 알림 설정 */
+  var ac = document.getElementById('alarm-card'), test = document.querySelector('#perm-panel .ns-test-card');
+  if (ac && test) {
+    grp('알람', ac);
+    var c1 = card(ac); grp('기타', c1);
+    row(c1, '앱 권한', 'gl-perm-sum', [document.getElementById('perm-warn'), document.getElementById('bg-watch-info')]);
+    row(c1, '알림 테스트', '', [test]);
+  }
+  /* 열차 운휴 알림 */
+  var nx = document.getElementById('nx-panel');
+  if (nx) {
+    var top = nx.querySelector('.ns-card'), nk = nx.querySelector('.nk-card[data-kind="nx"]'), nt = nx.querySelector('.ns-test-card'), pts = top && top.querySelector('.ns-points'), fr = nx.querySelector('.freight-only-note'), res = document.getElementById('nx-result');
+    var sm = top && top.querySelector('.ns-row small'); if (sm) sm.textContent = '화물열차만 · 내 근무 열차가 운휴되면 알려줘요';
+    if (top && nk && nt) {
+      var c2 = card(top); grp('더 보기', c2);
+      row(c2, '알림 방식', 'gl-nk-sum', [nk]);
+      /* 지금 조회: 버튼 + 결과 */
+      var chk = nt.querySelector('[onclick="nxCheckNow()"]'), wrap = document.createElement('div');
+      if (chk) { chk.classList.add('gl-wide'); wrap.className = 'ns-tests'; wrap.style.gridTemplateColumns = '1fr'; wrap.appendChild(chk); }
+      var rc = row(c2, '지금 조회', 'gl-nx-sum', [wrap, res]);
+      var t3 = nt.querySelector('.ns-tests'); if (t3) { t3.classList.remove('ns-tests-3'); t3.style.gridTemplateColumns = '1fr 1fr'; }
+      row(c2, '알림 테스트', '', [nt]);
+      row(c2, '어떻게 동작하나요?', '', [fr, pts]);
+      if (chk) chk.addEventListener('click', function () { glOpen(rc, true); });
+    }
+  }
+  /* 요약 글씨 */
+  window.glSums = function () {
+    var s = document.getElementById('gl-perm-sum');
+    if (s) {
+      var bn = document.getElementById('perm-banner'), w = document.getElementById('perm-warn');
+      var bad = (bn && bn.style.display !== 'none' && !/ok/.test(bn.className)) || (w && w.style.display !== 'none' && w.textContent.trim());
+      s.textContent = bad ? '확인 필요' : '정상'; s.className = bad ? 'warn' : '';
+    }
+    var k = document.getElementById('gl-nk-sum');
+    if (k && typeof nkGet === 'function') { var c = nkGet('nx'); k.textContent = !c.popup ? '알림창에만' : ['팝업'].concat(c.sound ? ['소리'] : [], c.vib ? ['진동'] : []).join('·'); }
+    var x = document.getElementById('gl-nx-sum'), r = document.getElementById('nx-result');
+    if (x) x.textContent = r && r.textContent.trim() ? '결과 보기' : '';
+  };
+  ['permRender', 'nkRender', 'openNxSettings', 'openPermPanel'].forEach(function (f) {
+    var o = window[f]; if (typeof o !== 'function') return;
+    window[f] = function () { var r = o.apply(this, arguments); try { glSums(); } catch (e) {} return r; };
+    try { eval(f + ' = window[f]'); } catch (e) {}
+  });
+  try { glSums(); } catch (e) {}
+})();
+</script>
+
 </body>
 </html>
