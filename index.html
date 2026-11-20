@@ -27832,7 +27832,7 @@ function dbsRender() {
   if (!d) { body.innerHTML = '<div class="dbs-none">근무표를 불러오는 중...</div>'; return; }
   var t = todayKST(), isToday = d.base === getDateKey(t.y, t.m, t.d);
   $('dbs-sub').textContent = teamLabel(curTeam()) + ' · ' + (isToday ? '오늘 ' : '다음 출근일 ') + dbsDateText(d.base);
-  $('dbs-n1').textContent = d.ins.length; $('dbs-n2').textContent = d.cnt2;
+  $('dbs-n1').textContent = d.ins.length; var T2 = null; try { T2 = dbsToday2(); } catch (e) {} $('dbs-n2').textContent = T2 && !T2.off ? T2.cnt : 0;
   if (dbsCur === 1) {
     if (!d.ins.length) { body.innerHTML = '<div class="dbs-none">출근하는 사람이 없어요.</div>'; return; }
     body.innerHTML = '<div class="dbs-list">' + d.ins.map(function (x) {
@@ -27840,16 +27840,18 @@ function dbsRender() {
     }).join('') + '</div><div class="dbs-tip">이름을 누르면 다이아 상세정보</div>';
     return;
   }
-  if (!d.myIn) { body.innerHTML = '<div class="dbs-none">출근하는 날이 없어요.</div>'; return; }
+  var T = dbsToday2();
+  if (T.off) { body.innerHTML = '<div class="dbs-none">오늘은 쉬는 날이라 보여줄 사람이 없어요.<br><small>' + esc(T.label || '휴무') + '</small></div>'; return; }
   function col(title, anchor, list) {
+    if (!anchor) return '<div class="dbs-col dim"><div class="dbs-ch">' + title + '<b>-</b></div><div class="dbs-none">오늘은 ' + (title.indexOf('출근') >= 0 ? '출근' : '퇴근') + '하지 않아요</div></div>';
     return '<div class="dbs-col"><div class="dbs-ch">' + title + '<b>' + (anchor ? dbsHM(anchor.t) : '-') + '</b></div>' +
       (anchor ? '<div class="dbs-cs">' + dbsHM(anchor.t - 30) + ' ~ ' + dbsHM(anchor.t + 30) + '</div>' : '') +
       '<div class="dbs-tl">' + (list.length ? list.map(function (x) {
-        var r = dbsRel(d.base, x);
+        var r = dbsRel2(anchor, x);
         return '<button type="button" class="dbs-ti' + (x.me ? ' me' : '') + '" onclick="dbsInfo(\'' + esc(x.id) + '\')"><i></i><span>' + dbsHM(x.t) + '</span><b>' + esc(x.name) + dbsMeTag(x) + '</b><em class="' + r.c + '">' + r.t + '</em></button>';
       }).join('') : '<div class="dbs-none">없음</div>') + '</div></div>';
   }
-  body.innerHTML = '<div class="dbs-two">' + col('내가 출근할 때', d.myIn, d.atIn) + col('내가 퇴근할 때', d.myOut, d.atOut) + '</div><div class="dbs-tip">이름을 누르면 다이아 상세정보</div>';
+  body.innerHTML = '<div class="dbs-two">' + col('내가 출근할 때', T.myIn, T.atIn) + col('내가 퇴근할 때', T.myOut, T.atOut) + '</div><div class="dbs-tip">이름을 누르면 다이아 상세정보</div>';
 }
 /* 지금 시각 기준: 아직이면 'N분 후', 이미 지났으면 '출근' · '퇴근' */
 function dbsRel(base, x) {
@@ -27861,8 +27863,46 @@ function dbsRel(base, x) {
   var txt = diff < 60 ? diff + '분 후' : diff < 1440 ? h + '시간' + (m ? ' ' + m + '분' : '') + ' 후' : Math.round(diff / 1440) + '일 후';
   return { t: txt, c: 'soon' };
 }
+/* 출퇴근 ±30분은 항상 오늘 기준: 오늘 내 근무가 주간 · 야간 · 비번일 때만 (휴무 · X · 휴가는 보여주지 않음)
+   비번 = 어제 야간의 오늘 아침 퇴근만 */
+function dbsToday2() {
+  var me = findMyMember(), dia = snapshot.raw.dia || [], t = todayKST(), k = getDateKey(t.y, t.m, t.d), mid = String((getCurrentUser() || {}).employeeId || '');
+  if (!me) return { off: true };
+  var info = null; try { info = snapDayWithAuto(k, me, dia, snapshot.ovMap); } catch (e) {}
+  var ty = String(info && (info.type || info.label) || '').trim();
+  if (info && info.overrideType === 'status') return { off: true, label: String(info.status || info.label || '휴가') };
+  if (ty === '비번') ty = '비';
+  if (['주', '야', '비'].indexOf(ty) < 0) return { off: true, label: ty === 'X' ? '쉬는 날(X)' : '휴무' };
+  var mine = dbsEvents(me, dia, k), myIn = null, myOut = null;
+  for (var i = 0; i < mine.length; i++) if (mine[i].kind === '출근' && mine[i].t >= 0 && mine[i].t < 1440) { myIn = mine[i]; myOut = mine[i + 1] || null; break; }
+  if (!myIn) mine.forEach(function (e) { if (e.kind === '퇴근' && e.t >= 0 && e.t < 1440) myOut = e; });
+  var evs = {};
+  (snapshot.raw.members || []).forEach(function (m) { if (m) evs[m.employeeId] = dbsEvents(m, dia, k); });
+  function near(anchor) {
+    var list = []; if (!anchor) return list;
+    (snapshot.raw.members || []).forEach(function (m) {
+      if (!m) return;
+      (evs[m.employeeId] || []).forEach(function (e) {
+        var me1 = String(m.employeeId) === mid;
+        if (me1 && e.t !== anchor.t) return;
+        if (Math.abs(e.t - anchor.t) <= BRIEF_MATE_WINDOW) list.push({ id: m.employeeId, name: m.name || m.employeeId, t: e.t, kind: e.kind, me: me1 });
+      });
+    });
+    list.sort(function (a, b) { return a.t - b.t || (b.me ? 1 : 0) - (a.me ? 1 : 0) || String(a.name).localeCompare(String(b.name), 'ko'); });
+    return list;
+  }
+  var aIn = near(myIn), aOut = near(myOut);
+  return { off: false, type: ty, myIn: myIn, myOut: myOut, atIn: aIn, atOut: aOut, cnt: aIn.filter(function (x) { return !x.me; }).length + aOut.filter(function (x) { return !x.me; }).length };
+}
+/* 내 출근 · 퇴근 시각 기준: 'N분 후' · 'N분 전' · '같은 시각' (나는 '기준') */
+function dbsRel2(anchor, x) {
+  if (x.me) return { t: '기준', c: 'base' };
+  var d = x.t - anchor.t;
+  if (d === 0) return { t: '같은 시각', c: 'same' };
+  return { t: Math.abs(d) + '분 ' + (d > 0 ? '후' : '전'), c: d > 0 ? 'after' : 'before' };
+}
 function dbsMode(n) { dbsCur = n; dbsRender(); }
-setInterval(function () { try { var p = $('dbs-pop'); if (p && p.classList.contains('active') && dbsCur === 2) dbsRender(); } catch (e) {} }, 30000);
+
 function openDbs() { dbsCur = 1; dbsRender(); $('dbs-pop').classList.add('active'); }
 function closeDbs() { $('dbs-pop').classList.remove('active'); }
 /* 그 사람의 기준일 다이아 상세정보: 근무그룹의 상세 팝업을 그대로 사용 */
@@ -27982,5 +28022,36 @@ function pa2Summ() {
   };
 })();
 </script>
+<style id="sch-modal-dark-text">
+/* 근무표 › 표 › 날짜를 눌렀을 때 뜨는 다이아 상세정보: 달력 화면과 같은 검은 계열 글씨 (흰 글씨 열차번호 칩 → 진한 갈색) */
+html body #sch-day-modal #day-detail .dd-cover.c-day a.dd-chip,html body #sch-day-modal #day-detail .dd-cover.c-day a.dd-chip *{background:rgba(255,255,255,.55)!important;border-color:rgba(120,80,0,.25)!important;color:#3d2a00!important}
+html body #sch-day-modal #day-detail .dd-cover.c-day a.dd-chip svg{stroke:#3d2a00!important;fill:none}
+html body #sch-day-modal #day-detail .dd-cover.c-day a.dd-chip::after{border-color:#3d2a00!important;color:#3d2a00!important}
+html body #sch-day-modal #day-detail .dd-cover.c-day a.dd-chip::before{background:rgba(120,80,0,.35)!important}
+html body #sch-day-modal #day-detail .dd-cover.c-day,html body #sch-day-modal #day-detail .dd-cover.c-day b,html body #sch-day-modal #day-detail .dd-cover.c-day .big{color:#3d2a00!important}
+html body #sch-day-modal #day-detail .dd-cover.c-day .kd,html body #sch-day-modal #day-detail .dd-cover.c-day .k,html body #sch-day-modal #day-detail .dd-cover.c-day small{color:#5a4100!important}
+</style>
+<style id="dbs-ui4">
+html body #dbs-pop .dbs-ti em.after{background:#eaf2ff;color:#2f6fd6}
+html body #dbs-pop .dbs-ti em.before{background:#eef1f5;color:#5b6678}
+html body #dbs-pop .dbs-ti em.same{background:#e7f7ee;color:#1f8a4c}
+html body #dbs-pop .dbs-ti em.base{display:none}
+html body #dbs-pop .dbs-col.dim{opacity:.6}
+</style>
+<style id="dbs-ui5">
+/* 출퇴근 ±30분 (1번): 좁은 폰에서도 안 겹치게 · 1줄 = 시각 + 이름, 2줄 = 몇 분 전/후 · 점은 첫 줄에 맞춤 */
+html body #dbs-pop .dbs-two{gap:6px}
+html body #dbs-pop .dbs-col{padding:10px 6px 6px 8px}
+html body #dbs-pop .dbs-tl{margin-left:4px;padding-left:10px}
+html body #dbs-pop .dbs-ti{display:grid!important;grid-template-columns:auto 1fr;column-gap:6px;row-gap:3px;align-items:center;padding:6px 6px!important;margin-bottom:2px}
+html body #dbs-pop .dbs-ti i{top:13px!important;margin-top:0!important;left:-16px!important;width:9px!important;height:9px!important}
+html body #dbs-pop .dbs-ti span{grid-column:1;font-size:12px!important}
+html body #dbs-pop .dbs-ti b{grid-column:2;min-width:0;font-size:13px!important;overflow:hidden;text-overflow:clip;white-space:nowrap}
+html body #dbs-pop .dbs-ti b .dbs-me{display:none}
+html body #dbs-pop .dbs-ti.me b::after{content:'나';display:inline-block;margin-left:4px;font-size:10px;font-weight:800;color:#fff;background:#2f6fd6;border-radius:999px;padding:0 5px;line-height:15px;vertical-align:1px}
+html body #dbs-pop .dbs-ti em:not(.dbs-me){grid-column:2;justify-self:start;margin:0!important;font-size:10.5px!important;padding:1px 7px!important}
+html body #dbs-pop .dbs-ti em.base{display:none!important}
+html body #dbs-pop .dbs-ch{font-size:11.5px}html body #dbs-pop .dbs-ch b{font-size:16px}
+</style>
 </body>
 </html>
