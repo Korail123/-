@@ -2422,9 +2422,8 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <label class="tq-lab" for="tq-in">열차번호</label>
       <input id="tq-in" class="tq-field" inputmode="text" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="예: 3224" autocomplete="off" oninput="tqPrefetch()" onkeydown="if(event.key==='Enter')trainQueryInput()" onblur="this.value=this.value.toUpperCase()">
       <div id="tq-msg" class="tq-msg"></div>
-      <button type="button" class="tq-main" onclick="trainQueryInput()">조회</button>
     </div>
-    <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeTrainQuery()">닫기</button></div>
+    <div class="tq-btns3"><button type="button" class="tq-b3 pri" onclick="trainQueryInput()">조회</button><button type="button" class="tq-b3 sub" onclick="openPassView()">설정</button><button type="button" class="tq-b3 gh" onclick="closeTrainQuery()">닫기</button></div>
   </div>
 </div>
 <div id="tt-pop" class="dia-modal" style="z-index:407" onclick="if(event.target===this)ttClose()">
@@ -14883,7 +14882,7 @@ function openTrainQuery() {
   $('trainq-panel').classList.add('active');
   setTimeout(function () { try { $('tq-in').focus(); } catch (e) {} }, 60);
 }
-function closeTrainQuery() { $('trainq-panel').classList.remove('active'); }
+function closeTrainQuery() { $('trainq-panel').classList.remove('active'); var c = $('tq-cal'); if (c) c.hidden = true; var b = $('tq-day-btn'); if (b) b.classList.remove('open'); }
 /* 날짜: 앱 안의 달력으로 고르기 */
 var tqCalY = 0, tqCalM = 0;
 function tqParse(v) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return m ? { y: +m[1], m: +m[2] - 1, d: +m[3] } : null; }
@@ -28715,5 +28714,155 @@ function nxwExternal() { var w = null; try { w = window.open(nxwUrl, '_blank', '
 /* 내 근무통계: 앞으로 남은 날 시간은 예상(연한 색) */
 #stats-section .sc-h.fut{color:#7d9cc9!important}
 </style>
+<style id="pass-view-ui">
+/* 열차운행정보 조회: 조회 · 설정 · 닫기 같은 크기 */
+#trainq-panel .tq-btns3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px}
+#trainq-panel .tq-b3{height:46px;border:0;border-radius:14px;font-family:inherit;font-size:14.5px;font-weight:800;cursor:pointer}
+#trainq-panel .tq-b3.pri{background:#2f6fd6;color:#fff}
+#trainq-panel .tq-b3.sub{background:#e6efff;color:#1d4fae}
+#trainq-panel .tq-b3.gh{background:#eef1f5;color:#5b6678}
+/* 표현방식 설정 */
+#pv-panel .pv-opts{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+#pv-panel .pv-opt{display:flex;align-items:center;gap:12px;padding:12px;border:1.5px solid #e3e8f0;border-radius:16px;background:#fff;cursor:pointer;text-align:left;font-family:inherit;width:100%}
+#pv-panel .pv-opt.on{border-color:#2f6fd6;background:#f3f7ff}
+#pv-panel .pv-opt svg{flex:none;width:64px;height:44px;border-radius:10px}
+#pv-panel .pv-opt b{display:block;font-size:15px;color:#1d2b45}
+#pv-panel .pv-opt small{display:block;font-size:12px;color:#8a96a8;margin-top:2px;line-height:1.4}
+#pv-panel .pv-ck{margin-left:auto;width:22px;height:22px;border-radius:50%;border:2px solid #c9ced6;flex:none}
+#pv-panel .pv-opt.on .pv-ck{border:6px solid #2f6fd6}
+/* 지도 방식 */
+#pass-pop-panel .pp-map{position:relative;height:210px;border-radius:15px;overflow:hidden;border:1px solid #e5edf7;background:#eef3f8}
+#pass-pop-panel .pp-map .leaflet-container{width:100%;height:100%;font-family:inherit}
+#pass-pop-panel .pp-map-note{position:absolute;left:8px;bottom:6px;z-index:500;font-size:10px;color:#5b6678;background:rgba(255,255,255,.85);border-radius:6px;padding:1px 6px}
+.pm-st{font-size:10.5px;font-weight:800;color:#1d2b45;background:rgba(255,255,255,.92);border:0;border-radius:6px;padding:1px 5px;box-shadow:0 1px 2px rgba(0,0,0,.15);white-space:nowrap}
+.pm-st::before{display:none}
+.pm-st em{font-style:normal;font-weight:700;color:#5b6678;margin-left:3px}
+.pm-train{position:relative}
+.pm-train img{height:20px;display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.3))}
+.pm-train b{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);font-size:11px;font-weight:900;color:#1d4fae;background:#fff;border-radius:999px;padding:1px 7px;box-shadow:0 1px 3px rgba(0,0,0,.2);white-space:nowrap}
+</style>
+<div id="pv-panel" class="dia-modal" style="z-index:409" onclick="if(event.target===this)closePassView()">
+  <div class="dia-dialog ns-dialog">
+    <div class="dia-dialog-title">열차 위치 표현방식</div>
+    <div class="ns-note" style="margin:0 2px 8px">열차번호를 조회했을 때 위치를 어떻게 보여줄지 골라주세요. 이 폰에만 저장돼요.</div>
+    <div class="pv-opts">
+      <button type="button" class="pv-opt" data-v="2d" onclick="passViewSet('2d')"><svg viewBox="0 0 64 44"><rect width="64" height="44" fill="#dfeafb"/><path d="M0 30 Q16 20 32 30 T64 28 V44 H0Z" fill="#b9d3a6"/><rect y="31" width="64" height="2" fill="#5b6678"/><rect x="22" y="23" width="22" height="8" rx="2" fill="#2f6fd6"/><circle cx="10" cy="32" r="2.5" fill="#fff" stroke="#5b6678"/><circle cx="54" cy="32" r="2.5" fill="#fff" stroke="#5b6678"/></svg><span><b>2D 방식</b><small>선로 위를 열차가 달리는 애니메이션</small></span><i class="pv-ck"></i></button>
+      <button type="button" class="pv-opt" data-v="map" onclick="passViewSet('map')"><svg viewBox="0 0 64 44"><rect width="64" height="44" fill="#eef3f0"/><path d="M0 12 H64 M0 30 H64 M20 0 V44 M46 0 V44" stroke="#dde4dd" stroke-width="3"/><path d="M6 36 C18 30 22 14 34 16 S52 8 60 6" fill="none" stroke="#2f6fd6" stroke-width="3" stroke-linecap="round"/><circle cx="34" cy="16" r="4.5" fill="#e5484d" stroke="#fff" stroke-width="2"/></svg><span><b>지도 방식</b><small>실제 지도 위에 열차 위치와 지나는 역</small></span><i class="pv-ck"></i></button>
+    </div>
+    <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closePassView()">닫기</button></div>
+  </div>
+</div>
+<script id="pass-view-js">
+/* 열차 위치 표현방식: 2D(기본) · 지도 */
+function passViewMode() { try { return localStorage.getItem('rs_pass_view') === 'map' ? 'map' : '2d'; } catch (e) { return '2d'; } }
+function openPassView() { passViewDraw(); $('pv-panel').classList.add('active'); }
+function closePassView() { $('pv-panel').classList.remove('active'); }
+function passViewDraw() { var m = passViewMode(); [].forEach.call(document.querySelectorAll('#pv-panel .pv-opt'), function (b) { b.classList.toggle('on', b.getAttribute('data-v') === m); }); }
+function passViewSet(v) {
+  try { localStorage.setItem('rs_pass_view', v); } catch (e) {}
+  passViewDraw(); showToast(v === 'map' ? '열차 위치를 지도로 보여줘요.' : '열차 위치를 2D 애니메이션으로 보여줘요.');
+  try { if ($('pass-pop-panel').classList.contains('active') && passPopData) passMapApply(passPopData); } catch (e) {}
+}
+/* 역 좌표: 수도권 전철역 좌표표 → 주요 철도역(대략 좌표) · 없는 역은 앞뒤 역 사이로 추정 */
+var PASS_ST_LL = {"서울":[37.5547,126.9707],"용산":[37.5298,126.9648],"영등포":[37.5156,126.9074],"수원":[37.2659,127.0000],"의왕":[37.3207,126.9483],"오봉":[37.3557,126.9681],"평택":[36.9907,127.0853],"천안":[36.8100,127.1464],"조치원":[36.6013,127.2967],"오송":[36.6203,127.3274],"신탄진":[36.4510,127.4310],"대전조차장":[36.3700,127.4180],"대전":[36.3326,127.4342],"서대전":[36.3226,127.4038],"옥천":[36.3070,127.5720],"영동":[36.1720,127.7790],"김천":[36.1130,128.1810],"구미":[36.1283,128.3310],"왜관":[35.9900,128.3980],"대구":[35.8760,128.5960],"동대구":[35.8793,128.6286],"경산":[35.8240,128.7380],"청도":[35.6470,128.7350],"밀양":[35.4740,128.7700],"삼랑진":[35.3930,128.8380],"물금":[35.3110,128.9970],"구포":[35.2050,128.9970],"사상":[35.1630,128.9850],"부산진":[35.1440,129.0590],"부산":[35.1150,129.0410],"부전":[35.1640,129.0590],"부산신항":[35.1250,128.8180],"양평":[37.4925,127.4920],"용문":[37.4820,127.5940],"서원주":[37.3570,127.8670],"원주":[37.3180,127.9200],"제천":[37.1290,128.1910],"제천조차장":[37.1450,128.1950],"단양":[36.9800,128.3570],"도담":[37.0010,128.3510],"영주":[36.8100,128.6250],"안동":[36.5650,128.7290],"의성":[36.3560,128.6990],"영천":[35.9620,128.9440],"경주":[35.8420,129.2120],"충주":[36.9830,127.9370],"태백":[37.1660,128.9870],"동해":[37.4960,129.1150],"삼척":[37.4500,129.1650],"강릉":[37.7640,128.8990],"논산":[36.2060,127.0900],"익산":[35.9400,126.9460],"전주":[35.8500,127.1620],"군산":[35.9930,126.7360],"광주송정":[35.1370,126.7920],"목포":[34.7910,126.3860],"순천":[34.9460,127.5030],"광양":[34.9410,127.6970],"여수엑스포":[34.7530,127.7480],"춘천":[37.8850,127.7170],"가평":[37.8140,127.5100],"울산":[35.5510,129.1390],"태화강":[35.5390,129.3530],"포항":[36.0720,129.3420],"인천":[37.4760,126.6170],"주안":[37.4650,126.6800],"부평":[37.4890,126.7240]};
+function passStLL(name) {
+  var n = String(name || '').replace(/\s+/g, '').replace(/\(.*\)$/, '').replace(/역$/, '');
+  if (typeof DST_XY !== 'undefined' && (DST_XY[n] || DST_XY[n + '역'])) return DST_XY[n] || DST_XY[n + '역'];
+  if (typeof DNM_REF !== 'undefined') { for (var k in DNM_REF) if (k.indexOf(n + '|') === 0) return DNM_REF[k]; }
+  return PASS_ST_LL[n] || null;
+}
+var LEAF_STATE = 0, LEAF_Q = [];
+function leafLoad(cb) {
+  if (window.L && window.L.map) { cb(); return; }
+  LEAF_Q.push(cb); if (LEAF_STATE) return; LEAF_STATE = 1;
+  var css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(css);
+  var js = document.createElement('script'); js.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
+  js.onload = function () { LEAF_STATE = 2; var q = LEAF_Q; LEAF_Q = []; q.forEach(function (f) { try { f(); } catch (e) {} }); };
+  js.onerror = function () { LEAF_STATE = 0; LEAF_Q = []; };
+  document.head.appendChild(js);
+}
+var passMapObj = null;
+function passMapApply(d) {
+  var track = $('pp-track'), box = $('pp-map');
+  var st = (d && d.stations) || [];
+  var use = passViewMode() === 'map' && d && d.kind !== 'err' && d.kind !== 'cancel' && st.length > 1;
+  var pts = [];
+  if (use) {
+    st.forEach(function (x, i) { var ll = passStLL(x.name); pts.push(ll ? { i: i, ll: [ll[0], ll[1]], known: true } : { i: i, ll: null }); });
+    var known = pts.filter(function (p) { return p.known; });
+    if (known.length < 2) use = false;
+    else {
+      /* 좌표 없는 역: 앞뒤 아는 역 사이를 고르게 나눔 */
+      pts.forEach(function (p, i) {
+        if (p.ll) return;
+        var a = null, b = null; for (var k = i - 1; k >= 0; k--) if (pts[k].known) { a = pts[k]; break; } for (var k2 = i + 1; k2 < pts.length; k2++) if (pts[k2].known) { b = pts[k2]; break; }
+        if (a && b) { var f = (i - a.i) / (b.i - a.i); p.ll = [a.ll[0] + (b.ll[0] - a.ll[0]) * f, a.ll[1] + (b.ll[1] - a.ll[1]) * f]; }
+        else p.ll = (a || b).ll.slice();
+      });
+    }
+  }
+  if (!use) { if (box) box.hidden = true; if (track) track.hidden = false; return; }
+  if (!box) { box = document.createElement('div'); box.id = 'pp-map'; box.className = 'pp-map'; track.parentNode.insertBefore(box, track.nextSibling); }
+  track.hidden = true; box.hidden = false;
+  leafLoad(function () {
+    if (passMapObj) { try { passMapObj.remove(); } catch (e) {} passMapObj = null; }
+    box.innerHTML = '<div class="pp-map-note">역 위치는 대략적인 좌표예요</div>';
+    var m = L.map(box, { zoomControl: false, attributionControl: true });
+    passMapObj = m;
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 16, subdomains: 'abcd', attribution: '© OpenStreetMap · © CARTO' }).addTo(m);
+    /* 지난 역 · 지금 위치 (실제 시각이 찍힌 마지막 역 → 없으면 계획 시각 기준) */
+    var now = Date.now(), dl = Number(d.delay) || 0, passed = -1;
+    st.forEach(function (x, i) { if (x.act) passed = i; });
+    if (passed < 0) st.forEach(function (x, i) { if (x.plan && x.plan + dl * 60000 <= now) passed = i; });
+    var frac = 0.5;
+    if (passed >= 0 && passed < st.length - 1 && st[passed].plan && st[passed + 1].plan) {
+      var a = (st[passed].act || st[passed].plan + dl * 60000), c = st[passed + 1].plan + dl * 60000;
+      if (c > a) frac = Math.max(0.05, Math.min(0.95, (now - a) / (c - a)));
+    }
+    var line = pts.map(function (p) { return p.ll; });
+    L.polyline(line, { color: '#9fb3cf', weight: 5, opacity: .9 }).addTo(m);
+    if (passed >= 0) L.polyline(line.slice(0, passed + 1), { color: '#2f6fd6', weight: 5 }).addTo(m);
+    var cur = passed < 0 ? line[0] : passed >= line.length - 1 ? line[line.length - 1] : [line[passed][0] + (line[passed + 1][0] - line[passed][0]) * frac, line[passed][1] + (line[passed + 1][1] - line[passed][1]) * frac];
+    if (passed >= 0 && passed < line.length - 1) L.polyline([line[passed], cur], { color: '#2f6fd6', weight: 5 }).addTo(m);
+    var lo = Math.max(0, passed - 1), hi = Math.min(st.length - 1, passed + 2);
+    st.forEach(function (x, i) {
+      var done = i <= passed;
+      var mk = L.circleMarker(line[i], { radius: i === 0 || i === st.length - 1 ? 6 : 4.5, color: done ? '#2f6fd6' : '#5b6678', weight: 2, fillColor: done ? '#2f6fd6' : '#fff', fillOpacity: 1 }).addTo(m);
+      if (i >= lo && i <= hi || i === 0 || i === st.length - 1) mk.bindTooltip(esc(x.name) + (x.plan ? '<em>' + passHm(x.plan) + '</em>' : ''), { permanent: true, direction: 'top', offset: [0, -6], className: 'pm-st' });
+    });
+    var img = (window.PASS_TRAIN_ART && (PASS_TRAIN_ART.dloco || PASS_TRAIN_ART.eloco)) || '';
+    var dTxt = d.delay === null || d.delay === undefined || d.delay === '' ? '' : (dl > 0 ? '+' + dl + '분' : dl < 0 ? dl + '분' : '정시');
+    L.marker(cur, { icon: L.divIcon({ className: 'pm-train', html: (dTxt ? '<b>' + dTxt + '</b>' : '') + '<img src="' + img + '" alt="">', iconSize: [44, 20], iconAnchor: [22, 10] }), zIndexOffset: 1000 }).addTo(m);
+    var near = line.slice(Math.max(0, passed - 2), Math.min(line.length, passed + 4));
+    if (near.length < 2) near = line;
+    m.fitBounds(L.latLngBounds(near.concat([cur])).pad(0.25));
+    setTimeout(function () { try { m.invalidateSize(); } catch (e) {} }, 60);
+  });
+}
+/* 조회 결과 팝업이 그려질 때마다 표현방식 적용 */
+(function () {
+  var o = passShowPage;
+  window.passShowPage = passShowPage = function () { var r = o.apply(this, arguments); try { passMapApply(passPopData); } catch (e) {} return r; };
+})();
+</script>
+<style id="tq-cal-float">
+/* 열차운행정보 조회 달력: 팝업이 커지지 않고, 화면 가운데 작은 창으로 위에 열림 (4번) */
+#trainq-panel > .tq-cal{position:absolute!important;left:50%;top:50%;transform:translate(-50%,-50%);width:min(320px,calc(100% - 32px));z-index:30;margin:0!important;border-radius:20px!important;padding:14px 12px 12px!important;border:0!important;box-shadow:0 20px 50px rgba(0,0,0,.3)!important}
+#trainq-panel > .tq-cal-dim{position:absolute;inset:0;z-index:29;background:rgba(20,30,50,.45)}
+#trainq-panel > .tq-cal-dim[hidden]{display:none}
+</style>
+<script id="tq-cal-float-js">
+(function () {
+  function boot() {
+    var panel = document.getElementById('trainq-panel'), cal = document.getElementById('tq-cal'); if (!panel || !cal) return;
+    var dim = document.createElement('div'); dim.className = 'tq-cal-dim'; dim.hidden = true;
+    dim.onclick = function (e) { e.stopPropagation(); cal.hidden = true; var b = document.getElementById('tq-day-btn'); if (b) b.classList.remove('open'); };
+    panel.appendChild(dim); panel.appendChild(cal);   /* 팝업 밖(화면 위)으로 옮김 → 팝업 크기 그대로 */
+    new MutationObserver(function () { dim.hidden = cal.hidden; }).observe(cal, { attributes: true, attributeFilter: ['hidden'] });
+    cal.addEventListener('click', function (e) { e.stopPropagation(); });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+})();
+</script>
 </body>
 </html>
