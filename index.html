@@ -11550,6 +11550,8 @@ function closeDiaSelector() {
   var panel = $('dia-panel');
   if (panel) panel.classList.remove('active');
 }
+/* 처음 근무설정한 날 (이 폰에 기록) */
+function rsFirstSetKey(empId) { try { return localStorage.getItem('rs_first_set_' + empId) || ''; } catch (e) { return ''; } }
 function rsFreezePast(empId, todayKey, newSeq, opt) {
   opt = opt || {};
   var loc = ensureLocal(empId);
@@ -11561,6 +11563,9 @@ function rsFreezePast(empId, todayKey, newSeq, opt) {
   var have = {}; (loc.overrides || []).forEach(function (r) { have[r[0]] = 1; });
   try { ((raw && raw.overrides) || []).forEach(function (r) { if (String(r[0]) === String(empId)) have[r[1]] = 1; }); } catch (e) {}
   var start = getDateKey(RS_START.y, RS_START.m, RS_START.d), n = 0, k = start, stamp = stampNow();
+  /* 처음 근무설정한 달은 고정하지 않음: 가입한 달 안에서 설정을 다시 고쳐도 그 달 전체가 새 순서표대로 펼쳐짐 */
+  var fs = rsFirstSetKey(empId);
+  if (fs) { var fp = fs.split('-').map(Number), nx = fp[1] === 12 ? getDateKey(fp[0] + 1, 0, 1) : getDateKey(fp[0], fp[1], 1); if (nx > start) start = k = nx; }
   while (k < todayKey) {
     if (!have[k]) {
       var b = snapBaseDay(k, oSeq, oAnc, list, name);
@@ -11587,6 +11592,9 @@ function saveSelectedDia() {
   var t = todayKST();
   var anchorKey = getDateKey(t.y, t.m, t.d);
   /* 근무설정을 바꿔도 지난 근무는 그대로: 오늘 전날까지(2026-06-01부터) 바꾸기 전 설정의 근무를 '고정'해 둠 (* 없음, 서버 백업 · 근무그룹에도 그대로) */
+  var hadSet = !!(mySettings && mySettings.seq && mySettings.anchor) || !!(ensureLocal(user.employeeId).seq);
+  if (!hadSet && !rsFirstSetKey(user.employeeId)) { try { localStorage.setItem('rs_first_set_' + user.employeeId, anchorKey); } catch (e) {} }
+  if (!hadSet) { try { rsWorkStartFirst(anchorKey); } catch (e) {} }   /* 신규 회원: 근무설정한 날부터 근무표 펼침 */
   try { rsFreezePast(user.employeeId, anchorKey, tempSeq); } catch (e) {}
   mySettings = { seq: tempSeq, anchor: anchorKey };
   myMonth = null;
@@ -27391,6 +27399,212 @@ function ghDiaLoad(force) {
     } catch (e) {}
   }
   setTimeout(chk, 2500);
+})();
+</script>
+<style id="duty-font-unify">
+/* 근무표(달력 · 표) 글꼴 · 글씨색을 다이아 근무정보 카드와 통일
+   주간·일근 = 햇살 노랑 · 야간·비번·X = 밤하늘 파랑 · 휴가·휴무 = 빨강 (근무통계와 같은 색) */
+:root{--duty-day:#f5a623;--duty-night:#2f6fd6;--duty-off:#e5484d}
+html body #schedule-section #calendar-grid .cell-lbl{color:var(--duty-night)!important;font-weight:900!important;letter-spacing:-.3px!important}
+html body #schedule-section #calendar-grid .cell-lbl.t-day{color:var(--duty-day)!important}
+html body #schedule-section #calendar-grid .cell-lbl.t-bi,html body #schedule-section #calendar-grid .cell-lbl.t-night{color:var(--duty-night)!important}
+html body #schedule-section #calendar-grid .cell-lbl.t-off,html body #schedule-section #calendar-grid .cell-lbl.t-status{color:var(--duty-off)!important}
+html body #schedule-section #sch-table-wrap td,html body #schedule-section #sch-table-wrap th{font-family:inherit!important}
+html body #schedule-section #sch-table-wrap td{font-weight:800!important;color:#1d2b45!important;font-variant-numeric:tabular-nums;letter-spacing:-.2px}
+html body #schedule-section #sch-table-wrap td.st-crew,html body #schedule-section #sch-table-wrap td.st-d small{font-weight:700!important}
+html body #schedule-section #sch-table-wrap td.st-duty{font-weight:900!important;color:var(--duty-night)!important}
+html body #schedule-section #sch-table-wrap td.st-duty.t-day{color:var(--duty-day)!important}
+html body #schedule-section #sch-table-wrap td.st-duty.t-off,html body #schedule-section #sch-table-wrap td.st-duty.t-status{color:var(--duty-off)!important}
+html body #schedule-section #sch-table-wrap td.st-d.sun{color:#e5484d!important}
+html body #schedule-section #sch-table-wrap td.st-d.sat{color:#2f6fd6!important}
+html.ui-dark body #schedule-section #sch-table-wrap td{color:#e6ecf5!important}
+html.ui-dark body #schedule-section #sch-table-wrap td.st-duty.t-day{color:var(--duty-day)!important}
+html.ui-dark body #schedule-section #sch-table-wrap td.st-duty{color:#6f9dff!important}
+html.ui-dark body #schedule-section #sch-table-wrap td.st-duty.t-off,html.ui-dark body #schedule-section #sch-table-wrap td.st-duty.t-status{color:#ff6b70!important}
+</style>
+<script id="work-start-js">
+/* ===== 신규 회원 근무 시작일: 근무설정한 날부터 근무표를 펼치고, 그 전 날은 비움 =====
+   서버(members.work_start)에 저장되어 근무그룹 · 근무 교환에서도 같은 날부터 보임 */
+function rsWsKey() { return 'rs_work_start_' + ((getCurrentUser() || {}).employeeId || ''); }
+function rsLocalWorkStart() { try { return localStorage.getItem(rsWsKey()) || ''; } catch (e) { return ''; } }
+function rsWorkStartOf(mb) {
+  if (!mb) return '';
+  var ws = String(mb.workStart || '');
+  if (!ws && String(mb.employeeId) === String((getCurrentUser() || {}).employeeId)) ws = rsLocalWorkStart();
+  return /^\d{4}-\d{2}-\d{2}$/.test(ws) ? ws : '';
+}
+function rsPatchMyWorkStart(d) {
+  try {
+    var me = findMyMember(); if (me) me.workStart = d;
+    if (d) localStorage.setItem(rsWsKey(), d); else localStorage.removeItem(rsWsKey());
+    myMonth = null; refreshUiAfterSwap();
+  } catch (e) {}
+}
+function rsSendWorkStart(d) {
+  var u = getCurrentUser(); if (!u || !u.token) return;
+  api({ action: 'setWorkStart', employeeId: u.employeeId, token: u.token, date: d }, function (r) {
+    if (!r || !r.success) return;                        /* 서버에 SQL이 없으면 이 폰 기록만 사용 */
+    if (r.startAuto === false) { rsPatchMyWorkStart(''); return; }   /* 기존 회원은 그대로 */
+    if (r.workStart) rsPatchMyWorkStart(r.workStart);
+  });
+}
+function rsWorkStartFirst(d) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(d || ''))) return;
+  try { if (!rsLocalWorkStart()) localStorage.setItem(rsWsKey(), d); } catch (e) {}
+  rsPatchMyWorkStart(rsLocalWorkStart() || d);
+  rsSendWorkStart(d);
+}
+(function () {
+  var oDay = snapDayWithAuto;
+  window.snapDayWithAuto = snapDayWithAuto = function (dateKey, mb, dia, ovMap) {
+    var ws = rsWorkStartOf(mb);
+    if (ws && String(dateKey) < ws) return snapEmptyDay();
+    return oDay.apply(this, arguments);
+  };
+  /* 로그인 뒤: 서버 시작일을 이 폰에 맞추고, 신규 회원(서버 표시)인데 시작일이 없으면 폰의 근무설정 날짜로 채움 */
+  var synced = '';
+  setInterval(function () {
+    try {
+      var u = getCurrentUser() || {}; if (!u.token || synced === u.employeeId) return;
+      var me = findMyMember(); if (!me) return;
+      synced = u.employeeId;
+      if (me.workStart) { if (rsLocalWorkStart() !== me.workStart) rsPatchMyWorkStart(me.workStart); return; }
+      if (me.startAuto) {
+        var loc = ensureLocal(u.employeeId);
+        var d = rsLocalWorkStart() || rsFirstSetKey(u.employeeId) || loc.anchor || me.anchor || (mySettings && mySettings.anchor) || '';
+        if (d) rsSendWorkStart(d);
+      } else if (me.startAuto === false && rsLocalWorkStart()) {
+        /* 서버가 기존 회원이라고 알려 주면 이 폰의 시작일 기록은 지움 */
+        rsPatchMyWorkStart('');
+      }
+    } catch (e) {}
+  }, 3000);
+})();
+</script>
+<div id="onb-pop" class="onb-pop" role="dialog" aria-modal="true" aria-labelledby="onb-title">
+  <div class="onb-card">
+    <div class="onb-head"><b id="onb-title">철도비서 시작하기</b><small>처음 한 번만 설정하면 돼요</small></div>
+    <div class="onb-step" id="onb-s1">
+      <div class="onb-num">1</div>
+      <div class="onb-body">
+        <div class="onb-t">근무설정 <em id="onb-team"></em></div>
+        <div class="onb-d" id="onb-s1-d">오늘 근무 순서를 고르면 오늘부터 근무표가 펼쳐져요.</div>
+        <button type="button" class="onb-btn" id="onb-s1-btn" onclick="onbPickDia()">오늘 근무 고르기</button>
+      </div>
+    </div>
+    <div class="onb-step" id="onb-s2">
+      <div class="onb-num">2</div>
+      <div class="onb-body">
+        <div class="onb-t">XROIS 연동 <em>선택</em></div>
+        <div class="onb-pw"><input type="password" id="onb-pw" placeholder="XROIS 비밀번호" autocomplete="off"><button type="button" class="onb-btn sm" onclick="onbSavePw()">저장</button></div>
+        <div class="onb-d sm" id="onb-s2-d">🔒 비밀번호는 이 폰에만 저장돼요.</div>
+      </div>
+    </div>
+    <div class="onb-step" id="onb-s3">
+      <div class="onb-num">3</div>
+      <div class="onb-body">
+        <div class="onb-t">알림 · 화면</div>
+        <div class="onb-list" id="onb-sw"></div>
+      </div>
+    </div>
+    <div class="onb-foot"><button type="button" class="onb-later" onclick="onbClose(false)">나중에</button><button type="button" class="onb-btn pri" onclick="onbClose(true)">완료</button></div>
+  </div>
+</div>
+<style id="onb-ui">
+.onb-pop{display:none;position:fixed;inset:0;z-index:11400;align-items:center;justify-content:center;padding:18px;background:rgba(15,29,50,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.onb-pop.active{display:flex}
+body:has(#onb-pop.active) #dia-panel{z-index:11600!important}
+.onb-card{width:100%;max-width:360px;max-height:calc(100vh - 36px);overflow-y:auto;background:#fff;border-radius:22px;padding:20px 18px 16px;box-shadow:0 20px 50px rgba(15,29,50,.3)}
+.onb-head{margin-bottom:12px}.onb-head b{display:block;font-size:19px;font-weight:900;color:#13294b;letter-spacing:-.4px}.onb-head small{font-size:12.5px;color:#8a96a8}
+.onb-step{display:flex;gap:12px;padding:12px 0;border-top:1px solid #eef1f5}
+.onb-num{flex:0 0 24px;height:24px;border-radius:50%;background:#eaf2ff;color:#2f6fd6;font-size:12.5px;font-weight:900;display:flex;align-items:center;justify-content:center}
+.onb-step.done .onb-num{background:#2f6fd6;color:#fff;font-size:0}.onb-step.done .onb-num::after{content:'✓';font-size:13px}
+.onb-body{flex:1;min-width:0}
+.onb-t{font-size:14.5px;font-weight:800;color:#13294b;margin-bottom:4px}.onb-t em{font-style:normal;font-size:11px;font-weight:700;color:#5b6678;background:#eef1f5;border-radius:999px;padding:2px 8px;margin-left:4px}
+.onb-d{font-size:12.5px;color:#5b6678;line-height:1.45;margin-bottom:8px;word-break:keep-all}.onb-d.sm{font-size:11.5px;color:#8a96a8;margin:6px 0 0}
+.onb-step.done .onb-d{color:#2f6fd6;font-weight:700}
+.onb-btn{height:38px;padding:0 14px;border-radius:11px;border:1.5px solid #2f6fd6;background:#fff;color:#2f6fd6;font-size:13.5px;font-weight:800;cursor:pointer;font-family:inherit}
+.onb-btn.sm{height:40px;flex:0 0 auto}.onb-btn.pri{background:#2f6fd6;color:#fff;min-width:96px;height:44px}
+.onb-pw{display:flex;gap:8px}.onb-pw input{flex:1;min-width:0;height:40px;border:1.5px solid #d6deea;border-radius:11px;padding:0 12px;font-size:14.5px;font-family:inherit;color:#13294b}
+.onb-pw input:focus{outline:0;border-color:#2f6fd6}
+.onb-list{display:flex;flex-direction:column}
+.onb-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;font-size:13.5px;font-weight:700;color:#33415a}
+.onb-sw{position:relative;flex:0 0 44px;width:44px;height:26px;border:0;border-radius:13px;background:#d6deea;cursor:pointer;transition:background .15s;padding:0}
+.onb-sw::after{content:'';position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:left .15s}
+.onb-sw[aria-checked="true"]{background:#2f6fd6}.onb-sw[aria-checked="true"]::after{left:21px}
+.onb-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px;padding-top:12px;border-top:1px solid #eef1f5}
+.onb-later{border:0;background:none;color:#8a96a8;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;padding:8px 4px}
+html.ui-dark .onb-card{background:#1d2533}html.ui-dark .onb-head b,html.ui-dark .onb-t{color:#e6ecf5}html.ui-dark .onb-step,html.ui-dark .onb-foot{border-color:#2a3446}
+html.ui-dark .onb-pw input{background:#141b26;border-color:#33405a;color:#e6ecf5}html.ui-dark .onb-btn:not(.pri){background:transparent}
+</style>
+<script id="onb-js">
+/* ===== 신규 회원 첫 설정 팝업: ① 내 조 근무설정 ② XROIS 비밀번호 ③ 알림 · 화면 ON/OFF ===== */
+var ONB_SW = [
+  ['nx', '열차 운휴 알림'], ['pass', '열차 통과 · 도착 알림'], ['perm', '출근 · 출무 알림'], ['anim', '메인화면 애니메이션']
+];
+function onbKey() { return 'rs_onb_done_' + ((getCurrentUser() || {}).employeeId || ''); }
+function onbState(k) { if (k === 'anim') { try { return !!getAnimPrefs().on; } catch (e) { return false; } } return qsState(k); }
+function onbRender() {
+  var leader = rsIsLeaderTeam(), team = curTeam();
+  $('onb-team').textContent = team || '';
+  var s1 = $('onb-s1'), set = !myWorkSettingMissing() && !leader;
+  if (leader) {
+    s1.classList.add('done'); $('onb-s1-d').textContent = '팀장조는 XROIS 근무표로 채워져요. 아래에서 연동만 해 주세요.'; $('onb-s1-btn').style.display = 'none';
+  } else {
+    s1.classList.toggle('done', set);
+    var t = todayKST(), info = null; try { info = rsDayInfo(getDateKey(t.y, t.m, t.d)); } catch (e) {}
+    $('onb-s1-d').textContent = set ? ('설정 완료 · 오늘 ' + ((info && (info.dia || info.type)) || '') + ' · 오늘부터 근무표가 펼쳐져요') : (team + ' 순서표에서 오늘 근무를 고르면 오늘부터 근무표가 펼쳐져요.');
+    $('onb-s1-btn').style.display = ''; $('onb-s1-btn').textContent = set ? '다시 고르기' : '오늘 근무 고르기';
+  }
+  var linked = false; try { linked = crewLinked(); } catch (e) {}
+  $('onb-s2').classList.toggle('done', linked);
+  $('onb-pw').placeholder = linked ? '저장됨 (바꾸려면 입력)' : 'XROIS 비밀번호';
+  $('onb-s2-d').textContent = linked ? '연동 완료 · 로그인할 때마다 XROIS 근무를 확인해요' : '🔒 비밀번호는 이 폰에만 저장돼요.';
+  $('onb-sw').innerHTML = ONB_SW.map(function (x) {
+    return '<div class="onb-row"><span>' + x[1] + '</span><button type="button" class="onb-sw" role="switch" aria-label="' + x[1] + '" aria-checked="' + (onbState(x[0]) ? 'true' : 'false') + '" onclick="onbToggle(\'' + x[0] + '\', this)"></button></div>';
+  }).join('');
+}
+function onbToggle(k, el) {
+  var on = el.getAttribute('aria-checked') !== 'true';
+  el.setAttribute('aria-checked', on ? 'true' : 'false');
+  try { if (k === 'anim') animToggle(on); else qsSet(k, on); } catch (e) {}
+  setTimeout(function () { try { el.setAttribute('aria-checked', onbState(k) ? 'true' : 'false'); qsRender(); } catch (e) {} }, 400);
+}
+function onbPickDia() {
+  try { openDiaSelector(); } catch (e) { return; }
+  var t = setInterval(function () { var dp = $('dia-panel'); if (!dp || !dp.classList.contains('active')) { clearInterval(t); setTimeout(onbRender, 300); } }, 400);
+}
+function onbSavePw() {
+  var v = $('onb-pw').value;
+  if (!v) { showToast('XROIS 비밀번호를 입력해 주세요.'); return; }
+  var cp = $('crew-pw'); if (cp) cp.value = v;
+  try { if (cp) saveCrewLogin(); else { setCrewPw(v); showToast('CREW 연동을 저장했어요.'); try { xrAutoSync(true, true); } catch (e) {} } } catch (e) {}
+  $('onb-pw').value = ''; if (cp) cp.value = '';
+  setTimeout(onbRender, 300);
+}
+function onbOpen() { onbRender(); $('onb-pop').classList.add('active'); }
+function onbClose(done) {
+  if (done && myWorkSettingMissing()) { showToast('근무설정(1번)을 먼저 해 주세요.'); return; }
+  $('onb-pop').classList.remove('active');
+  if (done) { try { localStorage.setItem(onbKey(), '1'); } catch (e) {} }
+}
+(function () {
+  var shown = '';
+  setInterval(function () {
+    try {
+      var u = getCurrentUser() || {};
+      if (!u.employeeId || u.employeeId === 'guest' || !u.token || shown === u.employeeId) return;
+      if (!snapshotUsable() || !findMyMember()) return;
+      if (localStorage.getItem(onbKey())) { shown = u.employeeId; return; }
+      var need = myWorkSettingMissing() || (rsIsLeaderTeam() && !crewLinked());
+      shown = u.employeeId;
+      if (!need) { localStorage.setItem(onbKey(), '1'); return; }   /* 이미 설정한 회원은 띄우지 않음 */
+      var lg = $('leader-guide'); if (lg) lg.classList.remove('active');
+      onbOpen();
+    } catch (e) {}
+  }, 1500);
+  /* 첫 설정 팝업이 떠 있으면 팀장조 안내 팝업은 띄우지 않음 */
+  setInterval(function () { var lg = $('leader-guide'), op = $('onb-pop'); if (lg && op && op.classList.contains('active') && lg.classList.contains('active')) lg.classList.remove('active'); }, 500);
 })();
 </script>
 </body>
