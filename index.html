@@ -3262,6 +3262,10 @@ function refreshSnapshot(force, cb) {
     if (snapTeamMissing) return api({ action: 'getSnapshot', employeeId: owner, token: user.token, ver: verUse }, cb2);
     api({ action: 'getTeamSnapshot', employeeId: owner, token: user.token, ver: verUse }, function (r0) {
       if (r0 && (r0.success || r0.errorCode === 'AUTH')) return cb2(r0);
+      /* 다른 조(1종조 · 2종조 · 디젤조 · 지부조 · 팀장조)는 조별 근무표를 못 받았을 때 부기관사조 순서표로 대신 그리지 않음
+         (예전: 한 번 실패하면 부기관사조 다이아로 2종조 근무표를 계산해서 근무패턴이 틀어짐) */
+      var mt0 = (typeof myTeam === 'function' && myTeam()) || '부기관사조';
+      if (mt0 !== '부기관사조') return cb2(r0 || { success: false, message: '조별 근무표를 불러오지 못했어요. 잠시 후 다시 열어 주세요.' });
       snapTeamMissing = true;
       api({ action: 'getSnapshot', employeeId: owner, token: user.token, ver: '' }, cb2);
     });
@@ -27301,6 +27305,68 @@ function swapSearchPick(i) {
   document.addEventListener('click', function (e) {
     var d = $('swap-search-drop'); if (d && d.classList.contains('open') && !e.target.closest('#group-swap-select-panel .sx-wrap')) d.classList.remove('open');
   }, true);
+})();
+</script>
+<script id="gh-dia-js">
+/* GitHub(Korail123/-)에 'dia_다이아이름.png'로 올린 행로표를 자동으로 찾아 근무표 · 행로표 팝업에 띄움
+   - 저장소 파일 목록을 한 번 읽어 6시간 동안 기억 (요청 최소화), 앱 안에 넣어 둔 그림이 있으면 그게 먼저 */
+var GH_DIA = {}, GH_DIA_KEY = 'rs_gh_dia_v1', GH_DIA_TTL = 6 * 3600 * 1000;
+function ghDiaUrl(file) {
+  var same = /github\.io$/i.test(location.hostname);
+  return same ? encodeURIComponent(file) : DIA_IMAGE_BASE + encodeURIComponent(file);
+}
+function ghDiaApply(names) {
+  var m = {};
+  (names || []).forEach(function (n) {
+    var k = String(n).match(/^dia_(.+)\.(png|jpe?g|webp)$/i);
+    if (k) { var key = k[1].trim().toUpperCase(); if (!m[key] || /\.png$/i.test(n)) m[key] = n; }
+  });
+  GH_DIA = m;
+}
+function ghDiaLoad(force) {
+  var c = null; try { c = JSON.parse(localStorage.getItem(GH_DIA_KEY) || 'null'); } catch (e) {}
+  if (c && c.names) ghDiaApply(c.names);
+  if (!force && c && c.at && Date.now() - c.at < GH_DIA_TTL) return;
+  try {
+    fetch('https://api.github.com/repos/Korail123/-/contents/?ref=main', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (list) {
+        if (!Array.isArray(list)) return;
+        var names = list.filter(function (f) { return f && f.type === 'file' && /^dia_/i.test(f.name); }).map(function (f) { return f.name; });
+        var before = JSON.stringify(GH_DIA);
+        ghDiaApply(names);
+        try { localStorage.setItem(GH_DIA_KEY, JSON.stringify({ at: Date.now(), names: names })); } catch (e) {}
+        if (JSON.stringify(GH_DIA) !== before) { try { if (typeof renderDayDetail === 'function') renderDayDetail(); } catch (e) {} }
+      }).catch(function () {});
+  } catch (e) {}
+}
+(function () {
+  var oOff = rsOfficialRouteUrl, oUrl = diaImageUrl;
+  window.rsOfficialRouteUrl = rsOfficialRouteUrl = function (diaNo) {
+    var u = oOff.apply(this, arguments); if (u) return u;
+    var d = String(diaNo || '').trim().toUpperCase();
+    return (d && GH_DIA[d]) ? ghDiaUrl(GH_DIA[d]) : '';
+  };
+  window.diaImageUrl = diaImageUrl = function (diaNo) {
+    var d = String(diaNo || '').trim().toUpperCase();
+    if (d && !DIA_IMAGE_EMBED[d] && GH_DIA[d]) return ghDiaUrl(GH_DIA[d]);
+    return oUrl.apply(this, arguments);
+  };
+  ghDiaLoad(false);
+})();
+</script>
+<script id="team-snap-guard-js">
+/* 이 폰에 남아 있는 근무표가 '조 정보 없는 부기관사조 순서표'인데 내 조가 다른 조면 조별 근무표로 다시 받음 */
+(function () {
+  function chk() {
+    try {
+      var mt = (typeof myTeam === 'function' && myTeam()) || '부기관사조';
+      if (mt === '부기관사조' || !snapshotUsable() || (snapshot.raw && snapshot.raw.team)) return;
+      snapForceFull = true; snapTeamMissing = false;
+      refreshSnapshot(true, function () { try { applyMetaFromSnapshot(); loadMyMonth(); renderCalendar(); renderDayDetail(); } catch (e) {} });
+    } catch (e) {}
+  }
+  setTimeout(chk, 2500);
 })();
 </script>
 </body>
