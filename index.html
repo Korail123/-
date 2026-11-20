@@ -21897,10 +21897,11 @@ html.ui-dark #xr-change .xr-keep{background:#2a3038!important;color:#e9edf2!impo
 </style>
 <div id="xr-change" class="dia-modal" onclick="if(event.target===this)xrCloseChanges()">
   <div class="dia-dialog ns-dialog">
-    <div class="dia-dialog-title">XROIS 근무 변경 확인</div>
-    <div class="ns-note" style="margin:0 2px 8px">XROIS 승무근무표와 철도비서 근무표가 다른 날이 있어요. 바꿀 날만 골라주세요. 고르기 전에는 철도비서 근무표가 그대로예요.</div>
+    <div class="dia-dialog-title">다가오는 근무가 바뀌었어요</div>
+    <div class="ns-note xr2-note" id="xr2-note" style="margin:0 2px 8px">XROIS 근무표와 다른 날이에요 · 켜 둔 날만 바뀌어요</div>
     <div class="xr-list" id="xr-list"></div>
-    <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="xrCloseChanges();openSchedule()">근무표 보기</button><button type="button" class="dia-text-btn" onclick="xrCloseChanges()">나중에</button></div>
+    <button type="button" class="xr2-apply" onclick="xr2Apply()">적용</button>
+    <div class="dia-dialog-actions xr2-foot"><button type="button" class="dia-text-btn" onclick="xrCloseChanges();openSchedule()">근무표 보기</button><button type="button" class="dia-text-btn xr2-later" onclick="xrCloseChanges()">나중에</button></div>
   </div>
 </div>
 <script id="xrois-sync-script">
@@ -28198,6 +28199,103 @@ html:not(.ui-dark):not(#zz):not(#yy):not(#xx) body #main-container > .board-page
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
+</script>
+<style id="xr2-ui">
+/* XROIS 근무 변경 팝업: 타임라인 + 스위치 (켠 날만 적용) */
+#xr-change .dia-dialog{border-radius:22px!important;padding:20px 18px 14px!important}
+#xr-change .dia-dialog-title{font-size:18px!important;font-weight:800!important;text-align:left!important;margin:0 2px 4px!important;color:#1d2b45}
+#xr-change .xr2-note{font-size:12.5px!important;color:#7a8696!important;line-height:1.45}
+#xr-change .xr-list{position:relative;margin:12px 0 0;padding:0 0 0 22px;max-height:52vh;overflow-y:auto}
+#xr-change .xr-list:before{content:"";position:absolute;left:6px;top:8px;bottom:8px;width:2px;background:#e3e8ef}
+.xr2-ev{position:relative;padding:0 0 28px}
+.xr2-ev:last-child{padding-bottom:4px}
+.xr2-ev:before{content:"";position:absolute;left:-21px;top:4px;width:12px;height:12px;border-radius:50%;background:#2f6fd6;box-shadow:0 0 0 3px #dbe7fb}
+.xr2-ev.off:before{background:#c9ced6;box-shadow:0 0 0 3px #eef1f5}
+.xr2-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.xr2-hd>div{min-width:0;flex:1}
+.xr2-d{font-size:13px;font-weight:800;color:#2f6fd6;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.xr2-ev.off .xr2-d{color:#8a96a8}
+.xr2-man{font-size:11px;font-weight:800;padding:2px 7px;border-radius:999px;background:#fff1e6;color:#c2560c}
+.xr2-m{font-size:17px;font-weight:800;color:#1d2b45;margin-top:3px;letter-spacing:-.2px}
+.xr2-m b{color:#2f6fd6;font-weight:800}
+.xr2-ev.off .xr2-m b{color:#8a96a8}
+.xr2-z{font-size:12px;color:#5b6678;margin-top:4px;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.2px}
+.xr2-z em{font-style:normal;font-size:10.5px;font-weight:800;color:#2f6fd6;background:#e6efff;border-radius:5px;padding:1px 5px;margin-right:5px}
+.xr2-ev.off .xr2-z em{color:#8a96a8;background:#eef1f5}
+.xr2-was{font-size:11.5px;color:#9aa4b2;margin-top:2px}
+.xr2-sw{flex:0 0 auto;width:46px;height:28px;border:0;border-radius:14px;background:#2f6fd6;position:relative;margin-top:2px;cursor:pointer;padding:0}
+.xr2-sw:after{content:"";position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.15);transition:all .15s}
+.xr2-sw.off{background:#d5d9e0}.xr2-sw.off:after{right:21px}
+.xr2-opt{display:grid;grid-template-columns:2fr 3fr;gap:6px;margin-top:10px}
+.xr2-seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px;padding:2px;border-radius:10px;background:#eef1f5}
+.xr2-seg button{border:0;font-family:inherit;font-size:12px;font-weight:800;height:30px;padding:0 2px;border-radius:8px;background:transparent;color:#6b778c;cursor:pointer;white-space:nowrap;letter-spacing:-.3px}
+.xr2-seg button.on{background:#fff;color:#1d4fae;box-shadow:0 1px 3px rgba(16,40,80,.14)}
+.xr2-z span{white-space:nowrap}
+.xr2-apply{display:block;width:100%;height:48px;margin-top:14px;border:0;border-radius:12px;background:#2f6fd6;color:#fff;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer}
+#xr-change .xr2-foot{display:flex!important;justify-content:space-between!important;margin-top:6px!important}
+#xr-change .xr2-foot .dia-text-btn{color:#2f6fd6!important;font-weight:800!important;border:0!important;background:none!important;box-shadow:none!important;padding:8px 4px!important;font-size:14px!important;min-width:0!important}
+#xr-change .xr2-foot .xr2-later{color:#8a96a8!important}
+</style>
+<script id="xr2-js">
+/* 날짜마다 스위치(켠 날만 적용) + 근무 구분(주간/야간) + 충당(휴무·대기·운휴, 다시 누르면 해제 = 본 근무) → [적용] 한 번에 */
+var xr2Sel = {};
+function xr2DateLabel(dk) { var p = dk.split('-'); return (+p[1]) + '월 ' + (+p[2]) + '일 ' + '일월화수목금토'.charAt(new Date(+p[0], +p[1] - 1, +p[2]).getDay()) + '요일'; }
+function xr2State(c) {
+  var st = xr2Sel[c.date];
+  if (!st) {
+    var cr = (String(c.fromCredit || '').match(/휴무충당|대기충당|운휴충당/) || [''])[0];
+    st = xr2Sel[c.date] = { on: !c.manual, duty: xrGuessNight(c) ? '야간' : '주간', credit: cr };   /* 직접 바꾼 날은 꺼 둠 (덮어쓰기 방지) */
+  }
+  return st;
+}
+window.xrShowChanges = xrShowChanges = function () {
+  var pend = xrGet('pending', []);
+  if (!pend.length) { xrCloseChanges(); return; }
+  Object.keys(xr2Sel).forEach(function (k) { if (!pend.some(function (c) { return c.date === k; })) delete xr2Sel[k]; });
+  var note = $('xr2-note'); if (note) note.textContent = 'XROIS 근무표와 다른 날 ' + pend.length + '일 · 켜 둔 날만 바뀌어요';
+  $('xr-list').innerHTML = pend.map(function (c) {
+    var st = xr2State(c), dk = c.date;
+    var tr = (c.trains || []).filter(Boolean);
+    /* 한 줄: 출근–퇴근 · 열차 */
+    var tm = (c.start || c.end) ? esc(c.start || '-') + '–' + esc(c.end || '-') : '';
+    var after = [tm, tr.length ? '열차 ' + esc(tr.join('·')) : ''].filter(Boolean).join(' · ') || '출퇴근 · 열차 정보 없음';
+    var was = c.fromPartner ? '지금: ' + c.fromPartner + '님과 교환한 근무' + (c.fromCredit ? ' · ' + c.fromCredit : '') : (c.fromCredit ? '지금: ' + c.fromCredit : '');
+    var h = '<div class="xr2-ev' + (st.on ? '' : ' off') + '"><div class="xr2-hd"><div>' +
+      '<div class="xr2-d">' + xr2DateLabel(dk) + (c.manual ? '<span class="xr2-man">직접 수정</span>' : '') + '</div>' +
+      '<div class="xr2-m">' + esc(c.from || '-') + ' → <b>' + esc(c.to) + '</b></div>' +
+      '<div class="xr2-z"><em>바뀐 뒤</em>' + after + '</div>' + (was ? '<div class="xr2-was">' + esc(was) + '</div>' : '') +
+      '</div><button type="button" class="xr2-sw' + (st.on ? '' : ' off') + '" role="switch" aria-checked="' + st.on + '" aria-label="' + xr2DateLabel(dk) + ' 바꾸기" onclick="xr2Toggle(\'' + dk + '\')"></button></div>';
+    if (st.on) {
+      h += '<div class="xr2-opt"><div class="xr2-seg">' +
+        ['주간', '야간'].map(function (v) { return '<button type="button" class="' + (st.duty === v ? 'on' : '') + '" onclick="xr2Set(\'' + dk + '\',\'duty\',\'' + v + '\')">' + v + '</button>'; }).join('') + '</div><div class="xr2-seg">' +
+        ['휴무충당', '대기충당', '운휴충당'].map(function (v) { return '<button type="button" class="' + (st.credit === v ? 'on' : '') + '" onclick="xr2Set(\'' + dk + '\',\'credit\',\'' + v + '\')">' + v + '</button>'; }).join('') +
+        '</div></div>';
+    }
+    return h + '</div>';
+  }).join('');
+  $('xr-change').classList.add('active');
+};
+function xr2Toggle(dk) { var c = xrAskFind(dk); if (!c) return; var st = xr2State(c); st.on = !st.on; xrShowChanges(); }
+function xr2Set(dk, k, v) {
+  var c = xrAskFind(dk); if (!c) return; var st = xr2State(c);
+  if (k === 'credit') st.credit = st.credit === v ? '' : v; else st[k] = v;   /* 충당은 다시 누르면 해제 (본 근무) */
+  xrShowChanges();
+}
+function xr2Apply() {
+  var pend = xrGet('pending', []).slice(); if (!pend.length) { xrCloseChanges(); return; }
+  var on = 0, off = 0, oToast = window.showToast;
+  window.showToast = function () {};   /* 날짜마다 뜨는 안내는 모아서 한 번만 */
+  try {
+    pend.forEach(function (c) {
+      var st = xr2State(c);
+      if (st.on) { xrAskOpen[c.date] = { duty: st.duty, credit: st.credit || '본 근무' }; xrAskApply(c.date); on++; }
+      else { xrAskKeep(c.date); off++; }
+      delete xr2Sel[c.date];
+    });
+  } finally { window.showToast = oToast; }
+  xrCloseChanges();
+  oToast(on ? on + '일 근무를 XROIS 기준으로 바꿨어요.' + (off ? ' (' + off + '일은 그대로)' : '') + ' 다이아 정보를 가져오는 중…' : '근무표를 그대로 두었어요.');
+}
 </script>
 </body>
 </html>
