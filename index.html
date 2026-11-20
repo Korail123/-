@@ -2590,7 +2590,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <div id="group-swap-select-panel" class="dia-modal" style="z-index:179" onclick="if(event.target===this)closeGroupSwapSelector()">
   <div class="group-swap-select-dialog">
     <div class="dia-dialog-title swap-title"><img id="swap-select-ico" class="cmp-ico cmp-ico-lg" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무교환" data-ic-center alt="" aria-hidden="true" decoding="async"><span id="swap-select-title">누구와 바꾸시겠습니까?</span></div>
-    <div class="sx-wrap"><div class="sx-box"><svg class="sx-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><input id="swap-search" class="sx-in" type="text" placeholder="이름으로 찾기" autocomplete="off" oninput="swapSearchRender()" onfocus="swapPreloadNames();swapSearchRender()"><button type="button" id="swap-search-x" class="sx-x" onclick="swapSearchClear(true)" aria-label="지우기">✕</button></div><div id="swap-search-drop" class="sx-drop"></div></div>
+    <div class="sx-wrap"><div class="sx-box"><svg class="sx-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><input id="swap-search" class="sx-in" type="text" placeholder="이름 · 초성으로 찾기 (예: ㄱㅊㅅ)" autocomplete="off" oninput="swapSearchRender()" onfocus="swapPreloadNames();swapSearchRender()"><button type="button" id="swap-search-x" class="sx-x" onclick="swapSearchClear(true)" aria-label="지우기">✕</button></div><div id="swap-search-drop" class="sx-drop"></div></div>
     <div id="swap-select-note" class="swap-note">근무를 교환할 그룹원을 선택해 주세요.</div>
     <div id="group-swap-user-list" class="group-swap-user-list"></div>
     <div class="dia-dialog-actions" style="padding-top:16px"><button type="button" class="dia-text-btn" onclick="closeGroupSwapSelector()">취소</button></div>
@@ -27342,13 +27342,15 @@ function swapSearchRender() {
   var q = inp.value.trim(), wrap = inp.closest('.sx-wrap');
   if (wrap) wrap.classList.toggle('has-q', !!q);
   if (!q) { drop.classList.remove('open'); drop.innerHTML = ''; return; }
-  var ql = q.toLowerCase();
-  var hits = swapSearchPool().filter(function (p) { return p.name.toLowerCase().indexOf(ql) >= 0 || p.id.indexOf(q) === 0; })
-    .sort(function (a, b) { return (a.name.indexOf(q) - b.name.indexOf(q)) || a.name.localeCompare(b.name, 'ko'); }).slice(0, 8);
+  var ql = q.toLowerCase().replace(/\s+/g, '');
+  /* 이름 · 초성(ㄱㅊㅅ → 김철수) · 섞어서(김ㅊ) · 사번 앞자리로 찾기 */
+  var pos = function (name) { var n = name.toLowerCase().replace(/\s+/g, ''); return typeof dstMatch === 'function' ? dstMatch(ql, n) : n.indexOf(ql); };
+  var hits = swapSearchPool().map(function (p) { p._k = pos(p.name); return p; }).filter(function (p) { return p._k >= 0 || p.id.indexOf(q) === 0; })
+    .sort(function (a, b) { return ((a._k < 0 ? 99 : a._k) - (b._k < 0 ? 99 : b._k)) || a.name.localeCompare(b.name, 'ko'); }).slice(0, 8);
   window._swapHits = hits;
   if (!hits.length) { drop.innerHTML = '<div class="sx-empty">' + (swapNameLoading ? '다른 조 이름을 불러오는 중…' : '찾는 이름이 없어요') + '</div>'; drop.classList.add('open'); return; }
   drop.innerHTML = hits.map(function (p, i) {
-    var k = p.name.toLowerCase().indexOf(ql), nm = k >= 0 ? esc(p.name.slice(0, k)) + '<mark>' + esc(p.name.slice(k, k + q.length)) + '</mark>' + esc(p.name.slice(k + q.length)) : esc(p.name);
+    var k = /\s/.test(p.name) ? -1 : p._k, nm = k >= 0 ? esc(p.name.slice(0, k)) + '<mark>' + esc(p.name.slice(k, k + ql.length)) + '</mark>' + esc(p.name.slice(k + ql.length)) : esc(p.name);
     return '<button type="button" class="sx-it" onclick="swapSearchPick(' + i + ')"><span><b>' + nm + '</b><em class="sx-team">' + esc(swapTeamLabel(p.team)) + '</em></span><span class="sx-id">' + esc(p.id) + '</span></button>';
   }).join('');
   drop.classList.add('open');
