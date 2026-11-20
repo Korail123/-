@@ -1433,7 +1433,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
     <div class="input-group">
       <label for="signup-team" class="ico-lab"><img class="lab-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무그룹" alt="" aria-hidden="true">조</label>
-      <select id="signup-team" class="signup-select"><option value="1종조">1종조</option><option value="디젤조">디젤조</option><option value="2종조">2종조</option><option value="부기관사조" selected>부기관사조</option><option value="입환조">지부조</option><option value="팀장조">팀장조</option></select>
+      <select id="signup-team" class="signup-select"><option value="1종조">1종조</option><option value="디젤조">디젤조</option><option value="2종조">2종조</option><option value="부기관사조" selected>부기관사조</option><option value="지부조">지부조</option><option value="팀장조">팀장조</option></select>
     </div>
     <div class="input-group">
       <label for="signup-code">인증번호</label>
@@ -1613,6 +1613,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <div id="pattern-section" class="page-view">
   <h1><span class="page-heading-icon" aria-hidden="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무패턴" alt="" decoding="async"></span> 근무패턴</h1>
   <div id="pattern-status" class="status-message" style="margin-top:0"></div>
+  <div class="pk-drop" id="pt-team-wrap"><button type="button" class="pk-dd" id="pt-team-btn" onclick="ptMenuToggle()" aria-haspopup="listbox"><span id="pt-team-name">내 조</span><i id="pt-team-mine">내 조</i><span class="pk-ar">▾</span></button><span class="pk-cyc" id="pt-team-cyc"></span><div class="pk-menu" id="pt-team-menu" role="listbox"></div></div>
   <div class="current-dia-label" style="text-align:left;margin:0 4px 8px">전체 순서표 (파란 칸이 오늘 · 칸을 누르면 다이아 정보)</div>
   <div id="pattern-list" class="dia-list" style="margin-bottom:18px"></div>
 </div>
@@ -1658,7 +1659,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       </span>
     </div>
     <div class="mp-field"><span>조</span>
-      <span class="mp-selects"><select id="mp-team" onchange="saveMyTeam()"><option value="1종조">1종조</option><option value="디젤조">디젤조</option><option value="2종조">2종조</option><option value="부기관사조" selected>부기관사조</option><option value="입환조">지부조</option><option value="팀장조">팀장조</option></select></span>
+      <span class="mp-selects"><select id="mp-team" onchange="saveMyTeam()"><option value="1종조">1종조</option><option value="디젤조">디젤조</option><option value="2종조">2종조</option><option value="부기관사조" selected>부기관사조</option><option value="지부조">지부조</option><option value="팀장조">팀장조</option></select></span>
     </div>
     <div class="mp-note" style="margin-top:4px">※ 호봉은 매년 1월 1일에 자동으로 1호봉씩 올라갑니다.</div>
   </div>
@@ -3283,6 +3284,7 @@ function refreshSnapshot(force, cb) {
     }
     if (snapTeamMissing) return api({ action: 'getSnapshot', employeeId: owner, token: user.token, ver: verUse }, plain);
     api({ action: 'getTeamSnapshot', employeeId: owner, token: user.token, ver: verUse }, function (r0) {
+      if (r0 && r0.team) r0.team = rsTeamNorm(r0.team);
       if (r0 && r0.success && !r0.unchanged && Array.isArray(r0.dia)) rsTeamDiaSave(r0.team || mt0, r0);
       if (r0 && (r0.success || r0.errorCode === 'AUTH')) return cb2(r0);
       if (mt0 === '부기관사조') snapTeamMissing = true;
@@ -3396,6 +3398,9 @@ var TEAM_WEEKDAY_RULES = {
   '입환조': {
     '1':  [{ days: [6], dia: '12931' }, { days: [0], dia: '12B07' }]   // 12603 대용 (토 / 일)
   },
+  '지부조': {
+    '1':  [{ days: [6], dia: '12931' }, { days: [0], dia: '12B07' }]   // 12603 대용 (토 / 일)
+  },
   '1종조': {
     '1':  [{ days: [6, 0], dia: '12C82' }],   // 12182 대용 (토·일)
     '2':  [{ days: [6], dia: '12902' }],      // 12404 대용 (토)
@@ -3409,7 +3414,7 @@ var TEAM_WEEKDAY_RULES = {
   }
 };
 function curTeam() {
-  return (snapshot && snapshot.raw && snapshot.raw.team) || (typeof myTeam === 'function' && myTeam()) || '부기관사조';
+  return rsTeamNorm((snapshot && snapshot.raw && snapshot.raw.team) || (typeof myTeam === 'function' && myTeam()) || '부기관사조');
 }
 function curWeekdayRules() {
   /* 서버(dia_weekday_rules 표)에서 받은 요일 규칙이 있으면 그것을 우선 */
@@ -3534,7 +3539,7 @@ function snapBuildDay(dateKey, seq, anchor, dia, ov, name) {
       }
       var fz = rsFrozenParse(ov.status), frozenType = fz ? fz.type : null;
       /* 다른 조일 때 고정한 날이면 그 조의 다이아 정보로 (같은 번호라도 조마다 시간이 다를 수 있음) */
-      if (fz && fz.team && fz.team !== curTeam()) { var kd = rsKnownDiaGet(fz.team, ov.dia); if (kd) autoDia = kd; }
+      if (fz && fz.team && rsTeamNorm(fz.team) !== curTeam()) { var kd = rsKnownDiaGet(fz.team, ov.dia); if (kd) autoDia = kd; }
       if (!autoDia && fz) autoDia = rsKnownDiaGet('', ov.dia);
       if (autoDia) {
         d = {};
@@ -8267,7 +8272,7 @@ function swapShowTeams() {
   swapSelStep = 'team';
   var cmp = swapSelectMode === 'compare', mine = curTeam();
   if ($('swap-select-note')) $('swap-select-note').textContent = cmp ? '비교할 사람의 조를 먼저 골라주세요.' : '근무를 교환할 사람의 조를 먼저 골라주세요.';
-  var cnt = {}; Object.keys(rsTeams || {}).forEach(function (id) { var t = rsTeams[id] === '지' + '부조' ? '입환조' : rsTeams[id]; if (String(id) !== String(getCurrentUser().employeeId)) cnt[t] = (cnt[t] || 0) + 1; });
+  var cnt = {}; Object.keys(rsTeams || {}).forEach(function (id) { var t = rsTeamNorm(rsTeams[id]); if (String(id) !== String(getCurrentUser().employeeId)) cnt[t] = (cnt[t] || 0) + 1; });
   if (!Object.keys(rsTeams || {}).length) cnt[mine] = Math.max(0, (groupRows || []).length - 1);
   var order = [mine].concat(RS_TEAMS.filter(function (t) { return t !== mine; }));
   $('group-swap-user-list').innerHTML = order.map(function (t) {
@@ -9318,18 +9323,20 @@ function tenureText(joinDate) {
 }
 /* ============ 조 (1종조 · 디젤조 · 2종조 · 부기관사조 · 입환조) ============
    서버 members.crew_team · app_getteams(읽기) · app_setmyteam(내 조 바꾸기) */
-var RS_TEAMS = ['1종조', '디젤조', '2종조', '부기관사조', '입환조', '팀장조'];
+var RS_TEAMS = ['1종조', '디젤조', '2종조', '부기관사조', '지부조', '팀장조'];
 /* 화면에 보이는 이름: 입환조 → 지부조 (서버 · 다이아 표에 저장된 값은 '입환조' 그대로) */
-var TEAM_LABEL = { '입환조': '지부조' };
+var TEAM_LABEL = { '입환조': '지부조' };   /* 예전 이름이 남아 있어도 지부조로 보이게 */
+/* 조 이름 통일: 서버 · 이 폰에 예전 이름 '입환조'가 남아 있으면 '지부조'로 */
+function rsTeamNorm(t) { t = String(t || ''); return t === '입환조' ? '지부조' : t; }
 function teamLabel(t) { return TEAM_LABEL[t] || t; }
 function teamKey() { return 'rs_team_' + (getCurrentUser().employeeId || ''); }
-function myTeam() { try { var t = LS.getItem(teamKey()) || ''; return t === '지' + '부조' ? '입환조' : t; } catch (e) { return ''; } }
-function teamPut(t) { try { if (RS_TEAMS.indexOf(t) >= 0) LS.setItem(teamKey(), t); } catch (e) {} }
+function myTeam() { try { return rsTeamNorm(LS.getItem(teamKey()) || ''); } catch (e) { return ''; } }
+function teamPut(t) { t = rsTeamNorm(t); try { if (RS_TEAMS.indexOf(t) >= 0) LS.setItem(teamKey(), t); } catch (e) {} }
 var rsTeams = {};          /* 사번 → 조 (근무그룹 등에서 쓸 수 있게) */
 function teamLoad(cb) {
   var u = getCurrentUser(); if (!u.token) { if (cb) cb(); return; }
   api({ action: 'getteams', employeeId: u.employeeId, token: u.token }, function (r) {
-    if (r && r.success) { rsTeams = r.teams || {}; if (r.mine) teamPut(r.mine); }
+    if (r && r.success) { rsTeams = {}; var tt = r.teams || {}; Object.keys(tt).forEach(function (id) { rsTeams[id] = rsTeamNorm(tt[id]); }); if (r.mine) teamPut(r.mine); }
     if (cb) cb(r);
   });
 }
@@ -27605,6 +27612,97 @@ function onbClose(done) {
   }, 1500);
   /* 첫 설정 팝업이 떠 있으면 팀장조 안내 팝업은 띄우지 않음 */
   setInterval(function () { var lg = $('leader-guide'), op = $('onb-pop'); if (lg && op && op.classList.contains('active') && lg.classList.contains('active')) lg.classList.remove('active'); }, 500);
+})();
+</script>
+<style id="pt-team-ui">
+#pattern-section .pk-drop{position:relative;display:flex;align-items:center;gap:10px;margin:0 4px 10px}
+#pattern-section .pk-dd{height:38px;padding:0 12px;border-radius:12px;border:1.5px solid #2f6fd6;background:#fff;font-size:15px;font-weight:900;color:#13294b;font-family:inherit;display:flex;align-items:center;gap:6px;cursor:pointer}
+#pattern-section .pk-dd i{font-style:normal;font-size:10.5px;font-weight:800;color:#2f6fd6;background:#eaf2ff;border-radius:999px;padding:2px 7px}
+#pattern-section .pk-dd i[hidden]{display:none}
+#pattern-section .pk-ar{color:#2f6fd6;font-size:12px}
+#pattern-section .pk-cyc{font-size:12px;color:#8a96a8;font-weight:700}
+#pattern-section .pk-menu{display:none;position:absolute;left:0;top:44px;width:210px;background:#fff;border:1px solid #dfe5ee;border-radius:14px;box-shadow:0 12px 30px rgba(19,41,75,.18);padding:6px;z-index:60}
+#pattern-section .pk-menu.open{display:block}
+#pattern-section .pk-menu button{width:100%;border:0;background:transparent;padding:10px;border-radius:10px;font-size:14px;font-weight:700;color:#33415a;display:flex;align-items:center;gap:6px;font-family:inherit;text-align:left;cursor:pointer}
+#pattern-section .pk-menu button.on{background:#f1f6ff;color:#2f6fd6}
+#pattern-section .pk-menu i{font-style:normal;font-size:10.5px;color:#2f6fd6;background:#eaf2ff;border-radius:999px;padding:1px 6px}
+#pattern-section .pk-menu b{margin-left:auto}
+html.ui-dark #pattern-section .pk-dd,html.ui-dark #pattern-section .pk-menu{background:#1d2533;border-color:#33405a}
+html.ui-dark #pattern-section .pk-dd,html.ui-dark #pattern-section .pk-menu button{color:#e6ecf5}
+html.ui-dark #pattern-section .pk-menu button.on{background:rgba(47,111,214,.18)}
+</style>
+<script id="pt-team-js">
+/* ===== 근무패턴: 다른 조 순서표 보기 (들어올 때마다 기본값은 내 조 · 목록은 내 조 맨 위, 나머지 가나다순) ===== */
+var ptTeam = '', ptActive = false, ptT = null;
+function ptMine() { return curTeam() || '부기관사조'; }
+function ptTeams() {
+  var mine = ptMine();
+  return [mine].concat(RS_TEAMS.filter(function (t) { return t !== mine; }).sort(function (a, b) { return teamLabel(a).localeCompare(teamLabel(b), 'ko'); }));
+}
+function ptOther() { return !!(ptTeam && ptTeam !== ptMine()); }
+function ptMenuRender() {
+  var cur = ptTeam || ptMine(), mine = ptMine();
+  $('pt-team-menu').innerHTML = ptTeams().map(function (t) {
+    return '<button type="button" role="option" class="' + (t === cur ? 'on' : '') + '" onclick="ptPick(\'' + t + '\')">' + esc(teamLabel(t)) + (t === mine ? ' <i>내 조</i>' : '') + (t === cur ? '<b>✓</b>' : '') + '</button>';
+  }).join('');
+}
+function ptMenuToggle() { var m = $('pt-team-menu'); ptMenuRender(); m.classList.toggle('open'); }
+function ptHead() {
+  var cur = ptTeam || ptMine();
+  $('pt-team-name').textContent = teamLabel(cur);
+  $('pt-team-mine').hidden = cur !== ptMine();
+  var n = 0; try { n = rotList().length; } catch (e) {}
+  $('pt-team-cyc').textContent = cur === '팀장조' ? 'XROIS 근무표' : (n ? n + '일 순환' : '');
+}
+function ptPick(t) {
+  $('pt-team-menu').classList.remove('open');
+  if (t === ptMine()) { ptTeam = ''; ptT = null; renderPattern(); return; }
+  ptTeam = t; ptT = null;
+  $('pattern-list').innerHTML = '<div class="dia-empty">' + esc(teamLabel(t)) + ' 순서표를 불러오는 중...</div>';
+  $('pt-team-cyc').textContent = ''; $('pt-team-name').textContent = teamLabel(t); $('pt-team-mine').hidden = true;
+  gfLoadTeam(t, function (T) {
+    if (ptTeam !== t) return;
+    if (!T) { $('pattern-list').innerHTML = '<div class="dia-empty">' + esc(teamLabel(t)) + ' 순서표를 불러오지 못했어요.</div>'; return; }
+    ptT = T; renderPattern();
+  });
+}
+(function () {
+  var oRot = rotList, oIdx = patternIndexFor, oRender = renderPattern, oInfo = openPatternInfo;
+  window.rotList = rotList = function () {
+    if (ptActive && ptOther() && ptT) {
+      var keep = swapOther, ko = rsRulesTeamOverride; swapOther = ptT; rsRulesTeamOverride = ptT.team;
+      try { return rotationFor(ptT.dia || [], ''); } finally { swapOther = keep; rsRulesTeamOverride = ko; }
+    }
+    return oRot.apply(this, arguments);
+  };
+  window.patternIndexFor = patternIndexFor = function () {
+    if (ptActive && ptOther()) return -1;            /* 다른 조를 볼 때는 오늘 표시 없음 */
+    return oIdx.apply(this, arguments);
+  };
+  window.renderPattern = renderPattern = function () {
+    if (ptOther() && !ptT) return;
+    ptActive = true;
+    try {
+      oRender.apply(this, arguments);
+      if (ptOther()) {
+        $('pattern-status').textContent = '';
+        if (ptTeam === '팀장조' || !rotList().length) $('pattern-list').innerHTML = '<div class="dia-empty">' + (ptTeam === '팀장조' ? '팀장조는 순서표 없이 XROIS 근무표로 채워져요.' : '이 조의 순서표가 아직 없어요.') + '</div>';
+      }
+      ptHead();
+    } finally { ptActive = false; }
+  };
+  window.openPatternInfo = openPatternInfo = function () {
+    ptActive = true; try { return oInfo.apply(this, arguments); } finally { ptActive = false; }
+  };
+  /* 근무패턴에 들어올 때마다 내 조로 */
+  var oSw = switchSection;
+  window.switchSection = switchSection = function (id) {
+    if (id === 'pattern-section') { ptTeam = ''; ptT = null; var m = $('pt-team-menu'); if (m) m.classList.remove('open'); }
+    return oSw.apply(this, arguments);
+  };
+  document.addEventListener('click', function (e) {
+    var m = $('pt-team-menu'); if (m && m.classList.contains('open') && !e.target.closest('#pt-team-wrap')) m.classList.remove('open');
+  }, true);
 })();
 </script>
 </body>
