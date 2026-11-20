@@ -21813,7 +21813,7 @@ html.ui-dark #weekly-wx-panel .ww-close{background:#354f70;color:#e2f2ff}
       var ds=(dt.getMonth()+1)+'/'+dt.getDate()+' '+['일','월','화','수','목','금','토'][dt.getDay()];
       var w=typeof briefWeatherText==='function'?briefWeatherText(d.code):['흐림','흐림'];
       var ico=typeof appIcon==='function'?appIcon('날씨_'+w[0]):'';
-      return '<div class="ww-item'+(d.day===today?' today':'')+'"><span class="ww-day">'+(d.day===today?'<b>오늘</b>':'')+esc(ds)+'</span>'+(ico?'<img class="ww-ico" src="'+esc(ico)+'" alt="">':'<span>🌤️</span>')+'<span class="ww-desc">'+esc(w[1])+'</span><span class="ww-temps"><em>'+Math.round(d.max)+'°</em><small>'+Math.round(d.min)+'°</small></span><span class="ww-rain">☂ '+(d.rain==null?'—':Math.round(d.rain)+'%')+'</span></div>';
+      return '<div class="ww-item'+(d.day===today?' today':'')+'"><span class="ww-day">'+esc(ds)+'</span>'+(ico?'<img class="ww-ico" src="'+esc(ico)+'" alt="">':'<span>🌤️</span>')+'<span class="ww-desc">'+esc(w[1])+'</span><span class="ww-temps"><em>'+Math.round(d.max)+'°</em><small>'+Math.round(d.min)+'°</small></span><span class="ww-rain">☂ '+(d.rain==null?'—':Math.round(d.rain)+'%')+'</span></div>';
     }).join('');
   }
   function fetchForecast(force){
@@ -22484,10 +22484,28 @@ function rsRestMin(dia) {
    휴게 칸 번호는 XROIS가 칸 이름을 주지 않아서, 근무통계 › [휴게 칸 고르기]에서 한 번 골라 둠 (이 폰에 저장) */
 var XR_KNOWN_CODES = { '100': '준비', '200': '운전/입환', '300': '편승', '800': '정리', 'B00': '승계' };
 function xrRestCode() { try { return LS.getItem('rs_xr_rest_code') || ''; } catch (e) { return ''; } }
+/* 앞으로 남은 날의 휴게 예상: ① 같은 다이아로 XROIS 명세서에 찍힌 휴게(가장 최근) ② 그 다이아 행로표의 휴게 */
+function rsRestGuess(dia) {
+  dia = String(dia || '').toUpperCase();
+  if (dia) {
+    try {
+      var sp = xrGet('spec', {}), code = xrRestCode(), best = null;
+      Object.keys(sp).sort().forEach(function (k) {
+        var x = sp[k]; if (!x || String(x.dia || '').toUpperCase() !== dia) return;
+        var v = (x.rest !== undefined && x.rest !== null) ? +x.rest : (code ? +((code.indexOf('t:') === 0 ? (x.t || {})[code.slice(2)] : (x.c || {})[code]) || 0) : NaN);
+        if (isFinite(v)) best = v;
+      });
+      if (best !== null) return { min: best, known: true, src: 'est' };
+    } catch (e) {}
+    var rt = typeof rsRestMin === 'function' ? rsRestMin(dia) : { known: false };
+    if (rt.known) return { min: rt.min, known: true, src: 'route' };
+  }
+  return { min: 0, known: false, src: '' };
+}
 function rsRestFor(key, dia) {
   /* XROIS 개인근무명세서(+를 누르면 보이는 휴게)만 씀 · 없으면 미반영 */
   var sp = typeof xrGet === 'function' ? xrGet('spec', {})[key] : null;
-  if (!sp) return { min: 0, known: false, src: '' };
+  if (!sp) return rsRestGuess(dia);   /* 아직 명세서가 없는 날(앞으로 남은 날): 같은 다이아의 지난 휴게 → 행로표 휴게로 예상 */
   if (sp.rest !== undefined && sp.rest !== null) return { min: +sp.rest || 0, known: true, src: 'xrois' };
   var code = xrRestCode();
   if (code) {
@@ -22673,7 +22691,7 @@ function schWeekRender() {
         ' onclick="schOpenDay(' + dt.getFullYear() + ',' + dt.getMonth() + ',' + dt.getDate() + ')" role="button">' +
         '<span class="sc-d">' + dt.getDate() + '</span>' +
         '<span class="sc-l ' + lb.c + '">' + esc(lb.t) + '</span>' +
-        (min > 0 ? '<b class="sc-h">' + h1(min) + (o && o.miss ? '<i class="sc-mi">미반영</i>' : '') + '</b>' : '<b class="sc-h none">·</b>') + '</div>';   /* 날짜 칸은 숫자만 (XROIS 사업시간 = 연장 포함) */
+        (min > 0 ? '<b class="sc-h' + (key > todayKey ? ' fut' : '') + '">' + h1(min) + (o && o.miss ? '<i class="sc-mi">미반영</i>' : '') + '</b>' : '<b class="sc-h none">·</b>') + '</div>';   /* 날짜 칸은 숫자만 (XROIS 사업시간 = 연장 포함) */
     }
     var over = wk.min > 52 * 60;
     rows += '<div class="sc-sum' + (over ? ' over' : '') + '"><b>' + h1(wk.min) + '</b><small>시간</small>' +
@@ -28471,14 +28489,33 @@ function ttRender(j, no, day) {
   if (ttTick) { clearInterval(ttTick); ttTick = null; }
   /* 조회 결과(Logis.Korail)의 지금 지연 · 역별 계획/실제 시각 */
   var pd = (typeof passPopData !== 'undefined' && passPopData && String(passPopData.train || '').toUpperCase() === no) ? passPopData : null;
-  /* 공공데이터 시간표를 못 받았거나 없는 열차면 → 조회 결과의 역별 계획 시각으로 시간표를 만들어 실시간 위치를 보여 줌 */
-  if ((!j || !j.success || !j.found) && pd && pd.stations && pd.stations.length > 1) {
-    j = { success: true, found: true, fallback: true, dataset: 'Logis.Korail 운행계획', groups: [{ kind: '', updown: '', line: '', days: '', runs: true,
-      stops: pd.stations.map(function (x, i) { return { seq: i + 1, station: x.name, arr: x.plan ? passHm(x.plan) : '', dep: '', reason: '' }; }) }] };
+  /* 공공데이터 시간표는 같은 열차라도 운행선(경의선 · 경원선 · 중앙선…)마다 따로 나뉘어 있음 → 한 줄로 이어 붙임 */
+  var tgs = (j && j.success && j.found && j.groups) ? j.groups.filter(function (x) { return x.runs !== false; }) : [];
+  if (!tgs.length && j && j.success && j.found && j.groups) tgs = j.groups.slice();
+  var reasonOf = {}, tagSet = { kind: [], updown: [], line: [], days: [] };
+  tgs.forEach(function (x) {
+    ['kind', 'updown', 'line', 'days'].forEach(function (k) { if (x[k] && tagSet[k].indexOf(x[k]) < 0) tagSet[k].push(x[k]); });
+    (x.stops || []).forEach(function (st) { if (st.reason) reasonOf[ttStNorm(st.station)] = st.reason; });
+  });
+  var g;
+  if (pd && pd.stations && pd.stations.length > 1) {
+    /* 오늘 이 열차의 실제 운행계획(조회 결과 · Logis.Korail)을 뼈대로: 역 순서 · 계획 시각이 오늘 기준이라 위치가 정확함 */
+    g = { kind: tagSet.kind.join('·'), updown: tagSet.updown[0] || '', line: tagSet.line.join('·'), days: tagSet.days[0] || '', runs: tgs.length ? (tgs.some(function (x) { return x.runs === true; }) ? true : null) : null,
+      stops: pd.stations.map(function (x, i) { return { seq: i + 1, station: x.name, arr: x.plan ? passHm(x.plan) : '', dep: '', reason: reasonOf[ttStNorm(x.name)] || '' }; }) };
+    j = { success: true, found: true, fallback: !tgs.length, mixed: !!tgs.length, dataset: (j && j.dataset) || '', groups: [g] };
+  } else if (tgs.length) {
+    /* 조회 결과가 없을 때: 나뉜 구간들을 첫 시각 순서로 이어 붙임 (자정 넘김 고려) */
+    var firstMin = function (x) { var st = (x.stops || []).slice().sort(function (p, q) { return p.seq - q.seq; })[0] || {}; var m = ttMin(st.dep || st.arr); return m === null ? 99999 : m; };
+    var parts = tgs.map(function (x) { return { x: x, m: firstMin(x) }; }).sort(function (p, q) { return p.m - q.m; });
+    for (var gi = 1; gi < parts.length; gi++) if (parts[gi].m - parts[0].m > 12 * 60) { parts = parts.slice(gi).concat(parts.slice(0, gi)); break; }   /* 밤에 출발해 새벽까지 */
+    var seen = {}, stops = [];
+    parts.forEach(function (pp) { (pp.x.stops || []).slice().sort(function (p, q) { return p.seq - q.seq; }).forEach(function (st) { var k = ttStNorm(st.station); if (seen[k]) return; seen[k] = 1; stops.push(st); }); });
+    g = { kind: tagSet.kind.join('·'), updown: tagSet.updown[0] || '', line: tagSet.line.join('·'), days: tagSet.days[0] || '', runs: tgs.some(function (x) { return x.runs === true; }) ? true : tgs[0].runs, stops: stops };
   }
-  if (!j || !j.success) { b.innerHTML = '<div class="tt-empty">' + esc((j && j.message) || '시간표를 불러오지 못했어요.') + '</div>'; return; }
-  if (!j.found) { b.innerHTML = '<div class="tt-empty"><b>' + esc(no) + '</b> 열차는 화물열차 운행 시간표에 없어요.<br>여객열차이거나 임시열차일 수 있어요.</div>' + ttSrc(j); return; }
-  var g = j.groups.filter(function (x) { return x.runs === true; })[0] || j.groups[0];
+  if (!g) {
+    if (!j || !j.success) { b.innerHTML = '<div class="tt-empty">' + esc((j && j.message) || '시간표를 불러오지 못했어요.') + '</div>'; return; }
+    b.innerHTML = '<div class="tt-empty"><b>' + esc(no) + '</b> 열차는 화물열차 운행 시간표에 없어요.<br>여객열차이거나 임시열차일 수 있어요.</div>' + ttSrc(j); return;
+  }
   var delay = pd && pd.delay !== null && pd.delay !== undefined && pd.delay !== '' && isFinite(Number(pd.delay)) ? Math.round(Number(pd.delay)) : null;
   var act = {};
   ((pd && pd.stations) || []).forEach(function (x) { if (x && x.act !== null && x.act !== undefined) act[ttStNorm(x.name)] = x.act; });
@@ -28523,7 +28560,7 @@ function ttRender(j, no, day) {
   ttTick = setInterval(function () { if (!$('tt-pop').classList.contains('active')) { clearInterval(ttTick); ttTick = null; return; } if (ttLast) ttRender(ttLast.j, ttLast.no, ttLast.day); }, 60000);   /* 1분마다 위치 다시 계산 */
 }
 function ttLocoSrc() { try { return (PASS_TRAIN_ART && (PASS_TRAIN_ART.dloco || PASS_TRAIN_ART.eloco)) || ''; } catch (e) { return ''; } }
-function ttSrc(j) { return '<div class="tt-src">시각표: ' + (j && j.fallback ? 'Logis.Korail 운행계획' : '공공데이터포털 ' + esc((j && j.dataset) || '한국철도공사_화물열차운행 시간표')) + ' · 주황색은 실제 도착 시각(Logis.Korail), 예상은 시각표에 지금 지연을 더한 값이에요.</div>'; }
+function ttSrc(j) { return '<div class="tt-src">시각표: ' + (j && (j.fallback || j.mixed) ? '오늘 운행계획(Logis.Korail)' + (j.mixed ? ' · 정차 사유는 공공데이터포털 시간표' : '') : '공공데이터포털 ' + esc((j && j.dataset) || '한국철도공사_화물열차운행 시간표')) + ' · 주황색은 실제 도착 시각, 예상은 계획 시각에 지금 지연을 더한 값이에요.</div>'; }
 </script>
 <style id="tab-swipe-ui">
 /* 근무 ↔ 편의 ↔ MY 밀기 전환 */
@@ -28674,5 +28711,9 @@ function nxwOpen(url, train) {
 function nxwClose() { $('nxw-panel').classList.remove('active'); try { $('nxw-frame').src = 'about:blank'; } catch (e) {} clearTimeout(nxwTipT); }
 function nxwExternal() { var w = null; try { w = window.open(nxwUrl, '_blank', 'noopener'); } catch (e) {} if (!w) location.href = nxwUrl; }
 </script>
+<style id="stats-future-ui">
+/* 내 근무통계: 앞으로 남은 날 시간은 예상(연한 색) */
+#stats-section .sc-h.fut{color:#7d9cc9!important}
+</style>
 </body>
 </html>
