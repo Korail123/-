@@ -16677,6 +16677,7 @@ function promptWorkSettingIfNeeded(gen) {
     if (!snapshotUsable() || !findMyMember()) { if (tries > 60) clearInterval(t); return; }   /* 최대 약 15초 대기 */
     clearInterval(t);
     if (!myWorkSettingMissing()) return;
+    return;   /* 신규 회원은 '철도비서 시작하기' 팝업에서만 근무설정을 열어요 (근무설정 창을 따로 띄우지 않음) */
     var go = function () {
       if (gen !== loginPopupGen) return;
       if (currentPageSection() !== 'main-section') switchSection('main-section');
@@ -27595,18 +27596,38 @@ function onbClose(done) {
   if (done && myWorkSettingMissing()) { showToast('근무설정(1번)을 먼저 해 주세요.'); return; }
   $('onb-pop').classList.remove('active');
   if (done) { try { localStorage.setItem(onbKey(), '1'); } catch (e) {} }
+  onbFlushNotice();
 }
+/* 공지사항 팝업은 첫 설정 팝업을 마친 뒤에 */
+var onbNoticeQ = null, onbDecided = '', onbWait = 0;
+function onbBusy() {
+  var p = $('onb-pop'); if (p && p.classList.contains('active')) return true;
+  var u = getCurrentUser() || {}; if (!u.employeeId || onbDecided === u.employeeId) return false;
+  try { if (localStorage.getItem(onbKey())) return false; } catch (e) {}
+  return true;   /* 아직 첫 설정 팝업을 띄울지 정하는 중 */
+}
+function onbFlushNotice() {
+  var q = onbNoticeQ; onbNoticeQ = null;
+  if (q) setTimeout(function () { try { noticeShowPopup(q); } catch (e) {} }, 400);
+}
+(function () {
+  var oNotice = noticeShowPopup;
+  window.noticeShowPopup = noticeShowPopup = function (post) {
+    if (onbBusy()) { onbNoticeQ = post; return; }
+    return oNotice.apply(this, arguments);
+  };
+})();
 (function () {
   var shown = '';
   setInterval(function () {
     try {
       var u = getCurrentUser() || {};
       if (!u.employeeId || u.employeeId === 'guest' || !u.token || shown === u.employeeId) return;
-      if (!snapshotUsable() || !findMyMember()) return;
-      if (localStorage.getItem(onbKey())) { shown = u.employeeId; return; }
+      if (!snapshotUsable() || !findMyMember()) { onbWait = (onbWait || 0) + 1; if (onbWait > 14) { onbDecided = u.employeeId; onbFlushNotice(); } return; }
+      if (localStorage.getItem(onbKey())) { shown = u.employeeId; onbDecided = u.employeeId; onbFlushNotice(); return; }
       var need = myWorkSettingMissing() || (rsIsLeaderTeam() && !crewLinked());
-      shown = u.employeeId;
-      if (!need) { localStorage.setItem(onbKey(), '1'); return; }   /* 이미 설정한 회원은 띄우지 않음 */
+      shown = u.employeeId; onbDecided = u.employeeId;
+      if (!need) { localStorage.setItem(onbKey(), '1'); onbFlushNotice(); return; }   /* 이미 설정한 회원은 띄우지 않음 */
       var lg = $('leader-guide'); if (lg) lg.classList.remove('active');
       onbOpen();
     } catch (e) {}
@@ -27750,82 +27771,114 @@ html.ui-dark .dbs-card{background:#1d2533}html.ui-dark .dbs-card .db-head b,html
 html.ui-dark .dbs-col{background:#141b26}html.ui-dark .dbs-p{background:#1d2533}html.ui-dark .dbs-card .db-seg{background:#141b26}html.ui-dark .dbs-card .db-seg button.on{background:#2a3446}
 </style>
 <script id="dbs-js">
-/* ===== 메인 › 근무 › 동병상련 (내 조만)
-   ① 같이 출근하는 사람: 오늘 출근하는 사람 전부(나 포함, 주 · 야 상관없이) 출근 시각 순 · 출근~퇴근 막대
-   ② 출퇴근 ±30분: 왼쪽 = 내 출근 앞뒤 30분, 오른쪽 = 내 퇴근 앞뒤 30분
-   이름(막대)을 누르면 그 사람의 오늘 다이아 상세정보 팝업 ===== */
+/* ===== 메인 › 근무 › 동병상련 (내 조만 · 내 근무표 기준)
+   기준일: 오늘 내가 출근하면 오늘, 아니면 내 다음 출근일
+   ① 같이 출근하는 사람: 그날 출근하는 사람 전부(나 포함, 주 · 야 상관없이) 출근 시각 순 목록
+   ② 출퇴근 ±30분: 왼쪽 = 내 출근 앞뒤 30분, 오른쪽 = 내 퇴근 앞뒤 30분 (타임라인)
+   이름을 누르면 그 사람의 그날 다이아 상세정보 팝업 ===== */
 var dbsCur = 1, dbsData = null;
-function dbsToday() { var t = todayKST(); return getDateKey(t.y, t.m, t.d); }
+function dbsEvents(mb, dia, baseKey) {
+  var out = [];
+  for (var d = -1; d <= 1; d++) {
+    var key = snapShiftKey(baseKey, d), info = null;
+    try { info = snapDayWithAuto(key, mb, dia, snapshot.ovMap); } catch (e) {}
+    if (!info || info.overrideType === 'status') continue;
+    var type = String(info.type || info.label || '').trim();
+    if (type !== '주' && type !== '야') continue;
+    var diaNo = String(info.dia || '').trim(), meta = diaNo ? diaByNumber(diaNo) : null;
+    var s0 = parseHM(String(info.start || (meta && meta.start) || '').slice(0, 5)), e0 = parseHM(String(info.end || (meta && meta.end) || '').slice(0, 5));
+    if (isNaN(s0) || isNaN(e0)) continue;
+    var st = d * 1440 + s0, en = d * 1440 + e0 + (e0 <= s0 ? 1440 : 0);
+    out.push({ t: st, kind: '출근', type: type }, { t: en, kind: '퇴근', type: type });
+  }
+  return out;
+}
+function dbsBase() {
+  var me = findMyMember(), dia = snapshot.raw.dia || [], t = todayKST(), k0 = getDateKey(t.y, t.m, t.d);
+  if (!me) return k0;
+  for (var i = 0; i < 8; i++) {
+    var k = snapShiftKey(k0, i), e = dbsEvents(me, dia, k);
+    if (e.some(function (x) { return x.kind === '출근' && x.t >= 0 && x.t < 1440; })) return k;
+  }
+  return k0;
+}
 function dbsBuild() {
   if (!snapshotUsable()) return null;
-  var me = findMyMember(), dia = snapshot.raw.dia || [], mid = (getCurrentUser() || {}).employeeId;
+  var dia = snapshot.raw.dia || [], mid = String((getCurrentUser() || {}).employeeId || ''), base = dbsBase();
   var ins = [], myIn = null, myOut = null, evs = {};
   (snapshot.raw.members || []).forEach(function (m) {
     if (!m) return;
-    var e = []; try { e = briefWorkEvents(m, dia); } catch (x) {}
-    evs[m.employeeId] = e;
+    var e = dbsEvents(m, dia, base); evs[m.employeeId] = e;
     for (var i = 0; i < e.length; i += 2) {
       if (e[i].kind !== '출근' || e[i].t < 0 || e[i].t >= 1440) continue;
-      var row = { id: m.employeeId, name: m.name || m.employeeId, s: e[i].t, e: e[i + 1] ? e[i + 1].t : e[i].t, type: e[i].type, me: String(m.employeeId) === String(mid) };
-      ins.push(row);
-      if (row.me) { myIn = e[i]; myOut = e[i + 1] || null; }
+      var me = String(m.employeeId) === mid;
+      ins.push({ id: m.employeeId, name: m.name || m.employeeId, t: e[i].t, type: e[i].type, me: me });
+      if (me) { myIn = e[i]; myOut = e[i + 1] || null; }
     }
   });
-  ins.sort(function (a, b) { return a.s - b.s || String(a.name).localeCompare(String(b.name), 'ko'); });
+  ins.sort(function (a, b) { return a.t - b.t || String(a.name).localeCompare(String(b.name), 'ko'); });
   function near(anchor) {
     var list = []; if (!anchor) return list;
     (snapshot.raw.members || []).forEach(function (m) {
-      if (!m || String(m.employeeId) === String(mid)) return;
+      if (!m) return;
       (evs[m.employeeId] || []).forEach(function (e) {
-        if (Math.abs(e.t - anchor.t) <= BRIEF_MATE_WINDOW) list.push({ id: m.employeeId, name: m.name || m.employeeId, t: e.t, kind: e.kind });
+        if (Math.abs(e.t - anchor.t) <= BRIEF_MATE_WINDOW) list.push({ id: m.employeeId, name: m.name || m.employeeId, t: e.t, kind: e.kind, me: String(m.employeeId) === mid && e.t === anchor.t });
       });
     });
-    list.sort(function (a, b) { return a.t - b.t || String(a.name).localeCompare(String(b.name), 'ko'); });
+    list.sort(function (a, b) { return a.t - b.t || (b.me ? 1 : 0) - (a.me ? 1 : 0) || String(a.name).localeCompare(String(b.name), 'ko'); });
     return list;
   }
-  return { ins: ins, myIn: myIn, myOut: myOut, atIn: near(myIn), atOut: near(myOut) };
+  var nIn = near(myIn), nOut = near(myOut);
+  return { base: base, ins: ins, myIn: myIn, myOut: myOut, atIn: nIn, atOut: nOut,
+           cnt2: nIn.filter(function (x) { return !x.me; }).length + nOut.filter(function (x) { return !x.me; }).length };
 }
 function dbsHM(min) { var m = ((min % 1440) + 1440) % 1440; return pad2(Math.floor(m / 60)) + ':' + pad2(m % 60); }
+function dbsDateText(k) { var p = k.split('-').map(Number), wd = ['일', '월', '화', '수', '목', '금', '토'][new Date(p[0], p[1] - 1, p[2]).getDay()]; return p[1] + '월 ' + p[2] + '일 (' + wd + ')'; }
+function dbsMeTag(x) { return x.me ? ' <em class="dbs-me">나</em>' : ''; }
 function dbsRender() {
   var d = dbsData = dbsBuild(), body = $('dbs-body');
   $('dbs-t1').classList.toggle('on', dbsCur === 1); $('dbs-t2').classList.toggle('on', dbsCur === 2);
   if (!d) { body.innerHTML = '<div class="dbs-none">근무표를 불러오는 중...</div>'; return; }
-  $('dbs-n1').textContent = d.ins.length; $('dbs-n2').textContent = d.atIn.length + d.atOut.length;
+  var t = todayKST(), isToday = d.base === getDateKey(t.y, t.m, t.d);
+  $('dbs-sub').textContent = teamLabel(curTeam()) + ' · ' + (isToday ? '오늘 ' : '다음 출근일 ') + dbsDateText(d.base);
+  $('dbs-n1').textContent = d.ins.length; $('dbs-n2').textContent = d.cnt2;
   if (dbsCur === 1) {
-    if (!d.ins.length) { body.innerHTML = '<div class="dbs-none">오늘 출근하는 사람이 없어요.</div>'; return; }
-    var h0 = Math.min(6, Math.floor(d.ins[0].s / 60)), span = (24 - h0) * 60;
-    var pos = function (t) { return Math.max(0, Math.min(100, (t - h0 * 60) / span * 100)); };
-    var ticks = []; for (var h = h0; h <= 24; h += 6) ticks.push('<span>' + pad2(h % 24 === 0 && h ? 24 : h) + '</span>');
-    var band = d.myIn ? '<div class="dbs-band" style="left:calc(64px + (100% - 64px) * ' + (pos(d.myIn.t - 30) / 100) + ');width:calc((100% - 64px) * ' + ((pos(d.myIn.t + 30) - pos(d.myIn.t - 30)) / 100) + ')"></div>' : '';
-    body.innerHTML = '<div class="dbs-ax">' + ticks.join('') + '</div><div class="dbs-g">' + band + d.ins.map(function (x) {
-      var a = pos(x.s), b = pos(x.e), cut = x.e > 1440;
-      return '<div class="dbs-r' + (x.me ? ' me' : '') + '"><button type="button" class="dbs-n" onclick="dbsInfo(\'' + esc(x.id) + '\')">' + esc(x.name) + '</button>' +
-        '<div class="dbs-t"><i class="' + (x.type === '야' ? 'n' : 'd') + (cut ? ' cut' : '') + '" style="left:' + a + '%;width:' + Math.max(2, b - a) + '%" onclick="dbsInfo(\'' + esc(x.id) + '\')"></i><em style="left:' + a + '%">' + dbsHM(x.s) + '</em></div></div>';
-    }).join('') + '</div><div class="dbs-tip">이름이나 막대를 누르면 다이아 상세정보</div>';
+    if (!d.ins.length) { body.innerHTML = '<div class="dbs-none">출근하는 사람이 없어요.</div>'; return; }
+    body.innerHTML = '<div class="dbs-list">' + d.ins.map(function (x) {
+      return '<button type="button" class="dbs-row' + (x.me ? ' me' : '') + '" onclick="dbsInfo(\'' + esc(x.id) + '\')"><span class="dbs-tm">' + dbsHM(x.t) + '</span><b>' + esc(x.name) + dbsMeTag(x) + '</b></button>';
+    }).join('') + '</div><div class="dbs-tip">이름을 누르면 다이아 상세정보</div>';
     return;
   }
-  if (!d.myIn) { body.innerHTML = '<div class="dbs-none">오늘은 출근하지 않아요.</div>'; return; }
+  if (!d.myIn) { body.innerHTML = '<div class="dbs-none">출근하는 날이 없어요.</div>'; return; }
   function col(title, anchor, list) {
     return '<div class="dbs-col"><div class="dbs-ch">' + title + '<b>' + (anchor ? dbsHM(anchor.t) : '-') + '</b></div>' +
       (anchor ? '<div class="dbs-cs">' + dbsHM(anchor.t - 30) + ' ~ ' + dbsHM(anchor.t + 30) + '</div>' : '') +
-      (list.length ? list.map(function (x) {
-        return '<button type="button" class="dbs-p" onclick="dbsInfo(\'' + esc(x.id) + '\')"><span>' + dbsHM(x.t) + '</span><b>' + esc(x.name) + '</b><em class="' + (x.kind === '출근' ? 'in' : 'out') + '">' + x.kind + '</em></button>';
-      }).join('') : '<div class="dbs-none">없음</div>') + '</div>';
+      '<div class="dbs-tl">' + (list.length ? list.map(function (x) {
+        var r = dbsRel(d.base, x);
+        return '<button type="button" class="dbs-ti' + (x.me ? ' me' : '') + '" onclick="dbsInfo(\'' + esc(x.id) + '\')"><i></i><span>' + dbsHM(x.t) + '</span><b>' + esc(x.name) + dbsMeTag(x) + '</b><em class="' + r.c + '">' + r.t + '</em></button>';
+      }).join('') : '<div class="dbs-none">없음</div>') + '</div></div>';
   }
   body.innerHTML = '<div class="dbs-two">' + col('내가 출근할 때', d.myIn, d.atIn) + col('내가 퇴근할 때', d.myOut, d.atOut) + '</div><div class="dbs-tip">이름을 누르면 다이아 상세정보</div>';
 }
-function dbsMode(n) { dbsCur = n; dbsRender(); }
-function openDbs() {
-  var t = todayKST(), wd = ['일', '월', '화', '수', '목', '금', '토'][new Date(t.y, t.m, t.d).getDay()];
-  $('dbs-sub').textContent = '오늘 ' + teamLabel(curTeam()) + ' · ' + (t.m + 1) + '월 ' + t.d + '일 (' + wd + ')';
-  dbsCur = 1; dbsRender(); $('dbs-pop').classList.add('active');
+/* 지금 시각 기준: 아직이면 'N분 후', 이미 지났으면 '출근' · '퇴근' */
+function dbsRel(base, x) {
+  var p = base.split('-').map(Number), t = todayKST(), now = new Date();
+  var nowMin = Math.round((Date.UTC(t.y, t.m, t.d) - Date.UTC(p[0], p[1] - 1, p[2])) / 60000) + (now.getUTCHours() * 60 + now.getUTCMinutes() + 540) % 1440;
+  var diff = x.t - nowMin;
+  if (diff <= 0) return { t: x.kind, c: x.kind === '출근' ? 'in done' : 'out done' };
+  var h = Math.floor(diff / 60), m = diff % 60;
+  var txt = diff < 60 ? diff + '분 후' : diff < 1440 ? h + '시간' + (m ? ' ' + m + '분' : '') + ' 후' : Math.round(diff / 1440) + '일 후';
+  return { t: txt, c: 'soon' };
 }
+function dbsMode(n) { dbsCur = n; dbsRender(); }
+setInterval(function () { try { var p = $('dbs-pop'); if (p && p.classList.contains('active') && dbsCur === 2) dbsRender(); } catch (e) {} }, 30000);
+function openDbs() { dbsCur = 1; dbsRender(); $('dbs-pop').classList.add('active'); }
 function closeDbs() { $('dbs-pop').classList.remove('active'); }
-/* 그 사람의 오늘 다이아 상세정보: 근무그룹의 상세 팝업을 그대로 사용 */
+/* 그 사람의 기준일 다이아 상세정보: 근무그룹의 상세 팝업을 그대로 사용 */
 function dbsInfo(id) {
   try {
     var mb = (snapshot.raw.members || []).filter(function (m) { return String(m.employeeId) === String(id); })[0]; if (!mb) return;
-    var key = dbsToday(), prev = snapShiftKey(key, -1), days = {};
+    var key = (dbsData && dbsData.base) || dbsBase(), prev = snapShiftKey(key, -1), days = {};
     [prev, key].forEach(function (k) { days[k] = snapDayWithAuto(k, mb, snapshot.raw.dia || [], snapshot.ovMap); });
     var keepRows = groupRows, keepData = groupData, keepSel = groupSelKey;
     groupRows = [{ employeeId: mb.employeeId, name: mb.name, days: days }];
@@ -27834,5 +27887,29 @@ function dbsInfo(id) {
   } catch (e) { try { showToast('다이아 정보를 열 수 없어요.'); } catch (x) {} }
 }
 </script>
+<style id="dbs-ui2">
+.dbs-list{display:flex;flex-direction:column}
+.dbs-row{display:flex;align-items:center;gap:14px;width:100%;border:0;border-bottom:1px solid #f0f3f7;background:transparent;padding:11px 8px;font-family:inherit;text-align:left;cursor:pointer}
+.dbs-row.me{background:#f1f6ff;border-radius:10px;border-bottom-color:transparent}
+.dbs-tm{flex:0 0 48px;font-size:15px;font-weight:900;color:#13294b;font-variant-numeric:tabular-nums}
+.dbs-row b{font-size:15px;font-weight:800;color:#13294b}
+.dbs-me{font-style:normal;font-size:10px;color:#fff;background:#2f6fd6;border-radius:999px;padding:1px 6px;margin-left:4px;vertical-align:2px;font-weight:800}
+.dbs-tl{position:relative;margin-left:5px;padding-left:12px;border-left:2px solid #e3e9f2}
+.dbs-ti{position:relative;display:flex;align-items:center;gap:6px;width:100%;border:0;background:transparent;padding:7px 6px;border-radius:9px;font-family:inherit;text-align:left;cursor:pointer}
+.dbs-ti i{position:absolute;left:-18px;top:50%;width:10px;height:10px;margin-top:-5px;border-radius:50%;background:#fff;border:2px solid #2f6fd6}
+.dbs-ti.me{background:#eaf2ff}.dbs-ti.me i{background:#2f6fd6}
+.dbs-ti span{font-size:12.5px;font-weight:900;color:#13294b;font-variant-numeric:tabular-nums}
+.dbs-ti b{flex:1;min-width:0;font-size:13.5px;font-weight:800;color:#13294b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dbs-ti em{font-style:normal;font-size:10px;font-weight:800;border-radius:999px;padding:2px 6px}.dbs-ti em.in{background:#fff4d6;color:#b07800}.dbs-ti em.out{background:#e6efff;color:#2f6fd6}
+.dbs-ti em.dbs-me{background:#2f6fd6;color:#fff}
+html.ui-dark .dbs-row b,html.ui-dark .dbs-tm,html.ui-dark .dbs-ti span,html.ui-dark .dbs-ti b{color:#e6ecf5}html.ui-dark .dbs-row.me,html.ui-dark .dbs-ti.me{background:rgba(47,111,214,.18)}
+</style>
+<style id="dbs-ui3">
+html body #dbs-pop .dbs-ti{flex-wrap:wrap;row-gap:3px}
+html body #dbs-pop .dbs-ti b{flex:1 1 0}
+html body #dbs-pop .dbs-ti em:not(.dbs-me){flex:0 0 auto;margin-left:44px;font-size:10.5px}
+.dbs-ti em.soon{background:#eef1f5;color:#33415a;white-space:nowrap}
+.dbs-ti em.done.in{background:#fff4d6;color:#b07800}.dbs-ti em.done.out{background:#e6efff;color:#2f6fd6}
+</style>
 </body>
 </html>
