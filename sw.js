@@ -2,9 +2,9 @@
    - 앱 화면(index.html) 저장 · 빠른 실행 · 뒤에서 최신본 확인
    - 백그라운드 푸시 알림
 */
-var SHELL_CACHE = 'rs-shell-v3';
+var SHELL_CACHE = 'rs-shell-v5';
 var SHELL_KEY = 'app-shell';
-var NOTI_ICON = 'icon-192.png';
+var NOTI_ICON = 'icon-192.png?v=7';
 
 self.addEventListener('install', function () { self.skipWaiting(); });
 
