@@ -1433,7 +1433,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     </div>
     <div class="input-group">
       <label for="signup-team" class="ico-lab"><img class="lab-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무그룹" alt="" aria-hidden="true">조</label>
-      <select id="signup-team" class="signup-select"><option value="1종조">1종조</option><option value="디젤조">디젤조</option><option value="2종조">2종조</option><option value="부기관사조" selected>부기관사조</option><option value="입환조">지부조</option></select>
+      <select id="signup-team" class="signup-select"><option value="1종조">1종조</option><option value="디젤조">디젤조</option><option value="2종조">2종조</option><option value="부기관사조" selected>부기관사조</option><option value="입환조">지부조</option><option value="팀장조">팀장조</option></select>
     </div>
     <div class="input-group">
       <label for="signup-code">인증번호</label>
@@ -1658,7 +1658,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       </span>
     </div>
     <div class="mp-field"><span>조</span>
-      <span class="mp-selects"><select id="mp-team" onchange="saveMyTeam()"><option value="1종조">1종조</option><option value="디젤조">디젤조</option><option value="2종조">2종조</option><option value="부기관사조" selected>부기관사조</option><option value="입환조">지부조</option></select></span>
+      <span class="mp-selects"><select id="mp-team" onchange="saveMyTeam()"><option value="1종조">1종조</option><option value="디젤조">디젤조</option><option value="2종조">2종조</option><option value="부기관사조" selected>부기관사조</option><option value="입환조">지부조</option><option value="팀장조">팀장조</option></select></span>
     </div>
     <div class="mp-note" style="margin-top:4px">※ 호봉은 매년 1월 1일에 자동으로 1호봉씩 올라갑니다.</div>
   </div>
@@ -4412,7 +4412,7 @@ function loadMyMonth(force) {
       });
     }
     myMonth = { y: y, m: m, days: monthDays };
-    st.textContent = (me && me.settings.seq && me.settings.anchor)
+    st.textContent = (rsIsLeaderTeam() || (me && me.settings.seq && me.settings.anchor))
       ? ''
       : '환경설정에서 근무를 먼저 설정하세요.';
     renderCalendar();
@@ -9291,7 +9291,7 @@ function tenureText(joinDate) {
 }
 /* ============ 조 (1종조 · 디젤조 · 2종조 · 부기관사조 · 입환조) ============
    서버 members.crew_team · app_getteams(읽기) · app_setmyteam(내 조 바꾸기) */
-var RS_TEAMS = ['1종조', '디젤조', '2종조', '부기관사조', '입환조'];
+var RS_TEAMS = ['1종조', '디젤조', '2종조', '부기관사조', '입환조', '팀장조'];
 /* 화면에 보이는 이름: 입환조 → 지부조 (서버 · 다이아 표에 저장된 값은 '입환조' 그대로) */
 var TEAM_LABEL = { '입환조': '지부조' };
 function teamLabel(t) { return TEAM_LABEL[t] || t; }
@@ -16617,6 +16617,7 @@ function closeNoticePopup() {
 /* 근무설정(오늘의 본 근무)이 아직 없는 사용자는 메인화면에서 근무설정 팝업을 띄움
    서버(회원 정보)와 이 폰 모두에 설정이 없을 때만 = 회원가입 후 처음 들어온 사람 */
 function myWorkSettingMissing() {
+  if (rsIsLeaderTeam()) return false;   /* 팀장조는 근무설정 없이 XROIS 근무로 */
   var u = getCurrentUser();
   var loc = ensureLocal(u.employeeId);
   if (loc.seq && loc.anchor) return false;
@@ -22006,12 +22007,12 @@ function xrApply(days, manual, crewMap) {
     var seen = xrGet('seen', {}), info = xrGet('info', {}), kept = xrGet('kept', {}), emp = getCurrentUser().employeeId, changes = [];
     keys.forEach(function (k) {
       var x = uniq[k], dia = xrNorm(x.dia);
-      info[k] = { dia: dia, start: x.start || '', end: x.end || '', trains: x.trains || [] };
+      info[k] = { dia: dia, start: x.start || '', end: x.end || '', trains: x.trains || [], off: x.off || '' };
       if (!/^[0-9A-Z]{3,8}$/.test(dia)) return;                       /* 휴무·비번 등 다이아 없는 날은 그대로 */
       var prev = seen[k]; seen[k] = dia;
       if (k < today) return;                                           /* 지난 날은 바꾸지 않음 */
       var my = mine[k] || {}, myDia = xrNorm(my.dia || '');
-      if (myDia === dia) return;
+      if (myDia === dia || rsIsLeaderTeam()) return;                 /* 팀장조: XROIS가 곧 근무표라 묻지 않음 */
       /* 다르면 물어봄. 단, 이 날 이 XROIS 다이아에 [그대로 두기]를 고른 적이 있으면 다시 묻지 않음 */
       if (kept[k] && kept[k] === dia) return;
       /* 바로 바꾸지 않고 사용자에게 물어봄 (직접 수정한 날도 물어보기만, 고르기 전엔 그대로) */
@@ -27099,5 +27100,102 @@ function mpcHist() {
 html body #pattern-section #pattern-list > .dia-item:not(.selected){background:#fff!important;border-color:#e6ecf4!important;box-shadow:0 1px 3px rgba(16,40,80,.05)!important}
 html.ui-dark body #pattern-section #pattern-list > .dia-item:not(.selected){background:#1b2027!important;border-color:#2a313b!important}
 </style>
+<script id="leader-team-js">
+/* ============ 팀장조: 순서표 없이 XROIS 개인승무근무표의 날짜별 근무로 근무표를 채움 ============
+   XROIS 다이아 칸: 숫자·영문 다이아 → 주/야 (다이아 표에 있으면 그 구분, 없으면 퇴근이 출근보다 빠르면 야간)
+                    'S' 휴무 · '~' 비번 · 'X' X · 그 밖의 글자(연차 등)는 그대로 */
+function rsIsLeaderTeam() { try { return (typeof curTeam === 'function' ? curTeam() : myTeam()) === '팀장조'; } catch (e) { return false; } }
+function rsLeaderDay(dateKey) {
+  var x = null; try { x = xrGet('info', {})[dateKey]; } catch (e) {}
+  var d = snapEmptyDay();
+  if (!x) return d;
+  var raw = String(x.dia || '').trim().toUpperCase(), off = String(x.off || '').trim();
+  /* 비실동(연차 · 병가 등)이 있고 근무 다이아가 아니면 그 이름으로 */
+  if (off && !/^[0-9A-Z]{3,8}$/.test(raw)) { d.type = off; d.status = off; return d; }
+  if (!raw) return d;
+  if (raw === 'S') { d.type = '휴'; return d; }
+  if (raw === '~' || raw === '-') { d.type = '비'; return d; }
+  if (raw === 'X') { d.type = 'X'; return d; }
+  if (!/^[0-9A-Z]{3,8}$/.test(raw)) { d.type = raw; return d; }
+  var meta = typeof diaByNumber === 'function' ? diaByNumber(raw) : null;
+  d.dia = raw;
+  d.start = x.start || (meta && meta.start) || '';
+  d.end = x.end || (meta && meta.end) || '';
+  var tr = (x.trains && x.trains.length ? x.trains : [meta && meta.train1, meta && meta.train2, meta && meta.train3]).filter(Boolean);
+  d.train1 = tr[0] || ''; d.train2 = tr[1] || ''; d.train3 = tr[2] || '';
+  var mt = String(meta && meta.type || '');
+  if (mt === '주' || mt === '야') d.type = mt;
+  else { var a = parseHM(d.start), b = parseHM(d.end); d.type = (!isNaN(a) && !isNaN(b) && b < a) ? '야' : '주'; }
+  return d;
+}
+(function () {
+  var o = window.snapBaseDay;
+  if (typeof o === 'function') window.snapBaseDay = snapBaseDay = function (dateKey, seq, anchor, dia, name) {
+    if (rsIsLeaderTeam()) {
+      var me = getCurrentUser() || {};
+      if (!name || name === me.name) return rsLeaderDay(dateKey);   /* 내 근무: XROIS */
+      return snapEmptyDay();                                         /* 다른 팀장 근무는 그 사람 XROIS가 없어 비워 둠 */
+    }
+    return o.apply(this, arguments);
+  };
+  /* XROIS를 받아오면 팀장조는 바로 근무표를 다시 그림 */
+  var ox = window.xrApply;
+  if (typeof ox === 'function') window.xrApply = xrApply = function () {
+    var r = ox.apply(this, arguments);
+    if (rsIsLeaderTeam()) setTimeout(function () { try { loadMyMonth(); } catch (e) {} try { renderCalendar(); renderDayDetail(); } catch (e) {} try { mmcnRender(); } catch (e) {} }, 400);
+    return r;
+  };
+})();
+</script>
+<div id="leader-guide" class="lg-pop" role="dialog" aria-modal="true" aria-label="CREW 연동 안내" onclick="if(event.target===this)leaderGuideClose()">
+  <div class="lg-card">
+    <div class="lg-ico">🚆</div>
+    <b>팀장조는 XROIS 근무표로 채워져요</b>
+    <p>팀장조는 정해진 순서표가 없어서<br><b>XROIS 당월승무근무표</b>의 출근 · 퇴근 · 다이아 · 근무구분을<br>그대로 근무표에 넣어요.<br><br>마이페이지 › <b>CREW 연동</b>에서 XROIS 비밀번호를 한 번만 넣어 주세요.<br><small>비밀번호는 이 폰에만 저장돼요.</small></p>
+    <button type="button" class="lg-go" onclick="leaderGuideGo()">CREW 연동하러 가기</button>
+    <button type="button" class="lg-later" onclick="leaderGuideClose()">나중에</button>
+  </div>
+</div>
+<style id="leader-guide-ui">
+.lg-pop{display:none;position:fixed;inset:0;z-index:11500;align-items:center;justify-content:center;padding:20px;background:rgba(15,29,50,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.lg-pop.active{display:flex}
+.lg-card{width:min(360px,100%);background:#fff;border-radius:22px;padding:22px 20px 16px;text-align:center;box-shadow:0 18px 50px rgba(10,30,60,.3)}
+.lg-ico{font-size:34px;line-height:1}
+.lg-card>b{display:block;font-size:18px;font-weight:900;color:#173257;margin-top:10px}
+.lg-card p{font-size:13.5px;color:#4a5872;line-height:1.6;margin:10px 0 14px;word-break:keep-all}
+.lg-card p small{color:#8a96a8}
+.lg-go{width:100%;height:46px;border:0;border-radius:14px;background:#2f6fd6;color:#fff;font:inherit;font-size:15px;font-weight:800;cursor:pointer}
+.lg-later{width:100%;height:38px;margin-top:6px;border:0;background:transparent;color:#8a96a8;font:inherit;font-size:13.5px;cursor:pointer}
+#vacation-section .mp-sec[data-sec="crew"].lg-hl{box-shadow:0 0 0 3px #2f6fd6!important;border-radius:15px!important;transition:box-shadow .3s}
+html.ui-dark .lg-card{background:#1b2027}html.ui-dark .lg-card>b{color:#e8eef8}html.ui-dark .lg-card p{color:#c9d3e0}
+</style>
+<script id="leader-guide-js">
+/* 팀장조인데 CREW 연동이 안 되어 있으면: 로그인할 때마다(앱을 켤 때 한 번) CREW 연동으로 안내 */
+function leaderGuideClose() { var p = document.getElementById('leader-guide'); if (p) p.classList.remove('active'); }
+function leaderGuideGo() {
+  leaderGuideClose();
+  try { openMyPage(); } catch (e) { try { switchSection('vacation-section'); } catch (_) {} }
+  setTimeout(function () {
+    try { var st = mySecState(); st.crew = false; LS.setItem('mpCollapsed_' + (getCurrentUser().employeeId || ''), JSON.stringify(st)); applyMySections(); } catch (e) {}
+    var sec = document.querySelector('#vacation-section .mp-sec[data-sec="crew"]'); if (!sec) return;
+    sec.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    sec.classList.add('lg-hl'); setTimeout(function () { sec.classList.remove('lg-hl'); }, 3000);
+    var pw = document.getElementById('crew-pw'); if (pw) setTimeout(function () { try { pw.focus(); } catch (e) {} }, 500);
+  }, 250);
+}
+(function () {
+  var shown = '';
+  setInterval(function () {
+    try {
+      var u = getCurrentUser() || {};
+      if (!u.employeeId || u.employeeId === 'guest' || !u.token) return;
+      if (shown === u.employeeId) return;
+      if (!rsIsLeaderTeam() || crewLinked()) return;
+      shown = u.employeeId;
+      var p = document.getElementById('leader-guide'); if (p) p.classList.add('active');
+    } catch (e) {}
+  }, 2000);
+})();
+</script>
 </body>
 </html>
