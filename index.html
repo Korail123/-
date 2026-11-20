@@ -14919,6 +14919,7 @@ function trainQueryInput() {
   if (!/^(?=.*\d)[A-Z0-9-]{1,8}$/.test(v)) { $('tq-msg').textContent = '열차번호를 숫자와 영문으로 입력해 주세요. (예: 3224)'; return; }
   if (!tqIsLogisTrain(v)) { $('tq-msg').textContent = '화물열차만 조회할 수 있어요.'; return; }
   closeTrainQuery();
+  tqBackOnClose = true;   /* 조회 결과 창을 닫으면 열차운행정보 조회 창으로 돌아감 */
   passShowTrainAnim(v, day);
 }
 /* 열차번호 하나를 눌렀을 때 (NXLogis 조회알림 = 애니메이션): 지정역과 상관없이 현재 위치만 */
@@ -15736,8 +15737,10 @@ function passReplay() {
   if (!keepRun) passPopTimers.push(setTimeout(function () { train.classList.remove('run'); }, dur + 50));
   if (passedNow && tgt) passPopTimers.push(setTimeout(function () { tgt.classList.add('done'); }, dur));
 }
+var tqBackOnClose = false;
 function closePassPop() {
   $('pass-pop-panel').classList.remove('active');
+  if (tqBackOnClose) { tqBackOnClose = false; setTimeout(function () { try { $('tq-msg').textContent = ''; $('trainq-panel').classList.add('active'); var i = $('tq-in'); if (i) { i.focus(); i.select(); } } catch (e) {} }, 60); }
   passLiveStop();
   var compose = $('pp-compose-scene');
   if (compose) { compose.hidden = true; compose.classList.remove('play'); compose.style.transform = ''; }
@@ -28062,5 +28065,63 @@ html body #main-container #schedule-section #calendar-grid .cell-lbl:not(#zz){he
 html body #main-container #schedule-section #calendar-grid .cell-lbl.rs-duty2:not(#zz),html body #main-container #schedule-section #calendar-grid .cell-lbl.rs-leave-long:not(#zz){font-size:13px!important}
 html body #main-container #schedule-section .sch-week span,html body #main-container #schedule-section #sch-week span{font-size:12.5px}
 </style>
+<style id="wx3d-ui">
+.wxa .wx3-sunwrap{transform-origin:50px 50px;animation:wxPulse 3.6s ease-in-out infinite}
+.wxa .wx3-glow{transform-origin:50px 50px;animation:wx3Glow 3.6s ease-in-out infinite}
+@keyframes wx3Glow{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:.9;transform:scale(1.08)}}
+</style>
+<script id="wx3d-js">
+/* 메인 날씨카드 아이콘 · 2번 입체 그라데이션 (밤에는 달 · 어두운 구름), 움직임: 해 숨쉬기 · 구름 흔들림 · 비 · 눈 · 번개 */
+function wxAnimSvg(kind, desc, w) {
+  var ph = typeof wxPhase === 'function' ? wxPhase() : 'day', night = ph === 'dusk' || ph === 'night';
+  var CP = 'M26 70h46a16 16 0 0 0 2-32a22 22 0 0 0-42-6a16 16 0 0 0-6 38z';
+  var defs = '<radialGradient id="wx3s" cx=".35" cy=".35" r=".7"><stop offset="0" stop-color="#fff3a8"/><stop offset=".55" stop-color="#ffc21a"/><stop offset="1" stop-color="#ff9a00"/></radialGradient>' +
+    '<radialGradient id="wx3h" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff2b0" stop-opacity=".8"/><stop offset="1" stop-color="#fff2b0" stop-opacity="0"/></radialGradient>' +
+    '<radialGradient id="wx3m" cx=".35" cy=".35" r=".75"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#fdf2c4"/><stop offset="1" stop-color="#e9cf78"/></radialGradient>' +
+    '<linearGradient id="wx3c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + (night ? '#e6edf8' : '#ffffff') + '"/><stop offset="1" stop-color="' + (night ? '#a7b7d0' : '#d4e3f6') + '"/></linearGradient>' +
+    '<linearGradient id="wx3g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + (night ? '#c9d4e6' : '#eef3f9') + '"/><stop offset="1" stop-color="' + (night ? '#6f84a6' : '#a9bbd3') + '"/></linearGradient>' +
+    '<linearGradient id="wx3r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7cc8ff"/><stop offset="1" stop-color="#1e7cf0"/></linearGradient>' +
+    '<linearGradient id="wx3b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff07a"/><stop offset="1" stop-color="#ffb000"/></linearGradient>' +
+    '<filter id="wx3f" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#1b3a66" flood-opacity="' + (night ? '.45' : '.25') + '"/></filter>';
+  function sun(cx, cy, sc) {
+    return '<g transform="translate(' + (cx - 50 * sc).toFixed(1) + ' ' + (cy - 50 * sc).toFixed(1) + ') scale(' + sc + ')"><circle class="wx3-glow" cx="50" cy="50" r="34" fill="url(#wx3h)"/>' +
+      '<g class="wx3-sunwrap"><circle cx="50" cy="50" r="22" fill="url(#wx3s)" filter="url(#wx3f)"/><ellipse cx="42" cy="41" rx="7" ry="5" fill="#fff" opacity=".45"/></g></g>';
+  }
+  function moon(cx, cy, sc) {
+    return '<g transform="translate(' + (cx - 50 * sc).toFixed(1) + ' ' + (cy - 50 * sc).toFixed(1) + ') scale(' + sc + ')"><g class="moon"><path d="M60 24a27 27 0 1 0 20 40a22 22 0 1 1-20-40z" fill="url(#wx3m)" filter="url(#wx3f)"/></g>' +
+      '<path class="star" d="M24 26l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#fff3b0"/><path class="star" d="M82 30l1.5 3.5 3.5 1.5-3.5 1.5L82 40l-1.5-3.5L77 35l3.5-1.5z" fill="#fff3b0" style="animation-delay:1.2s"/></g>';
+  }
+  function cloud(grey, x, y, sc) {
+    return '<g class="cl-a"><g transform="translate(' + x + ' ' + y + ') scale(' + sc + ')"><path d="' + CP + '" fill="url(#' + (grey ? 'wx3g' : 'wx3c') + ')" filter="url(#wx3f)"/></g></g>';
+  }
+  function drops(n, heavy) {
+    var o = '', xs = [34, 50, 66, 42, 58, 74];
+    for (var i = 0; i < n; i++) o += '<path class="drop" d="M' + xs[i] + ' ' + (heavy ? 72 : 74) + 'c-3 4-4.5 6.5-4.5 8.5a4.5 4.5 0 0 0 9 0c0-2-1.5-4.5-4.5-8.5z" fill="url(#wx3r)" style="animation-delay:' + (i * 0.22).toFixed(2) + 's"/>';
+    return o;
+  }
+  function drizzle() {
+    var o = '', xs = [38, 52, 66];
+    for (var i = 0; i < 3; i++) o += '<circle class="drop" cx="' + xs[i] + '" cy="78" r="3" fill="url(#wx3r)" style="animation-delay:' + (i * 0.35).toFixed(2) + 's"/>';
+    return o;
+  }
+  function flakes() {
+    var o = '', xs = [36, 52, 68, 44];
+    for (var i = 0; i < 4; i++) o += '<g class="flake" style="animation-delay:' + (i * 0.7).toFixed(2) + 's"><circle cx="' + xs[i] + '" cy="80" r="4.5" fill="#fff" stroke="#b8d6f5" stroke-width="1.5"/></g>';
+    return o;
+  }
+  var g = '';
+  if (kind === '맑음') g = night ? moon(50, 50, 1) : sun(50, 50, 1);
+  else if (kind === '구름조금') g = (night ? moon(36, 36, .72) : sun(36, 36, .8)) + cloud(false, 10, 10, .88);
+  else if (kind === '흐림') g = cloud(true, -10, -12, .82) + cloud(false, 6, 6, .88);
+  else if (kind === '안개') g = cloud(true, 2, -10, .95) + '<g stroke="' + (night ? '#c9d4e6' : '#ffffff') + '" stroke-width="5" stroke-linecap="round" opacity=".9"><line class="fog" x1="22" y1="74" x2="78" y2="74"/><line class="fog" x1="30" y1="84" x2="70" y2="84" style="animation-delay:1.2s"/></g>';
+  else if (kind === '이슬비') g = cloud(true, 0, -14, 1) + drizzle();
+  else if (kind === '비') { var heavy = /강한/.test(desc || ''); g = cloud(true, 0, -14, 1) + drops(heavy ? 6 : 3, heavy); }
+  else if (kind === '눈') g = cloud(true, 0, -14, 1) + flakes();
+  else if (kind === '뇌우') g = cloud(true, 0, -14, 1) + '<path class="bolt" d="M54 62L43 79h9l-4 14 13-19h-9l5-12z" fill="url(#wx3b)" stroke="#ff9a00" stroke-width="1.5" stroke-linejoin="round" filter="url(#wx3f)"/>';
+  else g = cloud(true, -2, -2, 1);
+  return '<svg class="wxa wx3" viewBox="0 0 100 100" aria-hidden="true"><defs>' + defs + '</defs>' + g + '</svg>';
+}
+window.wxAnimSvg = wxAnimSvg;
+</script>
 </body>
 </html>
