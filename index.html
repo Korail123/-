@@ -16834,6 +16834,19 @@ function appUpdNotes(n) {
   var a = Array.isArray(n) ? n : String(n).split(/\n|\s·\s/);
   return a.map(function (t) { return String(t).trim(); }).filter(Boolean);
 }
+/* app-version.json 읽기: 못 찾음(404) · 글자 오류(쉼표 · 따옴표) · 인터넷 문제를 구분해서 알려줌 */
+function appUpdReadJson(r) {
+  if (!r.ok) { var e = new Error('missing'); e.code = 'missing'; e.status = r.status; throw e; }
+  return r.text().then(function (t) {
+    try { return JSON.parse(t); } catch (x) { var e = new Error('bad'); e.code = 'bad'; e.detail = String(x.message || ''); throw e; }
+  });
+}
+function appUpdErrMsg(e) {
+  if (e && e.code === 'missing') return '서버에서 app-version.json 파일을 찾지 못했어요. (' + (e.status || '') + ') GitHub에 index.html과 같은 곳에 올렸는지 확인해 주세요.';
+  if (e && e.code === 'bad') return 'app-version.json 글자에 오류가 있어요. 마지막 줄 뒤 쉼표(,) · 따옴표(") · 대괄호([ ])를 확인해 주세요.';
+  if (e && e.message === 'x') return 'app-version.json 안에 version 또는 apk 항목이 없어요.';
+  return '최신 버전 정보를 가져오지 못했어요. 인터넷 연결을 확인해 주세요.';
+}
 function appUpdVerNewer(a, b) {   /* b가 a보다 새 버전이면 true */
   var x = String(a || '0').split('.').map(Number), y = String(b || '0').split('.').map(Number);
   for (var i = 0; i < 3; i++) { if ((y[i] || 0) !== (x[i] || 0)) return (y[i] || 0) > (x[i] || 0); }
@@ -16852,7 +16865,7 @@ function openAppUpdate() {
   try { applyAppIcons(); } catch (e) {}
   if (appUpd.state === 'download' || appUpd.state === 'install') { appUpdRender(); return; }
   appUpd.state = 'checking'; appUpd.msg = ''; appUpdRender();
-  fetch(RS_APP_LATEST_URL + '?v=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+  fetch(RS_APP_LATEST_URL + '?v=' + Date.now(), { cache: 'no-store' }).then(appUpdReadJson).then(function (j) {
     appUpd.latest = j && j.version ? j : null;
     appUpd.state = appUpd.latest ? 'ready' : 'error';
     if (!appUpd.latest) { appUpd.msg = '최신 버전 정보를 가져오지 못했어요.'; appUpdRender(); return; }
@@ -16861,7 +16874,7 @@ function openAppUpdate() {
       if (!ok) { appUpd.latest = Object.assign({}, j, { missing: true }); appUpd.msg = APPUPD_MISSING; appUpd.warn = true; }
       appUpdRender();
     });
-  }).catch(function () { appUpd.state = 'error'; appUpd.msg = '인터넷 연결을 확인해 주세요.'; appUpdRender(); });
+  }).catch(function (e) { appUpd.state = 'error'; appUpd.msg = appUpdErrMsg(e); appUpd.warn = true; appUpdRender(); });
 }
 function closeAppUpdate() { $('appupd-panel').classList.remove('active'); }
 function appUpdRender() {
@@ -16895,7 +16908,7 @@ function appUpdRender() {
 function appUpdStart() {
   if (rsAppHas('installUpdate') && rsAppCall('canInstall') === 'false') { appUpd.state = 'perm'; appUpdRender(); return; }
   appUpd.state = 'checking'; appUpd.msg = ''; appUpd.warn = false; appUpdRender();
-  fetch(RS_APP_LATEST_URL + '?v=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+  fetch(RS_APP_LATEST_URL + '?v=' + Date.now(), { cache: 'no-store' }).then(appUpdReadJson).then(function (j) {
     if (!j || !j.version || !j.apk) throw new Error('x');
     appUpd.latest = j;
     if (!appUpdVerNewer(rsAppVersion(), j.version)) { appUpd.state = 'ready'; appUpd.msg = ''; appUpdRender(); return; }
@@ -16911,7 +16924,7 @@ function appUpdStart() {
       appUpd.state = 'download'; appUpd.pct = 0; appUpdRender();
       rsAppCall('installUpdate', { url: url, version: String(j.version) });
     });
-  }).catch(function () { appUpd.state = 'ready'; appUpd.msg = '최신 버전 정보를 가져오지 못했어요. 인터넷 연결을 확인해 주세요.'; appUpdRender(); });
+  }).catch(function (e) { appUpd.state = 'ready'; appUpd.msg = appUpdErrMsg(e); appUpd.warn = true; appUpdRender(); });
 }
 /* 앱이 알려주는 진행 상황 */
 window.rsAppUpdateProgress = function (pct, state, msg) {
@@ -16932,7 +16945,7 @@ function appUpdAutoOn() { try { return localStorage.getItem('rs_appupd_auto') !=
 function rsAppCheckUpdate() {
   if (!appUpdAutoOn()) return;   /* 환경설정 › 앱 업데이트 OFF: 자동 안내 안 함 */
   var cur = rsAppVersion(); if (!cur || rsAppCheckUpdate.done) return; rsAppCheckUpdate.done = 1;
-  fetch(RS_APP_LATEST_URL + '?v=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+  fetch(RS_APP_LATEST_URL + '?v=' + Date.now(), { cache: 'no-store' }).then(appUpdReadJson).then(function (j) {
     if (!j || !j.version || !j.apk) return;
     var a = cur.split('.').map(Number), b = String(j.version).split('.').map(Number), newer = false;
     for (var i = 0; i < 3; i++) { if ((b[i] || 0) !== (a[i] || 0)) { newer = (b[i] || 0) > (a[i] || 0); break; } }
@@ -30021,6 +30034,11 @@ html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .board-pa
 html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .board-page .board-page-header{border-color:rgba(255,255,255,.35)!important;background:transparent!important}
 html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body #notice-list,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body #suggestion-list{background:rgba(255,255,255,.72)!important;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(221,231,245,.9);border-radius:16px;padding:10px 12px!important;margin:12px 0!important}
 html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .board-page .nt-tabs{background:rgba(255,255,255,.72)!important;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-radius:14px}
+
+/* 근무그룹: 오늘 · 내가 고른 날짜 줄은 반투명보다 진하게 */
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7) body #group-section .group-table td.g-today,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7) body #group-section .group-table th.g-today{background:rgba(214,232,255,.96)!important;background-image:none!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7) body #group-section .group-table td.g-sel:not(.g-today),html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7) body #group-section .group-table th.g-sel:not(.g-today){background:rgba(255,255,255,.96)!important;background-image:none!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7) body #group-section .group-table tr.me td.g-sel,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7) body #group-section .group-table tr.me td.g-today{background:rgba(200,222,255,.98)!important}
 </style>
 <canvas id="wbg" aria-hidden="true"></canvas>
 <script id="wbg-js">
@@ -30041,7 +30059,8 @@ function wbgGlass() {
     [].forEach.call(root.querySelectorAll('*'), function (e) {
       if (/^(INPUT|TEXTAREA|SELECT|CANVAS|IMG|SVG|PATH|I|B|SPAN|SMALL|EM|STRONG)$/i.test(e.tagName) || e.closest('.dia-modal')) return;
       if (e.classList.contains('wbg-glass') || e.classList.contains('wbg-clear')) return;
-      if (e.classList.contains('board-page-inner')) return;   /* 게시판 바깥 틀은 투명 (근무표처럼 제목은 바탕 위) */
+      if (e.classList.contains('board-page-inner')) return;
+      if (e.classList.contains('g-today') || e.classList.contains('g-sel')) return;   /* 근무그룹 오늘 · 선택한 날 칸은 진하게 따로 */   /* 게시판 바깥 틀은 투명 (근무표처럼 제목은 바탕 위) */
       var cs = getComputedStyle(e), bi = cs.backgroundImage;
       if (bi !== 'none' && bi.indexOf('gradient') >= 0) {   /* 흰색 계열 그라데이션 칸(로그인 · 회원가입 카드 등)도 유리로 */
         var nums = (bi.match(/rgba?\([^)]+\)/g) || []).map(function (c) { return c.match(/[\d.]+/g).slice(0, 3).map(Number); });
