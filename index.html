@@ -1718,6 +1718,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <button type="button" class="set-tile" onclick="openUiPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="화면설정" alt="" aria-hidden="true"><span>화면 설정</span></button>
       <button type="button" class="set-tile" onclick="openIconPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="아이콘설정" alt="" aria-hidden="true"><span>아이콘 설정</span></button>
       <button type="button" class="set-tile" onclick="openFavMenu()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="즐겨찾기메뉴" alt="" aria-hidden="true" decoding="async"><span class="set-label">즐겨찾기 메뉴</span></button>
+      <button type="button" class="set-tile" onclick="openAnimSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="애니메이션효과" alt="" aria-hidden="true" decoding="async"><span class="set-label">애니메이션 효과</span><span class="tile-sw" data-qs="wbg" role="switch" aria-checked="true" aria-label="크리스마스 트리 바탕 켜기/끄기" tabindex="0"><i></i></span></button>
     </div>
   </section>
   <section class="settings-category">
@@ -2494,6 +2495,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="dia-dialog ns-dialog an-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="애니메이션효과" alt="" aria-hidden="true">애니메이션 효과</div>
     <label class="an-main"><span><b>메인화면 애니메이션</b><small>로그인하거나 메인화면에 들어올 때 열차가 지나가요</small></span><input type="checkbox" id="an-on" onchange="animToggle(this.checked)"><i class="an-sw"></i></label>
+    <label class="an-main"><span><b>크리스마스 트리 바탕 · 눈</b><small>모든 화면 바탕에 흐린 트리 · 저녁~새벽엔 불빛이 1초마다 반짝</small></span><input type="checkbox" id="an-wbg" onchange="wbgSet(this.checked)"><i class="an-sw"></i></label>
     <div id="an-opts" class="an-opts">
       <div class="an-hint">오른쪽 화살표를 눌러 고르세요. 여러 개 고르면 그중에서 랜덤, 고르지 않으면 <b>전체</b>에서 랜덤이에요.</div>
       <div class="an-sec"><div class="an-h">시간대 <button type="button" onclick="animClear('times')">전체</button></div><div id="an-times" class="an-chips"></div></div>
@@ -5977,6 +5979,7 @@ function closeAnimSettings() { animDdOpen = ''; $('anim-panel').classList.remove
 function animRender() {
   var p = getAnimPrefs();
   $('an-on').checked = p.on;
+  try { $('an-wbg').checked = wbgOn(); } catch (e) {}
   $('an-opts').classList.toggle('off', !p.on);
   $('an-preview').style.display = p.on ? '' : 'none';
   /* 오른쪽 화살표를 누르면 아래로 목록이 펼쳐지는 선택 상자 (여러 개 고를 수 있음) */
@@ -26720,6 +26723,7 @@ function qsState(kind) {
     if (kind === 'pass') return qsPassOn();
     if (kind === 'perm') return !!(getAlarmCfg().on || getMidCfg().on);
     if (kind === 'appupd') return appUpdAutoOn();
+    if (kind === 'wbg') return wbgOn();
   } catch (e) {}
   return false;
 }
@@ -26731,6 +26735,7 @@ function qsRender() {
   });
 }
 function qsSet(kind, on) {
+  if (kind === 'wbg') { wbgSet(on); setTimeout(qsRender, 50); return; }
   if (kind === 'appupd') {   /* 앱 업데이트: 로그인 없이도 · 켜면 앱을 열 때 새 버전 안내, 끄면 안내 없이 (환경설정에서 직접 확인) */
     try { localStorage.setItem('rs_appupd_auto', on ? '1' : '0'); } catch (e) {}
     showToast(on ? '새 버전이 나오면 앱을 열 때 알려드릴게요.' : '새 버전 안내를 껐어요. 환경설정 › 앱 업데이트에서 직접 확인할 수 있어요.');
@@ -29949,16 +29954,26 @@ function swnSeen() {
 /* ===== 메인 바탕: 흐린 보케 트리 (낮=불빛 꺼짐 · 저녁/밤/새벽=1초마다 반짝) + 눈 ===== */
 #wbg{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none;display:none}
 html.wbg-on #wbg{display:block}
-html.wbg-on:not(#z1):not(#z2),html.wbg-on:not(#z1):not(#z2) body,html.wbg-on:not(#z1):not(#z2) body #main-container,html.wbg-on:not(#z1):not(#z2) body #main-section,html.wbg-on:not(#z1):not(#z2) body #vacation-section{background:transparent!important;background-image:none!important}
+html.wbg-on:not(#z1):not(#z2),html.wbg-on:not(#z1):not(#z2) body,html.wbg-on:not(#z1):not(#z2) body #main-container,html.wbg-on:not(#z1):not(#z2) body .page-view{background:transparent!important;background-image:none!important}
 html.wbg-on #snow-fx{display:none!important}
 html.wbg-on #main-container{position:relative;z-index:1}
 html.wbg-on #main-section .menu-btn,html.wbg-on #vacation-section .menu-btn{background:rgba(255,255,255,.7)!important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 html.wbg-on.wbg-night #main-section .menu-btn,html.wbg-on.wbg-night #vacation-section .menu-btn{background:rgba(255,255,255,.16)!important;border-color:rgba(255,255,255,.12)!important}
 html.wbg-on.wbg-night #main-section .menu-btn span,html.wbg-on.wbg-night #vacation-section .menu-btn span{color:#f3f5ff!important}
 html.wbg-on.wbg-night #main-container > .top-bar,html.wbg-on.wbg-night #main-container > .top-bar *:not(img):not(svg):not(path){color:#fff!important;text-shadow:0 1px 4px rgba(0,0,0,.35)}
+/* 밤 바탕에서 화면 제목 · 분류 글씨는 밝게 */
+html.wbg-on.wbg-night:not(#z1) body .page-view > h1,html.wbg-on.wbg-night:not(#z1) body .page-view > h1 span,html.wbg-on.wbg-night:not(#z1) body .page-view > h2,html.wbg-on.wbg-night:not(#z1) body .settings-category-title,html.wbg-on.wbg-night:not(#z1) body .page-view > p{color:#f3f5ff!important;text-shadow:0 1px 4px rgba(0,0,0,.4)}
+html.wbg-on.wbg-night:not(#z1) body .page-view > h1 img{filter:brightness(0) invert(1)}
 </style>
 <canvas id="wbg" aria-hidden="true"></canvas>
 <script id="wbg-js">
+function wbgOn() { try { return localStorage.getItem('rs_wbg') !== '0'; } catch (e) { return true; } }
+function wbgSet(on) {
+  try { localStorage.setItem('rs_wbg', on ? '1' : '0'); } catch (e) {}
+  document.documentElement.classList.toggle('wbg-on', !!on);
+  try { $('an-wbg').checked = !!on; } catch (e) {} try { qsRender(); } catch (e) {}
+  try { showToast(on ? '크리스마스 트리 바탕을 켰어요.' : '크리스마스 트리 바탕을 껐어요.'); } catch (e) {}
+}
 (function () {
   var cv = document.getElementById('wbg'); if (!cv) return;
   document.body.insertBefore(cv, document.body.firstChild);
@@ -30009,7 +30024,7 @@ html.wbg-on.wbg-night #main-container > .top-bar,html.wbg-on.wbg-night #main-con
     document.documentElement.classList.toggle('wbg-night', night);
     bake();
   }
-  function onMain() { var m = document.getElementById('main-section'), v = document.getElementById('vacation-section'); return !!((m && m.classList.contains('active')) || (v && v.classList.contains('active'))); }   /* 메인 · MY 화면 */
+  function onMain() { return wbgOn(); }   /* 모든 화면 (환경설정 › 애니메이션 효과에서 켜고 끔) */
   function active() { return onMain() && !document.hidden; }
   function frame(now) {
     requestAnimationFrame(frame);
