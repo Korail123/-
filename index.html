@@ -1744,7 +1744,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <button type="button" class="set-tile" onclick="openRoutePlan()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="예상행로표" alt="" aria-hidden="true"><span>다이아 행로표 만들기</span></button>
       <button type="button" class="set-tile" onclick="openBackupPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="백업동기화" alt="" aria-hidden="true" decoding="async"><span class="set-label">백업·동기화</span></button>
       <button type="button" class="set-tile" onclick="openWidgetPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="위젯연결" alt="" aria-hidden="true" decoding="async"><span class="set-label">위젯 연결</span></button>
-      <button type="button" class="set-tile" onclick="openAnimSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="애니메이션효과" alt="" aria-hidden="true" decoding="async"><span class="set-label">애니메이션 효과</span><small id="anim-sub" class="set-badge" hidden>OFF</small></button>
       <button type="button" class="set-tile danger" onclick="openResetAllDataPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="전체데이터초기화" alt="" aria-hidden="true" decoding="async"><span class="set-label">데이터 초기화</span></button>
       <button type="button" class="set-tile danger" onclick="openDeleteAccountPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="회원탈퇴" alt="" aria-hidden="true" decoding="async"><span class="set-label">회원탈퇴</span></button>
     </div>
@@ -4838,7 +4837,7 @@ var GD_SCENES = {
     { cap: '④ 앱이 꺼져도 10분마다 확인해서 알림', tap: null, html: 'NX_NOTI' }
   ],
   widget: [
-    { cap: '① 환경설정 › 위젯 연결', tap: [50, 60], sel: '.gd-set .hl', html: 'SET:기타|다이아 행로표 만들기,백업·동기화,*위젯 연결,애니메이션 효과' },
+    { cap: '① 환경설정 › 위젯 연결', tap: [50, 60], sel: '.gd-set .hl', html: 'SET:기타|다이아 행로표 만들기,백업·동기화,*위젯 연결' },
     { cap: '② 위젯 주소 만들고 KWGT 프리셋 받기', tap: [50, 80], html:
       '<div class="gd-top">위젯 연결</div><div class="gd-mini-cal"></div><div class="gd-btn">KWGT 프리셋 받기 (.kwgt)</div>' },
     { cap: '③ KWGT 4x4 위젯에서 철도비서 근무표 달력 고르기', tap: [50, 72], html:
@@ -6043,7 +6042,6 @@ var FAV_ITEMS = [
   { g: '환경설정', k: 'perm', label: '출근/출무 알림 설정', short: '출근/출무알림', icon: '알람설정', fn: function () { openPermPanel(); } },
   { g: '환경설정', k: 'nx', label: '열차 운휴 알림', short: '운휴알림', icon: '열차운휴알림', fn: function () { openNxSettings(); } },
   { g: '환경설정', k: 'pass', label: '열차통과/도착 알림', short: '통과알림', icon: '열차통과알림', fn: function () { openPassSettings(); } },
-  { g: '환경설정', k: 'anim', label: '애니메이션 효과', short: '애니메이션', icon: '애니메이션효과', fn: function () { openAnimSettings(); } },
   { g: '메인화면', k: 'brief', label: '오늘의 브리핑', short: '브리핑', icon: '오늘의브리핑', fn: function () { showBriefing(true); } },
   { g: '환경설정', k: 'ui', label: '화면 설정', short: '화면', icon: '화면설정', fn: function () { openUiPanel(); } },
   { g: '환경설정', k: 'routeplan2', label: '다이아 행로표 만들기', short: '행로표', icon: '예상행로표', fn: function () { openRoutePlan(); } },
@@ -29217,7 +29215,7 @@ function passMapBind(box) {
 .sch2-row{position:relative;display:grid;grid-template-columns:repeat(7,1fr);min-height:102px;border-bottom:1px solid #eef1f5}
 .sch2-d{padding:4px 0 0;text-align:center;cursor:pointer;border:0;background:none;font-family:inherit;display:flex;flex-direction:column;align-items:center}
 .sch2-d i{font-style:normal;font-size:12.5px;font-weight:700;color:#444;width:24px;height:24px;line-height:24px;border-radius:50%}
-.sch2-d.sun i,.sch2-d.hol i{color:#e5484d}.sch2-d.sat i{color:#2f6fd6}.sch2-d.out{visibility:hidden;pointer-events:none}
+.sch2-d.sun i,.sch2-d.hol i{color:#e5484d}.sch2-d.sat i{color:#2f6fd6}.sch2-d.out{opacity:.33}.sch2-bar.dim{opacity:.35}
 .sch2-d.today i{background:#2f6fd6;color:#fff}
 .sch2-d:active{background:#f5f8fd}
 .sch2-d small{margin-top:auto;margin-bottom:3px;font-size:10px;font-weight:800;color:#8a96a8}
@@ -29274,6 +29272,8 @@ html.ui-dark #sch2-day .sch2-f input,html.ui-dark #sch2-day .sch2-f textarea{bac
 #sch2-day .sch2-fm .row{display:flex;align-items:center;gap:6px;margin-bottom:6px}
 #sch2-day .sch2-fm .row>span{flex:none;width:30px;font-size:12px;font-weight:800;color:#6b778a}
 #sch2-day .sch2-fm .row>i{font-style:normal;color:#9aa5b5;font-size:12px}
+#sch2-day .sch2-fm .row select.sch2-tsel{flex:1;min-width:0;height:36px;padding:0 8px;font-size:14px;font-weight:700;font-family:inherit;border:1.5px solid #dfe5ee;border-radius:9px;background:#fff;color:#1d2b45;font-variant-numeric:tabular-nums}
+html.ui-dark #sch2-day .sch2-fm .row select.sch2-tsel{background:#232831;border-color:#343b46;color:#e9edf2}
 #sch2-day .sch2-fm .row input{flex:1;min-width:0;height:36px;padding:0 8px;font-size:13.5px;border-radius:9px;border-width:1.5px}
 #sch2-day .sch2-fm .segs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;flex:1}
 #sch2-day .sch2-fm .segs button{height:34px;padding:0;font-size:13px;border-radius:9px}
@@ -29292,6 +29292,15 @@ html.ui-dark #sch2-day .sch2-f input,html.ui-dark #sch2-day .sch2-f textarea{bac
 .sch2-lh{display:flex;align-items:center;justify-content:space-between;margin:0 2px 8px}.sch2-lh b{font-size:14.5px;color:#1d2b45}
 .sch2-lh button{border:0;border-radius:10px;background:#2f6fd6;color:#fff;font-family:inherit;font-weight:800;font-size:13px;padding:7px 12px;cursor:pointer}
 html.ui-dark .sch2-lh b{color:#e9edf2}html.ui-dark #sch2-panel .sch2-d.sel{background:#232c3b}
+
+/* 달 넘겨도 팝업 크기 고정: 6주 고정 + 높이 고정, 아래 목록만 스크롤 */
+#sch2-panel .sch2-dlg{display:flex;flex-direction:column;height:min(860px,calc(100dvh - 24px));max-height:none;overflow:hidden;width:min(440px,calc(100vw - 16px));max-width:440px}
+#sch2-panel .sch2-head,#sch2-panel .sch2-nav,#sch2-panel .sch2-wk,#sch2-panel .sch2-grid{flex:none}
+#sch2-panel .sch2-row{min-height:0;height:66px}
+#sch2-panel .sch2-list{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:4px}
+#sch2-panel .sch2-note:empty{display:none}
+#sch2-panel .sch2-d{position:relative}#sch2-panel .sch2-d small{position:absolute;top:5px;right:3px;margin:0;font-size:9.5px;color:#6b778a}
+#sch2-panel .sch2-grid.rs-in-l,#sch2-panel .sch2-grid.rs-in-r{animation-duration:.28s}
 </style>
 <script id="sch2-js">
 /* ===== 근무 › 일정: 2026년 11월부터 달력 · 날짜를 누르면 그날 일정 · 등록(시작일~종료일)은 정해진 사람만 (서버 app_schedule) ===== */
@@ -29328,7 +29337,7 @@ function sch2Move(d) {
 }
 function sch2Range() {
   var first = new Date(sch2Y, sch2M, 1), start = new Date(sch2Y, sch2M, 1 - first.getDay());
-  var last = new Date(sch2Y, sch2M + 1, 0), end = new Date(sch2Y, sch2M + 1, 0 + (6 - last.getDay()));
+  var end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 41);   /* 항상 6주: 달마다 높이가 안 바뀌게 */
   return { start: start, end: end, from: sch2Key(start.getFullYear(), start.getMonth(), start.getDate()), to: sch2Key(end.getFullYear(), end.getMonth(), end.getDate()) };
 }
 function sch2Load() {
@@ -29349,11 +29358,11 @@ function sch2Render() {
   var rg = sch2Range(), t = todayKST(), today = sch2Key(t.y, t.m, t.d), html = '';
   var d = new Date(rg.start);
   while (d <= rg.end) {
-    var wkStart = sch2Key(d.getFullYear(), d.getMonth(), d.getDate()), cells = '', keys = [];
+    var wkStart = sch2Key(d.getFullYear(), d.getMonth(), d.getDate()), cells = '', keys = [], outs = [];
     for (var i = 0; i < 7; i++) {
       var k = sch2Key(d.getFullYear(), d.getMonth(), d.getDate()), out = d.getMonth() !== sch2M;
       var hol = typeof holidayName === 'function' && holidayName(d.getFullYear(), d.getMonth(), d.getDate());
-      keys.push(k);
+      keys.push(k); outs.push(out);
       cells += '<button type="button" class="sch2-d' + (i === 0 ? ' sun' : i === 6 ? ' sat' : '') + (hol ? ' hol' : '') + (out ? ' out' : '') + (k === today ? ' today' : '') + (k === sch2Sel ? ' sel' : '') + '" data-k="' + k + '" onclick="sch2Open(\'' + k + '\')"><i>' + d.getDate() + '</i><small data-more="' + k + '"></small></button>';
       d.setDate(d.getDate() + 1);
     }
@@ -29367,7 +29376,7 @@ function sch2Render() {
       var L = 0; while (lanes[L] && lanes[L].some(function (x) { return !(en < x[0] || s > x[1]); })) L++;
       if (L >= 2) { for (var j = s; j <= en; j++) more[keys[j]] = (more[keys[j]] || 0) + 1; return; }
       (lanes[L] = lanes[L] || []).push([s, en]);
-      bars += '<div class="sch2-bar sch2-c-' + sch2Col(e) + (e.start < wkStart ? ' cont-l' : '') + (e.end > wkEnd ? ' cont-r' : '') + '" style="left:calc(' + (s * 100 / 7) + '% + 2px);width:calc(' + ((en - s + 1) * 100 / 7) + '% - 4px);top:' + (28 + L * 17) + 'px">' + esc(e.title) + '</div>';
+      bars += '<div class="sch2-bar sch2-c-' + sch2Col(e) + (e.start < wkStart ? ' cont-l' : '') + (e.end > wkEnd ? ' cont-r' : '') + (outs.slice(s, en + 1).every(Boolean) ? ' dim' : '') + '" style="left:calc(' + (s * 100 / 7) + '% + 2px);width:calc(' + ((en - s + 1) * 100 / 7) + '% - 4px);top:' + (28 + L * 17) + 'px">' + esc(e.title) + '</div>';
     });
     html += '<div class="sch2-row">' + cells + bars + '</div>';
     html = html.replace(/<small data-more="([^"]+)"><\/small>/g, function (m0, k) { return more[k] ? '<small>+' + more[k] + '</small>' : '<small></small>'; });
@@ -29378,6 +29387,13 @@ function sch2Render() {
 }
 /* 날짜를 누르면 달력 아래 목록에 그날 일정 · 등록/수정만 팝업 */
 function sch2Open(k) {
+  var kp = k.split('-'), ky = +kp[0], km = +kp[1] - 1;
+  if (ky !== sch2Y || km !== sch2M) {   /* 흐린 이전/다음 달 날짜를 누르면 그 달로 */
+    var dir = (ky - sch2Y) * 12 + (km - sch2M);
+    sch2Y = ky; sch2M = km; sch2Sel = k; sch2Load();
+    var g = $('sch2-grid'); if (g) { g.classList.remove('rs-in-l', 'rs-in-r'); void g.offsetWidth; g.classList.add(dir > 0 ? 'rs-in-l' : 'rs-in-r'); }
+    return;
+  }
   sch2Sel = k;
   [].forEach.call(document.querySelectorAll('#sch2-grid .sch2-d'), function (b) { b.classList.toggle('sel', b.getAttribute('data-k') === k); });
   sch2ListRender();
@@ -29408,12 +29424,19 @@ function sch2EditOpen(id) {
   sch2DayRender();
   setTimeout(function () { var i = $('sch2-f-title'); if (i && !id) i.focus(); }, 50);
 }
+/* 24시각제 시간 고르기 (00:00 ~ 23:50, 10분 단위) */
+function sch2TimeSel(id, v, lb) {
+  var h = '<select id="' + id + '" class="sch2-tsel" aria-label="' + lb + ' 시간"><option value="">' + lb + ' --:--</option>', has = !v;
+  for (var m = 0; m < 1440; m += 10) { var t = pad2(Math.floor(m / 60)) + ':' + pad2(m % 60); if (t === v) has = true; h += '<option' + (t === v ? ' selected' : '') + '>' + t + '</option>'; }
+  if (!has) h += '<option selected>' + esc(v) + '</option>';
+  return h + '</select>';
+}
 function sch2FormRender() {
   var f = sch2Edit;
   $('sch2-day-body').innerHTML = '<div class="sch2-f sch2-fm">' +
     '<input id="sch2-f-title" maxlength="60" placeholder="일정 이름" value="' + esc(f.title) + '">' +
     '<div class="row"><span>날짜</span><input type="date" id="sch2-f-start" value="' + f.start + '" onchange="sch2FixEnd()"><i>~</i><input type="date" id="sch2-f-end" value="' + f.end + '"></div>' +
-    '<div class="row"><span>시간</span><input type="time" id="sch2-f-tf" value="' + f.timeFrom + '" aria-label="시작 시간"><i>~</i><input type="time" id="sch2-f-tt" value="' + f.timeTo + '" aria-label="끝 시간"></div>' +
+    '<div class="row"><span>시간</span>' + sch2TimeSel('sch2-f-tf', f.timeFrom, '시작') + '<i>~</i>' + sch2TimeSel('sch2-f-tt', f.timeTo, '끝') + '</div>' +
     '<div class="row"><span>장소</span><input id="sch2-f-place" maxlength="60" placeholder="선택" value="' + esc(f.place) + '"></div>' +
     '<div class="row"><span>분류</span><div class="segs">' + SCH2_CATS.map(function (c) { return '<button type="button" class="' + SCH2_CK[c] + (c === f.category ? ' on' : '') + '" onclick="sch2Edit.category=\'' + c + '\';[].forEach.call(this.parentNode.children,function(b){b.classList.toggle(\'on\',b.textContent===sch2Edit.category)})">' + c + '</button>'; }).join('') + '</div></div>' +
     '<div class="row"><span>메모</span><input id="sch2-f-memo" maxlength="500" placeholder="선택" value="' + esc(f.memo) + '"></div>' +
