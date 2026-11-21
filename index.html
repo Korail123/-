@@ -25963,6 +25963,7 @@ function mmcnRender() {
 /* ===== 메인화면 떨어지는 효과 (지금은 단풍 · 화면이 보일 때만) ===== */
 var snowCv = null, snowRaf = 0, snowFl = [];
 function snowWant() {
+  return false;   /* 겨울: 단풍 대신 바탕 트리 + 눈 (wbg) */
   if (document.hidden) return false;   /* 단풍은 다크 모드에서도 */
   try { if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return false; } catch (e) {}
   var m = document.getElementById('main-section');
@@ -29941,6 +29942,95 @@ function swnSeen() {
     if (u && u.employeeId && u.token && m && m.classList.contains('active')) { clearInterval(t); setTimeout(function () { swnCheck(true); }, 1500); }
   }, 2000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) swnCheck(false); });
+})();
+</script>
+
+<style id="wbg-ui">
+/* ===== 메인 바탕: 흐린 보케 트리 (낮=불빛 꺼짐 · 저녁/밤/새벽=1초마다 반짝) + 눈 ===== */
+#wbg{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none;display:none}
+html.wbg-on #wbg{display:block}
+html.wbg-on:not(#z1):not(#z2),html.wbg-on:not(#z1):not(#z2) body,html.wbg-on:not(#z1):not(#z2) body #main-container,html.wbg-on:not(#z1):not(#z2) body #main-section{background:transparent!important;background-image:none!important}
+html.wbg-on #snow-fx{display:none!important}
+html.wbg-on #main-container{position:relative;z-index:1}
+html.wbg-on #main-section .menu-btn{background:rgba(255,255,255,.7)!important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+html.wbg-on.wbg-night #main-section .menu-btn{background:rgba(255,255,255,.16)!important;border-color:rgba(255,255,255,.12)!important}
+html.wbg-on.wbg-night #main-section .menu-btn span{color:#f3f5ff!important}
+html.wbg-on.wbg-night #main-container > .top-bar,html.wbg-on.wbg-night #main-container > .top-bar *:not(img):not(svg):not(path){color:#fff!important;text-shadow:0 1px 4px rgba(0,0,0,.35)}
+</style>
+<canvas id="wbg" aria-hidden="true"></canvas>
+<script id="wbg-js">
+(function () {
+  var cv = document.getElementById('wbg'); if (!cv) return;
+  document.body.insertBefore(cv, document.body.firstChild);
+  var x = cv.getContext('2d'), W = 0, H = 0, DPR = 1, base = null, baseKey = '', night = false, lights = [], snow = [], last = 0, lastBlink = 0;
+  function R(s) { return function () { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
+  function isNight() { var d = new Date(Date.now() + (new Date().getTimezoneOffset() + 540) * 60000), h = d.getHours(); return h >= 17 || h < 6; }   /* 저녁 · 밤 · 새벽 (한국 시간) */
+  function hex(h, a) { var n = parseInt(h.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; }
+  var COLS = ['#ff5a5a', '#ffd23f', '#4be08a', '#4dabff', '#ff9a3c', '#ff7ac6', '#fff1c1'];
+  function geo() { var cx = W / 2, top = H * 0.24, bot = H * 0.9, hw = Math.min(W * 0.46, (bot - top) * 0.4); return { cx: cx, top: top, bot: bot, hw: hw }; }
+  function inTree(r, g) { var t = Math.sqrt(r()), y = g.top + (g.bot - g.top) * t, w = g.hw * 0.06 + t * g.hw; return { x: g.cx + (r() * 2 - 1) * w, y: y + (r() - 0.5) * 6, t: t }; }
+  var SPR = {};
+  function sprite(col, r) {
+    var k = col + r; if (SPR[k]) return SPR[k];
+    var c = document.createElement('canvas'), s = Math.ceil(r * 2 + 4); c.width = c.height = s * DPR; var q = c.getContext('2d'); q.scale(DPR, DPR); var m = s / 2;
+    var gr = q.createRadialGradient(m, m, 0, m, m, r); gr.addColorStop(0, hex(col, .55)); gr.addColorStop(.75, hex(col, .65)); gr.addColorStop(.92, hex(col, .85)); gr.addColorStop(1, hex(col, 0));
+    q.fillStyle = gr; q.beginPath(); q.arc(m, m, r, 0, 6.283); q.fill(); SPR[k] = c; return c;
+  }
+  function bake() {
+    var c = document.createElement('canvas'); c.width = W * DPR; c.height = H * DPR; var q = c.getContext('2d'); q.scale(DPR, DPR);
+    var g = geo(), r = R(11), n = night;
+    var bg = q.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, n ? '#3a2f28' : '#f3efe6'); bg.addColorStop(1, n ? '#22191a' : '#e9e3d6'); q.fillStyle = bg; q.fillRect(0, 0, W, H);
+    q.filter = 'blur(14px)'; q.fillStyle = n ? '#4a3226' : '#b98f69'; q.fillRect(-30, H * 0.9, W + 60, H * 0.2);
+    q.fillStyle = n ? 'rgba(255,190,120,.10)' : 'rgba(255,255,255,.4)'; q.beginPath(); q.ellipse(W * 0.18, H * 0.25, W * 0.4, H * 0.3, 0, 0, 6.283); q.fill();
+    var gr = n ? ['#163f2a', '#1d5236', '#0f2d1f'] : ['#2f6b48', '#3d7d55', '#255a3c', '#4c8a60'];
+    q.filter = 'blur(' + Math.round(W / 24) + 'px)'; q.fillStyle = gr[0]; q.beginPath(); q.moveTo(g.cx, g.top - 12);
+    var steps = [[.3, .4], [.32, .3], [.58, .64], [.6, .52], [.82, .84], [.84, .74], [1, 1]];
+    steps.forEach(function (s) { q.lineTo(g.cx + g.hw * s[1], g.top + (g.bot - g.top) * s[0]); });
+    steps.slice(0, 6).reverse().forEach(function (s) { q.lineTo(g.cx - g.hw * s[1], g.top + (g.bot - g.top) * s[0]); });
+    q.lineTo(g.cx - g.hw, g.bot); q.closePath(); q.fill();
+    q.fillStyle = n ? '#2a1d16' : '#6b4a33'; q.fillRect(g.cx - g.hw * 0.08, g.bot - 2, g.hw * 0.16, H * 0.06);
+    q.filter = 'blur(' + Math.round(W / 60) + 'px)';
+    for (var i = 0; i < 180; i++) { var p = inTree(r, g); q.fillStyle = gr[i % gr.length]; q.globalAlpha = .55; q.beginPath(); q.arc(p.x, p.y, (4 + p.t * 7) * W / 220, 0, 6.283); q.fill(); }
+    q.globalAlpha = 1;
+    if (!n) { q.filter = 'blur(3px)'; var r2 = R(300); for (var j = 0; j < 26; j++) { var p2 = inTree(r2, g); q.fillStyle = hex(COLS[j % COLS.length], .3); q.beginPath(); q.arc(p2.x, p2.y, (4 + r2() * 3) * W / 220, 0, 6.283); q.fill(); } }   /* 낮: 꺼진 전구 */
+    q.filter = 'none'; base = c;
+    /* 불빛 · 눈 */
+    var r3 = R(501), k = W / 220; lights = [];
+    if (n) for (var a = 0; a < 120; a++) { var p3 = inTree(r3, g); lights.push({ x: p3.x, y: p3.y, r: (7 + r3() * 6) * k, c: COLS[a % COLS.length], on: r3() > .4, a: 0 }); }
+    snow = []; var so = n ? { n: Math.round(70 * k), s: [.5, 1.4], v: [1.2, 2.3] } : { n: Math.round(28 * k), s: [1.6, 4], v: [.3, .65] };
+    for (var b = 0; b < so.n; b++) snow.push({ x: r3() * W, y: r3() * H, s: (so.s[0] + r3() * (so.s[1] - so.s[0])) * Math.max(1, k * .8), v: (so.v[0] + r3() * (so.v[1] - so.v[0])) * k, p: r3() * 6.28 });
+  }
+  function size() {
+    var w = window.innerWidth, h = window.innerHeight, d = Math.min(2, window.devicePixelRatio || 1);
+    night = isNight();
+    var key = w + 'x' + h + '@' + d + (night ? 'n' : 'd');
+    if (key === baseKey) return; baseKey = key; W = w; H = h; DPR = d; SPR = {};
+    cv.width = W * DPR; cv.height = H * DPR; x.setTransform(DPR, 0, 0, DPR, 0, 0);
+    document.documentElement.classList.toggle('wbg-night', night);
+    bake();
+  }
+  function active() { var m = document.getElementById('main-section'); return !!(m && m.classList.contains('active')) && !document.hidden; }
+  function frame(now) {
+    requestAnimationFrame(frame);
+    var on = active(); document.documentElement.classList.toggle('wbg-on', !!(document.getElementById('main-section') || {}).classList && document.getElementById('main-section').classList.contains('active'));
+    if (!on || now - last < 33) return;   /* 30fps · 메인화면이 아니거나 앱이 뒤에 있으면 멈춤 */
+    var dt = Math.min(3, (now - last) / 16.7); last = now;
+    if (isNight() !== night) baseKey = '';
+    size();
+    x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1; x.drawImage(base, 0, 0, W, H);
+    if (night) {
+      if (now - lastBlink > 1000) { lastBlink = now; lights.forEach(function (l) { if (Math.random() < .5) l.on = !l.on; }); }   /* 1초마다 반짝 */
+      x.globalCompositeOperation = 'lighter';
+      lights.forEach(function (l) { l.a += ((l.on ? .7 : .12) - l.a) * Math.min(1, .25 * dt); x.globalAlpha = l.a; var s = sprite(l.c, Math.round(l.r)); x.drawImage(s, l.x - s.width / DPR / 2, l.y - s.height / DPR / 2, s.width / DPR, s.height / DPR); });
+      x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
+    }
+    x.fillStyle = night ? 'rgba(235,240,255,.75)' : 'rgba(255,255,255,.92)'; x.shadowColor = night ? 'transparent' : 'rgba(90,70,50,.3)'; x.shadowBlur = night ? 0 : 3;
+    var t = now / 1000, wind = night ? .9 : .05;
+    snow.forEach(function (f) { f.y += f.v * dt; f.x += (wind + Math.sin(t * 1.2 + f.p) * .25) * dt; if (f.y > H + 8) { f.y = -8; f.x = Math.random() * W; } if (f.x > W + 8) f.x = -8; if (f.x < -8) f.x = W + 8; x.beginPath(); x.arc(f.x, f.y, f.s, 0, 6.283); x.fill(); });
+    x.shadowBlur = 0;
+  }
+  window.addEventListener('resize', function () { baseKey = ''; });
+  requestAnimationFrame(frame);
 })();
 </script>
 
