@@ -1734,7 +1734,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="setting-grid">
       <button type="button" class="set-tile" onclick="openNoticePanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="공지사항" alt="" aria-hidden="true" decoding="async"><span class="set-label">공지사항</span></button>
       <button type="button" class="set-tile" onclick="openSuggestionPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="건의사항" alt="" aria-hidden="true" decoding="async"><span class="set-label">건의사항</span></button>
-      <button type="button" class="set-tile" id="set-appupd" hidden onclick="openAppUpdate()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="불러오기" alt="" aria-hidden="true" decoding="async"><span class="set-label">앱 업데이트</span></button>
+      <button type="button" class="set-tile" id="set-appupd" hidden onclick="openAppUpdate()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="불러오기" alt="" aria-hidden="true" decoding="async"><span class="set-label">앱 업데이트</span><span class="tile-sw" data-qs="appupd" role="switch" aria-checked="true" aria-label="새 버전 자동 안내 켜기/끄기" tabindex="0"><i></i></span></button>
       <button type="button" class="set-tile" onclick="openGuidePanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="사용가이드" alt="" aria-hidden="true" decoding="async"><span class="set-label">철도비서 사용가이드</span></button>
     </div>
   </section>
@@ -16912,7 +16912,9 @@ window.rsAppUpdateProgress = function (pct, state, msg) {
   setTimeout(show, 1500);
 })();
 /* 새 앱 버전 알림 (앱 안에서만) */
+function appUpdAutoOn() { try { return localStorage.getItem('rs_appupd_auto') !== '0'; } catch (e) { return true; } }
 function rsAppCheckUpdate() {
+  if (!appUpdAutoOn()) return;   /* 환경설정 › 앱 업데이트 OFF: 자동 안내 안 함 */
   var cur = rsAppVersion(); if (!cur || rsAppCheckUpdate.done) return; rsAppCheckUpdate.done = 1;
   fetch(RS_APP_LATEST_URL + '?v=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
     if (!j || !j.version || !j.apk) return;
@@ -26716,6 +26718,7 @@ function qsState(kind) {
     if (kind === 'nx') return !!getNxCfg().on;
     if (kind === 'pass') return qsPassOn();
     if (kind === 'perm') return !!(getAlarmCfg().on || getMidCfg().on);
+    if (kind === 'appupd') return appUpdAutoOn();
   } catch (e) {}
   return false;
 }
@@ -26727,6 +26730,12 @@ function qsRender() {
   });
 }
 function qsSet(kind, on) {
+  if (kind === 'appupd') {   /* 앱 업데이트: 로그인 없이도 · 켜면 앱을 열 때 새 버전 안내, 끄면 안내 없이 (환경설정에서 직접 확인) */
+    try { localStorage.setItem('rs_appupd_auto', on ? '1' : '0'); } catch (e) {}
+    showToast(on ? '새 버전이 나오면 앱을 열 때 알려드릴게요.' : '새 버전 안내를 껐어요. 환경설정 › 앱 업데이트에서 직접 확인할 수 있어요.');
+    if (!on) { var b = document.querySelector('.rsapp-upd'); if (b) b.remove(); }
+    setTimeout(qsRender, 50); return;
+  }
   var u = (typeof getCurrentUser === 'function' && getCurrentUser()) || {};
   if (!u.employeeId || String(u.employeeId) === 'guest') { try { showToast('로그인 후 이용할 수 있습니다.'); } catch (e) {} qsRender(); return; }
   try {
@@ -29300,13 +29309,42 @@ html.ui-dark #sch2-day .sch2-fm .row select.sch2-tsel{background:#232831;border-
 html.ui-dark .sch2-lh b{color:#e9edf2}html.ui-dark #sch2-panel .sch2-d.sel{background:#232c3b}
 
 /* 달 넘겨도 팝업 크기 고정: 6주 고정 + 높이 고정, 아래 목록만 스크롤 */
-#sch2-panel .sch2-dlg{display:flex;flex-direction:column;height:min(860px,calc(100dvh - 24px));max-height:none;overflow:hidden;width:min(440px,calc(100vw - 16px));max-width:440px}
+#sch2-panel .sch2-dlg{display:flex;flex-direction:column;height:auto;max-height:calc(100dvh - 24px);max-height:none;overflow:hidden;width:min(440px,calc(100vw - 16px));max-width:440px}
 #sch2-panel .sch2-head,#sch2-panel .sch2-nav,#sch2-panel .sch2-wk,#sch2-panel .sch2-grid{flex:none}
-#sch2-panel .sch2-row{min-height:0;height:66px}
-#sch2-panel .sch2-list{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:4px}
+#sch2-panel .sch2-row{min-height:0;height:58px}
+#sch2-panel .sch2-list{flex:none;height:auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:4px}
 #sch2-panel .sch2-note:empty{display:none}
 #sch2-panel .sch2-d{position:relative}#sch2-panel .sch2-d small{position:absolute;top:5px;right:3px;margin:0;font-size:9.5px;color:#6b778a}
 #sch2-panel .sch2-grid.rs-in-l,#sch2-panel .sch2-grid.rs-in-r{animation-duration:.28s}
+
+/* 일정 팝업 줄이기: 달력은 6주 높이를 늘 확보(달 넘겨도 크기 그대로) · 아래 목록 여백 줄임 */
+#sch2-panel .sch2-dlg{padding:12px 12px 10px}
+#sch2-panel .sch2-head{padding:0 2px 4px}#sch2-panel .sch2-head b{font-size:17px}
+#sch2-panel .sch2-nav{margin:0 0 4px}
+/* 5주 · 6주로 높이가 바뀌어도 위치는 그대로: 위쪽을 고정하고 아래만 늘었다 줄었다 */
+#sch2-panel{align-items:flex-start}
+#sch2-panel .sch2-dlg{margin-top:max(12px,calc(50dvh - 310px))!important}
+#sch2-panel .sch2-list{margin-top:6px}
+#sch2-panel .sch2-lh{margin:0 2px 5px}#sch2-panel .sch2-lh b{font-size:13.5px}
+#sch2-panel .sch2-lh button{padding:5px 10px;font-size:12px;border-radius:8px}
+#sch2-panel .sch2-item{padding:7px 9px;gap:8px;border-radius:10px;margin-bottom:5px;align-items:center}
+#sch2-panel .sch2-item .dot{width:4px;align-self:stretch}
+#sch2-panel .sch2-item b{font-size:13.5px}#sch2-panel .sch2-item small{font-size:11px;margin-top:1px}
+#sch2-panel .sch2-meta{font-size:11px;margin-top:1px;gap:1px 8px}
+#sch2-panel .sch2-item p{font-size:11.5px;margin-top:2px}
+#sch2-panel .sch2-item .acts{flex-direction:row;gap:4px}
+#sch2-panel .sch2-item .acts button{padding:4px 7px;font-size:11px;border-radius:7px}
+#sch2-panel .sch2-empty{padding:14px 0;font-size:12.5px}
+
+/* 후보 2: 일정 있는 날만 아래 시트 */
+#sch2-panel .sch2-list:empty{display:none}
+#sch2-panel .sch2-list{max-height:38dvh}
+#sch2-panel .sch2-list.open{margin:8px -12px -10px;padding:6px 12px 10px;border-radius:18px 18px 22px 22px;background:#fff;box-shadow:0 -6px 18px rgba(20,40,80,.09)}
+#sch2-panel .sch2-list.up{animation:sch2Up .26s cubic-bezier(.2,.8,.2,1)}
+@keyframes sch2Up{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+#sch2-panel .sch2-grab{width:34px;height:4px;border-radius:2px;background:#d5dbe3;margin:0 auto 6px}
+#sch2-panel .sch2-addline{display:block;width:100%;margin-top:8px;padding:8px;border:1.5px dashed #cfdcf3;border-radius:10px;background:none;font-family:inherit;font-size:12.5px;font-weight:800;color:#2f6fd6;cursor:pointer}
+html.ui-dark #sch2-panel .sch2-list.open{background:#1f242c}html.ui-dark #sch2-panel .sch2-addline{border-color:#34507f}
 </style>
 <script id="sch2-js">
 /* ===== 근무 › 일정: 2026년 11월부터 달력 · 날짜를 누르면 그날 일정 · 등록(시작일~종료일)은 정해진 사람만 (서버 app_schedule) ===== */
@@ -29382,7 +29420,7 @@ function sch2Render() {
       var L = 0; while (lanes[L] && lanes[L].some(function (x) { return !(en < x[0] || s > x[1]); })) L++;
       if (L >= 2) { for (var j = s; j <= en; j++) more[keys[j]] = (more[keys[j]] || 0) + 1; return; }
       (lanes[L] = lanes[L] || []).push([s, en]);
-      bars += '<div class="sch2-bar sch2-c-' + sch2Col(e) + (e.start < wkStart ? ' cont-l' : '') + (e.end > wkEnd ? ' cont-r' : '') + (outs.slice(s, en + 1).every(Boolean) ? ' dim' : '') + '" style="left:calc(' + (s * 100 / 7) + '% + 2px);width:calc(' + ((en - s + 1) * 100 / 7) + '% - 4px);top:' + (28 + L * 17) + 'px">' + esc(e.title) + '</div>';
+      bars += '<div class="sch2-bar sch2-c-' + sch2Col(e) + (e.start < wkStart ? ' cont-l' : '') + (e.end > wkEnd ? ' cont-r' : '') + (outs.slice(s, en + 1).every(Boolean) ? ' dim' : '') + '" style="left:calc(' + (s * 100 / 7) + '% + 2px);width:calc(' + ((en - s + 1) * 100 / 7) + '% - 4px);top:' + (26 + L * 16) + 'px">' + esc(e.title) + '</div>';
     });
     html += '<div class="sch2-row">' + cells + bars + '</div>';
     html = html.replace(/<small data-more="([^"]+)"><\/small>/g, function (m0, k) { return more[k] ? '<small>+' + more[k] + '</small>' : '<small></small>'; });
@@ -29410,7 +29448,15 @@ function sch2ListRender() {
   var k = sch2Sel, can = sch2CanEdit();
   var list = sch2Items.filter(function (e) { return e.start <= k && e.end >= k; })
     .sort(function (a, b) { var x = a.timeFrom || '99', y = b.timeFrom || '99'; return x < y ? -1 : x > y ? 1 : a.id - b.id; });
-  var h = '<div class="sch2-lh"><b>' + sch2Txt(k) + (list.length ? ' · ' + list.length + '건' : '') + '</b>' + (can ? '<button type="button" onclick="sch2EditOpen(0)">+ 등록</button>' : '') + '</div>';
+  /* 일정 없는 날: 달력만 (등록할 수 있는 사람만 작은 등록 줄) · 있는 날: 아래에서 시트처럼 올라옴 */
+  var wasOpen = box.classList.contains('open');
+  if (!list.length) {
+    box.classList.remove('open', 'up');
+    box.innerHTML = can ? '<button type="button" class="sch2-addline" onclick="sch2EditOpen(0)">+ ' + sch2Txt(k) + ' 일정 등록</button>' : '';
+    return;
+  }
+  box.classList.add('open'); if (!wasOpen) { box.classList.remove('up'); void box.offsetWidth; box.classList.add('up'); }
+  var h = '<div class="sch2-grab"></div><div class="sch2-lh"><b>' + sch2Txt(k) + ' · ' + list.length + '건</b>' + (can ? '<button type="button" onclick="sch2EditOpen(0)">+ 등록</button>' : '') + '</div>';
   h += list.length ? list.map(function (e) {
     return '<div class="sch2-item"><span class="dot sch2-c-' + sch2Col(e) + '"></span><div style="flex:1;min-width:0"><b>' + (e.category ? '<em class="sch2-cat ' + (SCH2_CK[e.category] || 'e') + '">' + esc(e.category) + '</em>' : '') + esc(e.title) + '</b>' +
       sch2Meta(e) + '<small>' + [e.start === e.end ? '' : sch2Txt(e.start) + ' ~ ' + sch2Txt(e.end), esc(e.byName || e.by || '')].filter(Boolean).join(' · ') + '</small>' + (e.memo ? '<p>' + esc(e.memo) + '</p>' : '') + '</div>' +
