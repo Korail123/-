@@ -5326,7 +5326,16 @@ function wgLineSet(v) {
   document.querySelectorAll('#wg-panel .wg-opt button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === v); });
   wgFillPreview();
   rsFeedBusy = false; rsFeedPush(true);
+  try { rsWidgetLast = ''; rsWidgetPush(true); } catch (e) {}   /* 안드로이드 앱 위젯에도 바로 */
   showToast('위젯 달력에 ' + (WG_LINE_OPTS.filter(function (o) { return o[0] === v; })[0] || ['', ''])[1] + '(으)로 표시할게요.');
+}
+/* 날짜 아래 한 줄 글자: KWGT 그림 · 앱 위젯이 같은 규칙을 씀 */
+function wgLineText(ex) {
+  ex = ex || []; var lmode = wgLineMode();
+  if (lmode === 'train') return String(ex[3] || '').split(' ').filter(function (v) { return v; }).slice(0, 2).join(' ');
+  if (lmode === 'start') return String(ex[4] || '');
+  if (lmode === 'range') return ex[4] ? ex[4] + (ex[5] ? '~' + ex[5] : '') : '';
+  return '';
 }
 function wgLineHtml() {
   var cur = wgLineMode();
@@ -5399,7 +5408,8 @@ function wgRender(r) {
     box.innerHTML = '<div class="wg-intro">홈 화면에 <b>근무표 달력 위젯</b>을 놓을 수 있어요.<br><b>안드로이드</b>는 KWGT, <b>아이폰</b>은 Scriptable 앱(둘 다 무료)을 써요.<br>' +
       '아래 버튼을 누르면 <b>나만의 위젯 주소</b>가 만들어지고, 철도비서를 열 때마다 달력 그림이 새로 올라가요.</div>' +
       '<div class="wg-warn">위젯 주소를 아는 사람은 내 근무표 요약을 볼 수 있어요. 다른 사람에게 보내지 마세요.</div>' +
-      '<button type="button" class="wg-main" onclick="wgMake()">위젯 주소 만들기</button>';
+      '<button type="button" class="wg-main" onclick="wgMake()">위젯 주소 만들기</button>' +
+      (window.RsWidget ? '<div class="wg-tip" style="margin-top:14px">철도비서 <b>안드로이드 앱 위젯</b>은 주소 없이 바로 써요. 날짜 아래에 보일 것을 골라 주세요.</div>' + wgLineHtml() : '');
     return;
   }
   var url = rsFeedUrl(r.token);
@@ -5521,7 +5531,8 @@ function rsWidgetPush(now, around) {
           if (r) { list.push(r); if (r.name) name = r.name; }
           if (--left > 0) return;
           var months = {};
-          list.forEach(function (x) { months[x.ym] = x.days; });
+          /* 칸마다 끝에 '날짜 아래 한 줄'(위젯 연결에서 고른 열차번호 · 출근시간 …)을 붙여 보냄 */
+          list.forEach(function (x) { months[x.ym] = (x.days || []).map(function (c, i) { return c + '|' + wgLineText(x.ex && x.ex[i]).replace(/\|/g, ' '); }); });
           var body = JSON.stringify({ name: name, months: months });
           if (body === rsWidgetLast) return;           /* 바뀐 게 없으면 보내지 않음 */
           rsWidgetLast = body;
@@ -29099,6 +29110,43 @@ function passMapBind(box) {
     try { eval(f + ' = window[f]'); } catch (e) {}
   });
   try { glSums(); } catch (e) {}
+})();
+</script>
+
+<style id="popup-stack-ui">
+/* 안내 말풍선 · 토스트 · 업데이트 알림은 어떤 팝업보다도 위 */
+#app-toast{z-index:2147482500!important}.ps-tip{z-index:2147482400!important}#rs-update-bar{z-index:2147482300!important}
+</style>
+<script id="popup-stack-js">
+/* 팝업 순서 정리: 새로 열린 팝업 · 창이 언제나 맨 위 (먼저 열린 건 그 아래)
+   - 팝업마다 따로 정해 둔 z-index 대신, 열리는 순간 지금까지 중 가장 큰 번호를 줌 */
+(function () {
+  var TOP = 12000, seen = new WeakMap();
+  var SEL = '.dia-modal, .schedule-edit-modal, .route-viewer, .notice-popup, .lg-pop, .onb-pop, .page-view, .bp-att-viewer, [id$="-panel"], [id$="-pop"], [id$="-popup"], [id$="-picker"], [id$="-modal"], [id$="-viewer"]';
+  var SKIP = { 'app-toast': 1, 'ui-warm': 1, 'app-splash': 1, 'rs-update-bar': 1, 'ptr': 1 };
+  function shown(el) {
+    if (SKIP[el.id] || el.classList.contains('page-view')) return false;
+    var cs = getComputedStyle(el);
+    if (cs.position !== 'fixed' || cs.display === 'none' || cs.visibility === 'hidden' || cs.pointerEvents === 'none') return false;
+    var r = el.getBoundingClientRect();
+    return r.width >= window.innerWidth * 0.8 && r.height >= window.innerHeight * 0.5;   /* 화면을 덮는 것만 */
+  }
+  function check(el) {
+    if (!(el instanceof HTMLElement) || !el.matches(SEL)) return;
+    var v = shown(el), was = seen.get(el);
+    seen.set(el, v);
+    if (v && !was) el.style.setProperty('z-index', String(++TOP), 'important');
+  }
+  window.rsPopupFront = function (el) { if (el) el.style.setProperty('z-index', String(++TOP), 'important'); };
+  new MutationObserver(function (ms) {
+    for (var i = 0; i < ms.length; i++) {
+      var m = ms[i];
+      if (m.type === 'childList') { for (var j = 0; j < m.addedNodes.length; j++) { var n = m.addedNodes[j]; if (n.nodeType === 1) { check(n); if (n.querySelectorAll) [].forEach.call(n.querySelectorAll(SEL), check); } } }
+      else if (m.attributeName !== 'style' || !seen.get(m.target)) check(m.target);
+      else if (m.target.matches && m.target.matches(SEL) && getComputedStyle(m.target).display === 'none') seen.set(m.target, false);   /* style로 닫힌 경우 */
+    }
+  }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
+  [].forEach.call(document.querySelectorAll(SEL), function (el) { seen.set(el, shown(el)); });
 })();
 </script>
 
