@@ -25114,6 +25114,31 @@ html.ui-dark #kl-panel .kl-re{background:#232a35;color:#e4e7ec}
    표: 그 달 전체를 한 줄에 하루씩 (날짜·요일 | 다이아 | 구분 | 출근 | 퇴근 | 열차1 | 열차2)
    줄을 누르면 그 날짜의 상세 근무(달력에서 날짜를 누를 때와 같은 내용)를 팝업으로 · 이 폰에만 저장 */
 function schView() { try { return LS.getItem('rs_sch_view') === 'tbl' ? 'tbl' : 'cal'; } catch (e) { return 'cal'; } }
+/* 근무표 '표' 보기에서도 좌우로 밀어 이전 · 다음 달 (달력 보기와 같게) */
+(function () {
+  function boot() {
+    var w = document.getElementById('sch-table-wrap'); if (!w) return;
+    var x0 = 0, y0 = 0, t0 = 0, on = false, dir = 0, swAt = 0;
+    w.addEventListener('touchstart', function (e) {
+      if (e.touches.length !== 1 || e.target.closest('input,select,textarea')) { on = false; return; }
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now(); on = true; dir = 0;
+    }, { passive: true });
+    w.addEventListener('touchmove', function (e) {
+      if (!on) return; var p = e.touches[0], mx = p.clientX - x0, my = p.clientY - y0;
+      if (!dir && (Math.abs(mx) > 10 || Math.abs(my) > 10)) dir = Math.abs(mx) > Math.abs(my) * 1.3 ? 1 : 2;
+    }, { passive: true });
+    w.addEventListener('touchend', function (e) {
+      if (!on) return; on = false; if (dir !== 1) return;
+      var p = e.changedTouches[0], dx = p.clientX - x0;
+      if (Math.abs(dx) > 50 && Date.now() - t0 < 800) {
+        swAt = Date.now(); var n = dx < 0 ? 1 : -1; changeMonth(n);
+        w.classList.remove('rs-in-l', 'rs-in-r'); void w.offsetWidth; w.classList.add(n > 0 ? 'rs-in-l' : 'rs-in-r');
+      }
+    }, { passive: true });
+    w.addEventListener('click', function (e) { if (Date.now() - swAt < 350) { e.stopPropagation(); e.preventDefault(); } }, true);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+})();
 function schSetView(v) {
   try { LS.setItem('rs_sch_view', v === 'tbl' ? 'tbl' : 'cal'); } catch (e) {}
   schApplyView();
@@ -30035,10 +30060,24 @@ html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .board-pa
 html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body #notice-list,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body #suggestion-list{background:rgba(255,255,255,.72)!important;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(221,231,245,.9);border-radius:16px;padding:10px 12px!important;margin:12px 0!important}
 html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .board-page .nt-tabs{background:rgba(255,255,255,.72)!important;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-radius:14px}
 
-/* 근무그룹: 오늘 · 내가 고른 날짜 줄은 반투명보다 진하게 */
-html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7) body #group-section .group-table td.g-today,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7) body #group-section .group-table th.g-today{background:rgba(214,232,255,.96)!important;background-image:none!important}
-html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7) body #group-section .group-table td.g-sel:not(.g-today),html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7) body #group-section .group-table th.g-sel:not(.g-today){background:rgba(255,255,255,.96)!important;background-image:none!important}
-html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7) body #group-section .group-table tr.me td.g-sel,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7) body #group-section .group-table tr.me td.g-today{background:rgba(200,222,255,.98)!important}
+/* 근무그룹 = 후보 1 (파란 유리 띠): 내 줄 = 연파랑 둥근 가로 띠 · 오늘 = 조금 더 진한 둥근 세로 띠 · 겹치는 칸이 가장 진함 · 고른 날 = 얇은 둥근 테두리 */
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body #group-section .group-table td,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body #group-section .group-table th{background:transparent!important;background-image:none!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body #group-section .group-table tr.me > td{background:rgba(59,130,246,.16)!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body #group-section .group-table tr.me > td:first-child{border-radius:12px 0 0 12px}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body #group-section .group-table tr.me > td:last-child{border-radius:0 12px 12px 0}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body #group-section .group-table .g-today{background:rgba(59,130,246,.2)!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body #group-section .group-table tr.me > td.g-today{background:rgba(59,130,246,.36)!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body #group-section .group-table thead th.g-today{border-radius:14px 14px 0 0}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body #group-section .group-table tbody tr:last-child td.g-today{border-radius:0 0 14px 14px}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body #group-section .group-table .g-sel:not(.g-today){box-shadow:inset 1.5px 0 0 rgba(59,130,246,.45),inset -1.5px 0 0 rgba(59,130,246,.45)!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body #group-section .group-table thead th.g-sel:not(.g-today){border-radius:14px 14px 0 0;box-shadow:inset 1.5px 0 0 rgba(59,130,246,.45),inset -1.5px 0 0 rgba(59,130,246,.45),inset 0 1.5px 0 rgba(59,130,246,.45)!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body #group-section .group-table tbody tr:last-child td.g-sel:not(.g-today){border-radius:0 0 14px 14px;box-shadow:inset 1.5px 0 0 rgba(59,130,246,.45),inset -1.5px 0 0 rgba(59,130,246,.45),inset 0 -1.5px 0 rgba(59,130,246,.45)!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body #group-section .group-table{border-collapse:separate!important;border-spacing:0!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body #group-section .group-table thead th.g-today .g-dn{background:#2f6fd6!important;color:#fff!important}
+
+/* 팝업 = 후보 5: 팝업 창은 흰색 그대로(글씨 선명), 뒤 화면만 흐리게 */
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body .dia-modal.active,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body .ss-wrap.on{background:rgba(255,255,255,.12)!important;-webkit-backdrop-filter:blur(8px)!important;backdrop-filter:blur(8px)!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body .dia-modal.active > .dia-dialog{background:#fff!important;box-shadow:0 12px 30px rgba(0,0,0,.18)!important}
 </style>
 <canvas id="wbg" aria-hidden="true"></canvas>
 <script id="wbg-js">
