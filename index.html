@@ -1743,6 +1743,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <h2 class="settings-category-title"><span class="settings-category-mark other"></span>기타</h2>
     <div class="setting-grid">
       <button type="button" class="set-tile" onclick="openRoutePlan()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="예상행로표" alt="" aria-hidden="true"><span>다이아 행로표 만들기</span></button>
+      <button type="button" class="set-tile" onclick="openDnd()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="방해금지" alt="" aria-hidden="true" decoding="async"><span class="set-label">방해금지 모드</span><small id="dnd-sub" class="set-sub" hidden></small><span class="tile-sw" data-qs="dnd" role="switch" aria-checked="false" aria-label="방해금지 모드 켜기/끄기" tabindex="0"><i></i></span></button>
       <button type="button" class="set-tile" onclick="openBackupPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="백업동기화" alt="" aria-hidden="true" decoding="async"><span class="set-label">백업·동기화</span></button>
       <button type="button" class="set-tile" onclick="openWidgetPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="위젯연결" alt="" aria-hidden="true" decoding="async"><span class="set-label">위젯 연결</span></button>
       <button type="button" class="set-tile danger" onclick="openResetAllDataPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="전체데이터초기화" alt="" aria-hidden="true" decoding="async"><span class="set-label">데이터 초기화</span></button>
@@ -2494,9 +2495,9 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <div id="anim-panel" class="dia-modal" style="z-index:405" onclick="if(event.target===this)closeAnimSettings()">
   <div class="dia-dialog ns-dialog an-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="애니메이션효과" alt="" aria-hidden="true">애니메이션 효과</div>
-    <label class="an-main"><span><b>메인화면 애니메이션</b><small>로그인하거나 메인화면에 들어올 때 열차가 지나가요</small></span><input type="checkbox" id="an-on" onchange="animToggle(this.checked)"><i class="an-sw"></i></label>
+    <label class="an-main" style="display:none"><span><b>메인화면 애니메이션</b><small>로그인하거나 메인화면에 들어올 때 열차가 지나가요</small></span><input type="checkbox" id="an-on" onchange="animToggle(this.checked)"><i class="an-sw"></i></label>
     <label class="an-main"><span><b>크리스마스 트리 바탕 · 눈</b><small>모든 화면 바탕에 흐린 트리 · 저녁~새벽엔 불빛이 1초마다 반짝</small></span><input type="checkbox" id="an-wbg" onchange="wbgSet(this.checked)"><i class="an-sw"></i></label>
-    <div id="an-opts" class="an-opts">
+    <div id="an-opts" class="an-opts" style="display:none!important">
       <div class="an-hint">오른쪽 화살표를 눌러 고르세요. 여러 개 고르면 그중에서 랜덤, 고르지 않으면 <b>전체</b>에서 랜덤이에요.</div>
       <div class="an-sec"><div class="an-h">시간대 <button type="button" onclick="animClear('times')">전체</button></div><div id="an-times" class="an-chips"></div></div>
       <div class="an-sec"><div class="an-h">역 <small>정차할 역 · 통과는 역에 서지 않고 지나감</small> <button type="button" onclick="animClear('stations')">전체</button></div><div id="an-stations" class="an-chips"></div></div>
@@ -2504,7 +2505,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <div class="an-sec"><div class="an-h">기차 종류 <button type="button" onclick="animClear('trains')">전체</button></div><div id="an-trains" class="an-chips"></div></div>
     </div>
     <div class="an-note">이 설정은 이 폰에만 저장돼요.</div>
-    <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" id="an-preview" onclick="animPreview()">미리보기</button><button type="button" class="dia-text-btn" onclick="closeAnimSettings()">닫기</button></div>
+    <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" id="an-preview" onclick="animPreview()" style="display:none!important">미리보기</button><button type="button" class="dia-text-btn" onclick="closeAnimSettings()">닫기</button></div>
   </div>
 </div>
 <div id="png-panel" class="dia-modal" style="z-index:430" onclick="if(event.target===this)closePngPanel()">
@@ -5981,7 +5982,6 @@ function animRender() {
   $('an-on').checked = p.on;
   try { $('an-wbg').checked = wbgOn(); } catch (e) {}
   $('an-opts').classList.toggle('off', !p.on);
-  $('an-preview').style.display = p.on ? '' : 'none';
   /* 오른쪽 화살표를 누르면 아래로 목록이 펼쳐지는 선택 상자 (여러 개 고를 수 있음) */
   ['times', 'stations', 'signs', 'trains'].forEach(function (k) {
     var sel = p[k], names = ANIM_OPTS[k].filter(function (o) { return sel.indexOf(o[0]) >= 0; }).map(function (o) { return o[1]; });
@@ -16816,9 +16816,11 @@ function rsAppSyncAlarms(force) {
     var list = (snapshotUsable() ? pushAlarmList(getAlarmCfg()).concat(pushMidList()) : []).map(function (a) {
       var o = rsAppSound(a.tag.indexOf('mid-') === 0 ? 'mid' : 'alarm', a.title, a.body, 10);
       o.id = a.tag; o.at = new Date(a.at).getTime();
+      if (dndAt(o.at)) return null;   /* 방해금지 시간에 울릴 알람은 예약하지 않음 */
       if (a.tag.indexOf('alarm-') === 0) { var b = rsDayBrief(a.tag.slice(6)); if (b.startMs) { b.kind = 'alarm'; o.info = b; } }   /* 앱 전체화면 출근 알람 */
       return o;
     });
+    list = list.filter(Boolean);
     if (rsAppTestItem && rsAppTestItem.at > Date.now()) list.push(rsAppTestItem);
     var sig = JSON.stringify(list); if (sig === rsAppAlarmSig) return;
     rsAppAlarmSig = sig; rsAppCall('setAlarms', list);
@@ -16985,7 +16987,7 @@ function getNotiPrefs() {
 function notiPrefsToSW(p) {
   try {
     if (!('caches' in window)) return;
-    var body = JSON.stringify(p || getNotiPrefs());
+    var body = JSON.stringify(Object.assign({}, p || getNotiPrefs(), { dnd: dndCfg() }));
     caches.open('rs-prefs').then(function (c) {
       return c.put(new URL('prefs.json', location.href).href, new Response(body, { headers: { 'Content-Type': 'application/json' } }));
     }).catch(function () {});
@@ -17004,6 +17006,7 @@ function appVibrate(pattern) {
 function appNotify(title, opt, force) {
   var np = getNotiPrefs();
   if (!force && !np.popup) return;
+  if (typeof dndNow === 'function' && dndNow()) return;   /* 방해금지 중 */
   if (rsAppHas('notify')) { rsAppCall('notify', { tag: (opt && opt.tag) || '', title: title, body: (opt && opt.body) || '' }); return; }
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   opt = opt || {};
@@ -26797,6 +26800,7 @@ function qsState(kind) {
     if (kind === 'perm') return !!(getAlarmCfg().on || getMidCfg().on);
     if (kind === 'appupd') return appUpdAutoOn();
     if (kind === 'wbg') return wbgOn();
+    if (kind === 'dnd') return dndCfg().on;
   } catch (e) {}
   return false;
 }
@@ -26809,6 +26813,7 @@ function qsRender() {
 }
 function qsSet(kind, on) {
   if (kind === 'wbg') { wbgSet(on); setTimeout(qsRender, 50); return; }
+  if (kind === 'dnd') { dndSave({ on: !!on }); showToast(on ? '방해금지 모드를 켰어요. ' + dndCfg().from + ' ~ ' + dndCfg().to + ' 동안 알림이 꺼져요.' : '방해금지 모드를 껐어요.'); setTimeout(qsRender, 50); return; }
   if (kind === 'appupd') {   /* 앱 업데이트: 로그인 없이도 · 켜면 앱을 열 때 새 버전 안내, 끄면 안내 없이 (환경설정에서 직접 확인) */
     try { localStorage.setItem('rs_appupd_auto', on ? '1' : '0'); } catch (e) {}
     showToast(on ? '새 버전이 나오면 앱을 열 때 알려드릴게요.' : '새 버전 안내를 껐어요. 환경설정 › 앱 업데이트에서 직접 확인할 수 있어요.');
@@ -30078,6 +30083,13 @@ html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#
 /* 팝업 = 후보 5: 팝업 창은 흰색 그대로(글씨 선명), 뒤 화면만 흐리게 */
 html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body .dia-modal.active,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body .ss-wrap.on{background:rgba(255,255,255,.12)!important;-webkit-backdrop-filter:blur(8px)!important;backdrop-filter:blur(8px)!important}
 html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body .dia-modal.active > .dia-dialog{background:#fff!important;box-shadow:0 12px 30px rgba(0,0,0,.18)!important}
+
+/* 공지 · 건의: 목록 칸은 유리, 안쪽 표 · 머리줄은 투명, 고른 탭만 흰색 */
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body .board-page #notice-list *,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body .board-page #suggestion-list *{background-color:transparent!important;background-image:none!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body .board-page #notice-list tr,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body .board-page #suggestion-list tr,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body .board-page #notice-list th,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body .board-page #suggestion-list th{border-color:rgba(30,50,90,.1)!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body .board-page .nt-tabs{background:transparent!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;gap:6px}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body .board-page .nt-tab{background:rgba(255,255,255,.72)!important;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:none!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body .board-page .nt-tab.active{background:#fff!important;box-shadow:0 2px 8px rgba(20,40,80,.12)!important}
 </style>
 <canvas id="wbg" aria-hidden="true"></canvas>
 <script id="wbg-js">
@@ -30218,5 +30230,96 @@ html:not(#q1):not(#q2) body #main-section .menu-btn .menu-art,html:not(#q1):not(
 html:not(#q1):not(#q2) body #main-section .menu-btn > span,html:not(#q1):not(#q2) body #vacation-section .menu-btn > span{font-size:12px!important;line-height:1.2!important;margin:0!important;position:static!important;text-align:center;word-break:keep-all}
 </style>
 <style id="appupd-notes-list">#appupd-panel ul.appupd-notes{margin:10px 0 0;padding:10px 12px 10px 28px;border-radius:12px;background:#f5f7fb;text-align:left;font-size:13.5px;line-height:1.6;color:#3b4a63}#appupd-panel ul.appupd-notes li{margin:2px 0}html.ui-dark #appupd-panel ul.appupd-notes{background:#232831;color:#d5dbe3}</style>
+<div id="dnd-panel" class="dia-modal" onclick="if(event.target===this)closeDnd()">
+  <div class="dia-dialog ns-dialog dnd-dlg">
+    <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="방해금지" alt="" aria-hidden="true">방해금지 모드</div>
+    <label class="an-main"><span><b>방해금지 모드</b><small>정한 시간 동안 알림 · 소리 · 진동이 모두 꺼져요</small></span><input type="checkbox" id="dnd-on" onchange="dndSave({ on: this.checked })"><i class="an-sw"></i></label>
+    <div class="dnd-time">
+      <div><small>시작</small><select id="dnd-from" onchange="dndSave({ from: this.value })"></select></div>
+      <span class="dnd-til">~</span>
+      <div><small>종료</small><select id="dnd-to" onchange="dndSave({ to: this.value })"></select></div>
+    </div>
+    <div id="dnd-state" class="dnd-state"></div>
+    <div class="an-note">열차 운휴 · 통과/도착 알림 · <b>출근 알람</b>까지 모두 꺼져요. 출근 시각이 이 시간 안이면 알람이 울리지 않으니 시간을 확인해 주세요. 이 설정은 이 폰에만 저장돼요.</div>
+    <div class="dia-dialog-actions"><button type="button" class="dia-text-btn" onclick="closeDnd()">닫기</button></div>
+  </div>
+</div>
+<style id="dnd-ui-copy">
+#dnd-panel .an-main{display:flex;align-items:center;gap:12px;padding:13px 14px;margin:2px 0 12px;border:1.5px solid #e3e8f0;border-radius:16px;background:#fff;cursor:pointer}
+#dnd-panel .an-main span{flex:1;display:flex;flex-direction:column;gap:2px}
+#dnd-panel .an-main b{font-size:15px;color:#1b2b45}
+#dnd-panel .an-main small{font-size:12px;color:#8a96a8}
+#dnd-panel .an-main input{position:absolute;opacity:0;width:0;height:0}
+#dnd-panel .an-sw{flex:none;position:relative;width:48px;height:28px;border-radius:999px;background:#cfd6e2;transition:background .2s}
+#dnd-panel .an-sw::after{content:'';position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .2s}
+#dnd-panel .an-main input:checked + .an-sw{background:#2f6fd6}
+#dnd-panel .an-main input:checked + .an-sw::after{transform:translateX(20px)}
+#dnd-panel .an-note{margin:6px 2px 0;font-size:11.5px;color:#98a2b3}
+html.ui-dark #dnd-panel .an-main{background:#232831;border-color:#343b46}html.ui-dark #dnd-panel .an-main b{color:#e9edf2}
+</style>
+<style id="dnd-ui">
+.dnd-time{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:end;margin:12px 2px 6px}
+.dnd-time small{display:block;font-size:12px;font-weight:800;color:#6b778a;margin:0 0 5px 2px}
+.dnd-time select{width:100%;height:46px;border:1.5px solid #dfe5ee;border-radius:12px;padding:0 12px;font-family:inherit;font-size:18px;font-weight:800;color:#1d2b45;background:#fff;font-variant-numeric:tabular-nums}
+.dnd-til{font-size:18px;color:#9aa5b5;padding-bottom:12px}
+.dnd-state{font-size:13px;font-weight:700;color:#5b6678;background:#f5f7fb;border-radius:12px;padding:10px 12px;margin:8px 2px 4px}.dnd-state.on{color:#7c3aed;background:#f3edff}
+#dnd-panel .dnd-time.off{opacity:.45;pointer-events:none}
+html.ui-dark .dnd-time select{background:#232831;border-color:#343b46;color:#e9edf2}html.ui-dark .dnd-state{background:#232831;color:#c5cdd8}
+</style>
+<script id="dnd-js">
+(function () { var I = 'data:image/png;base64,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'; window.FAM_ICONS = window.FAM_ICONS || {}; FAM_ICONS['방해금지'] = I; if (window.APP_ICONS) APP_ICONS['방해금지'] = I; if (window.APP_ICON_THEMES) Object.keys(APP_ICON_THEMES).forEach(function (t) { if (APP_ICON_THEMES[t] && !APP_ICON_THEMES[t]['방해금지']) APP_ICON_THEMES[t]['방해금지'] = I; }); try { IC_CENTER_CACHE = {}; } catch (e) {} try { applyAppIcons(document); } catch (e) {} })();
+/* ===== 방해금지 모드: 정한 시간(24시각제) 동안 알림 · 소리 · 진동 모두 끔 ===== */
+function dndCfg() {
+  var d = { on: false, from: '23:00', to: '07:00' };
+  try { var o = JSON.parse(localStorage.getItem('rs_dnd') || '{}') || {}; if (typeof o.on === 'boolean') d.on = o.on; if (/^\d\d:\d\d$/.test(o.from || '')) d.from = o.from; if (/^\d\d:\d\d$/.test(o.to || '')) d.to = o.to; } catch (e) {}
+  return d;
+}
+function dndMin(t) { var p = String(t).split(':'); return (+p[0]) * 60 + (+p[1]); }
+function dndAt(ms) {   /* ms(시각)가 방해금지 시간 안이면 true · 한국 시간 · 밤을 넘기는 시간(23:00~07:00)도 */
+  var c = dndCfg(); if (!c.on) return false;
+  var k = new Date((ms || Date.now()) + (new Date().getTimezoneOffset() + 540) * 60000), m = k.getHours() * 60 + k.getMinutes();
+  var a = dndMin(c.from), b = dndMin(c.to);
+  if (a === b) return true;
+  return a < b ? (m >= a && m < b) : (m >= a || m < b);
+}
+function dndNow() { return dndAt(Date.now()); }
+function dndSave(part) {
+  var c = Object.assign(dndCfg(), part || {});
+  try { localStorage.setItem('rs_dnd', JSON.stringify(c)); } catch (e) {}
+  try { notiPrefsToSW(getNotiPrefs()); } catch (e) {}
+  try { rsAppAlarmSig = ''; rsAppSyncAlarms(true); } catch (e) {}   /* 앱에 예약한 알람도 소리 · 진동 다시 계산 */
+  dndRender(); try { qsRender(); } catch (e) {}
+}
+function dndOpts(v) { var h = ''; for (var m = 0; m < 1440; m += 10) { var t = pad2(Math.floor(m / 60)) + ':' + pad2(m % 60); h += '<option' + (t === v ? ' selected' : '') + '>' + t + '</option>'; } return h; }
+function dndRender() {
+  var c = dndCfg(), sub = $('dnd-sub');
+  if (sub) { sub.hidden = !c.on; sub.textContent = c.from + ' ~ ' + c.to; }
+  if (!$('dnd-panel')) return;
+  $('dnd-on').checked = c.on;
+  $('dnd-from').innerHTML = dndOpts(c.from); $('dnd-to').innerHTML = dndOpts(c.to);
+  document.querySelector('#dnd-panel .dnd-time').classList.toggle('off', !c.on);
+  var st = $('dnd-state'), now = dndNow();
+  st.className = 'dnd-state' + (now ? ' on' : '');
+  st.textContent = !c.on ? '꺼져 있어요. 켜면 ' + c.from + ' ~ ' + c.to + ' 동안 알림이 꺼져요.' : now ? '🌙 지금 방해금지 중이에요 (' + c.to + '까지 알림 꺼짐)' : '⏰ ' + c.from + '부터 ' + c.to + '까지 알림이 꺼져요.' + (dndMin(c.from) > dndMin(c.to) ? ' (다음 날 아침까지)' : '');
+}
+function openDnd() { dndRender(); $('dnd-panel').classList.add('active'); try { applyAppIcons(document); } catch (e) {} }
+function closeDnd() { $('dnd-panel').classList.remove('active'); }
+/* 소리 · 진동 막기: 화면 안 소리 · 진동, 앱(APK) 즉시 알림 */
+(function () {
+  if (typeof alarmBeep === 'function') { var ob = alarmBeep; window.alarmBeep = alarmBeep = function () { if (dndNow()) return; return ob.apply(this, arguments); }; }
+  if (typeof appVibrate === 'function') { var ov = appVibrate; window.appVibrate = appVibrate = function () { if (dndNow()) return; return ov.apply(this, arguments); }; }
+  if (typeof rsAppCall === 'function') {
+    var oc = rsAppCall;
+    window.rsAppCall = rsAppCall = function (fn, arg) {
+      if (dndNow() && (fn === 'notify' || fn === 'vibrate' || fn === 'beep')) return undefined;   /* 방해금지 중: 알림 자체를 띄우지 않음 */
+      return oc.apply(this, arguments);
+    };
+  }
+  dndRender();
+  setInterval(function () { if ($('dnd-panel') && $('dnd-panel').classList.contains('active')) dndRender(); }, 60000);
+  try { notiPrefsToSW(getNotiPrefs()); } catch (e) {}
+})();
+</script>
+
 </body>
 </html>
