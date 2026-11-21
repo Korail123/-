@@ -8914,6 +8914,7 @@ function submitGroupSwap() {
   for (var i = 0; i < keys.length; i++) {
     swaps.push({ date: keys[i], mine: swapDayAssignment(user.employeeId, keys[i]), theirs: swapDayAssignment(swapTargetMember.employeeId, keys[i]) });
   }
+  var swnRows = []; try { swnRows = swnRowsFor(swapTargetMember.employeeId, user.employeeId, keys); } catch (e) {}   /* 상대에게 보낼 전/후 (교환 전에 계산) */
   swapSubmitting = true;
   $('swap-submit').disabled = true;
   $('swap-status').textContent = '양쪽 근무표에 교환을 저장하는 중...';
@@ -8944,6 +8945,8 @@ function submitGroupSwap() {
         partnerId: String(user.employeeId), partnerName: myName, dutyStatus: m.dutyStatus || ''
       };
     });
+    /* 교환 당한 사람에게 다음 로그인 때 팝업 (실패해도 교환은 그대로) */
+    api({ action: 'swapNotice', op: 'add', employeeId: user.employeeId, token: user.token, targetEmployeeId: partnerId, start: startKey, end: endKey, rows: swnRows }, function () {});
     swapApplyLocal(user.employeeId, mineItems);
     swapApplyLocal(partnerId, theirItems);
     refreshUiAfterSwap();
@@ -29513,5 +29516,339 @@ function sch2Del(id) {
 #pass-pop-panel .pp-track.tod-night .pp-stop span,#nx-ring-panel .pp-track.tod-night .pp-stop span,body .pp-track.tod-night .pp-stop span,#pass-pop-panel .pp-track.tod-night .pp-stop:not(.tgt) span,#nx-ring-panel .pp-track.tod-night .pp-stop:not(.tgt) span,body .pp-track.tod-night .pp-stop:not(.tgt) span,#pass-pop-panel .pp-track.tod-night .pp-stop.tgt span,#nx-ring-panel .pp-track.tod-night .pp-stop.tgt span,body .pp-track.tod-night .pp-stop.tgt span{color:#fff!important;text-shadow:0 1px 2px rgba(5,15,40,.75)!important}
 #pass-pop-panel .pp-track.tod-night .pp-stop span .pp-pt,#nx-ring-panel .pp-track.tod-night .pp-stop span .pp-pt,body .pp-track.tod-night .pp-stop span .pp-pt{color:#fff!important}
 </style>
+<div id="gs-panel" class="dia-modal" onclick="if(event.target===this)gsClose()">
+  <div class="dia-dialog gs-dlg">
+    <div class="gs-bar"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input id="gs-q" type="search" placeholder="기능 검색 (초성 가능: ㄱㅁㅍ)" autocomplete="off" oninput="gsRender()" onkeydown="if(event.key==='Enter'){var b=document.querySelector('#gs-list .gs-it');if(b)b.click()}"><button type="button" class="gs-x" onclick="gsClose()">닫기</button></div>
+    <div id="gs-list" class="gs-list"></div>
+  </div>
+</div>
+<style id="gs-ui">
+/* ===== 통합 검색: 메인화면 · MY · 환경설정 모든 기능 (초성 검색) ===== */
+#main-section .mm-tabs,#vacation-section .mm-tabs{position:relative;overflow:visible}
+.mm-sbtn{position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(255,255,255,.7);color:#4f6b98;-webkit-tap-highlight-color:transparent}
+.mm-sbtn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round}
+.mm-sbtn:active{transform:translateY(-50%) scale(.9)}
+html.ui-dark .mm-sbtn{background:#1f242c;color:#9db8e6}
+#gs-panel{align-items:flex-start}
+#gs-panel .gs-dlg{width:min(460px,calc(100vw - 16px));max-width:460px;margin-top:max(12px,env(safe-area-inset-top));height:auto;max-height:min(640px,calc(100dvh - 24px));display:flex;flex-direction:column;padding:10px;border-radius:20px;overflow:hidden;background:#fff}
+.gs-bar{display:flex;align-items:center;gap:8px;height:46px;padding:0 6px 0 12px;border-radius:14px;background:#f1f4f8;flex:none}
+.gs-bar svg{width:19px;height:19px;flex:none;fill:none;stroke:#7b889b;stroke-width:2.4;stroke-linecap:round}
+.gs-bar input{flex:1;min-width:0;height:100%;border:0;background:none;font-family:inherit;font-size:16px;color:#1d2b45;outline:none}
+.gs-bar input::-webkit-search-cancel-button{-webkit-appearance:none}
+.gs-x{border:0;background:none;font-family:inherit;font-size:14px;font-weight:800;color:#2f6fd6;padding:8px;cursor:pointer}
+.gs-list:empty{display:none}.gs-list{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;margin-top:8px}
+.gs-gh{font-size:12px;font-weight:800;color:#8a96a8;margin:12px 6px 4px}
+.gs-it{display:flex;align-items:center;gap:12px;width:100%;padding:8px 8px;border:0;border-radius:12px;background:none;font-family:inherit;text-align:left;cursor:pointer}
+.gs-it:active{background:#f1f4f8}
+.gs-it img{width:34px;height:34px;flex:none;object-fit:contain}
+.gs-it b{flex:1;font-size:15px;font-weight:700;color:#1d2b45}.gs-it b mark{background:none;color:#2f6fd6}
+.gs-it small{flex:none;font-size:11px;font-weight:800;color:#6b778a;background:#f1f4f8;border-radius:7px;padding:2px 7px}
+.gs-empty{text-align:center;color:#8a96a8;font-size:14px;padding:40px 0}
+html.ui-dark #gs-panel .gs-dlg{background:#1b1f26}html.ui-dark .gs-bar{background:#232831}html.ui-dark .gs-bar input,html.ui-dark .gs-it b{color:#e9edf2}
+html.ui-dark .gs-it small{background:#232831;color:#9aa4b2}html.ui-dark .gs-it:active{background:#232831}
+</style>
+<script id="gs-js">
+/* 검색어 보조 (기능 이름에 없는 말로도 찾게) */
+var GS_TAGS = {
+  openSchedule: '달력 스케줄', openSched: '달력 노조 회사 행사 교육', openGroupSection: '그룹 동료', openDbs: '같은 근무 동료',
+  openPattern: '교번 패턴 순환', openVacation: '연차 휴가 반차', openStats: '통계 야간 횟수', openCrewBoard: '승무 현황 출무',
+  openTrainQuery: '열차 위치 운행 NXLogis 지도', openDstPanel: '지하철 노선도 편승 환승', openPassSettings: '통과 도착 지정열차',
+  openSitesPanel: '링크 사이트 바로가기', showBriefing: '브리핑 오늘 날씨', openSettings: '설정 옵션',
+  openUiPanel: '다크모드 글자 크기 화면 배경 테마', openIconPanel: '아이콘 테마 캐릭터 귀여움 펫 쿼카', openFavMenu: '하단 고정메뉴 즐겨찾기',
+  openDiaSelector: '다이아 근무 교번 사업소', openPermPanel: '알람 출근 출무 권한 알림 테스트', openNxSettings: '운휴 취소 열차운휴 알림',
+  openNoticePanel: '공지', openSuggestionPanel: '건의 의견 요청', openAppUpdate: '업데이트 버전 APK', openGuidePanel: '도움말 사용법 가이드',
+  openRoutePlan: '행로표 다이아 출력', openBackupPanel: '백업 복원 동기화', openWidgetPanel: '위젯 홈화면 KWGT', openResetAllDataPanel: '초기화 삭제', openDeleteAccountPanel: '탈퇴 계정'
+};
+var GS_CHO = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+function gsChoOf(s) { var o = ''; for (var i = 0; i < s.length; i++) { var c = s.charCodeAt(i) - 0xAC00; o += (c >= 0 && c < 11172) ? GS_CHO.charAt(Math.floor(c / 588)) : s.charAt(i); } return o; }
+function gsNorm(s) { return String(s || '').toLowerCase().replace(/[\s·/]+/g, ''); }
+/* 글자별로: 초성(ㄱ~ㅎ)이면 초성끼리, 아니면 글자 그대로 비교 · 맞은 시작 위치 돌려줌 (없으면 -1) */
+function gsFind(text, q) {
+  var t = gsNorm(text), c = gsChoOf(t), n = q.length;
+  for (var i = 0; i + n <= t.length; i++) {
+    var ok = true;
+    for (var j = 0; j < n; j++) { var qc = q.charAt(j); if (GS_CHO.indexOf(qc) >= 0 ? c.charAt(i + j) !== qc : t.charAt(i + j) !== qc) { ok = false; break; } }
+    if (ok) return i;
+  }
+  return -1;
+}
+function gsIndex() {
+  var out = [], seen = {};
+  function add(btn, group) {
+    if (!btn || btn.hidden) return;
+    var sp = btn.querySelector('.set-label') || btn.querySelector('span'); if (!sp) return;
+    var label = sp.textContent.trim(); if (!label || seen[group + label]) return; seen[group + label] = 1;
+    var oc = btn.getAttribute('onclick') || '', fn = (oc.match(/^\s*([A-Za-z0-9_]+)/) || [])[1] || '';
+    var img = btn.querySelector('img'); out.push({ label: label, group: group, tags: GS_TAGS[fn] || '', btn: btn, src: img ? img.currentSrc || img.src : '' });
+  }
+  var TAB = { work: '근무', conv: '편의', my: 'MY' };
+  [].forEach.call(document.querySelectorAll('#main-section .menu-btn'), function (b) { add(b, TAB[b.getAttribute('data-tab')] || '메인'); });
+  [].forEach.call(document.querySelectorAll('#settings-section .set-tile'), function (b) { add(b, '환경설정'); });
+  return out;
+}
+var gsItems = [];
+function gsOpen() {
+  try { applyAppIcons(document); } catch (e) {}
+  gsItems = gsIndex();
+  var q = $('gs-q'); q.value = '';
+  $('gs-panel').classList.add('active');
+  gsRender();
+  setTimeout(function () { try { q.focus(); } catch (e) {} }, 60);
+}
+function gsClose() { $('gs-panel').classList.remove('active'); try { $('gs-q').blur(); } catch (e) {} }
+function gsMark(label, q) {
+  if (!q) return esc(label);
+  var t = String(label), pos = [], k = 0;   /* 공백 · 기호를 건너뛴 위치를 원래 글자 위치로 */
+  for (var i = 0; i < t.length; i++) if (!/[\s·/]/.test(t.charAt(i))) pos.push(i);
+  var at = gsFind(t, q); if (at < 0) return esc(t);
+  var a = pos[at], b = pos[at + q.length - 1] + 1;
+  return esc(t.slice(0, a)) + '<mark>' + esc(t.slice(a, b)) + '</mark>' + esc(t.slice(b));
+}
+function gsRender() {
+  var q = gsNorm($('gs-q').value), list = gsItems;
+  if (!q) { $('gs-list').innerHTML = ''; return; }   /* 처음엔 검색칸만 */
+  if (q) {
+    list = gsItems.map(function (it) {
+      var a = gsFind(it.label, q), s = a === 0 ? 0 : a > 0 ? 1 : (gsFind(it.tags.replace(/\s+/g, ' '), q) >= 0 || it.tags.split(' ').some(function (w) { return gsFind(w, q) >= 0; })) ? 2 : -1;
+      return { it: it, s: s };
+    }).filter(function (x) { return x.s >= 0; }).sort(function (a, b) { return a.s - b.s; }).map(function (x) { return x.it; });
+  }
+  if (!list.length) { $('gs-list').innerHTML = '<div class="gs-empty">"' + esc($('gs-q').value) + '"에 맞는 기능이 없어요.</div>'; return; }
+  var h = '', last = '';
+  list.forEach(function (it) {
+    var i = gsItems.indexOf(it);
+    if (!q && it.group !== last) { h += '<div class="gs-gh">' + esc(it.group === '환경설정' ? '환경설정' : '메인화면 · ' + it.group) + '</div>'; last = it.group; }
+    h += '<button type="button" class="gs-it" onclick="gsGo(' + i + ')">' + (it.src ? '<img src="' + it.src + '" alt="">' : '') + '<b>' + gsMark(it.label, q) + '</b>' + (q ? '<small>' + esc(it.group) + '</small>' : '') + '</button>';
+  });
+  $('gs-list').innerHTML = h;
+}
+function gsGo(i) {
+  var it = gsItems[i]; if (!it) return;
+  gsClose();
+  setTimeout(function () { try { it.btn.click(); } catch (e) {} }, 30);
+}
+/* [근무 · 편의 · MY] 오른쪽 돋보기 */
+(function () {
+  function put() {
+    [].forEach.call(document.querySelectorAll('#main-section .mm-tabs,#vacation-section .mm-tabs'), function (t) {
+      if (t.querySelector('.mm-sbtn')) return;
+      var s = document.createElement('span'); s.className = 'mm-sbtn'; s.setAttribute('role', 'button'); s.setAttribute('tabindex', '0'); s.setAttribute('aria-label', '기능 검색');
+      s.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>';
+      s.addEventListener('click', function (e) { e.stopPropagation(); gsOpen(); });
+      t.appendChild(s);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', put); else put();
+})();
+</script>
+
+<div id="ss-wrap" class="ss-wrap" onclick="if(event.target===this)ssClose()">
+  <div class="ss-box" id="ss-box">
+    <div class="ss-bar"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input id="ss-q" type="search" placeholder="설정 검색 (초성 가능)" autocomplete="off" oninput="ssRender()" onkeydown="if(event.key==='Enter'){var b=document.querySelector('#ss-list .gs-it');if(b)b.click()}"><button type="button" onclick="ssClose()">취소</button></div>
+    <div id="ss-list" class="ss-list"></div>
+  </div>
+</div>
+<style id="gs-ui-2">
+/* 1) 근무 · 편의 · MY · 돋보기 한 줄로, 4칸 같은 폭 */
+html body #main-section .mm-tabs,html body #vacation-section .mp-tabs{width:232px!important}
+html body #main-section .mm-tabs .mm-sbtn,html body #vacation-section .mp-tabs .mm-sbtn{position:static;transform:none;flex:0 0 55px;width:55px;height:28px;border-radius:999px;background:transparent;color:#6d80a3;box-shadow:none}
+.mm-tabs .mm-sbtn svg{width:16px;height:16px;stroke-width:2.6}
+.mm-tabs .mm-sbtn:active{transform:scale(.9);background:rgba(79,127,224,.12)}
+html.ui-dark body .mm-tabs .mm-sbtn{background:transparent;color:#9fb0cc}
+/* 2) 메인 검색: 검색칸은 화면 가운데 고정, 입력하면 아래로 펼쳐짐 */
+#gs-panel .gs-dlg{position:fixed;left:50%;top:calc(50dvh - 33px);transform:translateX(-50%);margin:0!important;max-height:calc(50dvh + 15px);animation:none}
+#gs-panel .gs-bar{background:#e9edf3;border-radius:12px}
+/* 3) 환경설정: 제목 옆 돋보기 → 검색칸 펼침 + 아래 결과, 나머지는 흐리게 */
+#settings-section>h1{position:relative}
+.set-sbtn{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(16,40,80,.1);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.set-sbtn svg,.ss-bar svg{width:18px;height:18px;fill:none;stroke:#5b6b85;stroke-width:2.4;stroke-linecap:round}
+.set-sbtn:active{transform:translateY(-50%) scale(.9)}
+.ss-wrap{position:fixed;inset:0;z-index:13000;background:rgba(243,245,249,.72);backdrop-filter:blur(2px);display:none}
+.ss-wrap.on{display:block}
+.ss-box{position:absolute;left:12px;right:12px;max-width:476px;margin:0 auto;animation:ssIn .2s ease-out}
+@keyframes ssIn{from{opacity:0;transform:translateY(-6px) scaleX(.96)}to{opacity:1;transform:none}}
+.ss-bar{display:flex;align-items:center;gap:8px;height:46px;padding:0 4px 0 12px;border-radius:14px;background:#fff;box-shadow:0 6px 20px rgba(20,40,80,.15)}
+.ss-bar input{flex:1;min-width:0;height:100%;border:0;background:none;font-family:inherit;font-size:16px;color:#1d2b45;outline:none}
+.ss-bar input::-webkit-search-cancel-button{-webkit-appearance:none}
+.ss-bar button{border:0;background:none;font-family:inherit;font-size:14px;font-weight:800;color:#2f6fd6;padding:8px 10px;cursor:pointer}
+.ss-list:empty{display:none}
+.ss-list{margin-top:8px;background:#fff;border-radius:14px;box-shadow:0 8px 24px rgba(20,40,80,.14);padding:4px;max-height:60dvh;overflow-y:auto;overscroll-behavior:contain}
+html.ui-dark .set-sbtn,html.ui-dark .ss-bar,html.ui-dark .ss-list{background:#232831}html.ui-dark .ss-wrap{background:rgba(15,18,24,.7)}
+html.ui-dark .ss-bar input{color:#e9edf2}html.ui-dark #gs-panel .gs-bar{background:#232831}
+</style>
+<script id="gs-js-2">
+/* 환경설정 검색 (환경설정 항목만, 초성 가능) */
+var ssItems = [];
+function ssOpen() {
+  try { applyAppIcons(document); } catch (e) {}
+  ssItems = gsIndex().filter(function (it) { return it.group === '환경설정'; });
+  var w = $('ss-wrap'), h1 = document.querySelector('#settings-section>h1');
+  var top = h1 ? Math.max(10, h1.getBoundingClientRect().top + 2) : 12;
+  $('ss-box').style.top = top + 'px';
+  $('ss-q').value = ''; $('ss-list').innerHTML = '';
+  w.classList.add('on');
+  setTimeout(function () { try { $('ss-q').focus(); } catch (e) {} }, 40);
+}
+function ssClose() { $('ss-wrap').classList.remove('on'); try { $('ss-q').blur(); } catch (e) {} }
+function ssRender() {
+  var q = gsNorm($('ss-q').value);
+  if (!q) { $('ss-list').innerHTML = ''; return; }
+  var list = ssItems.map(function (it) {
+    var a = gsFind(it.label, q), s = a === 0 ? 0 : a > 0 ? 1 : it.tags.split(' ').some(function (w) { return gsFind(w, q) >= 0; }) ? 2 : -1;
+    return { it: it, s: s };
+  }).filter(function (x) { return x.s >= 0; }).sort(function (a, b) { return a.s - b.s; }).map(function (x) { return x.it; });
+  $('ss-list').innerHTML = list.length ? list.map(function (it) {
+    return '<button type="button" class="gs-it" onclick="ssGo(' + ssItems.indexOf(it) + ')">' + (it.src ? '<img src="' + it.src + '" alt="">' : '') + '<b>' + gsMark(it.label, q) + '</b></button>';
+  }).join('') : '<div class="gs-empty" style="padding:22px 0">맞는 설정이 없어요.</div>';
+}
+function ssGo(i) { var it = ssItems[i]; if (!it) return; ssClose(); setTimeout(function () { try { it.btn.click(); } catch (e) {} }, 30); }
+(function () {
+  function put() {
+    var h1 = document.querySelector('#settings-section>h1'); if (!h1 || h1.querySelector('.set-sbtn')) return;
+    var s = document.createElement('span'); s.className = 'set-sbtn'; s.setAttribute('role', 'button'); s.setAttribute('tabindex', '0'); s.setAttribute('aria-label', '설정 검색');
+    s.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>';
+    s.addEventListener('click', function (e) { e.stopPropagation(); ssOpen(); });
+    h1.appendChild(s);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', put); else put();
+})();
+</script>
+
+<div id="swn-panel" class="dia-modal" onclick="if(event.target===this)swnLater()">
+  <div class="dia-dialog swn-dlg"><div id="swn-body"></div></div>
+</div>
+<style id="swn-ui">
+/* ===== 근무교환 알림 (교환 당한 사람에게 로그인 때 팝업) ===== */
+#swn-panel .swn-dlg{width:min(400px,calc(100vw - 20px));max-width:400px;padding:20px 16px 14px;border-radius:22px;background:#fff;text-align:center}
+.swn-ico{width:54px;height:54px;margin:0 auto 10px;border-radius:50%;background:#e8f0ff;display:flex;align-items:center;justify-content:center;font-size:26px}
+.swn-t{font-size:12.5px;font-weight:800;color:#2f6fd6;letter-spacing:.3px}
+.swn-h{font-size:18px;font-weight:800;color:#1d2b45;margin:6px 0 4px;line-height:1.4}.swn-h b{color:#2f6fd6}
+.swn-p{font-size:13.5px;color:#5b6678;line-height:1.5}
+.swn-range{display:inline-block;margin:10px 0 2px;padding:6px 12px;border-radius:10px;background:#f3f6fa;font-size:14px;font-weight:800;color:#1d2b45}
+.swn-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+.swn-btns button{height:46px;border:0;border-radius:13px;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer;background:#f1f3f6;color:#3b4a63}
+.swn-btns button.pri{background:#2f6fd6;color:#fff}
+.swn-tbl{margin-top:12px;max-height:46dvh;overflow-y:auto;border-radius:14px;background:#f6f8fb;padding:4px 10px;text-align:left}
+.swn-row{display:grid;grid-template-columns:76px 1fr 18px 1fr;align-items:center;gap:6px;height:42px;border-bottom:1px solid #e9edf3;font-size:13px}
+.swn-row:last-child{border:0}.swn-row.hd{height:30px;font-size:11.5px;font-weight:800;color:#8a96a8}
+.swn-row .d{font-weight:800;color:#1d2b45}.swn-row .ar{color:#9aa5b5;text-align:center}
+.swn-c{display:inline-flex;align-items:center;gap:5px}.swn-c i{font-style:normal;min-width:26px;height:24px;padding:0 5px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:12.5px;color:#fff;background:#8a96a8}
+.swn-c i.k-주{background:#3b82f6}.swn-c i.k-야{background:#7c5cf0}.swn-c i.k-비{background:#a0aab8}.swn-c i.k-휴{background:#22a35a}
+.swn-c small{font-size:11.5px;color:#6b778a;font-weight:700}
+.swn-row.chg .after i{box-shadow:0 0 0 2px #fff,0 0 0 3.5px #f59f00}
+.swn-more{font-size:12px;color:#8a96a8;margin-top:8px}
+html.ui-dark #swn-panel .swn-dlg{background:#1b1f26}html.ui-dark .swn-h,html.ui-dark .swn-row .d,html.ui-dark .swn-range{color:#e9edf2}
+html.ui-dark .swn-tbl,html.ui-dark .swn-range{background:#232831}html.ui-dark .swn-row{border-color:#2a303a}
+
+/* 전/후 비교: 한 주씩 7칸 (전 · 후 두 줄), 직전 · 직후 2일은 흐리게 */
+.swn-wks{margin-top:10px;max-height:52dvh;overflow-y:auto}
+.swn-wk{display:grid;grid-template-columns:24px repeat(7,1fr);gap:4px 2px;align-items:center;text-align:center;background:#f6f8fb;border-radius:14px;padding:8px 6px;margin-bottom:8px}
+.swn-wk .hd{font-size:10.5px;font-weight:800;color:#8a96a8;line-height:1.25;border-radius:7px;padding:2px 0}
+.swn-wk .hd.sun{color:#e5484d}.swn-wk .hd.sat{color:#2f6fd6}.swn-wk .hd.in{background:#e8f0ff}
+.swn-wk .rl{font-size:11px;font-weight:800;color:#6b778a}.swn-wk .rl.a{color:#2f6fd6}
+.swn-wk .nd{color:#d5dbe3;font-size:12px;height:40px;line-height:28px}
+.swn-wk .cl{display:flex;flex-direction:column;align-items:center;gap:4px;height:40px;padding-top:2px}
+.swn-wk .cl em{font-style:normal;font-size:9.5px;font-weight:700;color:#8a96a8;height:11px;line-height:11px}
+.swn-wk .cl.ctx{opacity:.4}
+.swn-wk .k,.swn-lg .k{font-style:normal;display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:23px;padding:0 4px;border-radius:7px;font-weight:800;font-size:12px;color:#fff;background:#8a96a8}
+.swn-wk .k.k-주,.swn-lg .k.k-주{background:#3b82f6}.swn-wk .k.k-야{background:#7c5cf0}.swn-wk .k.k-비{background:#a0aab8}.swn-wk .k.k-휴{background:#22a35a}
+.swn-wk .k.chg,.swn-lg .k.chg{box-shadow:0 0 0 2px #fff,0 0 0 3.5px #f59f00}
+.swn-lg{display:flex;justify-content:center;gap:14px;font-size:11px;color:#6b778a;font-weight:700;margin-top:2px}.swn-lg span{display:inline-flex;align-items:center;gap:9px}.swn-lg .k.chg{margin-left:3px}
+.swn-lg .lg-ctx{display:inline-block;width:14px;height:14px;border-radius:4px;background:#3b82f6;opacity:.4}
+html.ui-dark .swn-wk{background:#232831}html.ui-dark .swn-wk .hd.in{background:#2a3446}
+</style>
+<script id="swn-js">
+/* 교환할 때(A쪽) 날짜별 전/후 근무를 같이 저장 → B가 로그인하면 팝업 */
+function swnShift(k, n) { var p = String(k).split('-'), d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2] + n)); return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate()); }
+function swnRowsFor(targetId, myId, keys) {
+  if (!keys.length) return [];
+  var ctx = [swnShift(keys[0], -2), swnShift(keys[0], -1)], post = [swnShift(keys[keys.length - 1], 1), swnShift(keys[keys.length - 1], 2)];
+  function one(x) { return { l: swapDutyLabel(x), dia: x && x.dia && x.overrideType !== 'status' ? String(x.dia) : '' }; }
+  var side = function (k) { var b = one(swapMemberInfo(targetId, k)); return { d: k, before: b, after: b, ctx: 1 }; };   /* 직전 · 직후 근무 (안 바뀜) */
+  return ctx.map(side).concat(keys.map(function (k) {
+    var b = swapMemberInfo(targetId, k), a = swapMemberInfo(myId, k);
+    function one(x) { return { l: swapDutyLabel(x), dia: x && x.dia && x.overrideType !== 'status' ? String(x.dia) : '' }; }
+    return { d: k, before: one(b), after: one(a) };
+  })).concat(post.map(side));
+}
+var swnQueue = [], swnCur = null, swnChecked = 0;
+function swnCheck(force) {
+  var u = getCurrentUser && getCurrentUser(); if (!u || !u.employeeId || !u.token) return;
+  if (!force && Date.now() - swnChecked < 10 * 60 * 1000) return;
+  swnChecked = Date.now();
+  api({ action: 'swapNotice', op: 'pending', employeeId: u.employeeId, token: u.token }, function (r) {
+    if (!r || !r.success || !r.items || !r.items.length) return;
+    swnQueue = r.items.slice(); swnNext();
+  });
+}
+function swnTxt(k) { var p = String(k).split('-'), dt = new Date(+p[0], +p[1] - 1, +p[2]); return (+p[1]) + '/' + (+p[2]) + '(' + '일월화수목금토'.charAt(dt.getDay()) + ')'; }
+function swnNext() {
+  swnCur = swnQueue.shift() || null;
+  if (!swnCur) { $('swn-panel').classList.remove('active'); return; }
+  var n = swnCur, days = Math.round((new Date(n.end) - new Date(n.start)) / 86400000) + 1;
+  $('swn-body').innerHTML = '<div class="swn-ico">🔁</div><div class="swn-t">근무교환 알림</div>' +
+    '<div class="swn-h"><b>' + esc(n.actorName || n.actorId) + '</b>님께서<br>근무를 교환했어요</div>' +
+    '<div class="swn-range">' + swnTxt(n.start) + (n.end !== n.start ? ' ~ ' + swnTxt(n.end) : '') + ' · ' + days + '일</div>' +
+    '<div class="swn-p" style="margin-top:8px">교환 전/후를 비교해서 확인하시겠습니까?</div>' +
+    '<div class="swn-btns"><button type="button" onclick="swnLater()">나중에</button><button type="button" class="pri" onclick="swnCompare()">확인하기</button></div>';
+  $('swn-panel').classList.add('active');
+}
+function swnChip(x) { x = x || {}; var l = String(x.l || '-'); return '<span class="swn-c"><i class="k-' + esc(l) + '">' + esc(l) + '</i>' + (x.dia ? '<small>' + esc(x.dia) + '</small>' : '') + '</span>'; }
+function swnCompare() {
+  var n = swnCur; if (!n) return;
+  var rows = (n.rows || []).slice(), map = {};
+  rows.forEach(function (w) { map[w.d] = w; });
+  /* 직전 · 직후 2일이 없으면(예전 알림) 내 근무표에서 채움 */
+  var me = (getCurrentUser() || {}).employeeId;
+  [-2, -1].map(function (x) { return swnShift(n.start, x); }).concat([1, 2].map(function (x) { return swnShift(n.end, x); })).forEach(function (k) {
+    if (map[k]) return;
+    var x = null; try { x = swapMemberInfo(me, k); } catch (e) {}
+    var o = { l: x ? swapDutyLabel(x) : '-', dia: x && x.dia && x.overrideType !== 'status' ? String(x.dia) : '' };
+    map[k] = { d: k, before: o, after: o, ctx: 1 };
+  });
+  var first = swnShift(n.start, -2), last = swnShift(n.end, 2);
+  var p0 = first.split('-'), d0 = new Date(Date.UTC(+p0[0], +p0[1] - 1, +p0[2])), wkStart = swnShift(first, -d0.getUTCDay());
+  var NM = ['일', '월', '화', '수', '목', '금', '토'], h = '';
+  for (var ws = wkStart; ws <= last; ws = swnShift(ws, 7)) {
+    var days = []; for (var j = 0; j < 7; j++) days.push(swnShift(ws, j));
+    h += '<div class="swn-wk"><span></span>' + days.map(function (k, j) {
+      var inR = k >= n.start && k <= n.end;
+      return '<span class="hd' + (j === 0 ? ' sun' : j === 6 ? ' sat' : '') + (inR ? ' in' : '') + '">' + (+k.slice(8)) + '<br>' + NM[j] + '</span>';
+    }).join('');
+    ['before', 'after'].forEach(function (side, si) {
+      h += '<span class="rl' + (si ? ' a' : '') + '">' + (si ? '후' : '전') + '</span>' + days.map(function (k) {
+        var w = map[k];
+        if (!w || k < first || k > last) return '<span class="nd">·</span>';
+        var x = w[side] || {}, l = String(x.l || '-'), chg = !w.ctx && si && ((w.before || {}).l !== (w.after || {}).l || (w.before || {}).dia !== (w.after || {}).dia);
+        return '<span class="cl' + (w.ctx ? ' ctx' : '') + '"><i class="k k-' + esc(l) + (chg ? ' chg' : '') + '">' + esc(l) + '</i><em>' + esc(x.dia || '') + '</em></span>';
+      }).join('');
+    });
+    h += '</div>';
+  }
+  $('swn-body').innerHTML = '<div class="swn-t">근무교환 전/후 비교</div>' +
+    '<div class="swn-h" style="font-size:16px"><b>' + esc(n.actorName || n.actorId) + '</b>님과 교환 · ' + swnTxt(n.start) + (n.end !== n.start ? '~' + swnTxt(n.end) : '') + '</div>' +
+    '<div class="swn-wks">' + h + '</div>' +
+    '<div class="swn-lg"><span><i class="k k-주 chg" style="min-width:14px;height:14px"></i>바뀐 날</span><span><i class="lg-ctx"></i>직전 · 직후 근무</span></div>' +
+    (swnQueue.length ? '<div class="swn-more">알림이 ' + swnQueue.length + '개 더 있어요.</div>' : '') +
+    '<div class="swn-btns"><button type="button" onclick="swnLater()">닫기</button><button type="button" class="pri" onclick="swnSeen()">확인했어요</button></div>';
+}
+function swnLater() { $('swn-panel').classList.remove('active'); swnQueue = []; swnCur = null; }   /* 다음 로그인 때 다시 */
+function swnSeen() {
+  var n = swnCur, u = getCurrentUser() || {}; if (!n) return;
+  api({ action: 'swapNotice', op: 'seen', employeeId: u.employeeId, token: u.token, id: n.id }, function () {});
+  try { if (typeof refreshUiAfterSwap === 'function') refreshUiAfterSwap(); } catch (e) {}
+  swnNext();
+}
+/* 로그인해서 메인화면이 보이면 확인 (앱으로 돌아올 때도 10분마다 한 번) */
+(function () {
+  var t = setInterval(function () {
+    var u = typeof getCurrentUser === 'function' && getCurrentUser();
+    var m = document.getElementById('main-section');
+    if (u && u.employeeId && u.token && m && m.classList.contains('active')) { clearInterval(t); setTimeout(function () { swnCheck(true); }, 1500); }
+  }, 2000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) swnCheck(false); });
+})();
+</script>
+
 </body>
 </html>
