@@ -1624,7 +1624,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 
   <div class="sch-head" style="margin-bottom:10px;">
     <button type="button" class="sch-nav plain" onclick="changeVacYear(-1)">◀&#xFE0E;</button>
-    <div id="vac-title" class="sch-title" style="font-size:clamp(13px,4.2vw,17px);cursor:default"></div>
+    <div id="vac-title" class="sch-title" onclick="vacToday()" title="누르면 올해 · 이번 달로" style="font-size:clamp(13px,4.2vw,17px);cursor:pointer;touch-action:manipulation"></div>
     <button type="button" class="sch-nav plain" onclick="changeVacYear(1)">▶&#xFE0E;</button>
   </div>
   <div id="vac-status" class="status-message" style="margin-top:0"></div>
@@ -9645,6 +9645,13 @@ function openMyPage() {
     renderMyPageExtras();
   });
 }
+/* 휴가관리 제목(2026년 휴가)을 누르면 올해 · 이번 달로 */
+function vacToday() {
+  var t = todayKST(), d = t.y - vacYear;
+  vacYear = t.y; vacCalMonth = t.m; vacSel = '';
+  renderVacation();
+  if (d) { var c = $('vac-cards'); if (c) { c.classList.remove('rs-in-l', 'rs-in-r'); void c.offsetWidth; c.classList.add(d > 0 ? 'rs-in-l' : 'rs-in-r'); } }
+}
 function changeVacYear(diff) {
   if (vacYear + diff < RS_START.y) { rsStartToast(); return; }
   vacYear += diff;
@@ -16821,6 +16828,12 @@ function rsAppSyncAlarms(force) {
    새 버전이 있으면 [업데이트] 한 번 → 앱이 APK를 직접 받아 설치 화면을 띄움 → [설치]만 누르면 끝
    처음 한 번은 '출처를 알 수 없는 앱 설치' 허용이 필요 (설정 화면으로 바로 이동) */
 var appUpd = { latest: null, state: 'idle', pct: 0, msg: '' };
+/* 업데이트 내용: ["한 줄", "한 줄"] 목록 또는 줄바꿈(\n) 글 · 예전처럼 ' · '로 이은 글도 한 줄씩 나눔 */
+function appUpdNotes(n) {
+  if (!n) return [];
+  var a = Array.isArray(n) ? n : String(n).split(/\n|\s·\s/);
+  return a.map(function (t) { return String(t).trim(); }).filter(Boolean);
+}
 function appUpdVerNewer(a, b) {   /* b가 a보다 새 버전이면 true */
   var x = String(a || '0').split('.').map(Number), y = String(b || '0').split('.').map(Number);
   for (var i = 0; i < 3; i++) { if ((y[i] || 0) !== (x[i] || 0)) return (y[i] || 0) > (x[i] || 0); }
@@ -16855,7 +16868,7 @@ function appUpdRender() {
   var box = $('appupd-body'); if (!box) return;
   var cur = rsAppVersion() || '-', L = appUpd.latest, newer = !!(L && appUpdVerNewer(cur, L.version));
   var h = '<div class="appupd-vers"><div><small>지금 앱</small><b>' + esc(cur) + '</b></div><div class="appupd-arrow">→</div><div' + (newer ? ' class="new"' : '') + '><small>최신 버전</small><b>' + esc(L ? L.version : (appUpd.state === 'checking' ? '확인 중…' : '-')) + '</b></div></div>';
-  if (L && L.notes) h += '<div class="appupd-notes">' + esc(L.notes) + '</div>';
+  if (L && L.notes) h += '<ul class="appupd-notes">' + appUpdNotes(L.notes).map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
   var st = appUpd.state;
   if (st === 'download' || st === 'install') {
     h += '<div class="appupd-bar"><i style="width:' + Math.max(3, appUpd.pct) + '%"></i></div>' +
@@ -16930,7 +16943,7 @@ function rsAppCheckUpdate() {
 function rsAppUpdBar(j) {
   (function () {
     var bar = document.createElement('div'); bar.className = 'rsapp-upd';
-    bar.innerHTML = '<b>새 앱 버전 ' + esc(j.version) + '</b><span>' + esc(j.notes || '앱 기능이 좋아졌어요.') + '</span><button type="button">받기</button><i role="button" aria-label="닫기">×</i>';
+    bar.innerHTML = '<b>새 앱 버전 ' + esc(j.version) + '</b><span>' + esc(appUpdNotes(j.notes)[0] || '앱 기능이 좋아졌어요.') + (appUpdNotes(j.notes).length > 1 ? ' 외 ' + (appUpdNotes(j.notes).length - 1) + '개' : '') + '</span><button type="button">받기</button><i role="button" aria-label="닫기">×</i>';
     bar.querySelector('button').onclick = function () { bar.remove(); openAppUpdate(); };   /* 환경설정 › 앱 업데이트와 같은 화면 (버튼 한 번) */
     bar.querySelector('i').onclick = function () { bar.remove(); };
     document.body.appendChild(bar);
@@ -22985,6 +22998,28 @@ function openCrewBoard() {
   cbAuto();
 }
 function cbMove(n) { var nd = new Date(cbDate.getFullYear(), cbDate.getMonth(), cbDate.getDate() + n); if (nd < RS_START_DATE) { rsStartToast(); return; } cbDate = nd; cbRender(); cbAuto(); }
+/* 승무근무표 현황: 좌우로 밀어 전날 · 다음날 (근무표 달력처럼) */
+(function () {
+  function boot() {
+    var sec = document.getElementById('crewboard-section'); if (!sec) return;
+    var x0 = 0, y0 = 0, t0 = 0, on = false, swAt = 0;
+    sec.addEventListener('touchstart', function (e) {
+      if (e.touches.length !== 1) { on = false; return; }
+      on = !e.target.closest('input,select,textarea,.cb-find');
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now();
+    }, { passive: true });
+    sec.addEventListener('touchend', function (e) {
+      if (!on) return; on = false;
+      var p = e.changedTouches[0], dx = p.clientX - x0, dy = p.clientY - y0;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && Date.now() - t0 < 700) {
+        swAt = Date.now(); var n = dx < 0 ? 1 : -1; cbMove(n);
+        var l = document.getElementById('cb-list'); if (l) { l.classList.remove('rs-in-l', 'rs-in-r'); void l.offsetWidth; l.classList.add(n > 0 ? 'rs-in-l' : 'rs-in-r'); }
+      }
+    }, { passive: true });
+    sec.addEventListener('click', function (e) { if (Date.now() - swAt < 350) { e.stopPropagation(); e.preventDefault(); } }, true);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+})();
 function cbToday() { var t = todayKST(); cbDate = new Date(t.y, t.m, t.d); cbRender(); cbAuto(); }
 function cbAuto() {
   var dk = cbKey(cbDate), c = cbStore()[dk];
@@ -29954,8 +29989,9 @@ function swnSeen() {
 /* ===== 메인 바탕: 흐린 보케 트리 (낮=불빛 꺼짐 · 저녁/밤/새벽=1초마다 반짝) + 눈 ===== */
 #wbg{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none;display:none}
 html.wbg-on #wbg{display:block}
-html.wbg-on:not(#z1):not(#z2),html.wbg-on:not(#z1):not(#z2) body,html.wbg-on:not(#z1):not(#z2) body #main-container,html.wbg-on:not(#z1):not(#z2) body .page-view{background:transparent!important;background-image:none!important}
+html.wbg-on:not(#z1):not(#z2),html.wbg-on:not(#z1):not(#z2) body,html.wbg-on:not(#z1):not(#z2) body #main-container,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .page-view,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body #main-container > .page-view.active{background:transparent!important;background-image:none!important}
 html.wbg-on #snow-fx{display:none!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6),html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body #main-container{background:transparent!important;background-image:none!important}   /* 게시판(공지 · 건의) 흰 바탕보다 우선 */
 html.wbg-on #main-container{position:relative;z-index:1}
 html.wbg-on #main-section .menu-btn,html.wbg-on #vacation-section .menu-btn{background:rgba(255,255,255,.7)!important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 html.wbg-on.wbg-night #main-section .menu-btn,html.wbg-on.wbg-night #vacation-section .menu-btn{background:rgba(255,255,255,.16)!important;border-color:rgba(255,255,255,.12)!important}
@@ -29975,8 +30011,16 @@ html.wbg-on:not(#z1):not(#z2) body .page-view .sch-head .sch-nav{background:tran
 html.wbg-on:not(#z1) body .page-view > h1 img{filter:brightness(0) invert(1) drop-shadow(0 1px 3px rgba(0,0,0,.4))}
 html.wbg-on:not(#z1) body .settings-category-mark{filter:brightness(0) invert(1)}
 /* 모든 화면의 칸 · 버튼: 메인화면 메뉴 버튼과 같은 반투명 유리 (흰 72% + 흐림 12px) — 아래 wbgGlass()가 표시 */
-html.wbg-on:not(#a1):not(#a2):not(#a3) body .wbg-glass{background-color:rgba(255,255,255,.72)!important;background-image:none!important;-webkit-backdrop-filter:blur(12px)!important;backdrop-filter:blur(12px)!important}
-html.wbg-on:not(#a1):not(#a2):not(#a3) body .wbg-clear{background-color:transparent!important;background-image:none!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .wbg-glass{background-color:rgba(255,255,255,.72)!important;background-image:none!important;-webkit-backdrop-filter:blur(12px)!important;backdrop-filter:blur(12px)!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .wbg-clear{background-color:transparent!important;background-image:none!important}
+
+/* 공지사항 · 건의사항(게시판)도 근무표 · 근무그룹과 같은 기능 화면 모양: 바깥 틀 투명, 제목은 바탕 위 흰 글씨, 목록만 반투명 칸 */
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body #main-container > .board-page.active > .board-page-inner{background:transparent!important;background-image:none!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;padding-left:0!important;padding-right:0!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .board-page .board-page-header h1,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .board-page > .board-page-inner > .dia-dialog-note{color:#fff!important;text-shadow:0 1px 5px rgba(0,0,0,.45)!important;background:transparent!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .board-page .board-title-art{filter:brightness(0) invert(1) drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .board-page .board-page-header{border-color:rgba(255,255,255,.35)!important;background:transparent!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body #notice-list,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body #suggestion-list{background:rgba(255,255,255,.72)!important;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(221,231,245,.9);border-radius:16px;padding:10px 12px!important;margin:12px 0!important}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .board-page .nt-tabs{background:rgba(255,255,255,.72)!important;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-radius:14px}
 </style>
 <canvas id="wbg" aria-hidden="true"></canvas>
 <script id="wbg-js">
@@ -29997,6 +30041,7 @@ function wbgGlass() {
     [].forEach.call(root.querySelectorAll('*'), function (e) {
       if (/^(INPUT|TEXTAREA|SELECT|CANVAS|IMG|SVG|PATH|I|B|SPAN|SMALL|EM|STRONG)$/i.test(e.tagName) || e.closest('.dia-modal')) return;
       if (e.classList.contains('wbg-glass') || e.classList.contains('wbg-clear')) return;
+      if (e.classList.contains('board-page-inner')) return;   /* 게시판 바깥 틀은 투명 (근무표처럼 제목은 바탕 위) */
       var cs = getComputedStyle(e), bi = cs.backgroundImage;
       if (bi !== 'none' && bi.indexOf('gradient') >= 0) {   /* 흰색 계열 그라데이션 칸(로그인 · 회원가입 카드 등)도 유리로 */
         var nums = (bi.match(/rgba?\([^)]+\)/g) || []).map(function (c) { return c.match(/[\d.]+/g).slice(0, 3).map(Number); });
@@ -30012,10 +30057,14 @@ function wbgGlass() {
   });
 }
 (function () {
-  var t = 0; function soon() { if (t) return; t = setTimeout(function () { t = 0; wbgGlass(); }, 250); }   /* 너무 자주 돌지 않게 */
+  var t = 0;
+  function soon(recs) {   /* 화면이 그려지기 전에(같은 프레임) 바로 유리로 → 흰색이 잠깐 보이지 않게 · 시계 숫자 바뀜은 무시 */
+    if (recs && recs.length && recs.every(function (r) { var n = r.target; return n && n.closest && n.closest('.top-bar'); })) return;
+    if (t) return; t = requestAnimationFrame(function () { t = 0; wbgGlass(); });
+  }
   function boot() {
     var mc = document.getElementById('main-container') || document.body;
-    new MutationObserver(soon).observe(mc, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    new MutationObserver(function (r) { soon(r); if (r.some(function (x) { return x.type === 'attributes' && x.target.classList && x.target.classList.contains('page-view'); })) wbgGlass(); }).observe(mc, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
     new MutationObserver(soon).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     soon();
   }
@@ -30110,5 +30159,6 @@ html:not(#q1):not(#q2) body #main-section .menu-btn,html:not(#q1):not(#q2) body 
 html:not(#q1):not(#q2) body #main-section .menu-btn .menu-art,html:not(#q1):not(#q2) body #vacation-section .menu-btn .menu-art{width:46%!important;height:auto!important;aspect-ratio:1/1;max-width:60px;object-fit:contain;margin:0!important;position:static!important}
 html:not(#q1):not(#q2) body #main-section .menu-btn > span,html:not(#q1):not(#q2) body #vacation-section .menu-btn > span{font-size:12px!important;line-height:1.2!important;margin:0!important;position:static!important;text-align:center;word-break:keep-all}
 </style>
+<style id="appupd-notes-list">#appupd-panel ul.appupd-notes{margin:10px 0 0;padding:10px 12px 10px 28px;border-radius:12px;background:#f5f7fb;text-align:left;font-size:13.5px;line-height:1.6;color:#3b4a63}#appupd-panel ul.appupd-notes li{margin:2px 0}html.ui-dark #appupd-panel ul.appupd-notes{background:#232831;color:#d5dbe3}</style>
 </body>
 </html>
