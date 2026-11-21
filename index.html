@@ -319,11 +319,12 @@ html.ui-dark[data-warm="2"] #ui-warm{background:rgba(255,150,60,.2)}
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="application-name" content="철도비서">
 <meta name="theme-color" content="#f1f2f4">
-<style id="app-splash-style">#app-splash{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;
+<style id="app-splash-style">#app-splash{position:fixed;inset:0;z-index:2147483000;display:block;
 background:#ffffff;transition:opacity .3s ease,visibility .3s ease;
-padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif}
+padding:0;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif}
 #app-splash.sp-hide{opacity:0;visibility:hidden;pointer-events:none}
-#app-splash .sp-wrap{display:flex;flex-direction:column;align-items:center}
+#app-splash .sp-wrap{display:flex;flex-direction:column;align-items:center;position:absolute;left:50%;top:50%;width:200px;margin:-94px 0 0 -100px}
+/* 신호기 위치 고정: 신호기(머리 136 + 기둥 44 + 받침 8 = 188px)의 가운데를 화면 한가운데에 — 글자 크기·글꼴과 상관없이 안 움직임 (앱 첫 화면과 같은 자리) */
 #app-splash .sp-head{width:58px;padding:9px 0;border-radius:29px;background:#263445;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:0 6px 16px rgba(20,35,60,.22)}
 #app-splash .sp-head i{width:34px;height:34px;border-radius:50%;background:#3d4856;transition:background .18s,box-shadow .18s}
 #app-splash .sp-pole{width:8px;height:44px;background:#8d99a8;border-radius:0 0 3px 3px}
@@ -1478,9 +1479,9 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   </div>
   <div class="mm-who" id="mm-who"></div>
   <div class="mm-tabs" role="tablist" aria-label="메인 메뉴 분류">
-    <button type="button" role="tab" data-tab="work" onclick="mmSetTab('work')">근무</button>
-    <button type="button" role="tab" data-tab="conv" onclick="mmSetTab('conv')">편의</button>
-    <button type="button" data-tab="my" class="mm-my-go" onclick="openMyPage()" aria-label="마이페이지로 이동">MY</button>
+    <button type="button" role="tab" data-tab="work" onclick="rsTabGo('work')">근무</button>
+    <button type="button" role="tab" data-tab="conv" onclick="rsTabGo('conv')">편의</button>
+    <button type="button" data-tab="my" class="mm-my-go" onclick="rsTabGo('my')" aria-label="마이페이지로 이동">MY</button>
   </div>
   <div class="menu-grid mm-grid">
     <button type="button" class="menu-btn" data-tab="work" onclick="openSchedule()"><img class="menu-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무표" alt="" aria-hidden="true" decoding="async"><span>근무표</span></button>
@@ -1647,7 +1648,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="sch-note" style="margin:10px 4px 14px">※ 야간+비번은 1일, 야간·주간 동일 휴가는 3일로 계산합니다.</div>
 </div>
 <div id="vacation-section" class="page-view">
-  <div class="mm-tabs mp-tabs" role="tablist" aria-label="메인 메뉴"><button type="button" data-tab="work" onclick="mpGoTab('work')">근무</button><button type="button" data-tab="conv" onclick="mpGoTab('conv')">편의</button><button type="button" data-tab="my" class="on" aria-selected="true">MY</button></div>
+  <div class="mm-tabs mp-tabs" role="tablist" aria-label="메인 메뉴"><button type="button" data-tab="work" onclick="rsTabGo('work')">근무</button><button type="button" data-tab="conv" onclick="rsTabGo('conv')">편의</button><button type="button" data-tab="my" class="on" aria-selected="true">MY</button></div>
   <div id="mypage-profile" class="mypage-profile"></div>
   <div class="mp-sec" data-sec="join"><button type="button" class="mypage-subtitle mp-toggle" onclick="toggleMySection('join')" aria-expanded="true"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="입사직급" alt="" aria-hidden="true">입사일 · 직급 · 조 설정<span class="mp-chev" aria-hidden="true"></span></button><div class="mp-sec-body">
   <div class="mypage-box">
@@ -26507,20 +26508,22 @@ function rsSlideIn(id, d) {
 }
 /* ===== 근무 · 편의 · MY: 칸 영역을 좌우로 밀면 탭 이동 (근무 ↔ 편의 ↔ MY) ===== */
 (function () {
-  var ORDER = ['work', 'conv', 'my'];   /* 근무 ↔ 편의 ↔ MY (끝에서는 더 넘어가지 않음) */
-  function step(d) {
-    if (typeof mmTab !== 'function' || typeof mmSetTab !== 'function') return;
-    var i = ORDER.indexOf(mmTab()); if (i < 0) i = 0;
-    var ni = i + d; if (ni < 0 || ni >= ORDER.length) return;
-    if (ORDER[ni] === 'my') { if (typeof openMyPage === 'function') { openMyPage(); rsSlideIn('vacation-section', 1); } return; }
-    mmSetTab(ORDER[ni]);
-    var g = document.querySelector('#main-section .mm-grid'); if (!g) return;
-    g.classList.remove('mm-in-l', 'mm-in-r'); void g.offsetWidth; g.classList.add(d > 0 ? 'mm-in-l' : 'mm-in-r');
-    setTimeout(function () { g.classList.remove('mm-in-l', 'mm-in-r'); }, 320);
-    if (window.mmFitLabels) mmFitLabels();
+  var ORDER = ['work', 'conv', 'my'];   /* 근무 → 편의 → MY → 근무 … 빙글빙글 (양쪽 끝에서도 넘어감) */
+  function curTab() { var v = document.getElementById('vacation-section'); return v && v.classList.contains('active') ? 'my' : (typeof mmTab === 'function' ? mmTab() : 'work'); }
+  /* 탭 이동 + 애니메이션 하나로 통일: 들어오는 화면 전체가 옆에서 밀려 들어옴 (d: 1 = 오른쪽에서, -1 = 왼쪽에서) */
+  function go(to, d) {
+    var from = curTab(); if (to === from) return;
+    if (!d) d = (ORDER.indexOf(to) - ORDER.indexOf(from) + 3) % 3 === 1 ? 1 : -1;
+    if (to === 'my') { if (typeof openMyPage === 'function') openMyPage(); rsSlideIn('vacation-section', d); return; }
+    if (from === 'my') { if (typeof mpGoTab === 'function') mpGoTab(to); }
+    else { try { localStorage.setItem('rs_main_tab', to); } catch (e) {} if (typeof mmApply === 'function') mmApply(); }
+    rsSlideIn('main-section', d);
+    if (window.mmFitLabels) setTimeout(mmFitLabels, 0);
   }
+  window.rsTabGo = go;
+  function step(d) { var i = ORDER.indexOf(curTab()); if (i < 0) i = 0; go(ORDER[(i + d + 3) % 3], d); }
   window.mmTabStep = step;
-  /* MY 화면: 오른쪽으로 밀면 편의, (더 왼쪽은 없음) */
+  /* MY 화면: 오른쪽으로 밀면 편의, 왼쪽으로 밀면 근무 */
   function bootMy() {
     var sec = document.getElementById('vacation-section'); if (!sec) return;
     var sx = 0, sy = 0, on = false, dir = 0, swiped = false;
@@ -26536,7 +26539,7 @@ function rsSlideIn(id, d) {
     sec.addEventListener('touchend', function (e) {
       if (!on) return; on = false; if (dir !== 1) return;
       var p = e.changedTouches[0], mx = p.clientX - sx;
-      if (mx > 60) { swiped = true; if (typeof mpGoTab === 'function') { mpGoTab('conv'); rsSlideIn('main-section', -1); } }
+      if (Math.abs(mx) > 60) { swiped = true; step(mx < 0 ? 1 : -1); }   /* 왼쪽으로 밀면 근무, 오른쪽으로 밀면 편의 */
     });
     sec.addEventListener('click', function (e) { if (swiped) { e.preventDefault(); e.stopPropagation(); swiped = false; } }, true);
   }
