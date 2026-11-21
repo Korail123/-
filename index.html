@@ -16792,6 +16792,7 @@ function rsAppIn() { return rsAppHas('setAlarms') && rsAppHas('notify'); }
 function rsAppTestLater(kind, title, body, sec) {
   var o = rsAppSound(kind === 'alarm' ? 'alarm' : 'mid', title, body, kind === 'alarm' ? 3 : 1);
   o.id = 'test-' + kind; o.at = Date.now() + (sec || 20) * 1000;
+  if (kind === 'alarm') o.info = { kind: 'alarm', start: '', type: '테스트', dia: '', trains: '', startMs: o.at + 3600000, test: true };
   rsAppTestItem = o; rsAppAlarmSig = '';
   rsAppSyncAlarms(true);
 }
@@ -16804,7 +16805,9 @@ function rsAppSyncAlarms(force) {
     if (!snapshotUsable() && !rsAppTestItem) return;
     var list = (snapshotUsable() ? pushAlarmList(getAlarmCfg()).concat(pushMidList()) : []).map(function (a) {
       var o = rsAppSound(a.tag.indexOf('mid-') === 0 ? 'mid' : 'alarm', a.title, a.body, 10);
-      o.id = a.tag; o.at = new Date(a.at).getTime(); return o;
+      o.id = a.tag; o.at = new Date(a.at).getTime();
+      if (a.tag.indexOf('alarm-') === 0) { var b = rsDayBrief(a.tag.slice(6)); if (b.startMs) { b.kind = 'alarm'; o.info = b; } }   /* 앱 전체화면 출근 알람 */
+      return o;
     });
     if (rsAppTestItem && rsAppTestItem.at > Date.now()) list.push(rsAppTestItem);
     var sig = JSON.stringify(list); if (sig === rsAppAlarmSig) return;
@@ -25532,8 +25535,17 @@ function rsAlertMode() {
   return np.vib ? 'vib' : 'quiet';
 }
 /* 앱 꺼짐 알림: 안드로이드 알람처럼 [끄기]를 누를 때까지 소리 · 진동 반복 (최대 30초) */
-function rsBgNotify(tag, title, body) {
-  rsAppCall('notify', { tag: tag, title: title, body: body, mode: rsAlertMode(), insist: true, timeout: 30000, vol: getNotiPrefs().vol });
+function rsBgNotify(tag, title, body, info) {
+  rsAppCall('notify', { tag: tag, title: title, body: body, mode: rsAlertMode(), insist: true, timeout: 30000, vol: getNotiPrefs().vol, info: info || null });
+}
+/* 앱 전체화면 알림에 넣을 그날 근무 요약 { start:'08:40', type:'주간', dia, trains:'3224 · 1671', startMs } */
+function rsDayBrief(key) {
+  try {
+    var w = alarmWorkInfo(key); if (!w) return {};
+    var dm = w.dia && typeof diaByNumber === 'function' ? diaByNumber(w.dia) : null;
+    var trs = dm ? [dm.train1, dm.train2, dm.train3].map(function (x) { return String(x || '').trim(); }).filter(function (x) { return x; }).slice(0, 2) : [];
+    return { start: w.start.slice(0, 5), type: w.type === '주' ? '주간' : '야간', dia: w.dia, trains: trs.join(' · '), startMs: alarmStartMs(key, w.startMin), date: key };
+  } catch (e) { return {}; }
 }
 function rsBgTick() {
   var out = { next: 600, keep: true };
@@ -25566,7 +25578,8 @@ function rsBgNx() {
     });
     if (!fresh.length) return;
     var body = fresh.map(function (it) { return nxDateText(it.date) + ' ' + it.train + '열차 운휴'; }).join(' · ');
-    rsBgNotify('nx-' + fresh.map(function (it) { return it.id; }).join('-').slice(0, 60), '열차 운휴 알림', body + ' (눌러서 확인)');
+    rsBgNotify('nx-' + fresh.map(function (it) { return it.id; }).join('-').slice(0, 60), '열차 운휴 알림', body + ' (눌러서 확인)',
+      { kind: 'nx', items: fresh.map(function (it) { var b = rsDayBrief(it.date); return { date: it.date, train: it.train, start: b.start || '', type: b.type || '' }; }) });
   }, true);
 }
 var rsBgPassBusy = false;
@@ -25598,7 +25611,12 @@ function rsBgPass(c, trains) {
             var name = route.stations[idx].name;
             var title = it.train + '열차 ' + name + (kind === 'pass' ? ' 통과' : ' 곧 도착');
             var body = (ev.currentText || '') + (ev.estPassed ? ' (추정)' : '') + (ev.delay > 0 ? ' · ' + ev.delay + '분 지연' : '') + ' · ' + infoSrc(it.train, route) + ' 기준';
-            rsBgNotify('pass-' + it.date + '-' + it.train + '-' + name + '-' + kind, title, body);
+            var sx = route.stations[idx] || {}, px = idx > 0 ? route.stations[idx - 1] || {} : {}, dl = Number(ev.delay) || 0;
+            rsBgNotify('pass-' + it.date + '-' + it.train + '-' + name + '-' + kind, title, body, {
+              kind: 'pass', ev: kind, train: it.train, station: name, prev: px.name || '', delay: dl,
+              eta: Number(sx.act) || (Number(sx.plan) ? Number(sx.plan) + dl * 60000 : 0),
+              prevAt: Number(px.act) || (Number(px.plan) ? Number(px.plan) + dl * 60000 : 0)
+            });
           });
           if (allPassed || /운행종료|열차운휴/.test(String(route.zone || ''))) rsBg.done[it.date + '|' + it.train] = 1;   /* 다 지나간 열차는 그만 확인 */
         }
@@ -25610,8 +25628,11 @@ function rsBgPass(c, trains) {
 /* 앱의 '꺼진 상태 테스트' → 앱이 20초 뒤 이 화면(보이지 않는)에서 부름 */
 function rsBgTest(kind) {
   var isPass = kind === 'pass';
-  rsBgNotify('bgtest-' + kind + '-' + Date.now(), isPass ? '열차 통과·도착 알림 테스트' : '열차 운휴 알림 테스트',
-    '앱이 꺼져 있을 때 앱 꺼짐 감시가 보낸 알림이에요. 실제 ' + (isPass ? '통과·도착' : '운휴') + ' 알림도 이렇게 와요.');
+  var now = Date.now(), t = todayKST(), today = getDateKey(t.y, t.m, t.d);
+  rsBgNotify('bgtest-' + kind + '-' + now, isPass ? '열차 통과·도착 알림 테스트' : '열차 운휴 알림 테스트',
+    '앱이 꺼져 있을 때 앱 꺼짐 감시가 보낸 알림이에요. 실제 ' + (isPass ? '통과·도착' : '운휴') + ' 알림도 이렇게 와요.',
+    isPass ? { kind: 'pass', ev: 'soon', train: '테스트', station: '팔당', prev: '도심', delay: 0, eta: now + 120000, prevAt: now - 180000, test: true }
+           : { kind: 'nx', items: [{ date: today, train: '테스트', start: '', type: '' }], test: true });
   return 'ok';
 }
 /* 보이지 않는 화면에서는 소리 · 팝업 · 안내를 모두 끔 (알림은 rsBgNotify로만) */
@@ -28220,15 +28241,20 @@ function wxAnimSvg(kind, desc, w) {
   var CP = 'M26 70h46a16 16 0 0 0 2-32a22 22 0 0 0-42-6a16 16 0 0 0-6 38z';
   var defs = '<radialGradient id="wx3s" cx=".35" cy=".35" r=".7"><stop offset="0" stop-color="#fff3a8"/><stop offset=".55" stop-color="#ffc21a"/><stop offset="1" stop-color="#ff9a00"/></radialGradient>' +
     '<radialGradient id="wx3h" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff2b0" stop-opacity=".8"/><stop offset="1" stop-color="#fff2b0" stop-opacity="0"/></radialGradient>' +
+    '<radialGradient id="wx3h2" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff8d6"/><stop offset=".45" stop-color="#ffe066"/><stop offset=".62" stop-color="#ffd43b" stop-opacity=".55"/><stop offset="1" stop-color="#ffd43b" stop-opacity="0"/></radialGradient>' +
     '<radialGradient id="wx3m" cx=".35" cy=".35" r=".75"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#fdf2c4"/><stop offset="1" stop-color="#e9cf78"/></radialGradient>' +
     '<linearGradient id="wx3c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + (night ? '#e6edf8' : '#ffffff') + '"/><stop offset="1" stop-color="' + (night ? '#a7b7d0' : '#d4e3f6') + '"/></linearGradient>' +
     '<linearGradient id="wx3g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + (night ? '#c9d4e6' : '#eef3f9') + '"/><stop offset="1" stop-color="' + (night ? '#6f84a6' : '#a9bbd3') + '"/></linearGradient>' +
     '<linearGradient id="wx3r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7cc8ff"/><stop offset="1" stop-color="#1e7cf0"/></linearGradient>' +
     '<linearGradient id="wx3b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff07a"/><stop offset="1" stop-color="#ffb000"/></linearGradient>' +
     '<filter id="wx3f" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#1b3a66" flood-opacity="' + (night ? '.45' : '.25') + '"/></filter>';
+  /* 해: 1번 '햇살 선 + 밝은 노랑' — 납작한 노랑 원 + 둥근 햇살 8개가 천천히 돎 (예전 주황 공은 노른자처럼 보여서 바꿈) */
   function sun(cx, cy, sc) {
-    return '<g transform="translate(' + (cx - 50 * sc).toFixed(1) + ' ' + (cy - 50 * sc).toFixed(1) + ') scale(' + sc + ')"><circle class="wx3-glow" cx="50" cy="50" r="34" fill="url(#wx3h)"/>' +
-      '<g class="wx3-sunwrap"><circle cx="50" cy="50" r="22" fill="url(#wx3s)" filter="url(#wx3f)"/><ellipse cx="42" cy="41" rx="7" ry="5" fill="#fff" opacity=".45"/></g></g>';
+    var rays = '';
+    for (var i = 0; i < 8; i++) { var a = i * Math.PI / 4; rays += '<line x1="' + (50 + Math.cos(a) * 28).toFixed(1) + '" y1="' + (50 + Math.sin(a) * 28).toFixed(1) + '" x2="' + (50 + Math.cos(a) * 38).toFixed(1) + '" y2="' + (50 + Math.sin(a) * 38).toFixed(1) + '"/>'; }
+    return '<g transform="translate(' + (cx - 50 * sc).toFixed(1) + ' ' + (cy - 50 * sc).toFixed(1) + ') scale(' + sc + ')">' +
+      '<g class="sun-rays" stroke="#ffc51a" stroke-width="5" stroke-linecap="round">' + rays + '</g>' +
+      '<g class="wx3-sunwrap"><circle cx="50" cy="50" r="19" fill="#ffd43b"/></g></g>';
   }
   function moon(cx, cy, sc) {
     return '<g transform="translate(' + (cx - 50 * sc).toFixed(1) + ' ' + (cy - 50 * sc).toFixed(1) + ') scale(' + sc + ')"><g class="moon"><path d="M60 24a27 27 0 1 0 20 40a22 22 0 1 1-20-40z" fill="url(#wx3m)" filter="url(#wx3f)"/></g>' +
