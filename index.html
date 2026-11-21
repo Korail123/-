@@ -2324,6 +2324,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <li>주소창 옆 <b>공유 버튼(□↑)</b>을 눌러요.</li>
       <li>목록을 내려 <b>홈 화면에 추가</b> › 오른쪽 위 <b>추가</b>를 눌러요.</li>
       <li>바탕화면의 <b>철도비서 아이콘</b>으로 열면 주소창 없는 앱처럼 열려요. <b>출근 알람 · 도중출무 알람 · 운휴 알림은 이 아이콘으로 연 철도비서에서만</b> 받을 수 있어요.</li>
+      <li>알림이 몇 초 뒤 사라지지 않게 하려면 아이폰 <b>설정 › 알림 › 철도비서 › 배너 스타일</b>을 <b>지속적</b>으로 바꿔 주세요. (아이폰은 앱이 대신 바꿀 수 없어요)</li>
       <li>※ 아이폰은 사파리와 홈 화면 앱의 저장 공간이 따로라서, 아이콘으로 처음 열면 <b>로그인과 CREW 연동 비밀번호를 한 번 더</b> 넣어야 해요.</li></ol></details>
     <details class="guide-sec" data-g="pwa_and"><summary>갤럭시: 앱 설치 · 바탕화면에 추가</summary><div class="gd-stage" data-g="pwa_and"></div><ol>
       <li><b>철도비서 안드로이드 앱</b>을 설치했다면 그 앱으로 열면 돼요. 앱이 꺼져 있어도 <b>무음 모드에서 출근 알람 소리</b>가 나고, 홈 화면 <b>근무표 위젯</b>도 쓸 수 있어요. 새 버전은 환경설정 › <b>앱 업데이트</b>.</li>
@@ -12752,11 +12753,19 @@ function pushSyncAlarms(force) {
     if (!sub) { pushSyncBusy = false; return; }
     var jobs = 2;
     function doneOne() { if (--jobs <= 0) pushSyncBusy = false; }
-    function onFail(r) { if (r && r.errorCode === 'NOSUB') { try { LS.removeItem('pushSubMark'); } catch (e) {} } }
+    function onFail(r) {
+      if (r && r.errorCode === 'NOSUB') {
+        try { LS.removeItem('pushSubMark'); } catch (e) {}
+        /* 서버에서 구독이 지워져 있었으면 바로 다시 등록하고 한 번 더 보냄 */
+        if (!window.__rsPushRetry) { window.__rsPushRetry = 1; setTimeout(function () { pushSyncBusy = false; pushSyncAlarms(true); }, 1500); }
+      }
+    }
     var popupOn = getNotiPrefs().popup;                      /* 휴대폰 팝업 알림을 끄면 앱 꺼짐 알림도 보내지 않음 */
     /* ① 출근 알람 3주치 */
     var list = popupOn ? pushAlarmList(cfg).concat(pushMidList()) : [];
-    var sig = sub.endpoint + '|' + JSON.stringify(list);
+    /* 12시간마다는 같은 내용이라도 다시 등록: 서버가 만료로 지운 구독(아이폰에서 자주 생김)을 되살림 */
+    var half = Math.floor(Date.now() / 43200000);
+    var sig = sub.endpoint + '|' + half + '|' + JSON.stringify(list);
     var sigKey = 'pushSig_' + u.employeeId;
     if (!force && LS.getItem(sigKey) === sig) doneOne();
     else api({ action: 'pushSetAlarms', employeeId: u.employeeId, token: u.token, endpoint: sub.endpoint, alarms: list }, function (r) {
@@ -12765,7 +12774,7 @@ function pushSyncAlarms(force) {
     });
     /* ② 운휴 확인할 열차 (오늘·내일·모레) */
     var watch = popupOn ? pushWatchList(nxOn) : [];
-    var wsig = sub.endpoint + '|' + JSON.stringify(watch);
+    var wsig = sub.endpoint + '|' + half + '|' + JSON.stringify(watch);
     var wsigKey = 'pushWatchSig_' + u.employeeId;
     if (!force && LS.getItem(wsigKey) === wsig) doneOne();
     else api({ action: 'pushSetWatch', employeeId: u.employeeId, token: u.token, endpoint: sub.endpoint, items: watch }, function (r) {
