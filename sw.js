@@ -114,6 +114,15 @@ self.addEventListener('fetch', function (e) {
 /* ------------------------------------------------------------
    푸시 알림
    ------------------------------------------------------------ */
+/* 방해금지 모드 (한국 시간 · 23:00~07:00처럼 밤을 넘겨도) */
+function dndOn(c) {
+  if (!c || !c.on) return false;
+  var k = new Date(Date.now() + (new Date().getTimezoneOffset() + 540) * 60000), m = k.getHours() * 60 + k.getMinutes();
+  function mm(t) { var p = String(t || '').split(':'); return (+p[0]) * 60 + (+p[1] || 0); }
+  var a = mm(c.from), b = mm(c.to);
+  if (a === b) return true;
+  return a < b ? (m >= a && m < b) : (m >= a || m < b);
+}
 function readPrefs() {
   return caches.open('rs-prefs').then(function (c) { return c.match(scopeUrl('prefs.json')); })
     .then(function (r) { return r ? r.json() : {}; })
@@ -139,6 +148,11 @@ self.addEventListener('push', function (e) {
     var kp = (p.kinds && p.kinds[kind]) || {};
     function pick(k) { return (typeof kp[k] === 'boolean' ? kp[k] : p[k]) !== false; }
     var popup = pick('popup'), sound = popup && pick('sound'), vib = popup && pick('vib');
+    if (dndOn(p.dnd)) {   /* 방해금지 시간: 알림을 보이지 않게 (아이폰은 푸시를 받으면 꼭 띄워야 해서, 조용히 띄우고 바로 지움) */
+      return self.registration.showNotification(title, { body: d.body || '', tag: 'rs-dnd', silent: true, icon: NOTI_ICON, badge: NOTI_ICON, data: { url: self.registration.scope } })
+        .then(function () { return self.registration.getNotifications({ tag: 'rs-dnd' }); })
+        .then(function (ns) { ns.forEach(function (n) { n.close(); }); });
+    }
     return self.registration.showNotification(title, {
       body: d.body || '새로운 열차 운행 알림입니다.',
       tag: d.tag || 'alarm',
