@@ -15699,8 +15699,8 @@ function passReplay() {
   if (coupling && !passArtHasLoco(passArtKey(trainType, d.train, d.trainKind))) coupling = false;   /* KTX·ITX·SRT는 조성 장면 없이 서 있는 모습 */
   var W = track.clientWidth || 300, TW = train.offsetWidth || 240;
   var rawNames = (d.trackNames && d.trackNames.length)
-    ? d.trackNames.slice(0, 4)
-    : (d.prev || []).slice(-1).concat([d.station]).concat(d.next || []).slice(0, 4);
+    ? d.trackNames.slice(0, 5)
+    : (d.prev || []).slice(-1).concat([d.station]).concat(d.next || []).slice(0, 5);
   var rawTi = (d.trackTargetOffset !== null && d.trackTargetOffset !== undefined)
     ? Number(d.trackTargetOffset) : Math.min(1, (d.prev || []).length);
   var rawCur = Number(d.trackCurrentOffset || 0);
@@ -15722,10 +15722,8 @@ function passReplay() {
   var n = names.length;
   ti = Math.max(0, Math.min(n - 1, ti));
 
-  // 역 표시는 실제 순서대로, 있는 역만 고르게 배치한다.
-  var xs = names.map(function (_, i) {
-    return n === 1 ? W * 0.5 : W * (0.10 + 0.80 * i / (n - 1));
-  });
+  // 역 표시: 화면 폭을 역 개수만큼 똑같이 나눠 각 칸 가운데에 (3개면 3등분, 5개면 5등분 · 최대 5개)
+  var xs = names.map(function (_, i) { return W * (i + 0.5) / n; });
   var passed = d.kind === 'pass' || (d.kind === 'now' && d.passed);
   $('pp-stops').innerHTML = names.map(function (nm, i) {
     var empty = !String(nm || '').trim();
@@ -29337,7 +29335,7 @@ function sch2Move(d) {
 }
 function sch2Range() {
   var first = new Date(sch2Y, sch2M, 1), start = new Date(sch2Y, sch2M, 1 - first.getDay());
-  var end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 41);   /* 항상 6주: 달마다 높이가 안 바뀌게 */
+  var last = new Date(sch2Y, sch2M + 1, 0), end = new Date(sch2Y, sch2M + 1, 6 - last.getDay());   /* 첫 주 · 마지막 주에만 앞뒤 달 날짜 (팝업 높이는 고정) */
   return { start: start, end: end, from: sch2Key(start.getFullYear(), start.getMonth(), start.getDate()), to: sch2Key(end.getFullYear(), end.getMonth(), end.getDate()) };
 }
 function sch2Load() {
@@ -29407,7 +29405,7 @@ function sch2ListRender() {
   var h = '<div class="sch2-lh"><b>' + sch2Txt(k) + (list.length ? ' · ' + list.length + '건' : '') + '</b>' + (can ? '<button type="button" onclick="sch2EditOpen(0)">+ 등록</button>' : '') + '</div>';
   h += list.length ? list.map(function (e) {
     return '<div class="sch2-item"><span class="dot sch2-c-' + sch2Col(e) + '"></span><div style="flex:1;min-width:0"><b>' + (e.category ? '<em class="sch2-cat ' + (SCH2_CK[e.category] || 'e') + '">' + esc(e.category) + '</em>' : '') + esc(e.title) + '</b>' +
-      sch2Meta(e) + '<small>' + (e.start === e.end ? '' : sch2Txt(e.start) + ' ~ ' + sch2Txt(e.end) + ' · ') + esc(e.byName || e.by || '') + '</small>' + (e.memo ? '<p>' + esc(e.memo) + '</p>' : '') + '</div>' +
+      sch2Meta(e) + '<small>' + [e.start === e.end ? '' : sch2Txt(e.start) + ' ~ ' + sch2Txt(e.end), esc(e.byName || e.by || '')].filter(Boolean).join(' · ') + '</small>' + (e.memo ? '<p>' + esc(e.memo) + '</p>' : '') + '</div>' +
       (can ? '<div class="acts"><button type="button" onclick="sch2EditOpen(' + e.id + ')">수정</button><button type="button" class="del" onclick="sch2Del(' + e.id + ')">삭제</button></div>' : '') + '</div>';
   }).join('') : '<div class="sch2-empty">이 날은 일정이 없어요.</div>';
   box.innerHTML = h;
@@ -29483,5 +29481,13 @@ function sch2Del(id) {
 })();
 </script>
 
+<style id="pp-stop-dark">
+/* 낮 · 새벽 · 노을: 운행 위치 역 이름/시각을 검정 글씨로 (밤은 그대로 밝은 글씨) */
+#pass-pop-panel .pp-track.tod-day .pp-stop span,#pass-pop-panel .pp-track.tod-dawn .pp-stop span,#pass-pop-panel .pp-track.tod-dusk .pp-stop span,#nx-ring-panel .pp-track.tod-day .pp-stop span,#nx-ring-panel .pp-track.tod-dawn .pp-stop span,#nx-ring-panel .pp-track.tod-dusk .pp-stop span,body .pp-track.tod-day .pp-stop span,body .pp-track.tod-dawn .pp-stop span,body .pp-track.tod-dusk .pp-stop span{color:#111!important;text-shadow:0 0 3px rgba(255,255,255,.95),0 0 1px #fff!important}
+#pass-pop-panel .pp-track.tod-day .pp-stop span .pp-pt,#pass-pop-panel .pp-track.tod-dawn .pp-stop span .pp-pt,#pass-pop-panel .pp-track.tod-dusk .pp-stop span .pp-pt,#nx-ring-panel .pp-track.tod-day .pp-stop span .pp-pt,#nx-ring-panel .pp-track.tod-dawn .pp-stop span .pp-pt,#nx-ring-panel .pp-track.tod-dusk .pp-stop span .pp-pt,body .pp-track.tod-day .pp-stop span .pp-pt,body .pp-track.tod-dawn .pp-stop span .pp-pt,body .pp-track.tod-dusk .pp-stop span .pp-pt,#pass-pop-panel .pp-track.tod-day .pp-stop span small,#pass-pop-panel .pp-track.tod-dawn .pp-stop span small,#pass-pop-panel .pp-track.tod-dusk .pp-stop span small,#nx-ring-panel .pp-track.tod-day .pp-stop span small,#nx-ring-panel .pp-track.tod-dawn .pp-stop span small,#nx-ring-panel .pp-track.tod-dusk .pp-stop span small,body .pp-track.tod-day .pp-stop span small,body .pp-track.tod-dawn .pp-stop span small,body .pp-track.tod-dusk .pp-stop span small{color:#222!important}
+/* 밤: 역 이름/시각 흰 글씨 */
+#pass-pop-panel .pp-track.tod-night .pp-stop span,#nx-ring-panel .pp-track.tod-night .pp-stop span,body .pp-track.tod-night .pp-stop span,#pass-pop-panel .pp-track.tod-night .pp-stop:not(.tgt) span,#nx-ring-panel .pp-track.tod-night .pp-stop:not(.tgt) span,body .pp-track.tod-night .pp-stop:not(.tgt) span,#pass-pop-panel .pp-track.tod-night .pp-stop.tgt span,#nx-ring-panel .pp-track.tod-night .pp-stop.tgt span,body .pp-track.tod-night .pp-stop.tgt span{color:#fff!important;text-shadow:0 1px 2px rgba(5,15,40,.75)!important}
+#pass-pop-panel .pp-track.tod-night .pp-stop span .pp-pt,#nx-ring-panel .pp-track.tod-night .pp-stop span .pp-pt,body .pp-track.tod-night .pp-stop span .pp-pt{color:#fff!important}
+</style>
 </body>
 </html>
