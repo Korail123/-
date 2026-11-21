@@ -29949,12 +29949,12 @@ function swnSeen() {
 /* ===== 메인 바탕: 흐린 보케 트리 (낮=불빛 꺼짐 · 저녁/밤/새벽=1초마다 반짝) + 눈 ===== */
 #wbg{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none;display:none}
 html.wbg-on #wbg{display:block}
-html.wbg-on:not(#z1):not(#z2),html.wbg-on:not(#z1):not(#z2) body,html.wbg-on:not(#z1):not(#z2) body #main-container,html.wbg-on:not(#z1):not(#z2) body #main-section{background:transparent!important;background-image:none!important}
+html.wbg-on:not(#z1):not(#z2),html.wbg-on:not(#z1):not(#z2) body,html.wbg-on:not(#z1):not(#z2) body #main-container,html.wbg-on:not(#z1):not(#z2) body #main-section,html.wbg-on:not(#z1):not(#z2) body #vacation-section{background:transparent!important;background-image:none!important}
 html.wbg-on #snow-fx{display:none!important}
 html.wbg-on #main-container{position:relative;z-index:1}
-html.wbg-on #main-section .menu-btn{background:rgba(255,255,255,.7)!important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-html.wbg-on.wbg-night #main-section .menu-btn{background:rgba(255,255,255,.16)!important;border-color:rgba(255,255,255,.12)!important}
-html.wbg-on.wbg-night #main-section .menu-btn span{color:#f3f5ff!important}
+html.wbg-on #main-section .menu-btn,html.wbg-on #vacation-section .menu-btn{background:rgba(255,255,255,.7)!important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+html.wbg-on.wbg-night #main-section .menu-btn,html.wbg-on.wbg-night #vacation-section .menu-btn{background:rgba(255,255,255,.16)!important;border-color:rgba(255,255,255,.12)!important}
+html.wbg-on.wbg-night #main-section .menu-btn span,html.wbg-on.wbg-night #vacation-section .menu-btn span{color:#f3f5ff!important}
 html.wbg-on.wbg-night #main-container > .top-bar,html.wbg-on.wbg-night #main-container > .top-bar *:not(img):not(svg):not(path){color:#fff!important;text-shadow:0 1px 4px rgba(0,0,0,.35)}
 </style>
 <canvas id="wbg" aria-hidden="true"></canvas>
@@ -30009,10 +30009,11 @@ html.wbg-on.wbg-night #main-container > .top-bar,html.wbg-on.wbg-night #main-con
     document.documentElement.classList.toggle('wbg-night', night);
     bake();
   }
-  function active() { var m = document.getElementById('main-section'); return !!(m && m.classList.contains('active')) && !document.hidden; }
+  function onMain() { var m = document.getElementById('main-section'), v = document.getElementById('vacation-section'); return !!((m && m.classList.contains('active')) || (v && v.classList.contains('active'))); }   /* 메인 · MY 화면 */
+  function active() { return onMain() && !document.hidden; }
   function frame(now) {
     requestAnimationFrame(frame);
-    var on = active(); document.documentElement.classList.toggle('wbg-on', !!(document.getElementById('main-section') || {}).classList && document.getElementById('main-section').classList.contains('active'));
+    var on = active(); document.documentElement.classList.toggle('wbg-on', onMain());
     if (!on || now - last < 33) return;   /* 30fps · 메인화면이 아니거나 앱이 뒤에 있으면 멈춤 */
     var dt = Math.min(3, (now - last) / 16.7); last = now;
     if (isNight() !== night) baseKey = '';
@@ -30034,5 +30035,12 @@ html.wbg-on.wbg-night #main-container > .top-bar,html.wbg-on.wbg-night #main-con
 })();
 </script>
 
+<style id="clock-7pct">
+/* 메인 · MY 시계 · 날짜 크게 (64→68.5→75.5 · 14→15→16.5) */
+html:not(#z7) body #main-container > div.top-bar > #liveClock .lc-hm{font-size:75.5px}
+html.ui-ios:not(#z7) body #main-container > div.top-bar > #liveClock .lc-hm{font-size:89px}
+html:not(#z7) body #main-container > div.top-bar > #liveClock .lc-d,html:not(#z7) body #main-container > div.top-bar > #liveClock .lc-w{font-size:16.5px}
+@media(max-width:359px){html:not(#z7) body #main-container > div.top-bar > #liveClock .lc-hm{font-size:70px}}
+</style>
 </body>
 </html>
