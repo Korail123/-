@@ -29592,9 +29592,23 @@ function gsOpen() {
   gsItems = gsIndex();
   var q = $('gs-q'); q.value = '';
   $('gs-panel').classList.add('active');
+  gsPlace(); setTimeout(gsPlace, 350); setTimeout(gsPlace, 700);
   gsRender();
   setTimeout(function () { try { q.focus(); } catch (e) {} }, 60);
 }
+/* 검색칸은 '보이는 화면'의 가운데: 키보드가 올라오면 남은 화면의 가운데로 (결과는 아래로, 보이는 화면 끝까지) */
+function gsPlace() {
+  var dlg = document.querySelector('#gs-panel .gs-dlg'); if (!dlg || !$('gs-panel').classList.contains('active')) return;
+  var vv = window.visualViewport, top0 = vv ? vv.offsetTop : 0, h = vv ? vv.height : window.innerHeight;
+  var bar = 46 + 20, y = Math.max(top0 + 8, Math.round(top0 + h / 2 - bar / 2));
+  dlg.style.top = y + 'px';
+  dlg.style.maxHeight = Math.max(bar, top0 + h - y - 8) + 'px';
+}
+(function () {
+  var vv = window.visualViewport;
+  if (vv) { vv.addEventListener('resize', gsPlace); vv.addEventListener('scroll', gsPlace); }
+  window.addEventListener('resize', gsPlace);
+})();
 function gsClose() { $('gs-panel').classList.remove('active'); try { $('gs-q').blur(); } catch (e) {} }
 function gsMark(label, q) {
   if (!q) return esc(label);
@@ -29656,7 +29670,7 @@ html body #main-section .mm-tabs .mm-sbtn,html body #vacation-section .mp-tabs .
 .mm-tabs .mm-sbtn:active{transform:scale(.9);background:rgba(79,127,224,.12)}
 html.ui-dark body .mm-tabs .mm-sbtn{background:transparent;color:#9fb0cc}
 /* 2) 메인 검색: 검색칸은 화면 가운데 고정, 입력하면 아래로 펼쳐짐 */
-#gs-panel .gs-dlg{position:fixed;left:50%;top:calc(50dvh - 33px);transform:translateX(-50%);margin:0!important;max-height:calc(50dvh + 15px);animation:none}
+#gs-panel .gs-dlg{position:fixed;left:50%;top:calc(50dvh - 33px);transform:translateX(-50%);margin:0!important;max-height:calc(50dvh + 15px);animation:none;transition:top .18s ease-out}
 #gs-panel .gs-bar{background:#e9edf3;border-radius:12px}
 /* 3) 환경설정: 제목 옆 돋보기 → 검색칸 펼침 + 아래 결과, 나머지는 흐리게 */
 #settings-section>h1{position:relative}
@@ -29675,6 +29689,19 @@ html.ui-dark body .mm-tabs .mm-sbtn{background:transparent;color:#9fb0cc}
 .ss-list{margin-top:8px;background:#fff;border-radius:14px;box-shadow:0 8px 24px rgba(20,40,80,.14);padding:4px;max-height:60dvh;overflow-y:auto;overscroll-behavior:contain}
 html.ui-dark .set-sbtn,html.ui-dark .ss-bar,html.ui-dark .ss-list{background:#232831}html.ui-dark .ss-wrap{background:rgba(15,18,24,.7)}
 html.ui-dark .ss-bar input{color:#e9edf2}html.ui-dark #gs-panel .gs-bar{background:#232831}
+
+/* 환경설정 맨 위 검색창 (돋보기 버튼 대신) */
+.set-sbtn{display:none!important}
+.set-search{position:relative;margin:0 0 14px;z-index:50}
+.set-sbar{display:flex;align-items:center;gap:8px;height:46px;padding:0 6px 0 14px;border-radius:14px;background:#fff;box-shadow:0 1px 4px rgba(16,40,80,.07)}
+.set-sbar svg{width:18px;height:18px;flex:none;fill:none;stroke:#7b889b;stroke-width:2.4;stroke-linecap:round}
+.set-sbar input{flex:1;min-width:0;height:100%;border:0;background:none;font-family:inherit;font-size:15.5px;color:#1d2b45;outline:none}
+.set-sbar input::-webkit-search-cancel-button{-webkit-appearance:none}
+.set-sx{display:none;width:30px;height:30px;border:0;border-radius:50%;background:#eef1f5;color:#7b889b;font-size:12px;cursor:pointer}
+.set-search.has .set-sx{display:block}
+.set-res:empty{display:none}
+.set-res{position:absolute;left:0;right:0;top:52px;background:#fff;border-radius:14px;box-shadow:0 10px 28px rgba(20,40,80,.16);padding:4px;max-height:55dvh;overflow-y:auto;overscroll-behavior:contain}
+html.ui-dark .set-sbar,html.ui-dark .set-res{background:#232831}html.ui-dark .set-sbar input{color:#e9edf2}html.ui-dark .set-sx{background:#2c323c}
 </style>
 <script id="gs-js-2">
 /* 환경설정 검색 (환경설정 항목만, 초성 가능) */
@@ -29701,14 +29728,35 @@ function ssRender() {
     return '<button type="button" class="gs-it" onclick="ssGo(' + ssItems.indexOf(it) + ')">' + (it.src ? '<img src="' + it.src + '" alt="">' : '') + '<b>' + gsMark(it.label, q) + '</b></button>';
   }).join('') : '<div class="gs-empty" style="padding:22px 0">맞는 설정이 없어요.</div>';
 }
+function setRender() {
+  var q = gsNorm($('set-q').value), box = $('set-res');
+  if (!q) { box.innerHTML = ''; return; }
+  if (!ssItems.length) ssItems = gsIndex().filter(function (it) { return it.group === '환경설정'; });
+  var list = ssItems.map(function (it) {
+    var a = gsFind(it.label, q), s = a === 0 ? 0 : a > 0 ? 1 : it.tags.split(' ').some(function (w) { return gsFind(w, q) >= 0; }) ? 2 : -1;
+    return { it: it, s: s };
+  }).filter(function (x) { return x.s >= 0; }).sort(function (a, b) { return a.s - b.s; }).map(function (x) { return x.it; });
+  box.innerHTML = list.length ? list.map(function (it) {
+    return '<button type="button" class="gs-it" onclick="setGo(' + ssItems.indexOf(it) + ')">' + (it.src ? '<img src="' + it.src + '" alt="">' : '') + '<b>' + gsMark(it.label, q) + '</b></button>';
+  }).join('') : '<div class="gs-empty" style="padding:18px 0">맞는 설정이 없어요.</div>';
+}
+function setClear() { var q = $('set-q'); if (!q) return; q.value = ''; $('set-res').innerHTML = ''; $('set-search').classList.remove('has'); }
+function setGo(i) { var it = ssItems[i]; if (!it) return; setClear(); try { $('set-q').blur(); } catch (e) {} setTimeout(function () { try { it.btn.click(); } catch (e) {} }, 30); }
 function ssGo(i) { var it = ssItems[i]; if (!it) return; ssClose(); setTimeout(function () { try { it.btn.click(); } catch (e) {} }, 30); }
 (function () {
   function put() {
-    var h1 = document.querySelector('#settings-section>h1'); if (!h1 || h1.querySelector('.set-sbtn')) return;
-    var s = document.createElement('span'); s.className = 'set-sbtn'; s.setAttribute('role', 'button'); s.setAttribute('tabindex', '0'); s.setAttribute('aria-label', '설정 검색');
-    s.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>';
-    s.addEventListener('click', function (e) { e.stopPropagation(); ssOpen(); });
-    h1.appendChild(s);
+    var h1 = document.querySelector('#settings-section>h1'); if (!h1 || document.getElementById('set-search')) return;
+    var w = document.createElement('div'); w.id = 'set-search'; w.className = 'set-search';
+    w.innerHTML = '<div class="set-sbar"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>' +
+      '<input id="set-q" type="search" placeholder="설정 검색 (초성 가능)" autocomplete="off" aria-label="설정 검색">' +
+      '<button type="button" class="set-sx" aria-label="지우기">✕</button></div><div id="set-res" class="set-res"></div>';
+    h1.parentNode.insertBefore(w, h1.nextSibling);
+    var q = w.querySelector('#set-q'), x = w.querySelector('.set-sx');
+    q.addEventListener('focus', function () { ssItems = gsIndex().filter(function (it) { return it.group === '환경설정'; }); try { applyAppIcons(document); } catch (e) {} });
+    q.addEventListener('input', function () { w.classList.toggle('has', !!q.value); setRender(); });
+    q.addEventListener('keydown', function (e) { if (e.key === 'Enter') { var b = document.querySelector('#set-res .gs-it'); if (b) b.click(); } if (e.key === 'Escape') setClear(); });
+    x.addEventListener('click', function () { setClear(); q.focus(); });
+    document.addEventListener('click', function (e) { if (!w.contains(e.target)) $('set-res').innerHTML = ''; }, true);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', put); else put();
 })();
