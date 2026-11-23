@@ -797,6 +797,45 @@ html body #main-container #liveClock .lc-colon {
 #schedule-section #calendar-grid .cell.empty.rs-adjacent-date::before,
 #schedule-section #calendar-grid .cell.empty.rs-adjacent-date::after { content: none !important; }
 </style>
+<style id="rs-20261123-calendar-group-precise-fix">
+/* 선택/오늘/일반 날짜가 같은 높이의 세로 직사각형 칸을 사용하도록 7열 그리드의 모든 행 높이를 통일 */
+html body #main-container #schedule-section #calendar-grid.sch-grid {
+  grid-auto-rows: 78px !important;
+  align-items: stretch !important;
+}
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell {
+  box-sizing: border-box !important;
+  height: 78px !important;
+  min-height: 78px !important;
+  max-height: 78px !important;
+  width: 100% !important;
+  aspect-ratio: auto !important;
+  border-radius: 13px !important;
+}
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell.selected,
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell.sel {
+  background: #bfe6fb !important;
+  box-shadow: inset 0 0 0 2px #1688f5 !important;
+}
+/* 이전/다음 달의 근무 색상은 유지하고 날짜와 근무 문구를 함께 연하게 표시 */
+html body #schedule-section #calendar-grid.sch-grid > .cell.empty.rs-adjacent-date {
+  opacity: .38 !important;
+  pointer-events: none !important;
+}
+html body #schedule-section #calendar-grid.sch-grid > .cell.empty.rs-adjacent-date .cell-lbl {
+  display: block !important;
+  visibility: visible !important;
+}
+/* 주간 그룹: 날짜 제목과 근무교환/비교 버튼 사이의 불필요한 빈 상태 영역 축소 */
+html body #group-section > .sch-head { margin-bottom: 0 !important; }
+html body #group-section > #group-status:empty {
+  display: none !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important;
+}
+html body #group-section > div[style*="justify-content:flex-start"] {
+  margin-top: 2px !important;
+  margin-bottom: 8px !important;
+}
+</style>
 </head>
 <body>
 <!-- 다크 모드 되돌림 필터: html의 invert(.92)+hue-rotate(180)를 정확히 거꾸로 (사진 · 열차 애니메이션 · 프로필 원래 색) -->
@@ -4825,6 +4864,22 @@ function loadMyMonth(force) {
     renderDayDetail();
   });
 }
+/* 이전/다음 달은 읽기 전용으로 근무구분만 연하게 보여줍니다. 기존 데이터 조회 규칙 재사용. */
+function rsAdjacentDutyHtml(date) {
+  var y = date.getFullYear(), m = date.getMonth(), d = date.getDate();
+  var html = '<div class="cell-top"><span class="cell-num">' + d + '</span></div>';
+  try {
+    var info = getInfo(y, m, d);
+    if (info && (info.label || info.type || info.status)) {
+      var duty = rsCalDuty(info, getDateKey(y, m, d), rsMySeqCtx());
+      if (duty) {
+        var shortDuty = rsLabelStyled(rsDutyShort(duty));
+        html += '<div class="cell-lbl' + rsDutyCls(duty, 't') + (shortDuty.length >= 2 ? ' rs-duty2' : '') + '">' + (info.manual ? '*' : '') + esc(shortDuty) + '</div>';
+      }
+    }
+  } catch (e) { /* 데이터가 없는 달은 날짜만 표시 */ }
+  return html;
+}
 function renderCalendar() {
   try { if (window.RsWidget) rsWidgetPush(); else rsFeedSoon(); } catch (e) {}
   try { schApplyView(); } catch (e) {}
@@ -4840,7 +4895,7 @@ function renderCalendar() {
     var empty = document.createElement('div');
     empty.className = 'cell empty rs-adjacent-date';
     var prevDate = new Date(calendarYear, calendarMonth, 1 - firstDay + i);
-    empty.innerHTML = '<div class="cell-top"><span class="cell-num">' + prevDate.getDate() + '</span></div>';
+    empty.innerHTML = rsAdjacentDutyHtml(prevDate);
     empty.setAttribute('aria-label', (prevDate.getMonth() + 1) + '월 ' + prevDate.getDate() + '일 (이전 달)');
     grid.appendChild(empty);
   }
@@ -4928,7 +4983,7 @@ function renderCalendar() {
     var emptyTail = document.createElement('div');
     emptyTail.className = 'cell empty rs-adjacent-date';
     var nextDate = new Date(calendarYear, calendarMonth + 1, t + 1);
-    emptyTail.innerHTML = '<div class="cell-top"><span class="cell-num">' + nextDate.getDate() + '</span></div>';
+    emptyTail.innerHTML = rsAdjacentDutyHtml(nextDate);
     emptyTail.setAttribute('aria-label', (nextDate.getMonth() + 1) + '월 ' + nextDate.getDate() + '일 (다음 달)');
     grid.appendChild(emptyTail);
   }
