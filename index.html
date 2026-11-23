@@ -1002,6 +1002,72 @@ html.wbg-on.menu-list body #main-container > #main-section.page-view > .menu-gri
   backdrop-filter:blur(10px) saturate(125%);
 }
 </style>
+
+<style id="rail-20261123-four-visual-fixes">
+/* 1: 동병상련 출근자: 세 열의 시작선/행높이를 일치시키고 긴 이름은 칸 내부에서 처리 */
+#main-section .mm-cv.c4 .al{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px 6px!important;align-items:stretch!important;max-height:none!important;overflow:visible!important;}
+#main-section .mm-cv.c4 .al .q{box-sizing:border-box!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:4px!important;min-width:0!important;width:100%!important;min-height:29px!important;padding:5px 3px!important;text-align:center!important;white-space:nowrap!important;font-size:clamp(9px,2.7vw,11.5px)!important;}
+#main-section .mm-cv.c4 .al .q em{margin-right:0!important;flex-shrink:0!important;}
+/* 2: 목록형도 바둑판과 같은 반투명 카드. 목록 행은 한 장의 카드 안에 배치 */
+html.wbg-on.menu-list body #main-section .menu-grid.mm-grid{background:rgba(255,255,255,.70)!important;border:1px solid rgba(255,255,255,.7)!important;-webkit-backdrop-filter:blur(10px) saturate(125%)!important;backdrop-filter:blur(10px) saturate(125%)!important;}
+/* 3: 크리스마스 테마 이외에서는 유리 효과 대신 불투명 배경 */
+html:not(.wbg-on) body #main-section .menu-grid.mm-grid,
+html:not(.wbg-on) body #main-section .menu-grid > button.menu-btn,
+html:not(.wbg-on) body #settings-section .setting-grid,
+html:not(.wbg-on) body #settings-section #set-flat > .set-tile,
+html:not(.wbg-on) body #main-section .mm-cv.c4{
+  background-color:#f7f9fc!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+}
+/* 4: 모든 일반 팝업의 '바깥 배경'만 블러, 대화상자 자체는 선명하게 */
+.dia-modal,.dbs-pop,.lg-pop,.onb-pop,.schedule-edit-modal{
+  -webkit-backdrop-filter:blur(8px)!important;backdrop-filter:blur(8px)!important;
+  background-color:rgba(15,23,42,.30)!important;
+}
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
+ .dia-modal,.dbs-pop,.lg-pop,.onb-pop,.schedule-edit-modal{background-color:rgba(15,23,42,.58)!important;}
+}
+</style>
+
+<style id="rail-settings-dividers-pressed-state-20261123">
+/* 1. 환경설정 분류 사이 가로선 및 목록 내부의 흰 구분선을 테마와 관계없이 제거 */
+html body #settings-section .settings-category,
+html body #settings-section .settings-category + .settings-category {
+  border-top:0!important;
+  border-bottom:0!important;
+  box-shadow:none!important;
+}
+html body #settings-section .settings-category::before,
+html body #settings-section .settings-category::after {
+  border:0!important;
+  box-shadow:none!important;
+  background:none!important;
+}
+html body #settings-section .settings-category .setting-grid > .set-tile {
+  border-bottom:0!important;
+}
+/* 2. 터치한 행/타일은 흰 직사각형 대신 원래 둥근 칸 안에만 회색 음영 */
+html body #settings-section .setting-grid > .set-tile:active,
+html body #settings-section .setting-grid > .set-tile:focus-visible,
+html body #settings-section #set-flat > .set-tile:active,
+html body #settings-section #set-flat > .set-tile:focus-visible,
+html body #main-section .menu-grid > .menu-btn:active,
+html body #main-section .menu-grid > .menu-btn:focus-visible {
+  background:rgba(55,61,70,.24)!important;
+  border-radius:inherit!important;
+  -webkit-tap-highlight-color:transparent!important;
+  box-shadow:inset 0 0 0 1px rgba(55,61,70,.12)!important;
+}
+/* 목록형에서 기존 border-radius:0 강제 규칙보다 우선하여 행 모양대로 표시 */
+html:not(.set-grid) body #settings-section .setting-grid > .set-tile:active,
+html:not(.set-grid) body #settings-section .setting-grid > .set-tile:focus-visible {
+  border-radius:12px!important;
+}
+/* 다른 화면의 목록/카드 버튼도 누른 동안만 은은한 회색 선택 표시 */
+html body #main-container :is(button.menu-btn, button.set-tile):active {
+  background:rgba(55,61,70,.24)!important;
+  border-radius:12px!important;
+}
+</style>
 </head>
 <body>
 <!-- 다크 모드 되돌림 필터: html의 invert(.92)+hue-rotate(180)를 정확히 거꾸로 (사진 · 열차 애니메이션 · 프로필 원래 색) -->
