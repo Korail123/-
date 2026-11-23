@@ -30956,6 +30956,35 @@ function wbgGlass() {
   }
   function onMain() { return wbgOn(); }   /* 모든 화면 (환경설정 › 애니메이션 효과에서 켜고 끔) */
   function active() { return onMain() && !document.hidden; }
+  /* 눈송이 배열을 재생성하지 않고 기울기에 따른 가속도만 연속 반영한다. */
+  var snowTiltTarget = 0, snowTiltX = 0, snowTiltEnabled = false;
+  function snowTiltOrientation(e) {
+    if (!snowTiltEnabled || typeof e.gamma !== 'number' || !isFinite(e.gamma)) return;
+    var angle = (screen.orientation && typeof screen.orientation.angle === 'number') ? screen.orientation.angle : (window.orientation || 0);
+    var side = (Math.abs(angle) === 90 && typeof e.beta === 'number') ? (angle === 90 ? -e.beta : e.beta) : e.gamma;
+    snowTiltTarget = Math.max(-1, Math.min(1, side / 35));
+  }
+  function snowTiltStart() {
+    if (snowTiltEnabled || !window.DeviceOrientationEvent) return;
+    snowTiltEnabled = true;
+    window.addEventListener('deviceorientation', snowTiltOrientation, { passive: true });
+  }
+  /* iOS 13+는 사용자의 직접 터치에서 센서 권한을 요청해야 한다. */
+  if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    var tiltButton = document.createElement('button');
+    tiltButton.type = 'button'; tiltButton.id = 'wbg-tilt-permission';
+    tiltButton.textContent = '눈 기울기 켜기';
+    tiltButton.setAttribute('aria-label', '휴대폰 기울기에 맞춰 눈 내림 활성화');
+    tiltButton.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top, 0px) + 8px);right:10px;z-index:9999;padding:7px 10px;border:1px solid rgba(255,255,255,.5);border-radius:18px;background:rgba(25,48,78,.7);color:white;font-size:12px;display:none;';
+    tiltButton.addEventListener('click', function () {
+      DeviceOrientationEvent.requestPermission().then(function (result) {
+        if (result === 'granted') { snowTiltStart(); tiltButton.style.display = 'none'; }
+        else { tiltButton.textContent = '기울기 권한 필요'; }
+      }).catch(function () { tiltButton.textContent = '기울기 사용 불가'; });
+    });
+    document.body.appendChild(tiltButton);
+    setInterval(function () { tiltButton.style.display = (!snowTiltEnabled && wbgOn()) ? 'block' : 'none'; }, 1200);
+  } else { snowTiltStart(); }
   function frame(now) {
     requestAnimationFrame(frame);
     var on = active(); document.documentElement.classList.toggle('wbg-on', onMain());
@@ -30972,7 +31001,8 @@ function wbgGlass() {
     }
     x.fillStyle = night ? 'rgba(235,240,255,.75)' : 'rgba(255,255,255,.92)'; x.shadowColor = night ? 'transparent' : 'rgba(90,70,50,.3)'; x.shadowBlur = night ? 0 : 3;
     var t = now / 1000, wind = night ? .9 : .05;
-    snow.forEach(function (f) { f.y += f.v * dt; f.x += (wind + Math.sin(t * 1.2 + f.p) * .25) * dt; if (f.y > H + 8) { f.y = -8; f.x = Math.random() * W; } if (f.x > W + 8) f.x = -8; if (f.x < -8) f.x = W + 8; x.beginPath(); x.arc(f.x, f.y, f.s, 0, 6.283); x.fill(); });
+    snowTiltX += (snowTiltTarget - snowTiltX) * Math.min(1, 0.065 * dt);
+    snow.forEach(function (f) { f.y += f.v * dt; f.x += (wind + snowTiltX * 2.8 + Math.sin(t * 1.2 + f.p) * .25) * dt; if (f.y > H + 8) { f.y = -8; f.x = Math.random() * W; } if (f.x > W + 8) f.x = -8; if (f.x < -8) f.x = W + 8; x.beginPath(); x.arc(f.x, f.y, f.s, 0, 6.283); x.fill(); });
     x.shadowBlur = 0;
   }
   window.addEventListener('resize', function () { baseKey = ''; });
