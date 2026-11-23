@@ -549,6 +549,53 @@ html.ui-dark body #schedule-section #calendar-grid.sch-grid > .cell.sel{
 #schedule-section.rs-data-pending #day-detail,
 #group-section.rs-data-pending #group-table-body { visibility:hidden!important; }
 </style>
+
+<style id="rs-final-layout-fix-20261123">
+/* Keep the existing auto-sized columns; center all content in each cell. */
+#crewboard-section table.cb-table{table-layout:auto!important;width:100%!important;border-collapse:collapse!important}
+#crewboard-section table.cb-table th,
+#crewboard-section table.cb-table td{
+  text-align:center!important;vertical-align:middle!important;
+  box-sizing:border-box!important;
+  padding-left:1px!important;padding-right:1px!important;
+  line-height:1.35!important;
+}
+#crewboard-section table.cb-table th > *,
+#crewboard-section table.cb-table td > *{vertical-align:middle}
+/* Override older late-loaded grey/white selection rules. */
+html body #schedule-section #calendar-grid.sch-grid > .cell.selected,
+html body #schedule-section #calendar-grid.sch-grid > .cell.sel,
+html body #schedule-section #calendar-grid.sch-grid > .cell.today.selected,
+html body #schedule-section #calendar-grid.sch-grid > .cell.today.sel{
+  background:#d6eaff!important;
+  box-shadow:inset 0 0 0 1.5px #3182f6!important;
+}
+html.ui-dark body #schedule-section #calendar-grid.sch-grid > .cell.selected,
+html.ui-dark body #schedule-section #calendar-grid.sch-grid > .cell.sel,
+html.ui-dark body #schedule-section #calendar-grid.sch-grid > .cell.today.selected,
+html.ui-dark body #schedule-section #calendar-grid.sch-grid > .cell.today.sel{
+  background:#173e68!important;
+  box-shadow:inset 0 0 0 1.5px #69aaff!important;
+}
+/* Bottom-align the duty time / train number blocks without breaking swipe. */
+#day-detail .dd-cover .row{
+  display:flex!important;flex-wrap:nowrap!important;
+  align-items:flex-end!important;
+  overflow-x:auto!important;overflow-y:hidden!important;
+  -webkit-overflow-scrolling:touch;
+}
+#day-detail .dd-cover .row > div{
+  align-self:flex-end!important;justify-content:flex-end!important;
+  flex:0 0 auto;
+}
+#day-detail .dd-cover .row .dd-cover-start{
+  font-size:calc((17px - 3pt) * 2 / 3)!important;
+  line-height:1.2!important;
+  margin-top:2px!important;
+  font-weight:600!important;
+  white-space:nowrap!important;
+}
+</style>
 </head>
 <body>
 <!-- 다크 모드 되돌림 필터: html의 invert(.92)+hue-rotate(180)를 정확히 거꾸로 (사진 · 열차 애니메이션 · 프로필 원래 색) -->
