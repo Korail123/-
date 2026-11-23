@@ -68,9 +68,14 @@ html.ui-zoomed body{zoom:var(--ui-zoom)}
 /* 글씨를 키워도 팝업이 화면 밖으로 나가지 않게 */
 html.ui-zoomed .dia-dialog{max-width:calc((100vw - 20px) / var(--ui-zoom))!important}
 
-/* 다이아 카드 구속시간 아래 설정 출근시간 표시 */
-.dd-cover .kd .dd-cover-start{display:block;margin-top:5px;font-size:inherit;font-weight:inherit;letter-spacing:inherit;white-space:nowrap;text-align:right}
-.dd-cover .kd{white-space:normal;text-align:right}
+/* 다이아 카드 상단 날짜·교환 상대의 글꼴을 동일하게 유지 */
+#day-detail .dd-cover .k{align-items:flex-start!important;gap:8px;letter-spacing:0!important}
+#day-detail .dd-cover .k .dd-top-meta{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0;font:inherit;letter-spacing:inherit}
+#day-detail .dd-cover .k .dd-swap-mark{display:inline-flex;align-items:center;gap:4px;font:inherit;letter-spacing:inherit;white-space:nowrap}
+#day-detail .dd-cover .k .dd-swap-icon{font:inherit}
+#day-detail .dd-cover .k .kd{margin-left:auto;flex-shrink:0}
+/* 설정 출근시간은 출근 시각 바로 아래, 출근 시각보다 3pt 작게 */
+#day-detail .dd-cover .row .dd-cover-start{display:block;height:auto;line-height:1.25;margin-top:2px;font-size:calc(17px - 3pt)!important;font-weight:600;white-space:nowrap;opacity:.88}
 </style>
 <style id="ui-dark-base">
 /* ===== 다크 모드 (색 반전 X · 다른 앱처럼 어두운 팔레트로 다시 칠함) =====
@@ -6925,9 +6930,9 @@ function renderDayDetail() {
     var ctone = /휴/.test(lbTxt) || (isStatus && !/가일|박/.test(lbTxt)) ? 'off'
       : (info.label === '야' || info.label === '비' || info.label === 'X' || /야간|비번|가일|박/.test(lbTxt) || info.nightCarryover) ? 'night' : 'day';
     var kindTxt = workType || ({ '주': '주간', '야': '야간', '비': '비번', '휴': '휴무' }[info.label] || (isStatus ? String(info.status || info.label) : info.label));
-    var cv = '<div class="dd-cover c-' + ctone + '"><div class="k">' + (selDate.m + 1) + '.' + selDate.d + ' ' + WD[wdi] + (isToday ? ' · TODAY' : '') + (info.swapPartnerName || info.swapPartnerId ? ' <span class="dd-swap-mark" aria-label="교환 상대"><span class="dd-swap-icon" aria-hidden="true">⇄</span>' + esc(String(info.swapPartnerName || info.swapPartnerId).trim()) + '</span>' : (info.manual ? ' · 변경' : '')) + (workDur || userStart ? '<span class="kd">' + (workDur ? '구속 ' + esc(workDur) : '') + (userStart ? '<span class="dd-cover-start">설정 출근시간 ' + esc(userStart.time) + '</span>' : '') + '</span>' : '') + '</div>' +
+    var cv = '<div class="dd-cover c-' + ctone + '"><div class="k"><span class="dd-top-meta">' + (selDate.m + 1) + '.' + selDate.d + ' ' + WD[wdi] + (info.swapPartnerName || info.swapPartnerId ? '<span class="dd-swap-mark" aria-label="교환 상대"><span class="dd-swap-icon" aria-hidden="true">⇄</span>' + esc(String(info.swapPartnerName || info.swapPartnerId).trim()) + '</span>' : (info.manual ? '<span>변경</span>' : '')) + '</span>' + (workDur ? '<span class="kd">구속 ' + esc(workDur) + '</span>' : '') + '</div>' +
       '<div class="big">' + ((!isStatus && diaNo) ? 'DIA ' + esc(diaNo) : esc(info.label)) + '<small>' + esc(kindTxt) + '</small></div>';
-    if (startTime || endTime || ddCoverTrains) cv += '<div class="row">' + (startTime ? '<div><small>출근' + (rsStartEstimated ? ' (예상)' : '') + '</small><b>' + esc(startTime) + '</b></div>' : '') +
+    if (startTime || endTime || ddCoverTrains) cv += '<div class="row">' + (startTime ? '<div><small>출근' + (rsStartEstimated ? ' (예상)' : '') + '</small><b>' + esc(startTime) + '</b>' + (userStart ? '<span class="dd-cover-start">(설정 ' + esc(userStart.time) + ')</span>' : '') + '</div>' : '') +
       (endTime ? '<div><small>퇴근' + (rsEndEstimated ? ' (예상)' : '') + '</small><b>' + esc(endTime) + '</b></div>' : '') +
       (ddCoverTrains ? '<div class="tr"><small>열차번호</small><span>' + ddCoverTrains + '</span></div>' : '') +
       '</div>';
@@ -22969,7 +22974,7 @@ html.ui-dark #crewboard-section .cb-find input{color:#e9edf2!important}
 #crewboard-section .cb-table th+th,#crewboard-section .cb-table td+td{border-left:1px solid #eef0f3}
 #crewboard-section .cb-table td.cb-d{font-weight:800}
 #crewboard-section .cb-table td.cb-n{font-weight:600}
-#crewboard-section .cb-table tr.me td{background:#e3efff}
+#crewboard-section .cb-table tbody tr.me > td{background:#cfe4ff!important;color:#142e52!important}
 #crewboard-section .cb-empty{background:#fff;border:1px dashed #d1d6db;border-radius:16px;padding:26px 14px;text-align:center;color:#6b7684;font-size:14px;line-height:1.7}
 #crewboard-section .cb-empty button{margin-top:10px;border:0;background:#3182f6;color:#fff;font-weight:700;border-radius:10px;padding:9px 16px;font-size:14px;cursor:pointer}
 #crewboard-section .cb-skel{height:300px;border-radius:12px;background:linear-gradient(90deg,#f2f4f6 25%,#e9edf1 50%,#f2f4f6 75%);background-size:200% 100%;animation:cbsk 1.2s infinite}
@@ -22984,7 +22989,7 @@ html.ui-dark #crewboard-section .sch-nav{background:none!important;color:#8cb8ff
 html.ui-dark .np-btns .np-sub{background:#2a3038!important;color:#e9edf2!important}
 html.ui-dark .np-btns .np-main{background:#3182f6!important;color:#fff!important}
 .dd-row.crew-inline .crew-sub{font-size:.8em;color:#8a96a8;font-weight:500}
-html.ui-dark #crewboard-section .cb-table tr.me td{background:#1d3357!important}
+html.ui-dark #crewboard-section .cb-table tbody tr.me > td{background:#1d3357!important}
 </style>
 
 <script>
@@ -23089,7 +23094,17 @@ function cbRender() {
   }
   var me = cbMyName(), myDia = cbMyDia(dk);
   /* 내 이름이 들어 있는 다이아 줄만 연한 파란색으로 */
-  function nameHit(r) { return !!me && cbNames(r).concat(r.crew || []).some(function (n) { return n && crewIsMe(n, me); }); }
+  function nameHit(r) {
+    /* XROIS는 첫 글자를 *로 가림. 공백·표기 차이를 정규화하고 이름 전체 길이/나머지 글자로만 비교 */
+    var full = String(me || '').replace(/\s+/g, '').trim();
+    if (!full || full === 'guest') return false;
+    return cbNames(r).concat(r.crew || []).some(function (n) {
+      var masked = String(n || '').replace(/\s+/g, '').trim();
+      if (!masked) return false;
+      if (masked === full) return true;
+      return masked.length === full.length && /^[*＊]/.test(masked) && masked.slice(1) === full.slice(1);
+    });
+  }
 
   /* XROIS 표 순서 그대로 */
   var body = (c.rows || []).map(function (r) {
