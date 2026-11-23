@@ -67,6 +67,10 @@ html.ui-zoomed body{zoom:var(--ui-zoom)}
 /* 다크 모드는 아래 ui-dark-base / ui-dark-engine 에서 (색 반전 대신 어두운 팔레트로 다시 칠함) */
 /* 글씨를 키워도 팝업이 화면 밖으로 나가지 않게 */
 html.ui-zoomed .dia-dialog{max-width:calc((100vw - 20px) / var(--ui-zoom))!important}
+
+/* 다이아 카드 구속시간 아래 설정 출근시간 표시 */
+.dd-cover .kd .dd-cover-start{display:block;margin-top:5px;font-size:11px;font-weight:700;letter-spacing:0;white-space:nowrap;text-align:right}
+.dd-cover .kd{white-space:normal;text-align:right}
 </style>
 <style id="ui-dark-base">
 /* ===== 다크 모드 (색 반전 X · 다른 앱처럼 어두운 팔레트로 다시 칠함) =====
@@ -6840,15 +6844,8 @@ function renderDayDetail() {
   html += '<div class="dd-main dd-dup"><span class="dd-dia' + cls + '"><img class="dd-main-ico" src="' + appIcon((!isStatus && diaNo) ? '다이아정보' : '근무구분') + '" alt="" aria-hidden="true">' + main + (info.manual ? ' *' : '') +
           ((diaNo && creditDetail) ? '<small class="dd-dia-credit-inline">' + esc(creditDetail) + '</small>' : '') +
           '</span><span class="dd-tag">[ ' + tag + ' ]</span></div>';
-  if (info.swapPartnerName || info.swapPartnerId) {
-    var partnerLabel = String(info.swapPartnerName || info.swapPartnerId).trim();
-    if (partnerLabel) {
-      html += '<div class="dd-swap"><i class="swap-ico swap-ico-lg"></i><div><b>' + esc(partnerLabel) + '님과 근무 교환</b><small>이 날은 교환으로 바뀐 근무입니다</small></div></div>';
-    }
-  }
   /* 출근 알람(출근 OO전)을 켜 두면 오늘 이후 근무일에 '설정 출근시간' = 출근 시간 − 설정 시간 */
   var userStart = userStartTimeText(dateKeyForSelectedDay(), startTime, isStatus, info, workType);
-  if (userStart) html += '<div class="dd-row dd-icon-row dd-user-start"><img class="detail-art" src="' + appIcon('사용자출근시간') + '" alt="" aria-hidden="true" decoding="async"><span>설정 출근시간 : <b>' + esc(userStart.time) + '</b> <small>(' + esc(userStart.note) + ')</small></span></div>';
   if (startTime) html += '<div class="dd-row dd-icon-row dd-dup"><img class="detail-art" src="' + appIcon('출근시간') + '" alt="" aria-hidden="true" decoding="async" loading="lazy"><span>출근 시간 : ' + esc(startTime) + (rsStartEstimated ? ' (예상)' : '') + '</span></div>';
   if (endTime) html += '<div class="dd-row dd-icon-row dd-dup"><img class="detail-art" src="' + appIcon('퇴근시간') + '" alt="" aria-hidden="true" decoding="async" loading="lazy"><span>퇴근 시간 : ' + esc(endTime) + (rsEndEstimated ? ' (예상)' : '') + '</span></div>';
   var workDur = (startTime && endTime) ? workDurationText(startTime, endTime) : '';
@@ -6921,14 +6918,14 @@ function renderDayDetail() {
   }
   /* 매거진 커버: 날짜 · DIA · 근무구분 · 출근 · 퇴근 · 구속 · 열차번호(누르면 조회) */
   try {
-    var WD = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'], wdi = new Date(selDate.y, selDate.m, selDate.d).getDay();
+    var WD = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'], wdi = new Date(selDate.y, selDate.m, selDate.d).getDay();
     var tday = todayKST(), isToday = tday.y === selDate.y && tday.m === selDate.m && tday.d === selDate.d;
     /* 카드 색: 주간·일근 = day(노랑) · 야간·비번·가일·박·X = night(파랑) · 휴가·휴무 = off(빨강) */
     var lbTxt = String(info.label || '') + ' ' + String(workType || '') + ' ' + String(info.status || '');
     var ctone = /휴/.test(lbTxt) || (isStatus && !/가일|박/.test(lbTxt)) ? 'off'
       : (info.label === '야' || info.label === '비' || info.label === 'X' || /야간|비번|가일|박/.test(lbTxt) || info.nightCarryover) ? 'night' : 'day';
     var kindTxt = workType || ({ '주': '주간', '야': '야간', '비': '비번', '휴': '휴무' }[info.label] || (isStatus ? String(info.status || info.label) : info.label));
-    var cv = '<div class="dd-cover c-' + ctone + '"><div class="k">' + (selDate.m + 1) + '.' + selDate.d + ' ' + WD[wdi] + (isToday ? ' · TODAY' : '') + (info.manual ? ' · 변경' : '') + (workDur ? '<span class="kd">구속 ' + esc(workDur) + '</span>' : '') + '</div>' +
+    var cv = '<div class="dd-cover c-' + ctone + '"><div class="k">' + (selDate.m + 1) + '.' + selDate.d + ' ' + WD[wdi] + (isToday ? ' · TODAY' : '') + (info.swapPartnerName || info.swapPartnerId ? ' · ' + esc(String(info.swapPartnerName || info.swapPartnerId).trim()) + '님과 교환' : (info.manual ? ' · 변경' : '')) + (workDur || userStart ? '<span class="kd">' + (workDur ? '구속 ' + esc(workDur) : '') + (userStart ? '<span class="dd-cover-start">설정 출근시간 ' + esc(userStart.time) + '</span>' : '') + '</span>' : '') + '</div>' +
       '<div class="big">' + ((!isStatus && diaNo) ? 'DIA ' + esc(diaNo) : esc(info.label)) + '<small>' + esc(kindTxt) + '</small></div>';
     if (startTime || endTime || ddCoverTrains) cv += '<div class="row">' + (startTime ? '<div><small>출근' + (rsStartEstimated ? ' (예상)' : '') + '</small><b>' + esc(startTime) + '</b></div>' : '') +
       (endTime ? '<div><small>퇴근' + (rsEndEstimated ? ' (예상)' : '') + '</small><b>' + esc(endTime) + '</b></div>' : '') +
@@ -6936,7 +6933,7 @@ function renderDayDetail() {
       '</div>';
     else if (ctone === 'off') cv += '<div class="ln">쉬는 날이에요. 푹 쉬세요</div>';
     /* 승무원: 카드 아래 흰 띠 (10번) · 누르면 열차별 승무원 상세 펼치기 */
-    if (ddCrewR) cv += '<button type="button" class="cv-strip" onclick="ddCrewToggle(this)"><small>승무원</small><b>' + (ddCrewR.none ? '<em>정보 없음</em>' : ddCrewR.level === 1 || ddCrewR.level === 2 ? ddCrewR.mates.map(esc).join(' · ') : '<em>' + (ddCrewR.found ? '단독 승무' : '정보 없음') + '</em>') + '</b><s>›</s></button>';
+    if (ddCrewR) cv += '<button type="button" class="cv-strip" onclick="ddCrewToggle(this)"><small>승무원</small><b>' + (ddCrewR.none ? '<em>정보 없음</em>' : ddCrewR.level === 1 || ddCrewR.level === 2 ? ddCrewR.mates.map(esc).join(' · ') : '<em>' + (ddCrewR.found ? '단독 승무' : '정보 없음') + '</em>') + '</b></button>';
     cv += '</div>';
     html = html.slice(0, ddHeadLen) + cv + html.slice(ddHeadLen);
   } catch (e) {}
@@ -22972,6 +22969,9 @@ html.ui-dark #crewboard-section .cb-find input{color:#e9edf2!important}
 #crewboard-section .cb-table th+th,#crewboard-section .cb-table td+td{border-left:1px solid #eef0f3}
 #crewboard-section .cb-table td.cb-d{font-weight:800}
 #crewboard-section .cb-table td.cb-n{font-weight:600}
+/* 승무근무표: 날짜별 승무원 이름 칸에 파란 세로 표시 (열차/시각 칸은 유지) */
+#crewboard-section .cb-table td.cb-n:not(:empty){box-shadow:inset 3px 0 0 #3182f6;padding-left:5px!important}
+html.ui-dark #crewboard-section .cb-table td.cb-n:not(:empty){box-shadow:inset 3px 0 0 #83b5ff}
 #crewboard-section .cb-table tr.me td{background:#e3efff}
 #crewboard-section .cb-empty{background:#fff;border:1px dashed #d1d6db;border-radius:16px;padding:26px 14px;text-align:center;color:#6b7684;font-size:14px;line-height:1.7}
 #crewboard-section .cb-empty button{margin-top:10px;border:0;background:#3182f6;color:#fff;font-weight:700;border-radius:10px;padding:9px 16px;font-size:14px;cursor:pointer}
@@ -26389,6 +26389,38 @@ html.ui-dark #day-detail .dd-route,html.ui-dark #day-detail .dd-row:not(.dd-dup)
 #day-detail .dd-cover.c-off .row a.dd-chip{background:rgba(255,255,255,.85)!important;box-shadow:inset 3px 0 0 #3c82d8!important;color:#173257!important}
 #day-detail .dd-cover.c-off .row a.dd-chip::after{border-color:#3c82d8}
 </style>
+<style id="dd-row-horizontal-scroll">
+/* 다이아 카드 출근·퇴근·열차번호: 좁은 화면에서도 전체 내용을 가로 스와이프로 확인 */
+#day-detail .dd-cover .row{
+  display:flex!important;
+  flex-wrap:nowrap!important;
+  gap:16px!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  max-width:100%;
+  min-width:0;
+  padding:0 2px 8px 0;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-x:contain;
+  touch-action:pan-x pan-y;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(42,91,154,.35) transparent;
+}
+#day-detail .dd-cover .row > div{
+  flex:0 0 auto!important;
+  min-width:max-content!important;
+}
+#day-detail .dd-cover .row .tr,
+#day-detail .dd-cover .row .tr span{
+  width:max-content!important;
+  max-width:none!important;
+  overflow:visible!important;
+}
+#day-detail .dd-cover .row a.dd-chip{flex:0 0 auto!important;white-space:nowrap!important}
+#day-detail .dd-cover .row::-webkit-scrollbar{height:3px}
+#day-detail .dd-cover .row::-webkit-scrollbar-thumb{background:rgba(42,91,154,.35);border-radius:4px}
+</style>
+
 <style id="cal2-ui">
 /* ===== 근무표 달력 · 후보 1번 느낌: 칸 작게 · 줄 없음 · 숫자 위 가운데 · 오늘은 하늘색 상자 ===== */
 html body #schedule-section #calendar-grid.sch-grid{gap:2px 0!important;background:transparent!important;border:0!important}
@@ -26475,8 +26507,12 @@ html body #group-section .group-table tbody tr.me td.name-col{color:#3c82d8!impo
 html body #group-section .group-table tbody tr.me td:last-child{border-radius:0 10px 10px 0}
 html body #group-section .group-table td.name-col{font-weight:800!important;color:#173257!important;text-align:left!important;padding-left:8px!important}
 html body #group-section .group-table tfoot td{border-top:1px dashed #e3ecf7!important;font-size:10px!important;color:#6c86a8!important}
+/* 선택한 날짜의 세로 파란 줄을 휴가·휴무·X 인원 합계(tfoot)까지 연결 */
+html body #group-section .group-table th.g-sel,html body #group-section .group-table td.g-sel{box-shadow:inset 2px 0 0 #3182f6,inset -2px 0 0 #3182f6!important}
+html body #group-section .group-table tfoot td.g-sel{box-shadow:inset 2px 0 0 #3182f6,inset -2px 0 0 #3182f6,inset 0 -2px 0 #3182f6!important;border-radius:0 0 8px 8px}
+html.ui-dark body #group-section .group-table th.g-sel,html.ui-dark body #group-section .group-table td.g-sel{box-shadow:inset 2px 0 0 #83b5ff,inset -2px 0 0 #83b5ff!important}
 html body #group-section #group-summary.current-dia-card{background:#fff!important;border:0!important;border-radius:18px!important;box-shadow:0 6px 16px rgba(50,110,180,.1)!important}
-html body #group-section .group-table .g-sel,html body #group-section .group-table .g-sel-t,html body #group-section .group-table .g-sel-b,html body #group-section .group-table td.g-sel,html body #group-section .group-table th.g-sel{outline:0!important;box-shadow:none!important;border-left:0!important;border-right:0!important;border-top:0!important}
+html body #group-section .group-table .g-sel,html body #group-section .group-table .g-sel-t,html body #group-section .group-table .g-sel-b,html body #group-section .group-table td.g-sel,html body #group-section .group-table th.g-sel{outline:0!important;border-left:0!important;border-right:0!important;border-top:0!important}
 html body #group-section .group-table td.g-sel{background:#f5f9ff!important}
 html body #group-section .group-table tr.me td.g-sel{background:#e6f0ff!important}
 html body #group-section .group-table::after,html body #group-section #group-table-card::after,html body #group-section .g-sel-frame{display:none!important}
@@ -30430,5 +30466,12 @@ document.addEventListener('visibilitychange', function () { if (!document.hidden
 setTimeout(function () { try { nmRender(); } catch (e) {} }, 2500);
 </script>
 
+<style id="rs-blue-column-lines">
+/* 근무그룹: 선택 날짜 세로선은 헤더부터 휴가·휴무·X 합계까지 */
+html body #group-section .group-table th.g-sel,html body #group-section .group-table td.g-sel{box-shadow:inset 2px 0 0 #3182f6,inset -2px 0 0 #3182f6!important}
+html body #group-section .group-table tfoot td.g-sel{box-shadow:inset 2px 0 0 #3182f6,inset -2px 0 0 #3182f6,inset 0 -2px 0 #3182f6!important}
+html.ui-dark body #group-section .group-table th.g-sel,html.ui-dark body #group-section .group-table td.g-sel{box-shadow:inset 2px 0 0 #83b5ff,inset -2px 0 0 #83b5ff!important}
+html.ui-dark body #group-section .group-table tfoot td.g-sel{box-shadow:inset 2px 0 0 #83b5ff,inset -2px 0 0 #83b5ff,inset 0 -2px 0 #83b5ff!important}
+</style>
 </body>
 </html>
