@@ -596,6 +596,125 @@ html.ui-dark body #schedule-section #calendar-grid.sch-grid > .cell.today.sel{
   white-space:nowrap!important;
 }
 </style>
+<style id="dd-duty-three-column-alignment-final">
+/* 출근/퇴근/열차번호는 동일한 제목 행(14px), 값 행(24px)에 배치.
+   설정 출근시간은 출근 값 바로 아래의 세 번째 행에만 배치한다. */
+#day-detail .dd-cover .row{
+  display:flex!important;
+  align-items:flex-start!important;
+  flex-wrap:nowrap!important;
+  gap:16px!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  padding-bottom:8px!important;
+  -webkit-overflow-scrolling:touch;
+}
+#day-detail .dd-cover .row > div{
+  display:grid!important;
+  grid-template-rows:14px 24px auto!important;
+  align-content:start!important;
+  align-items:start!important;
+  justify-content:start!important;
+  align-self:flex-start!important;
+  row-gap:3px!important;
+  flex:0 0 auto!important;
+  min-width:max-content!important;
+}
+#day-detail .dd-cover .row > div > small{
+  grid-row:1!important;
+  margin:0!important;
+  height:14px!important;
+  line-height:14px!important;
+}
+#day-detail .dd-cover .row > div > b,
+#day-detail .dd-cover .row > .tr > span{
+  grid-row:2!important;
+  margin:0!important;
+  height:24px!important;
+  min-height:24px!important;
+  line-height:24px!important;
+  align-self:start!important;
+}
+#day-detail .dd-cover .row .dd-cover-start{
+  grid-row:3!important;
+  display:block!important;
+  margin:0!important;
+  height:auto!important;
+  line-height:1.2!important;
+  font-size:calc((17px - 3pt) * 2 / 3)!important;
+  white-space:nowrap!important;
+}
+#day-detail .dd-cover .row .tr span{display:flex!important;align-items:center!important;flex-wrap:nowrap!important}
+</style>
+
+<style id="rail-final-request-consolidation-20261123">
+/* 달력: 뒤쪽 CSS에서 회색으로 덮어쓰던 규칙보다 우선 적용 */
+html body #schedule-section #calendar-grid.sch-grid > .cell.selected,
+html body #schedule-section #calendar-grid.sch-grid > .cell.sel,
+html body #schedule-section #calendar-grid.sch-grid > .cell.today.selected,
+html body #schedule-section #calendar-grid.sch-grid > .cell.today.sel {
+  background:#d6eaff!important;
+  box-shadow:inset 0 0 0 2px #3182f6!important;
+}
+html.ui-dark body #schedule-section #calendar-grid.sch-grid > .cell.selected,
+html.ui-dark body #schedule-section #calendar-grid.sch-grid > .cell.sel,
+html.ui-dark body #schedule-section #calendar-grid.sch-grid > .cell.today.selected,
+html.ui-dark body #schedule-section #calendar-grid.sch-grid > .cell.today.sel {
+  background:#173b68!important;
+  box-shadow:inset 0 0 0 2px #69aaff!important;
+}
+/* 승무근무표: 현행 열 너비는 그대로, 칸 안의 내용만 가운데 정렬 */
+#crewboard-section table.cb-table th,
+#crewboard-section table.cb-table td {
+  text-align:center!important;
+  vertical-align:middle!important;
+}
+#crewboard-section table.cb-table th *,
+#crewboard-section table.cb-table td * { text-align:center!important; }
+/* 다이아: 제목/값은 같은 수평선, 설정 출근시간은 그 바로 아래 3번째 줄 */
+#day-detail .dd-cover .row {
+  display:flex!important;
+  align-items:flex-start!important;
+  flex-wrap:nowrap!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  -webkit-overflow-scrolling:touch;
+}
+#day-detail .dd-cover .row > div {
+  display:grid!important;
+  grid-template-rows:16px 26px minmax(12px,auto)!important;
+  row-gap:2px!important;
+  align-items:start!important;
+  align-content:start!important;
+  align-self:stretch!important;
+  flex:0 0 auto!important;
+  min-width:max-content!important;
+}
+#day-detail .dd-cover .row > div > small {
+  grid-row:1!important;
+  height:16px!important;
+  line-height:16px!important;
+  margin:0!important;
+  align-self:start!important;
+}
+#day-detail .dd-cover .row > div > b,
+#day-detail .dd-cover .row > div.tr > span {
+  grid-row:2!important;
+  height:26px!important;
+  min-height:26px!important;
+  line-height:26px!important;
+  margin:0!important;
+  align-self:start!important;
+}
+#day-detail .dd-cover .row > div .dd-cover-start {
+  grid-row:3!important;
+  height:auto!important;
+  line-height:1.2!important;
+  margin:0!important;
+  font-size:calc((17px - 3pt) * 2 / 3)!important;
+  white-space:nowrap!important;
+}
+</style>
 </head>
 <body>
 <!-- 다크 모드 되돌림 필터: html의 invert(.92)+hue-rotate(180)를 정확히 거꾸로 (사진 · 열차 애니메이션 · 프로필 원래 색) -->
@@ -30404,6 +30523,18 @@ function wbgGlass() {
   function geo() { var cx = W / 2, top = H * 0.24, bot = H * 0.9, hw = Math.min(W * 0.46, (bot - top) * 0.4); return { cx: cx, top: top, bot: bot, hw: hw }; }
   function inTree(r, g) { var t = Math.sqrt(r()), y = g.top + (g.bot - g.top) * t, w = g.hw * 0.06 + t * g.hw; return { x: g.cx + (r() * 2 - 1) * w, y: y + (r() - 0.5) * 6, t: t }; }
   var SPR = {};
+  /* iOS Safari에서 Canvas filter가 지원되지 않는 경우 shadowBlur로 대체한다. */
+  function soft(q, px) {
+    q.shadowBlur = 0; q.shadowColor = 'transparent';
+    if ('filter' in q) { q.filter = px ? 'blur(' + px + 'px)' : 'none'; return; }
+    /* 필터 미지원 환경: 선과 도형에 부드러운 외곽 그림자를 적용 */
+    q.shadowBlur = px ? px * 1.5 : 0;
+  }
+  function softFill(q, color) {
+    q.fillStyle = color;
+    if (!('filter' in q)) q.shadowColor = color;
+  }
+
   function sprite(col, r) {
     var k = col + r; if (SPR[k]) return SPR[k];
     var c = document.createElement('canvas'), s = Math.ceil(r * 2 + 4); c.width = c.height = s * DPR; var q = c.getContext('2d'); q.scale(DPR, DPR); var m = s / 2;
@@ -30414,20 +30545,20 @@ function wbgGlass() {
     var c = document.createElement('canvas'); c.width = W * DPR; c.height = H * DPR; var q = c.getContext('2d'); q.scale(DPR, DPR);
     var g = geo(), r = R(11), n = night;
     var bg = q.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, n ? '#3a2f28' : '#d9d0c1'); bg.addColorStop(1, n ? '#22191a' : '#c9bda9'); q.fillStyle = bg; q.fillRect(0, 0, W, H);
-    if ('filter' in q) q.filter = 'blur(14px)'; q.fillStyle = n ? '#4a3226' : '#b98f69'; q.fillRect(-30, H * 0.9, W + 60, H * 0.2);
+    soft(q, 14); softFill(q, n ? '#4a3226' : '#b98f69'); q.fillRect(-30, H * 0.9, W + 60, H * 0.2);
     q.fillStyle = n ? 'rgba(255,190,120,.10)' : 'rgba(255,255,255,.22)'; q.beginPath(); q.ellipse(W * 0.18, H * 0.25, W * 0.4, H * 0.3, 0, 0, 6.283); q.fill();
     var gr = n ? ['#163f2a', '#1d5236', '#0f2d1f'] : ['#2f6b48', '#3d7d55', '#255a3c', '#4c8a60'];
-    if ('filter' in q) q.filter = 'blur(' + Math.round(W / 24) + 'px)'; q.fillStyle = gr[0]; q.beginPath(); q.moveTo(g.cx, g.top - 12);
+    soft(q, Math.round(W / 24)); softFill(q, gr[0]); q.beginPath(); q.moveTo(g.cx, g.top - 12);
     var steps = [[.3, .4], [.32, .3], [.58, .64], [.6, .52], [.82, .84], [.84, .74], [1, 1]];
     steps.forEach(function (s) { q.lineTo(g.cx + g.hw * s[1], g.top + (g.bot - g.top) * s[0]); });
     steps.slice(0, 6).reverse().forEach(function (s) { q.lineTo(g.cx - g.hw * s[1], g.top + (g.bot - g.top) * s[0]); });
     q.lineTo(g.cx - g.hw, g.bot); q.closePath(); q.fill();
     q.fillStyle = n ? '#2a1d16' : '#6b4a33'; q.fillRect(g.cx - g.hw * 0.08, g.bot - 2, g.hw * 0.16, H * 0.06);
-    if ('filter' in q) q.filter = 'blur(' + Math.round(W / 60) + 'px)';
-    for (var i = 0; i < 180; i++) { var p = inTree(r, g); q.fillStyle = gr[i % gr.length]; q.globalAlpha = .55; q.beginPath(); q.arc(p.x, p.y, (4 + p.t * 7) * W / 220, 0, 6.283); q.fill(); }
+    soft(q, Math.round(W / 60));
+    for (var i = 0; i < 180; i++) { var p = inTree(r, g); softFill(q, gr[i % gr.length]); q.globalAlpha = .55; q.beginPath(); q.arc(p.x, p.y, (4 + p.t * 7) * W / 220, 0, 6.283); q.fill(); }
     q.globalAlpha = 1;
-    if (!n) { if ('filter' in q) q.filter = 'blur(3px)'; var r2 = R(300); for (var j = 0; j < 26; j++) { var p2 = inTree(r2, g); q.fillStyle = hex(COLS[j % COLS.length], .3); q.beginPath(); q.arc(p2.x, p2.y, (4 + r2() * 3) * W / 220, 0, 6.283); q.fill(); } }   /* 낮: 꺼진 전구 */
-    if ('filter' in q) q.filter = 'none'; base = c;
+    if (!n) { soft(q, 3); var r2 = R(300); for (var j = 0; j < 26; j++) { var p2 = inTree(r2, g); q.fillStyle = hex(COLS[j % COLS.length], .3); q.beginPath(); q.arc(p2.x, p2.y, (4 + r2() * 3) * W / 220, 0, 6.283); q.fill(); } }   /* 낮: 꺼진 전구 */
+    soft(q, 0); base = c;
     /* 불빛 · 눈 */
     var r3 = R(501), k = W / 220; lights = [];
     if (n) for (var a = 0; a < 120; a++) { var p3 = inTree(r3, g); lights.push({ x: p3.x, y: p3.y, r: (7 + r3() * 6) * k, c: COLS[a % COLS.length], on: r3() > .4, a: 0 }); }
@@ -30435,7 +30566,11 @@ function wbgGlass() {
     for (var b = 0; b < so.n; b++) snow.push({ x: r3() * W, y: r3() * H, s: (so.s[0] + r3() * (so.s[1] - so.s[0])) * Math.max(1, k * .8), v: (so.v[0] + r3() * (so.v[1] - so.v[0])) * k, p: r3() * 6.28 });
   }
   function size() {
-    var w = window.innerWidth, h = window.innerHeight, d = Math.min(2, window.devicePixelRatio || 1);
+    /* iOS Safari/PWA와 Android Chrome 모두 실제 표시 영역을 기준으로 캔버스 크기 계산 */
+    var viewport = window.visualViewport;
+    var w = Math.max(1, Math.round(viewport ? viewport.width : document.documentElement.clientWidth || window.innerWidth));
+    var h = Math.max(1, Math.round(viewport ? viewport.height : document.documentElement.clientHeight || window.innerHeight));
+    var d = Math.min(2, window.devicePixelRatio || 1);
     night = isNight();
     var key = w + 'x' + h + '@' + d + (night ? 'n' : 'd');
     if (key === baseKey) return; baseKey = key; W = w; H = h; DPR = d; SPR = {};
