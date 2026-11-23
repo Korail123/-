@@ -15876,7 +15876,7 @@ var NK_NAMES = { nx: '운휴 알림', pass: '통과/도착 알림', alarm: '출�
 function nkGet(kind) {
   var p = getNotiPrefs(), k = (p.kinds && p.kinds[kind]) || {}, r = (p.retry && p.retry[kind]) || {};
   function b(v, dflt) { return typeof v === 'boolean' ? v : dflt; }
-  return { popup: b(k.popup, p.popup), sound: b(k.sound, p.sound), vib: b(k.vib, p.vib),
+  return { popup: b(k.popup, true), sound: b(k.sound, true), vib: b(k.vib, true),
            n: r.n >= 0 && r.n <= 5 ? +r.n : 3, every: [1, 2, 3, 5, 10].indexOf(+r.every) >= 0 ? +r.every : 2 };
 }
 function nkSet(kind, key, val) {
@@ -25613,14 +25613,19 @@ function rsBgStatusHtml() {
 }
 var rsBg = { nxAt: 0, snapAt: 0, done: {} };
 /* 알림 설정(소리 · 진동 · 무음에서도 울리기)에 맞춘 알람 방식 */
-function rsAlertMode() {
+function rsAlertMode(kind) {
   var np = getNotiPrefs();
+  var choice = nkGet(kind || 'alarm');
+  np = Object.assign({}, np, choice);
   if (np.sound && np.vol > 0) return np.loud !== false ? 'alarm' : 'sound';
   return np.vib ? 'vib' : 'quiet';
 }
 /* 앱 꺼짐 알림: 안드로이드 알람처럼 [끄기]를 누를 때까지 소리 · 진동 반복 (최대 30초) */
 function rsBgNotify(tag, title, body, info) {
-  rsAppCall('notify', { tag: tag, title: title, body: body, mode: rsAlertMode(), insist: true, timeout: 30000, vol: getNotiPrefs().vol, info: info || null });
+  var kind = /^nx-|^bgtest-nx/.test(tag) ? 'nx' : /^p|^bgtest-pass/.test(tag) ? 'pass' : 'alarm';
+  var pref = nkGet(kind);
+  if (!pref.popup) return;
+  rsAppCall('notify', { tag: tag, title: title, body: body, mode: rsAlertMode(kind), insist: true, timeout: 30000, vol: pref.sound ? getNotiPrefs().vol : 0, info: info || null });
 }
 /* 앱 전체화면 알림에 넣을 그날 근무 요약 { start:'08:40', type:'주간', dia, trains:'3224 · 1671', startMs } */
 function rsDayBrief(key) {
@@ -25679,7 +25684,7 @@ function rsBgPass(c, trains) {
           var allPassed = true, live = passIsLive(c, it.train);
           if (live) {
             var lv = passLiveCheck(it, route);
-            if (lv) rsAppCall('notify', { tag: 'plive-' + it.date + '-' + it.train, title: lv.title, body: lv.body, mode: rsAlertMode(), insist: false, timeout: 10000, vol: getNotiPrefs().vol });
+            if (lv && nkGet('pass').popup) rsAppCall('notify', { tag: 'plive-' + it.date + '-' + it.train, title: lv.title, body: lv.body, mode: rsAlertMode('pass'), insist: false, timeout: 10000, vol: nkGet('pass').sound ? getNotiPrefs().vol : 0 });
             if (!lv || !lv.last) allPassed = false;
           }
           (c.stations || []).forEach(function (station) {
@@ -30146,9 +30151,42 @@ function wbgGlass() {
 (function () {
   var cv = document.getElementById('wbg'); if (!cv) return;
   document.body.insertBefore(cv, document.body.firstChild);
-  var x = cv.getContext('2d'), W = 0, H = 0, DPR = 1, base = null, baseKey = '', night = false, lights = [], snow = [], last = 0, lastBlink = 0;
+  var x = cv.getContext('2d'); if (!x) return; var W = 0, H = 0, DPR = 1, base = null, baseKey = '', night = false, lights = [], snow = [], last = 0, lastBlink = 0;
   function R(s) { return function () { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
-  function isNight() { var d = new Date(Date.now() + (new Date().getTimezoneOffset() + 540) * 60000), h = d.getHours(); return h >= 17 || h < 6; }   /* 저녁 · 밤 · 새벽 (한국 시간) */
+  /* 서울 기준(위도 37.5665, 경도 126.9780) 일출·일몰을 날짜별로 계산한다. 외부 API/위치 권한 불필요. */
+  var solarCache = { key: '', sunrise: 6, sunset: 18 };
+  function kstParts(now) {
+    var d = new Date(now + 9 * 3600000);
+    return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, day: d.getUTCDate(),
+      minutes: d.getUTCHours() * 60 + d.getUTCMinutes() + d.getUTCSeconds() / 60 };
+  }
+  function solarHourUTC(y, m, day, rise) {
+    /* NOAA 일출·일몰 근사 공식: 태양 중심 고도 -0.833도(대기 굴절 포함). */
+    var rad = Math.PI / 180, lat = 37.5665, lon = 126.9780;
+    var n = Math.floor((Date.UTC(y, m - 1, day) - Date.UTC(y, 0, 1)) / 86400000) + 1;
+    var lngHour = lon / 15, t = n + ((rise ? 6 : 18) - lngHour) / 24;
+    var M = (0.9856 * t) - 3.289;
+    var L = (M + 1.916 * Math.sin(M * rad) + 0.020 * Math.sin(2 * M * rad) + 282.634) % 360;
+    if (L < 0) L += 360;
+    var RA = (Math.atan(0.91764 * Math.tan(L * rad)) / rad + 360) % 360;
+    RA += Math.floor(L / 90) * 90 - Math.floor(RA / 90) * 90;
+    RA /= 15;
+    var sinDec = 0.39782 * Math.sin(L * rad);
+    var cosDec = Math.cos(Math.asin(sinDec));
+    var cosH = (Math.cos(90.833 * rad) - sinDec * Math.sin(lat * rad)) / (cosDec * Math.cos(lat * rad));
+    if (cosH < -1 || cosH > 1) return null;
+    var H = ((rise ? 360 - Math.acos(cosH) / rad : Math.acos(cosH) / rad) / 15);
+    return (H + RA - 0.06571 * t - 6.622 - lngHour + 24) % 24;
+  }
+  function isNight() {
+    var p = kstParts(Date.now()), key = p.y + '-' + p.m + '-' + p.day;
+    if (solarCache.key !== key) {
+      var sr = solarHourUTC(p.y, p.m, p.day, true), ss = solarHourUTC(p.y, p.m, p.day, false);
+      solarCache = { key: key, sunrise: sr == null ? 360 : ((sr + 9) % 24) * 60,
+        sunset: ss == null ? 1080 : ((ss + 9) % 24) * 60 };
+    }
+    return p.minutes < solarCache.sunrise || p.minutes >= solarCache.sunset;
+  }
   function hex(h, a) { var n = parseInt(h.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; }
   var COLS = ['#ff5a5a', '#ffd23f', '#4be08a', '#4dabff', '#ff9a3c', '#ff7ac6', '#fff1c1'];
   function geo() { var cx = W / 2, top = H * 0.24, bot = H * 0.9, hw = Math.min(W * 0.46, (bot - top) * 0.4); return { cx: cx, top: top, bot: bot, hw: hw }; }
@@ -30164,20 +30202,20 @@ function wbgGlass() {
     var c = document.createElement('canvas'); c.width = W * DPR; c.height = H * DPR; var q = c.getContext('2d'); q.scale(DPR, DPR);
     var g = geo(), r = R(11), n = night;
     var bg = q.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, n ? '#3a2f28' : '#d9d0c1'); bg.addColorStop(1, n ? '#22191a' : '#c9bda9'); q.fillStyle = bg; q.fillRect(0, 0, W, H);
-    q.filter = 'blur(14px)'; q.fillStyle = n ? '#4a3226' : '#b98f69'; q.fillRect(-30, H * 0.9, W + 60, H * 0.2);
+    if ('filter' in q) q.filter = 'blur(14px)'; q.fillStyle = n ? '#4a3226' : '#b98f69'; q.fillRect(-30, H * 0.9, W + 60, H * 0.2);
     q.fillStyle = n ? 'rgba(255,190,120,.10)' : 'rgba(255,255,255,.22)'; q.beginPath(); q.ellipse(W * 0.18, H * 0.25, W * 0.4, H * 0.3, 0, 0, 6.283); q.fill();
     var gr = n ? ['#163f2a', '#1d5236', '#0f2d1f'] : ['#2f6b48', '#3d7d55', '#255a3c', '#4c8a60'];
-    q.filter = 'blur(' + Math.round(W / 24) + 'px)'; q.fillStyle = gr[0]; q.beginPath(); q.moveTo(g.cx, g.top - 12);
+    if ('filter' in q) q.filter = 'blur(' + Math.round(W / 24) + 'px)'; q.fillStyle = gr[0]; q.beginPath(); q.moveTo(g.cx, g.top - 12);
     var steps = [[.3, .4], [.32, .3], [.58, .64], [.6, .52], [.82, .84], [.84, .74], [1, 1]];
     steps.forEach(function (s) { q.lineTo(g.cx + g.hw * s[1], g.top + (g.bot - g.top) * s[0]); });
     steps.slice(0, 6).reverse().forEach(function (s) { q.lineTo(g.cx - g.hw * s[1], g.top + (g.bot - g.top) * s[0]); });
     q.lineTo(g.cx - g.hw, g.bot); q.closePath(); q.fill();
     q.fillStyle = n ? '#2a1d16' : '#6b4a33'; q.fillRect(g.cx - g.hw * 0.08, g.bot - 2, g.hw * 0.16, H * 0.06);
-    q.filter = 'blur(' + Math.round(W / 60) + 'px)';
+    if ('filter' in q) q.filter = 'blur(' + Math.round(W / 60) + 'px)';
     for (var i = 0; i < 180; i++) { var p = inTree(r, g); q.fillStyle = gr[i % gr.length]; q.globalAlpha = .55; q.beginPath(); q.arc(p.x, p.y, (4 + p.t * 7) * W / 220, 0, 6.283); q.fill(); }
     q.globalAlpha = 1;
-    if (!n) { q.filter = 'blur(3px)'; var r2 = R(300); for (var j = 0; j < 26; j++) { var p2 = inTree(r2, g); q.fillStyle = hex(COLS[j % COLS.length], .3); q.beginPath(); q.arc(p2.x, p2.y, (4 + r2() * 3) * W / 220, 0, 6.283); q.fill(); } }   /* 낮: 꺼진 전구 */
-    q.filter = 'none'; base = c;
+    if (!n) { if ('filter' in q) q.filter = 'blur(3px)'; var r2 = R(300); for (var j = 0; j < 26; j++) { var p2 = inTree(r2, g); q.fillStyle = hex(COLS[j % COLS.length], .3); q.beginPath(); q.arc(p2.x, p2.y, (4 + r2() * 3) * W / 220, 0, 6.283); q.fill(); } }   /* 낮: 꺼진 전구 */
+    if ('filter' in q) q.filter = 'none'; base = c;
     /* 불빛 · 눈 */
     var r3 = R(501), k = W / 220; lights = [];
     if (n) for (var a = 0; a < 120; a++) { var p3 = inTree(r3, g); lights.push({ x: p3.x, y: p3.y, r: (7 + r3() * 6) * k, c: COLS[a % COLS.length], on: r3() > .4, a: 0 }); }
@@ -30215,6 +30253,8 @@ function wbgGlass() {
     x.shadowBlur = 0;
   }
   window.addEventListener('resize', function () { baseKey = ''; });
+  window.addEventListener('pageshow', function () { baseKey = ''; last = 0; lastBlink = 0; });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { baseKey = ''; last = 0; lastBlink = 0; } });
   requestAnimationFrame(frame);
 })();
 </script>
