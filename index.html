@@ -731,6 +731,34 @@ html body #day-detail .dd-cover .row {
   margin-top:12px!important;
 }
 </style>
+<style id="rail-request-3-verified-selectors-20261123">
+/* 1. 실제 달력 선택 강조색은 cell 자체가 아닌 ::after 의사요소가 칠한다. */
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell.selected::after,
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell.selected.today::after {
+  background:#bfe6fb!important;
+}
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell.selected {
+  background:#bfe6fb!important;
+}
+html.ui-dark body #main-container #schedule-section #calendar-grid.sch-grid > .cell.selected::after {
+  background:#173e68!important;
+}
+/* 3. 상세 다이아의 세 항목을 한꺼번에 아래로 내리며 제목/시각의 기준선을 유지. */
+html body #day-detail .dd-cover .row {
+  margin-top:26px!important;
+  display:flex!important;
+  align-items:flex-start!important;
+}
+html body #day-detail .dd-cover .row > div {
+  align-self:flex-start!important;
+}
+html body #day-detail .dd-cover .row > div > small {
+  height:14px!important;line-height:14px!important;
+}
+html body #day-detail .dd-cover .row > div > b {
+  height:24px!important;line-height:24px!important;
+}
+</style>
 </head>
 <body>
 <!-- 다크 모드 되돌림 필터: html의 invert(.92)+hue-rotate(180)를 정확히 거꾸로 (사진 · 열차 애니메이션 · 프로필 원래 색) -->
@@ -3044,6 +3072,7 @@ document.addEventListener('DOMContentLoaded', function () {
       el.setAttribute('data-d', dk);
     }
     var hh = k.getHours(), nmEl = document.getElementById('welcome-name'), nm = (nmEl && nmEl.textContent || '').trim();
+    if (!nm) { try { var cu = (typeof getCurrentUser === 'function' && getCurrentUser()) || {}; nm = String(cu.name || '').trim(); } catch(e) {} }
     /* 시간대별 짧은 인사: 10분 단위로 한 문구를 선택하여 초마다 바뀌지 않도록 함 */
     var greetingSets = hh < 5 ? ['고요한 새벽이에요', '편안한 새벽 보내세요', '새벽에도 응원해요']
       : hh < 9 ? ['상쾌한 아침이에요', '기분 좋은 아침입니다', '오늘도 힘내세요']
