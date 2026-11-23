@@ -474,6 +474,99 @@ padding:0;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Ma
 #settings-section .settings-category .setting-grid{margin-top:0}
 #settings-section .settings-category+.settings-category{border-top:1px solid rgba(120,135,160,.18);padding-top:2px}
 </style>
+<style id="rail-alignment-fix-20261123">
+/* 승무근무표 현황: 열 제목과 데이터가 동일한 열 너비를 공유하도록 고정 */
+#crewboard-section .cb-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+#crewboard-section table.cb-table{
+  table-layout:fixed!important;
+  min-width:640px;
+  width:100%!important;
+  border-spacing:0;
+}
+#crewboard-section .cb-table th,
+#crewboard-section .cb-table td{
+  box-sizing:border-box;
+  text-align:center!important;
+  vertical-align:middle!important;
+  padding-left:5px!important;
+  padding-right:5px!important;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+/* 다이아 상세정보: 날짜/요일·교환상대·구속시간의 기준선 통일 */
+#day-detail .dd-cover .k{
+  display:flex!important;
+  justify-content:space-between!important;
+  align-items:flex-start!important;
+  gap:10px!important;
+  min-width:0;
+  line-height:1.35!important;
+}
+#day-detail .dd-cover .k .dd-top-meta{
+  display:flex!important;
+  align-items:center!important;
+  flex-wrap:wrap!important;
+  column-gap:9px!important;
+  row-gap:3px!important;
+  flex:1 1 auto;
+  min-width:0;
+  line-height:inherit!important;
+}
+#day-detail .dd-cover .k .dd-swap-mark{
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:4px!important;
+  line-height:inherit!important;
+  vertical-align:baseline;
+}
+#day-detail .dd-cover .k .kd{
+  margin-left:auto!important;
+  flex:0 0 auto!important;
+  text-align:right!important;
+  line-height:inherit!important;
+}
+#day-detail .dd-cover .row{
+  align-items:flex-start!important;
+}
+#day-detail .dd-cover .row > div{
+  align-self:flex-start!important;
+}
+#day-detail .dd-cover .row small{
+  display:block!important;
+  line-height:14px!important;
+  height:14px!important;
+}
+#day-detail .dd-cover .row b{
+  display:block;
+  line-height:24px!important;
+}
+#day-detail .dd-cover .row .dd-cover-start{
+  line-height:1.25!important;
+  height:auto!important;
+}
+</style>
+
+<style id="schedule-selected-blue-20261123">
+/* 선택한 날짜는 파란색으로 표시. 오늘 날짜 숫자 표시와 근무 라벨은 유지. */
+html body #schedule-section #calendar-grid.sch-grid > .cell.selected,
+html body #schedule-section #calendar-grid.sch-grid > .cell.sel,
+html body #schedule-section #calendar-grid.sch-grid > .cell.today.selected,
+html body #schedule-section #calendar-grid.sch-grid > .cell.today.sel{
+  background:#d6eaff!important;
+  box-shadow:inset 0 0 0 1.5px #3182f6!important;
+}
+html.ui-dark body #schedule-section #calendar-grid.sch-grid > .cell.selected,
+html.ui-dark body #schedule-section #calendar-grid.sch-grid > .cell.sel{
+  background:#173e68!important;
+  box-shadow:inset 0 0 0 1.5px #69aaff!important;
+}
+</style>
+<style id="rs-no-stale-flash-20261123">
+/* 조회 중 이전 달·이전 그룹 표를 숨기되 상태 문구와 버튼은 표시 */
+#schedule-section.rs-data-pending #calendar-grid,
+#schedule-section.rs-data-pending #day-detail,
+#group-section.rs-data-pending #group-table-body { visibility:hidden!important; }
+</style>
 </head>
 <body>
 <!-- 다크 모드 되돌림 필터: html의 invert(.92)+hue-rotate(180)를 정확히 거꾸로 (사진 · 열차 애니메이션 · 프로필 원래 색) -->
@@ -4191,13 +4284,10 @@ function peekData() {
 }
 function fetchData(scope, startKey, endKey, force, cb) {
   if (!cb) return;
-  if (snapshotUsable()) {
-    cb(buildLocalRange(scope, startKey, endKey), true);
-    refreshSnapshot(!!force, null);
-    return;
-  }
-  refreshSnapshot(true, function (ok, msg) {
-    if (ok && snapshotUsable()) cb(buildLocalRange(scope, startKey, endKey), false);
+  /* 캐시를 먼저 그린 후 DB 응답으로 덮어쓰는 2단계 렌더링을 방지합니다.
+     최신 스냅샷 확인이 끝난 뒤 한 번만 콜백하고, 네트워크 오류 때는 기존 저장본을 유지합니다. */
+  refreshSnapshot(!!force || !snapshotUsable(), function (ok, msg) {
+    if (snapshotUsable()) cb(buildLocalRange(scope, startKey, endKey), !ok);
     else cb({ success: false, message: msg }, false);
   });
 }
@@ -4383,22 +4473,34 @@ function openSchedule() {
     selDate = { y: calendarYear, m: calendarMonth, d: (today.y < CAL_MIN_Y ? 1 : today.d) };
   }
   switchSection('schedule-section');
+  /* 다른 달/계정의 이전 데이터가 잠깐 보이지 않도록 상세정보를 초기화합니다. */
+  myMonth = null;
+  schSetPending(true);
   renderCalendar();
   renderDayDetail();
   loadMyMonth();
 }
+/* DB 확인 전 기존 근무정보가 잠깐 노출되지 않도록 표시만 보류 */
+function schSetPending(v) {
+  var sec = $('schedule-section');
+  if (sec) sec.classList.toggle('rs-data-pending', !!v);
+}
+var schFetchSerial = 0;
 function loadMyMonth(force) {
   var user = getCurrentUser();
   var y = calendarYear;
   var m = calendarMonth;
+  var requestId = ++schFetchSerial;
   var st = $('sch-status');
   if (!user.token) {
     st.textContent = '로그인 후 이용해주세요.';
+    schSetPending(false);
     return;
   }
   if (!peekMonth(y, m)) st.textContent = '근무표를 불러오는 중...';
   fetchMonth(y, m, !!force, function (r, fromCache) {
-    if (y !== calendarYear || m !== calendarMonth) return;
+    if (requestId !== schFetchSerial || y !== calendarYear || m !== calendarMonth || getCurrentUser().employeeId !== user.employeeId) return;
+    schSetPending(false);
     if (!r || !r.success) {
       st.textContent = (r && r.message) || '근무표를 불러오지 못했습니다.';
       return;
@@ -7381,6 +7483,7 @@ function openGroupSection() {
   groupWeekStart = thisWeekStart();
   groupSelKey = null;
   groupData = null;
+  groupSetPending(true);
   switchSection('group-section');
   loadGroupSchedule(false);
   groupHardRefresh();
@@ -7434,12 +7537,14 @@ function changeGroupWeek(diff) {
   if (new Date(nw.getFullYear(), nw.getMonth(), nw.getDate() + 6) < RS_START_DATE) { rsStartToast(); return; }
   groupWeekStart = nw;
   groupData = null;
+  groupSetPending(true);
   loadGroupSchedule(false);
 }
 function goGroupThisWeek() {
   groupWeekStart = thisWeekStart();
   groupSelKey = null;
   groupData = null;
+  groupSetPending(true);
   loadGroupSchedule(false);
 }
 /* 근무그룹: 자동 새로고침 · 서버 응답으로 다시 그릴 때는 모아서 한 번만 (중간 상태가 잠깐 보였다가 바뀌는 것 방지)
@@ -7453,8 +7558,14 @@ function renderGroupTableSoon() {
   if (groupSoonTimer) clearTimeout(groupSoonTimer);
   groupSoonTimer = setTimeout(function () { groupSoonTimer = null; groupSoonPending = false; if (groupSectionActive()) renderGroupTable(); }, 350);
 }
+function groupSetPending(v) {
+  var sec = $('group-section');
+  if (sec) sec.classList.toggle('rs-data-pending', !!v);
+}
+var groupFetchSerial = 0;
 function loadGroupSchedule(silent) {
   var user = getCurrentUser();
+  var requestId = ++groupFetchSerial;
   if (user && user.token && typeof rsShareFetch === 'function') {
     var shareBefore = '';
     try { shareBefore = JSON.stringify(rsSharedRouteCache || null); } catch (e) {}
@@ -7469,20 +7580,19 @@ function loadGroupSchedule(silent) {
   if (!user.token) {
     renderGroupTable();
     status.textContent = '로그인 후 이용해주세요.';
+    groupSetPending(false);
     return;
   }
   var days = groupWeekDays();
   var startKey = days[0].key;
   var endKey = days[6].key;
   var cached = peekData('group', startKey, endKey);
-  /* 폰에 근무 데이터가 있으면 서버를 기다리지 않고 바로 명단을 만들어 둔다 (명단이 비어 보이는 일 방지) */
-  if (cached) {
-    try { groupData = buildLocalRange('group', startKey, endKey); } catch (e) {}
-  }
-  if (silent) renderGroupTableSoon(); else renderGroupTable();
+  /* 서버 응답 이전의 임시 명단을 먼저 표시하지 않습니다. 기존 표는 조회 중 유지합니다. */
+  if (!silent && !groupData) renderGroupTable();
   if (!cached && !silent) status.textContent = '근무표를 불러오는 중...';
   fetchData('group', startKey, endKey, !!silent, function (r, fromCache) {
-    if (groupWeekDays()[0].key !== startKey) return;
+    if (requestId !== groupFetchSerial || groupWeekDays()[0].key !== startKey || getCurrentUser().employeeId !== user.employeeId) return;
+    groupSetPending(false);
     if (!r || !r.success) {
       /* 실패해도 이미 그려진 명단은 지우지 않고 다시 불러오기 버튼을 보여줌 */
       if (!silent || !groupData) status.textContent = (r && r.message) || '불러오지 못했습니다.';
@@ -16767,6 +16877,23 @@ function runLoginPopups() {
   closeNoticePopup();
   promptWorkSettingIfNeeded(gen);   /* 근무설정이 없는 사용자(처음 가입자): 근무설정 팝업 */
   setTimeout(function () { if (gen === loginPopupGen) autoCrewRoster(); }, 2500);
+  /* 로그인할 때마다 승무근무표 현황을 XROIS에서 새로 조회한다.
+     사용자가 선택한 날짜가 있으면 그 날짜를 유지하고, 없으면 오늘을 조회한다. */
+  setTimeout(function () {
+    if (gen !== loginPopupGen || typeof crewLinked !== 'function' || !crewLinked()) return;
+    try {
+      var t = todayKST(), oldDate = cbDate;
+      var todayDate = new Date(t.y, t.m, t.d);
+      if (!oldDate || cbKey(oldDate) === cbKey(todayDate)) {
+        cbDate = todayDate;
+        cbFetch(false, true);
+      } else {
+        /* 선택한 날짜는 그대로 두고, 그 날짜의 최신 현황을 갱신한다. */
+        cbFetch(false, true);
+      }
+    } catch (e) {}
+  }, 1200);
+
   loadSeqRules();            /* 순서별 다이아 규칙(여자 16번 = 12937) 서버에서 받기 */   /* CREW 연동: 승무원 자동 불러오기 (관리자만) */
   nxLoginCheck(gen);         /* 열차 운휴: 로그인할 때마다 즉시 결과 팝업 */
   briefingLoginCheck(gen);   /* 오늘의 브리핑: 켠 사용자만 하루 첫 접속 때 */
@@ -22997,7 +23124,7 @@ html.ui-dark #crewboard-section .cb-table tbody tr.me > td{background:#1d3357!im
    · XROIS '승무근무표 현황'을 표 그대로(다이아 · 열차1 · 열차2 · 출근 · 퇴근 · 승무원1 · 승무원2, XROIS 순서) 보여줌
    · 가져온 내용은 이 폰에만 저장(최근 10일). 이름은 서버에서 첫 글자를 가려서 옴 (*주영)
    · 같은 날짜는 저장본을 바로 보여주고, 12시간이 지났거나 [새로 가져오기]를 누를 때만 XROIS에 다시 접속 */
-var cbDate = null, cbBusy = false;
+var cbDate = null, cbBusy = false, cbRequestDate = null, cbAwaitFresh = false;
 function cbKey(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function cbStore() { return (typeof xrGet === 'function') ? xrGet('board', {}) : {}; }
 function cbSave(obj) {
@@ -23013,10 +23140,11 @@ function openCrewBoard() {
   if (!cbDate) { var t = todayKST(); cbDate = new Date(t.y, t.m, t.d); }
   switchSection('crewboard-section');
   try { applyAppIcons(); } catch (e) {}
+  cbAwaitFresh = true;
   cbRender();
   cbAuto();
 }
-function cbMove(n) { var nd = new Date(cbDate.getFullYear(), cbDate.getMonth(), cbDate.getDate() + n); if (nd < RS_START_DATE) { rsStartToast(); return; } cbDate = nd; cbRender(); cbAuto(); }
+function cbMove(n) { var nd = new Date(cbDate.getFullYear(), cbDate.getMonth(), cbDate.getDate() + n); if (nd < RS_START_DATE) { rsStartToast(); return; } cbDate = nd; cbAwaitFresh = true; cbRender(); cbAuto(); }
 /* 승무근무표 현황: 좌우로 밀어 전날 · 다음날 (근무표 달력처럼) */
 (function () {
   function boot() {
@@ -23042,22 +23170,25 @@ function cbMove(n) { var nd = new Date(cbDate.getFullYear(), cbDate.getMonth(), 
 function cbToday() { var t = todayKST(); cbDate = new Date(t.y, t.m, t.d); cbRender(); cbAuto(); }
 function cbAuto() {
   var dk = cbKey(cbDate), c = cbStore()[dk];
-  if (!c || Date.now() - (c.at || 0) > XR_EVERY) cbFetch(false);
+  if (cbAwaitFresh || !c || Date.now() - (c.at || 0) > XR_EVERY) cbFetch(false);
+  else { cbAwaitFresh = false; cbRender(); }
 }
-function cbFetch(manual) {
+function cbFetch(manual, loginRefresh) {
   if (cbBusy) return;
   if (typeof crewLinked === 'function' && !crewLinked()) { cbRender(); return; }
   var dk = cbKey(cbDate), c = cbStore()[dk];
-  if (manual && c && Date.now() - (c.at || 0) < 5 * 60000) { showToast('방금 가져왔어요. 5분 뒤에 다시 가져올 수 있어요.'); return; }
+  if (manual && !loginRefresh && c && Date.now() - (c.at || 0) < 5 * 60000) { showToast('방금 가져왔어요. 5분 뒤에 다시 가져올 수 있어요.'); return; }
   var meta = xrGet('meta', {}), pw = getCrewPw();
   if (meta.fail && meta.pwSig === xrSig(pw)) { cbErr = 'XROIS 로그인 실패 상태예요. 마이페이지 › CREW 연동에서 비밀번호를 다시 저장해주세요.'; cbRender(); return; }
   /* 한 번 접속에 고른 날 + 다음날까지 (다음날을 넘겨 볼 때 다시 접속하지 않도록) */
   var nx = new Date(cbDate.getFullYear(), cbDate.getMonth(), cbDate.getDate() + 1), nk = cbKey(nx);
   var dates = [dk.replace(/-/g, '')];
   var cn = cbStore()[nk]; if (!cn || Date.now() - (cn.at || 0) > XR_EVERY) dates.push(nk.replace(/-/g, ''));
-  cbBusy = true; cbErr = ''; cbRender();
+  cbBusy = true; cbErr = ''; cbRequestDate = dk; cbRender();
   xrCall({ action: 'xrBoard', dates: dates }, function (err, d) {
     cbBusy = false;
+    if (cbRequestDate !== dk) return;
+    cbAwaitFresh = false;
     if (err) {
       if (err.code === 'LOGIN_FAILED') { var mm = xrGet('meta', {}); mm.fail = true; mm.pwSig = xrSig(pw); mm.ok = false; mm.msg = err.message; xrPut('meta', mm); try { xrRenderStatus(); } catch (e) {} }
       cbErr = err.message || 'XROIS에서 가져오지 못했어요.'; cbRender(); return;
@@ -23088,6 +23219,10 @@ function cbRender() {
   stEl.innerHTML = '<span>' + (cbBusy ? 'XROIS에서 가져오는 중…' : cbErr ? '<span style="color:#e03131">' + esc(cbErr) + '</span>'
       : when ? 'XROIS · ' + (when.getMonth() + 1) + '/' + when.getDate() + ' ' + String(when.getHours()).padStart(2, '0') + ':' + String(when.getMinutes()).padStart(2, '0') + ' 기준' + (c.rows ? ' · ' + c.rows.length + '개' : '') : '아직 가져오지 않았어요') + '</span>' +
     '<button type="button" onclick="cbFetch(true)"' + (cbBusy ? ' disabled' : '') + '>새로 가져오기</button>';
+  if (cbAwaitFresh) {
+    list.innerHTML = '<div class="cb-skel" role="status" aria-label="최신 승무근무표를 불러오는 중"></div>';
+    return;
+  }
   if (!c) {
     list.innerHTML = cbBusy ? '<div class="cb-skel"></div>' : '<div class="cb-empty">' + (cbErr ? '가져오지 못했어요.' : '이 날짜의 승무근무표 현황이 아직 없어요.') + '</div>';
     return;
@@ -23972,7 +24107,7 @@ function xrStampRouteTimes() {
       if (typeof crewLinked === 'function' && crewLinked() && typeof xrAutoSync === 'function') {
         var m = xrGet('meta', {});
         var badPw = m.fail && typeof xrSig === 'function' && m.pwSig === xrSig(getCrewPw());   /* 비밀번호 틀림 → 계정 잠김 방지로 다시 시도 안 함 */
-        if (!badPw && !(m.at && Date.now() - m.at < 120000)) setTimeout(function () { try { xrAutoSync(true, false); } catch (e) {} }, 300);
+        if (!badPw) setTimeout(function () { try { xrAutoSync(true, false); } catch (e) {} }, 300);
       }
     } catch (e) {}
     return r;
