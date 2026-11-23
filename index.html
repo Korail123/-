@@ -1068,6 +1068,54 @@ html body #main-container :is(button.menu-btn, button.set-tile):active {
   border-radius:12px!important;
 }
 </style>
+<style id="rail-settings-verified-targets-20261123">
+/* 실제 마크업: #settings-section > section.settings-category > .setting-grid > button.set-tile */
+/* 카테고리 경계선 + 각 항목 구분선 제거: 테마, 목록/바둑판 모두 적용 */
+html body #settings-section > section.settings-category,
+html body #settings-section > section.settings-category + section.settings-category {
+  border-top:0!important;border-bottom:0!important;
+  border-left:0!important;border-right:0!important;
+  box-shadow:none!important;
+}
+html body #settings-section > section.settings-category::before,
+html body #settings-section > section.settings-category::after,
+html body #settings-section > section.settings-category > .setting-grid::before,
+html body #settings-section > section.settings-category > .setting-grid::after {
+  content:none!important;display:none!important;
+}
+html body #settings-section > section.settings-category > .setting-grid > button.set-tile {
+  border-top:0!important;border-bottom:0!important;
+  -webkit-tap-highlight-color:transparent!important;
+  background-clip:padding-box!important;
+}
+/* 기존 목록형 :active의 흰 배경을 덮어쓰고, 버튼 자체의 둥근 모서리 안에서만 회색 음영 표시 */
+html body #settings-section > section.settings-category > .setting-grid > button.set-tile:active,
+html body #settings-section > section.settings-category > .setting-grid > button.set-tile:focus-visible {
+  background-color:rgba(50,55,65,.30)!important;
+  border-radius:14px!important;
+  box-shadow:none!important;
+  outline:none!important;
+}
+/* 바둑판형은 각 카드의 모서리 비율 유지 */
+html.set-grid body #settings-section > section.settings-category > .setting-grid > button.set-tile:active,
+html.set-grid body #settings-section > section.settings-category > .setting-grid > button.set-tile:focus-visible,
+html.set-grid body #settings-section #set-flat > button.set-tile:active,
+html.set-grid body #settings-section #set-flat > button.set-tile:focus-visible {
+  background-color:rgba(50,55,65,.30)!important;
+  border-radius:16px!important;
+  outline:none!important;
+}
+/* 다른 메뉴 카드: 흰색 네모 하이라이트를 제거하고 둥근 카드 모양대로 */
+html body #main-section .menu-grid > button.menu-btn {
+  -webkit-tap-highlight-color:transparent!important;
+}
+html body #main-section .menu-grid > button.menu-btn:active,
+html body #main-section .menu-grid > button.menu-btn:focus-visible {
+  background-color:rgba(50,55,65,.30)!important;
+  border-radius:14px!important;
+  outline:none!important;
+}
+</style>
 </head>
 <body>
 <!-- 다크 모드 되돌림 필터: html의 invert(.92)+hue-rotate(180)를 정확히 거꾸로 (사진 · 열차 애니메이션 · 프로필 원래 색) -->
