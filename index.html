@@ -759,6 +759,44 @@ html body #day-detail .dd-cover .row > div > b {
   height:24px!important;line-height:24px!important;
 }
 </style>
+
+<style id="rail-request-20261123-rect-row-colon">
+/* 달력: 오늘/선택 표시 모두 동일한 세로 직사각형 비율. 기존 7열 표 너비는 유지. */
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell.today,
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell.selected,
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell.sel {
+  box-sizing:border-box!important; width:100%!important; height:auto!important;
+  min-height:calc((100cqw - 18px) / 7 + 12px)!important;
+  aspect-ratio:auto!important; border-radius:14px!important;
+}
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell.selected,
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell.sel {
+  background:#bfe6fb!important; box-shadow:inset 0 0 0 2px #1688f5!important;
+}
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell.selected::after,
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell.sel::after {
+  background:#bfe6fb!important; border-radius:14px!important;
+}
+/* 다이아: 출근·퇴근·열차번호를 하나의 그룹으로 16px 아래로 이동. 설정시간도 함께 이동. */
+html body #day-detail .dd-cover .row {
+  transform:translateY(16px)!important;
+}
+/* 시계: 특수 글꼴에서 콜론이 마름모처럼 보이지 않도록 구분 기호만 기본 글꼴 사용. */
+html body #main-container #liveClock .lc-colon {
+  font-family:Arial,Helvetica,sans-serif!important; font-weight:300!important;
+  font-variant-ligatures:none!important; letter-spacing:0!important;
+  display:inline-block!important; transform:none!important;
+}
+</style>
+
+<style id="rs-adjacent-month-dates-20261123">
+/* 전후 월 날짜는 빈 칸에 날짜 숫자만 희미하게 표시: 근무 데이터·선택 상태는 표시하지 않음 */
+#schedule-section #calendar-grid .cell.empty.rs-adjacent-date { opacity: .36; pointer-events: none; }
+#schedule-section #calendar-grid .cell.empty.rs-adjacent-date .cell-top { display: flex; justify-content: center; }
+#schedule-section #calendar-grid .cell.empty.rs-adjacent-date .cell-num { color: #64748b !important; background: transparent !important; border: 0 !important; box-shadow: none !important; }
+#schedule-section #calendar-grid .cell.empty.rs-adjacent-date::before,
+#schedule-section #calendar-grid .cell.empty.rs-adjacent-date::after { content: none !important; }
+</style>
 </head>
 <body>
 <!-- 다크 모드 되돌림 필터: html의 invert(.92)+hue-rotate(180)를 정확히 거꾸로 (사진 · 열차 애니메이션 · 프로필 원래 색) -->
@@ -3068,7 +3106,7 @@ document.addEventListener('DOMContentLoaded', function () {
       var we = k.getDay() === 0 ? ' sun' : (k.getDay() === 6 ? ' sat' : '');
       /* 잠금화면형: 날짜 → 큰 시각 → 인사 */
       el.innerHTML = '<span class="lc-d">' + (k.getMonth() + 1) + '월 ' + k.getDate() + '일 <i class="lc-w' + we + '">' + days[k.getDay()] + '요일</i></span>' +
-        '<span class="lc-t"><b class="lc-hm"></b><em class="lc-s"></em></span><span class="lc-g"></span>';
+        '<span class="lc-t"><b class="lc-hm"><span class="lc-hour"></span><span class="lc-colon">:</span><span class="lc-minute"></span></b><em class="lc-s"></em></span><span class="lc-g"></span>';
       el.setAttribute('data-d', dk);
     }
     var hh = k.getHours(), nmEl = document.getElementById('welcome-name'), nm = (nmEl && nmEl.textContent || '').trim();
@@ -3086,7 +3124,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var gt = greetingSets[(greetingSlot + k.getDate()) % greetingSets.length];
     var gEl = el.querySelector('.lc-g'), gh = nm ? '<b>' + nm.replace(/[<>&]/g, '') + '</b>님, ' + gt : '';
     if (gEl && gEl.getAttribute('data-g') !== gh) { gEl.innerHTML = gh; gEl.setAttribute('data-g', gh); gEl.hidden = !gh; }
-    el.querySelector('.lc-hm').textContent = p(k.getHours()) + ':' + p(k.getMinutes());
+    el.querySelector('.lc-hour').textContent = p(k.getHours());
+    el.querySelector('.lc-minute').textContent = p(k.getMinutes());
     el.querySelector('.lc-s').textContent = p(k.getSeconds());
     el.setAttribute('aria-label', k.getFullYear() + '년 ' + (k.getMonth() + 1) + '월 ' + k.getDate() + '일 ' + days[k.getDay()] + '요일 ' + k.getHours() + '시 ' + k.getMinutes() + '분');
   }
@@ -4799,7 +4838,10 @@ function renderCalendar() {
   var today = todayKST();
   for (var i = 0; i < firstDay; i++) {
     var empty = document.createElement('div');
-    empty.className = 'cell empty';
+    empty.className = 'cell empty rs-adjacent-date';
+    var prevDate = new Date(calendarYear, calendarMonth, 1 - firstDay + i);
+    empty.innerHTML = '<div class="cell-top"><span class="cell-num">' + prevDate.getDate() + '</span></div>';
+    empty.setAttribute('aria-label', (prevDate.getMonth() + 1) + '월 ' + prevDate.getDate() + '일 (이전 달)');
     grid.appendChild(empty);
   }
   for (var d = 1; d <= lastDate; d++) {
@@ -4884,7 +4926,10 @@ function renderCalendar() {
   var tail = (7 - ((firstDay + lastDate) % 7)) % 7;   /* 실제 주 수만큼만 (빈 6째 줄 없음 → 위아래 여백 같게) */
   for (var t = 0; t < tail; t++) {
     var emptyTail = document.createElement('div');
-    emptyTail.className = 'cell empty';
+    emptyTail.className = 'cell empty rs-adjacent-date';
+    var nextDate = new Date(calendarYear, calendarMonth + 1, t + 1);
+    emptyTail.innerHTML = '<div class="cell-top"><span class="cell-num">' + nextDate.getDate() + '</span></div>';
+    emptyTail.setAttribute('aria-label', (nextDate.getMonth() + 1) + '월 ' + nextDate.getDate() + '일 (다음 달)');
     grid.appendChild(emptyTail);
   }
   fitSwapBadges(grid);
