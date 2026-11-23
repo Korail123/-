@@ -69,7 +69,7 @@ html.ui-zoomed body{zoom:var(--ui-zoom)}
 html.ui-zoomed .dia-dialog{max-width:calc((100vw - 20px) / var(--ui-zoom))!important}
 
 /* 다이아 카드 구속시간 아래 설정 출근시간 표시 */
-.dd-cover .kd .dd-cover-start{display:block;margin-top:5px;font-size:11px;font-weight:700;letter-spacing:0;white-space:nowrap;text-align:right}
+.dd-cover .kd .dd-cover-start{display:block;margin-top:5px;font-size:inherit;font-weight:inherit;letter-spacing:inherit;white-space:nowrap;text-align:right}
 .dd-cover .kd{white-space:normal;text-align:right}
 </style>
 <style id="ui-dark-base">
@@ -6925,7 +6925,7 @@ function renderDayDetail() {
     var ctone = /휴/.test(lbTxt) || (isStatus && !/가일|박/.test(lbTxt)) ? 'off'
       : (info.label === '야' || info.label === '비' || info.label === 'X' || /야간|비번|가일|박/.test(lbTxt) || info.nightCarryover) ? 'night' : 'day';
     var kindTxt = workType || ({ '주': '주간', '야': '야간', '비': '비번', '휴': '휴무' }[info.label] || (isStatus ? String(info.status || info.label) : info.label));
-    var cv = '<div class="dd-cover c-' + ctone + '"><div class="k">' + (selDate.m + 1) + '.' + selDate.d + ' ' + WD[wdi] + (isToday ? ' · TODAY' : '') + (info.swapPartnerName || info.swapPartnerId ? ' · ' + esc(String(info.swapPartnerName || info.swapPartnerId).trim()) + '님과 교환' : (info.manual ? ' · 변경' : '')) + (workDur || userStart ? '<span class="kd">' + (workDur ? '구속 ' + esc(workDur) : '') + (userStart ? '<span class="dd-cover-start">설정 출근시간 ' + esc(userStart.time) + '</span>' : '') + '</span>' : '') + '</div>' +
+    var cv = '<div class="dd-cover c-' + ctone + '"><div class="k">' + (selDate.m + 1) + '.' + selDate.d + ' ' + WD[wdi] + (isToday ? ' · TODAY' : '') + (info.swapPartnerName || info.swapPartnerId ? ' <span class="dd-swap-mark" aria-label="교환 상대"><span class="dd-swap-icon" aria-hidden="true">⇄</span>' + esc(String(info.swapPartnerName || info.swapPartnerId).trim()) + '</span>' : (info.manual ? ' · 변경' : '')) + (workDur || userStart ? '<span class="kd">' + (workDur ? '구속 ' + esc(workDur) : '') + (userStart ? '<span class="dd-cover-start">설정 출근시간 ' + esc(userStart.time) + '</span>' : '') + '</span>' : '') + '</div>' +
       '<div class="big">' + ((!isStatus && diaNo) ? 'DIA ' + esc(diaNo) : esc(info.label)) + '<small>' + esc(kindTxt) + '</small></div>';
     if (startTime || endTime || ddCoverTrains) cv += '<div class="row">' + (startTime ? '<div><small>출근' + (rsStartEstimated ? ' (예상)' : '') + '</small><b>' + esc(startTime) + '</b></div>' : '') +
       (endTime ? '<div><small>퇴근' + (rsEndEstimated ? ' (예상)' : '') + '</small><b>' + esc(endTime) + '</b></div>' : '') +
@@ -22969,9 +22969,6 @@ html.ui-dark #crewboard-section .cb-find input{color:#e9edf2!important}
 #crewboard-section .cb-table th+th,#crewboard-section .cb-table td+td{border-left:1px solid #eef0f3}
 #crewboard-section .cb-table td.cb-d{font-weight:800}
 #crewboard-section .cb-table td.cb-n{font-weight:600}
-/* 승무근무표: 날짜별 승무원 이름 칸에 파란 세로 표시 (열차/시각 칸은 유지) */
-#crewboard-section .cb-table td.cb-n:not(:empty){box-shadow:inset 3px 0 0 #3182f6;padding-left:5px!important}
-html.ui-dark #crewboard-section .cb-table td.cb-n:not(:empty){box-shadow:inset 3px 0 0 #83b5ff}
 #crewboard-section .cb-table tr.me td{background:#e3efff}
 #crewboard-section .cb-empty{background:#fff;border:1px dashed #d1d6db;border-radius:16px;padding:26px 14px;text-align:center;color:#6b7684;font-size:14px;line-height:1.7}
 #crewboard-section .cb-empty button{margin-top:10px;border:0;background:#3182f6;color:#fff;font-weight:700;border-radius:10px;padding:9px 16px;font-size:14px;cursor:pointer}
