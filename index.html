@@ -865,6 +865,87 @@ html.set-grid.ui-ios.ui-dark body #settings-section #set-flat > .set-tile.danger
   color:#ff858a!important;
 }
 </style>
+
+<style id="rail-christmas-menu-layout-20261123">
+/* 크리스마스 트리 배경 사용 중에만 메인 메뉴와 환경설정 아이콘 카드에 유리 배경 적용 */
+html.wbg-on body #main-section .menu-grid > button.menu-btn,
+html.wbg-on.set-grid body #settings-section #set-flat > button.set-tile {
+  box-sizing:border-box!important;
+  background:rgba(255,255,255,.70)!important;
+  border:1px solid rgba(255,255,255,.66)!important;
+  border-radius:16px!important;
+  box-shadow:0 2px 9px rgba(25,45,75,.10)!important;
+  -webkit-backdrop-filter:blur(10px) saturate(125%);
+  backdrop-filter:blur(10px) saturate(125%);
+  color:#123b69!important;
+}
+html.wbg-on body #main-section .menu-grid > button.menu-btn:active,
+html.wbg-on.set-grid body #settings-section #set-flat > button.set-tile:active {
+  background:rgba(221,239,255,.88)!important;
+}
+/* 바둑판: 두 화면 모두 4열, 균등 너비와 동일한 간격 */
+html.wbg-on:not(.menu-list) body #main-section .menu-grid,
+html.wbg-on.set-grid body #settings-section > #set-flat {
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  grid-auto-flow:row!important;
+  gap:9px 6px!important;
+  align-items:stretch!important;
+}
+html.wbg-on:not(.menu-list) body #main-section .menu-grid > button.menu-btn,
+html.wbg-on.set-grid body #settings-section #set-flat > button.set-tile {
+  width:100%!important;
+  min-width:0!important;
+  min-height:112px!important;
+  height:auto!important;
+  margin:0!important;
+  padding:8px 3px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:6px!important;
+  text-align:center!important;
+}
+/* 메인 세로 모드: 환경설정 세로 목록과 같은 한 줄 카드 스타일 */
+html.wbg-on.menu-list body #main-section .menu-grid {
+  display:flex!important;
+  flex-direction:column!important;
+  gap:8px!important;
+}
+html.wbg-on.menu-list body #main-section .menu-grid > button.menu-btn {
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  width:100%!important;
+  min-height:56px!important;
+  height:auto!important;
+  padding:9px 32px 9px 14px!important;
+  gap:12px!important;
+  text-align:left!important;
+  border-radius:15px!important;
+}
+html.wbg-on.menu-list body #main-section .menu-grid > button.menu-btn > span {
+  color:#123b69!important;
+  text-align:left!important;
+}
+/* 기존 환경설정 목록의 분류, 버튼 및 클릭 동작은 보존 */
+html.wbg-on:not(.set-grid) body #settings-section .setting-grid {
+  background:rgba(255,255,255,.70)!important;
+  border:1px solid rgba(255,255,255,.66)!important;
+  -webkit-backdrop-filter:blur(10px) saturate(125%);
+  backdrop-filter:blur(10px) saturate(125%);
+}
+/* iOS 기존 강제 투명 스타일보다 구체적으로, 모든 기기에서 같은 반투명 카드 */
+html.wbg-on.set-grid.ui-ios body #settings-section #set-flat > button.set-tile {
+  background:rgba(255,255,255,.70)!important;
+}
+@media(max-width:360px){
+  html.wbg-on:not(.menu-list) body #main-section .menu-grid,
+  html.wbg-on.set-grid body #settings-section > #set-flat {gap:7px 4px!important;}
+}
+</style>
 </head>
 <body>
 <!-- 다크 모드 되돌림 필터: html의 invert(.92)+hue-rotate(180)를 정확히 거꾸로 (사진 · 열차 애니메이션 · 프로필 원래 색) -->
