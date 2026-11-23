@@ -4865,12 +4865,58 @@ function loadMyMonth(force) {
   });
 }
 /* 이전/다음 달은 읽기 전용으로 근무구분만 연하게 보여줍니다. 기존 데이터 조회 규칙 재사용. */
+/* 인접 월 근무는 해당 월 데이터에서 읽습니다. 현재 월 myMonth를 덮어쓰지 않습니다. */
+var rsAdjacentMonths = Object.create(null);
+var rsAdjacentPending = Object.create(null);
+function rsAdjacentInfo(y, m, d) {
+  var user = getCurrentUser();
+  if (!user || !user.employeeId) return null;
+  var key = String(user.employeeId) + ':' + y + ':' + m;
+  var days = rsAdjacentMonths[key];
+  return days ? (days[getDateKey(y, m, d)] || null) : null;
+}
+function rsLoadAdjacentMonth(y, m) {
+  var user = getCurrentUser();
+  if (!user || !user.token || !user.employeeId || y < CAL_MIN_Y) return;
+  var employeeId = user.employeeId;
+  var key = String(employeeId) + ':' + y + ':' + m;
+  if (Object.prototype.hasOwnProperty.call(rsAdjacentMonths, key) || rsAdjacentPending[key]) return;
+  rsAdjacentPending[key] = true;
+  fetchMonth(y, m, false, function (result) {
+    delete rsAdjacentPending[key];
+    if (!result || !result.success || !Array.isArray(result.members)) return;
+    var member = result.members.find(function (item) { return item.employeeId === employeeId; });
+    var days = member && member.days ? Object.assign({}, member.days) : {};
+    /* 기존 사용자별 수동 근무변경 기록을 해당 월에도 표시합니다. */
+    try {
+      var local = readLocal(employeeId);
+      (local && local.overrides || []).forEach(function (r) {
+        if (!r || !r[0] || !r[1]) return;
+        var dt = String(r[0]);
+        if (dt.slice(0, 7) !== getDateKey(y, m, 1).slice(0, 7)) return;
+        var item = Object.assign({}, days[dt] || {});
+        if (r[1] === 'status') { item.status = r[3] || r[2] || ''; item.overrideType = 'status'; }
+        else { item.type = r[1]; item.dia = r[2] || ''; }
+        if (r[7]) item.dutyStatus = r[7];
+        if (!item.label) item.label = item.type || item.status || '';
+        item.manual = true;
+        days[dt] = item;
+      });
+    } catch (e) {}
+    rsAdjacentMonths[key] = days;
+    var active = getCurrentUser();
+    if (active && active.employeeId === employeeId &&
+        (Math.abs((calendarYear * 12 + calendarMonth) - (y * 12 + m)) === 1)) {
+      renderCalendar();
+    }
+  });
+}
 function rsAdjacentDutyHtml(date) {
   var y = date.getFullYear(), m = date.getMonth(), d = date.getDate();
   var html = '<div class="cell-top"><span class="cell-num">' + d + '</span></div>';
   try {
-    var info = getInfo(y, m, d);
-    if (info && (info.label || info.type || info.status)) {
+    var info = rsAdjacentInfo(y, m, d);
+    if (info && (info.label || info.type || info.status || info.dutyStatus)) {
       var duty = rsCalDuty(info, getDateKey(y, m, d), rsMySeqCtx());
       if (duty) {
         var shortDuty = rsLabelStyled(rsDutyShort(duty));
@@ -4988,6 +5034,15 @@ function renderCalendar() {
     grid.appendChild(emptyTail);
   }
   fitSwapBadges(grid);
+  /* 달력에 걸친 전월/익월의 실제 근무정보를 비동기로 읽어 표시합니다. */
+  if (firstDay) {
+    var prev = new Date(calendarYear, calendarMonth - 1, 1);
+    rsLoadAdjacentMonth(prev.getFullYear(), prev.getMonth());
+  }
+  if (tail) {
+    var next = new Date(calendarYear, calendarMonth + 1, 1);
+    rsLoadAdjacentMonth(next.getFullYear(), next.getMonth());
+  }
 }
 /* 근무교환 이름표가 칸보다 넓으면 높이는 그대로 두고 가로만 살짝 줄여 이름 전체가 보이게 함 */
 function fitSwapBadges(root) {
@@ -30938,6 +30993,37 @@ html body #group-section .group-table th.g-sel,html body #group-section .group-t
 html body #group-section .group-table tfoot td.g-sel{box-shadow:inset 2px 0 0 #3182f6,inset -2px 0 0 #3182f6,inset 0 -2px 0 #3182f6!important}
 html.ui-dark body #group-section .group-table th.g-sel,html.ui-dark body #group-section .group-table td.g-sel{box-shadow:inset 2px 0 0 #83b5ff,inset -2px 0 0 #83b5ff!important}
 html.ui-dark body #group-section .group-table tfoot td.g-sel{box-shadow:inset 2px 0 0 #83b5ff,inset -2px 0 0 #83b5ff,inset 0 -2px 0 #83b5ff!important}
+</style>
+
+<style id="rs-calendar-duty-centered-20261123">
+/* 날짜는 위에 두고 근무 문구는 모든 직사각형 칸의 동일한 세로 중심에 위치 */
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell {
+  position:relative!important;
+  box-sizing:border-box!important;
+  height:78px!important;min-height:78px!important;max-height:78px!important;
+  width:100%!important;aspect-ratio:auto!important;
+}
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell > .cell-lbl {
+  position:absolute!important;
+  top:50%!important;left:0!important;right:0!important;
+  margin:0!important;padding:0 1px!important;
+  transform:translateY(-50%)!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  text-align:center!important;width:100%!important;box-sizing:border-box!important;
+  line-height:1.15!important;
+}
+/* 교환·충당 배지는 근무 글자 아래의 기존 하단 위치에 남김 */
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell > .cell-mks {
+  position:absolute!important;left:1px!important;right:1px!important;bottom:2px!important;
+  margin:0!important;width:auto!important;
+}
+/* 전후 달은 날짜와 근무구분 모두 연하게 표시하고 선택 강조는 하지 않음 */
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell.empty.rs-adjacent-date {
+  opacity:.38!important;pointer-events:none!important;
+}
+html body #main-container #schedule-section #calendar-grid.sch-grid > .cell.empty.rs-adjacent-date > .cell-lbl {
+  visibility:visible!important;display:flex!important;
+}
 </style>
 </body>
 </html>
