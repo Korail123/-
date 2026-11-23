@@ -475,24 +475,6 @@ padding:0;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Ma
 #settings-section .settings-category+.settings-category{border-top:1px solid rgba(120,135,160,.18);padding-top:2px}
 </style>
 <style id="rail-alignment-fix-20261123">
-/* 승무근무표 현황: 열 제목과 데이터가 동일한 열 너비를 공유하도록 고정 */
-#crewboard-section .cb-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-#crewboard-section table.cb-table{
-  table-layout:fixed!important;
-  min-width:640px;
-  width:100%!important;
-  border-spacing:0;
-}
-#crewboard-section .cb-table th,
-#crewboard-section .cb-table td{
-  box-sizing:border-box;
-  text-align:center!important;
-  vertical-align:middle!important;
-  padding-left:5px!important;
-  padding-right:5px!important;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
 /* 다이아 상세정보: 날짜/요일·교환상대·구속시간의 기준선 통일 */
 #day-detail .dd-cover .k{
   display:flex!important;
@@ -23140,11 +23122,11 @@ function openCrewBoard() {
   if (!cbDate) { var t = todayKST(); cbDate = new Date(t.y, t.m, t.d); }
   switchSection('crewboard-section');
   try { applyAppIcons(); } catch (e) {}
-  cbAwaitFresh = true;
+  /* 화면 재진입 시 저장된 현황을 즉시 표시하고 XROIS 자동 조회는 하지 않음. */
+  cbAwaitFresh = false;
   cbRender();
-  cbAuto();
 }
-function cbMove(n) { var nd = new Date(cbDate.getFullYear(), cbDate.getMonth(), cbDate.getDate() + n); if (nd < RS_START_DATE) { rsStartToast(); return; } cbDate = nd; cbAwaitFresh = true; cbRender(); cbAuto(); }
+function cbMove(n) { var nd = new Date(cbDate.getFullYear(), cbDate.getMonth(), cbDate.getDate() + n); if (nd < RS_START_DATE) { rsStartToast(); return; } cbDate = nd; cbAwaitFresh = false; cbRender(); }
 /* 승무근무표 현황: 좌우로 밀어 전날 · 다음날 (근무표 달력처럼) */
 (function () {
   function boot() {
@@ -23167,11 +23149,11 @@ function cbMove(n) { var nd = new Date(cbDate.getFullYear(), cbDate.getMonth(), 
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
-function cbToday() { var t = todayKST(); cbDate = new Date(t.y, t.m, t.d); cbRender(); cbAuto(); }
+function cbToday() { var t = todayKST(); cbDate = new Date(t.y, t.m, t.d); cbAwaitFresh = false; cbRender(); }
 function cbAuto() {
-  var dk = cbKey(cbDate), c = cbStore()[dk];
-  if (cbAwaitFresh || !c || Date.now() - (c.at || 0) > XR_EVERY) cbFetch(false);
-  else { cbAwaitFresh = false; cbRender(); }
+  /* 조회는 앱 로그인(runLoginPopups)과 '새로 가져오기'에서만 수행 */
+  cbAwaitFresh = false;
+  cbRender();
 }
 function cbFetch(manual, loginRefresh) {
   if (cbBusy) return;
