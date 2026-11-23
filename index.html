@@ -715,6 +715,20 @@ html.ui-dark body #schedule-section #calendar-grid.sch-grid > .cell.today.sel {
   white-space:nowrap!important;
 }
 </style>
+
+<style id="rail-20261123-three-requests">
+/* 1. 달력 선택일: 오늘/다른 날 모두 동일한 하늘색 내부 + 파란 테두리 */
+html body #schedule-section #calendar-grid.sch-grid > .cell.selected,
+html body #schedule-section #calendar-grid.sch-grid > .cell.selected.today {
+  background-color:#d6eaff!important;
+  background-image:none!important;
+  box-shadow:inset 0 0 0 2px #3182f6!important;
+}
+/* 3. 상세 다이아: 세 열을 함께 아래로 12px 이동, 기존 행 정렬과 가로 스크롤 보존 */
+html body #day-detail .dd-cover .row {
+  margin-top:12px!important;
+}
+</style>
 </head>
 <body>
 <!-- 다크 모드 되돌림 필터: html의 invert(.92)+hue-rotate(180)를 정확히 거꾸로 (사진 · 열차 애니메이션 · 프로필 원래 색) -->
@@ -3028,7 +3042,17 @@ document.addEventListener('DOMContentLoaded', function () {
       el.setAttribute('data-d', dk);
     }
     var hh = k.getHours(), nmEl = document.getElementById('welcome-name'), nm = (nmEl && nmEl.textContent || '').trim();
-    var gt = hh >= 5 && hh < 12 ? '좋은 오전입니다' : hh >= 12 && hh < 18 ? '좋은 오후입니다' : hh >= 18 && hh < 22 ? '좋은 저녁입니다' : '편안한 밤입니다';
+    /* 시간대별 짧은 인사: 10분 단위로 한 문구를 선택하여 초마다 바뀌지 않도록 함 */
+    var greetingSets = hh < 5 ? ['고요한 새벽이에요', '편안한 새벽 보내세요', '새벽에도 응원해요']
+      : hh < 9 ? ['상쾌한 아침이에요', '기분 좋은 아침입니다', '오늘도 힘내세요']
+      : hh < 11 ? ['좋은 오전입니다', '활기찬 오전 보내세요', '오늘도 좋은 하루예요']
+      : hh < 13 ? ['즐거운 점심시간이에요', '맛있는 점심 드세요', '잠깐 쉬어가세요']
+      : hh < 17 ? ['좋은 오후입니다', '기분 좋은 오후예요', '오후도 힘내세요']
+      : hh < 20 ? ['따뜻한 저녁 보내세요', '좋은 저녁입니다', '오늘도 수고 많으셨어요']
+      : hh < 23 ? ['편안한 밤 보내세요', '오늘도 고생 많으셨어요', '포근한 밤 되세요']
+      : ['늦은 밤 편히 쉬세요', '좋은 꿈 꾸세요', '오늘도 수고하셨어요'];
+    var greetingSlot = Math.floor((k.getHours() * 60 + k.getMinutes()) / 10);
+    var gt = greetingSets[(greetingSlot + k.getDate()) % greetingSets.length];
     var gEl = el.querySelector('.lc-g'), gh = nm ? '<b>' + nm.replace(/[<>&]/g, '') + '</b>님, ' + gt : '';
     if (gEl && gEl.getAttribute('data-g') !== gh) { gEl.innerHTML = gh; gEl.setAttribute('data-g', gh); gEl.hidden = !gh; }
     el.querySelector('.lc-hm').textContent = p(k.getHours()) + ':' + p(k.getMinutes());
