@@ -946,6 +946,62 @@ html.wbg-on.set-grid.ui-ios body #settings-section #set-flat > button.set-tile {
   html.wbg-on.set-grid body #settings-section > #set-flat {gap:7px 4px!important;}
 }
 </style>
+<style id="rail-icon-layout-precision-20261123">
+/* 환경설정 바둑판: 아이콘과 글자를 타일 정중앙으로 배치. 스위치가 있는 타일도 보존 */
+html.set-grid body #main-container #settings-section #set-flat > button.set-tile {
+  display:flex!important; flex-direction:column!important;
+  align-items:center!important; justify-content:center!important;
+  text-align:center!important; box-sizing:border-box!important;
+  min-width:0!important; padding:10px 5px!important;
+  gap:7px!important;
+}
+html.set-grid body #main-container #settings-section #set-flat > button.set-tile > img.set-art {
+  flex:0 0 auto!important; margin:0 auto!important;
+  align-self:center!important; object-fit:contain!important;
+}
+html.set-grid body #main-container #settings-section #set-flat > button.set-tile > span:not(.tile-sw) {
+  display:block!important; width:100%!important;
+  margin:0!important; text-align:center!important;
+  align-self:center!important; line-height:1.35!important;
+}
+/* 메인화면 목록형: 환경설정처럼 한 줄 전체가 클릭되는 아이콘 왼쪽/글자 오른쪽 목록 */
+html.menu-list body #main-container > #main-section.page-view > .menu-grid.mm-grid {
+  display:flex!important; flex-direction:column!important;
+  gap:0!important; overflow:hidden!important;
+  border-radius:18px!important;
+  background:rgba(255,255,255,.82)!important;
+  border:1px solid rgba(255,255,255,.72)!important;
+}
+html.menu-list body #main-container > #main-section.page-view > .menu-grid.mm-grid > button.menu-btn {
+  display:flex!important; flex-direction:row!important;
+  justify-content:flex-start!important; align-items:center!important;
+  width:100%!important; min-height:64px!important; height:auto!important;
+  margin:0!important; padding:11px 16px!important;
+  gap:14px!important; text-align:left!important;
+  border:0!important; border-radius:0!important;
+  box-shadow:none!important; background:transparent!important;
+}
+html.menu-list body #main-container > #main-section.page-view > .menu-grid.mm-grid > button.menu-btn + button.menu-btn {
+  border-top:1px solid rgba(140,163,185,.38)!important;
+}
+html.menu-list body #main-container > #main-section.page-view > .menu-grid.mm-grid > button.menu-btn > img.menu-art {
+  width:38px!important; height:38px!important; max-width:38px!important;
+  aspect-ratio:1/1!important; flex:0 0 38px!important;
+  object-fit:contain!important; margin:0!important;
+}
+html.menu-list body #main-container > #main-section.page-view > .menu-grid.mm-grid > button.menu-btn > span {
+  display:block!important; flex:1 1 auto!important;
+  text-align:left!important; font-size:15px!important;
+  line-height:1.4!important; margin:0!important;
+}
+html.menu-list body #main-container > #main-section.page-view > .menu-grid.mm-grid > button.menu-btn > span br {display:none!important;}
+/* 크리스마스 배경에서는 목록 전체에 유리 반투명 효과를 주고 내부 행은 투명 유지 */
+html.wbg-on.menu-list body #main-container > #main-section.page-view > .menu-grid.mm-grid {
+  background:rgba(255,255,255,.70)!important;
+  -webkit-backdrop-filter:blur(10px) saturate(125%);
+  backdrop-filter:blur(10px) saturate(125%);
+}
+</style>
 </head>
 <body>
 <!-- 다크 모드 되돌림 필터: html의 invert(.92)+hue-rotate(180)를 정확히 거꾸로 (사진 · 열차 애니메이션 · 프로필 원래 색) -->
@@ -2527,10 +2583,10 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <div class="ic-arr-h">아이콘 배열</div>
       <div class="ic-arr-row"><span>메인화면</span><div class="ic-seg" id="ic-arr-main">
         <button type="button" data-v="grid" onclick="iconArrSet('main','grid')"><i class="ic-pv grid"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></i><em>바둑판</em></button>
-        <button type="button" data-v="list" onclick="iconArrSet('main','list')"><i class="ic-pv list"><b></b><b></b><b></b><b></b></i><em>세로</em></button></div></div>
+        <button type="button" data-v="list" onclick="iconArrSet('main','list')"><i class="ic-pv list"><b></b><b></b><b></b><b></b></i><em>목록형</em></button></div></div>
       <div class="ic-arr-row"><span>환경설정</span><div class="ic-seg" id="ic-arr-set">
         <button type="button" data-v="grid" onclick="iconArrSet('set','grid')"><i class="ic-pv grid"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></i><em>바둑판</em></button>
-        <button type="button" data-v="list" onclick="iconArrSet('set','list')"><i class="ic-pv list"><b></b><b></b><b></b><b></b></i><em>세로</em></button></div></div>
+        <button type="button" data-v="list" onclick="iconArrSet('set','list')"><i class="ic-pv list"><b></b><b></b><b></b><b></b></i><em>목록형</em></button></div></div>
     </div>
     <div class="ic-arr-h" style="margin:4px 2px 6px">아이콘 테마</div>
     <div class="ns-note" style="margin:0 2px 10px">테마를 고르면 메인화면 · 환경설정 · 아래 메뉴 아이콘이 모두 바뀌어요. 이 폰에만 저장돼요.</div>
