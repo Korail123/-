@@ -28223,7 +28223,7 @@ html body #dbs-pop .dbs-ti em:not(.dbs-me){flex:0 0 auto;margin-left:44px;font-s
 #pass-panel .pa2-row>summary span,#pass-panel .pa2-sw span{font-size:14.5px;font-weight:700;color:#33415a}
 #pass-panel .pa2-row>summary em{font-style:normal;font-size:14px;font-weight:800;color:#2f6fd6;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #pass-panel .pa2-row>summary em.none{color:#a3adbb;font-weight:700}
-#pass-panel .pa2-row>summary em::after{content:' ›';display:inline-block;transition:transform .15s}
+#pass-panel .pa2-row>summary em::after{content:'›';display:inline-block;margin-left:12px;transition:transform .15s}
 #pass-panel .pa2-row[open]>summary em::after{transform:rotate(90deg)}
 #pass-panel .pa2-body{padding:2px 14px 12px;background:#f8fafc}
 #pass-panel .pa2-body .pass-tags{margin:8px 0}
@@ -30411,7 +30411,7 @@ function nmRender() {
   }
   var st = rsPerms() || {}, list = RS_PERMS.filter(function (p) { return p.k in st; });
   var ok = list.filter(function (p) { return st[p.k] !== false; }).length, n = list.length, miss = n - ok, pct = n ? Math.round(ok * 100 / n) : 100;
-  if (sub) { sub.hidden = false; sub.textContent = miss ? miss + '개 허용 필요' : '모두 허용됨'; sub.style.color = miss ? '#e8590c' : '#16a34a'; }
+  if (sub) { sub.hidden = !miss; sub.textContent = miss ? miss + '개 허용 필요' : ''; sub.style.color = '#e8590c'; }
   var col = miss ? '#2f6fd6' : '#16a34a';
   var h = '<div class="nm-ring" style="background:conic-gradient(' + col + ' 0 ' + pct + '%,#e4e9f1 ' + pct + '% 100%)"><div><b>' + ok + '/' + n + '</b><small>허용됨</small></div></div>' +
     '<div class="nm-msg' + (miss ? '' : ' ok') + '">' + (miss ? '알림이 제대로 오려면 아래 권한이 필요해요.' : '모든 권한이 허용돼 있어요 ✓') + '</div>';
