@@ -836,6 +836,35 @@ html body #group-section > div[style*="justify-content:flex-start"] {
   margin-bottom: 8px !important;
 }
 </style>
+
+<style id="rail-ios-settings-tiles-20261123">
+/* iOS 환경설정 바둑판: 기존 투명 강제 설정보다 구체적인 선택자로 반투명 카드 복원.
+   Android 및 다른 화면에는 적용하지 않음. */
+html.set-grid.ui-ios body #settings-section #set-flat > .set-tile {
+  box-sizing:border-box!important;
+  background:rgba(255,255,255,.70)!important;
+  border:1px solid rgba(255,255,255,.76)!important;
+  border-radius:16px!important;
+  box-shadow:0 2px 9px rgba(25,45,75,.09)!important;
+  -webkit-backdrop-filter:blur(12px) saturate(125%);
+  backdrop-filter:blur(12px) saturate(125%);
+  color:#123b69!important;
+}
+html.set-grid.ui-ios body #settings-section #set-flat > .set-tile:active {
+  background:rgba(221,239,255,.86)!important;
+}
+html.set-grid.ui-ios body #settings-section #set-flat > .set-tile.danger {
+  color:#d93a3a!important;
+}
+html.set-grid.ui-ios.ui-dark body #settings-section #set-flat > .set-tile {
+  background:rgba(35,44,60,.78)!important;
+  border-color:rgba(255,255,255,.16)!important;
+  color:#eef4ff!important;
+}
+html.set-grid.ui-ios.ui-dark body #settings-section #set-flat > .set-tile.danger {
+  color:#ff858a!important;
+}
+</style>
 </head>
 <body>
 <!-- 다크 모드 되돌림 필터: html의 invert(.92)+hue-rotate(180)를 정확히 거꾸로 (사진 · 열차 애니메이션 · 프로필 원래 색) -->
@@ -31043,7 +31072,7 @@ html body #main-container #schedule-section #calendar-grid.sch-grid > .cell {
 }
 /* 날짜 숫자는 상단, 근무 문구는 모든 칸에서 동일한 중앙선 */
 html body #main-container #schedule-section #calendar-grid.sch-grid > .cell > .cell-lbl {
-  position:absolute!important;top:47%!important;left:1px!important;right:1px!important;
+  position:absolute!important;top:50%!important;left:1px!important;right:1px!important;
   transform:translateY(-50%)!important;
   margin:0!important;padding:0!important;
   width:calc(100% - 2px)!important;text-align:center!important;
