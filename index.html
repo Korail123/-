@@ -4523,15 +4523,35 @@ function rsDayInfo(dateKey) {
     return mb ? snapDayWithAuto(dateKey, mb, snapshot.raw.dia || [], snapshot.ovMap) : null;
   } catch (e) { return null; }
 }
+/* 근무그룹은 현재 내 조 소속만 표시합니다.
+   서버의 getSnapshot 전체 응답이 fallback으로 들어오는 경우에도 사번→조 매핑으로 다시 제한합니다.
+   조 정보를 확인할 수 없는 구성원은 안전을 위해 표시하지 않습니다(본인은 항상 포함). */
+function rsGroupMemberInMyTeam(mb, myId, team) {
+  if (!mb) return false;
+  var id = String(mb.employeeId == null ? '' : mb.employeeId);
+  if (id && id === String(myId)) return true;
+  var mapped = (typeof rsTeams === 'object' && rsTeams) ? rsTeams[id] : '';
+  var explicit = mb.crew_team || mb.crewTeam || mb.team || mb.team_name || mb.teamName || '';
+  var memberTeam = rsTeamNorm(mapped || explicit);
+  return !!(team && memberTeam && memberTeam === rsTeamNorm(team));
+}
+function rsGroupFilterMembers(members, myId, team) {
+  return (Array.isArray(members) ? members : []).filter(function (mb) {
+    return rsGroupMemberInMyTeam(mb, myId, team);
+  });
+}
 function buildLocalRange(scope, startKey, endKey) {
   var raw = snapshot.raw;
   var dia = raw.dia || [];
-  var myId = getCurrentUser().employeeId;
+  var myId = String(getCurrentUser().employeeId || '');
   var keys = snapDateKeys(startKey, endKey);
   var out = [];
-  for (var i = 0; i < raw.members.length; i++) {
-    var mb = raw.members[i];
-    if (scope === 'me' && mb.employeeId !== myId) continue;
+  var groupTeam = scope === 'group' ? rsTeamNorm(myTeam() || (typeof curTeam === 'function' && curTeam()) || raw.team || '') : '';
+  var sourceMembers = Array.isArray(raw.members) ? raw.members : [];
+  if (scope === 'group') sourceMembers = rsGroupFilterMembers(sourceMembers, myId, groupTeam);
+  for (var i = 0; i < sourceMembers.length; i++) {
+    var mb = sourceMembers[i];
+    if (scope === 'me' && String(mb.employeeId) !== myId) continue;
     var days = {};
     for (var j = 0; j < keys.length; j++) {
       days[keys[j]] = snapDayWithAuto(keys[j], mb, dia, snapshot.ovMap);
@@ -7534,7 +7554,8 @@ function renderDayDetail() {
   var info = getInfo(selDate.y, selDate.m, selDate.d);
   if (!info || !info.label) {
     var emptyPlan = (typeof rpForDate === 'function') ? rpForDate(getDateKey(selDate.y, selDate.m, selDate.d)) : null;
-    detail.innerHTML = dayDetailHead(dateText) + '<div class="dd-empty">근무 정보가 없습니다.</div>' + (emptyPlan ? '<div class="dd-dia-image-wrap"><div class="dd-dia-image-title">행로표 <small class="dd-plan-tag">예상 행로표</small></div><img class="dd-dia-image" alt="행로표" src="' + emptyPlan.url + '"></div>' : '');
+    detail.innerHTML = dayDetailHead(dateText) + '<div class="dd-empty">근무 정보가 없습니다.</div>' + (emptyPlan ? '<div class="dd-dia-image-wrap"><div class="dd-dia-image-title">행로표 <small class="dd-plan-tag">예상 행로표</small></div><img class="dd-dia-image" alt="행로표" src="' + emptyPlan.url + '"></div>' : '') +
+      '<button type="button" class="dd-route-edit" onclick="openRoutePlanForSelectedDay()">' + (emptyPlan ? '예상 행로표 수정' : '이 날짜 행로표 만들기') + '</button>';
     return;
   }
   var isStatus = info.overrideType === 'status' && !info.nightCarryover;
@@ -7629,37 +7650,38 @@ function renderDayDetail() {
     }
   } catch (e) {}
   if (!isStatus && diaNo && !isOffDay) { var crewTs = [train1, train2, train3]; try { var xi = xrGet('info', {})[dateKeyForSelectedDay()]; if (xi && xrNorm(xi.dia) === xrNorm(diaNo)) crewTs = crewTs.concat(xi.trains || []); } catch (e) {} html += crewMatesHtml(dateKeyForSelectedDay(), diaNo, crewTs).replace('crew-row', 'crew-row dd-dup'); try { if (crewLinked()) ddCrewR = crewPick(dateKeyForSelectedDay(), diaNo, crewTs, getCurrentUser().name) || { none: 1 }; } catch (e) {} }
-  /* 선택한 날짜의 DIA와 행로표 정보를 한눈에 확인할 수 있도록 하단에 별도 표시 */
+  /* 선택한 날짜의 DIA와 행로표: 관리자 정식 행로표가 있으면 개인 예상 행로표 영역을 생략하고,
+     정식 행로표가 없는 DIA만 철도비서 예상 행로표와 만들기/수정 버튼을 표시합니다. */
   if ((!isStatus && diaNo) || (typeof rpForDate === 'function' && rpForDate(dateKeyForSelectedDay()))) {
-    html += '<div class="dd-route">';
-    var ddKey = dateKeyForSelectedDay(), ddPlan = (typeof rpForDate === 'function') ? rpForDate(ddKey) : null;
-    if (ddPlan && diaNo && String(ddPlan.dia).toUpperCase() !== diaNo.toUpperCase()) ddPlan = null;
-    if (!ddPlan && rsPlan && typeof rpSavedUrl === 'function') ddPlan = { dia: diaNo, url: rpSavedUrl(diaNo) };
-    var ddTemp = (typeof tdGet === 'function') ? tdGet(ddKey) : '';
-    var ddXr = (typeof xrInfoFor === 'function') ? xrInfoFor(ddKey, diaNo) : null;
-    if (ddXr) html += ddXr;
-    var diaImageSrc = diaImageUrl(diaNo);
-    /* 정규 다이아는 관리자가 저장해 둔 행로표를 그대로, 그 밖의 다이아만 철도비서가 만든 예상 행로표 */
+    var ddKey = dateKeyForSelectedDay();
     var ddOfficial = diaNo ? rsOfficialRouteUrl(diaNo) : '';
-    if (ddOfficial) { ddPlan = null; diaImageSrc = ddOfficial; }
-    else if (!ddPlan && diaImageSrc) { ddPlan = { dia: diaNo, url: diaImageSrc }; }
-    if (ddPlan && !ddPlan.url) ddPlan = null;   /* 예상 행로표를 그릴 수 없으면 아래 '행로표 이미지가 없습니다' */
-    if (ddPlan) {
-      html += '<div class="dd-dia-image-wrap"><div class="dd-dia-image-title">행로표 <small class="dd-plan-tag">예상 행로표</small></div>' +
-        '<img class="dd-dia-image" src="' + ddPlan.url + '"' + routeArAttr(ddPlan.url, ddPlan.dia) + ' alt="DIA ' + esc(ddPlan.dia) + ' 행로표" onclick="openRouteViewer(\'' + esc(ddPlan.dia) + '\', this.src)" decoding="async"' +
-        ' onerror="this.style.display=\'none\';var t=this.previousElementSibling;if(t)t.style.display=\'none\';var m=this.nextElementSibling;if(m)m.style.display=\'\'">' +
-        '<div class="dd-dia-image-missing" style="display:none">행로표 이미지가 없습니다.</div></div>';
-    } else if (diaImageSrc) {
-      html += '<div class="dd-dia-image-wrap">' +
-        '<div class="dd-dia-image-title">행로표</div>' +
-        '<img class="dd-dia-image" src="' + diaImageSrc + '"' + routeArAttr(diaImageSrc, diaNo) + ' alt="DIA ' + esc(diaNo) + ' 행로표" ' +
-        'data-dia="' + esc(diaNo.toUpperCase()) + '" data-try="0" onclick="openRouteViewer(this.getAttribute(\'data-dia\'))" ' +
-        'onerror="diaImgFallback(this)" decoding="async">' +
-        '<div class="dd-dia-image-missing" style="display:none">행로표 이미지가 없습니다.</div></div>';
-    } else {
-      html += '<div class="dd-dia-image-wrap"><div class="dd-dia-image-missing">행로표 이미지가 없습니다.</div></div>';
+    if (!ddOfficial) {
+      html += '<div class="dd-route">';
+      var ddPlan = (typeof rpForDate === 'function') ? rpForDate(ddKey) : null;
+      if (ddPlan && diaNo && String(ddPlan.dia).toUpperCase() !== diaNo.toUpperCase()) ddPlan = null;
+      /* 이 날짜에 연결된 행로표 → 내 DIA별 저장분 → XROIS에서 받은 공유/임시 행로표 순서 */
+      if (!ddPlan && diaNo && typeof rpSavedUrl === 'function') {
+        var ddSavedUrl = rpSavedUrl(diaNo);
+        if (ddSavedUrl) ddPlan = { dia: diaNo, url: ddSavedUrl };
+      }
+      if (!ddPlan && diaNo && rsPlan && rsPlan.rows && rsPlan.rows.length && typeof rpUrl === 'function') {
+        ddPlan = { dia: diaNo, url: rpUrl(diaNo, rsPlan.rows) };
+      }
+      var ddXr = (typeof xrInfoFor === 'function') ? xrInfoFor(ddKey, diaNo) : null;
+      if (ddXr) html += ddXr;
+      if (ddPlan && ddPlan.url) {
+        html += '<div class="dd-dia-image-wrap"><div class="dd-dia-image-title">행로표 <small class="dd-plan-tag">예상 행로표</small></div>' +
+          '<img class="dd-dia-image" src="' + ddPlan.url + '"' + routeArAttr(ddPlan.url, ddPlan.dia) + ' alt="DIA ' + esc(ddPlan.dia) + ' 예상 행로표" onclick="openRouteViewer(\'' + esc(ddPlan.dia) + '\', this.src)" decoding="async"' +
+          ' onerror="this.style.display=\'none\';var t=this.previousElementSibling;if(t)t.style.display=\'none\';var m=this.nextElementSibling;if(m)m.style.display=\'\'">' +
+          '<div class="dd-dia-image-missing" style="display:none">예상 행로표 이미지를 불러오지 못했어요.</div></div>';
+      } else {
+        html += '<div class="dd-dia-image-wrap"><div class="dd-dia-image-missing">예상 행로표가 아직 없어요.</div></div>';
+      }
+      var hasOwnRoute = !!(ddPlan && ddPlan.url);
+      html += '<button type="button" class="dd-route-edit" onclick="openRoutePlanForSelectedDay()">' +
+        (hasOwnRoute ? '예상 행로표 수정' : '행로표 만들기') + '</button>';
+      html += '</div>';
     }
-    html += '</div>';
   }
   /* 매거진 커버: 날짜 · DIA · 근무구분 · 출근 · 퇴근 · 구속 · 열차번호(누르면 조회) */
   try {
@@ -8201,6 +8223,32 @@ function groupSetPending(v) {
   if (sec) sec.classList.toggle('rs-data-pending', !!v);
 }
 var groupFetchSerial = 0;
+var groupTeamMapUser = '', groupTeamMapLoadedAt = 0, groupTeamMapBusy = false, groupTeamMapWaiters = [];
+/* 근무그룹을 그리기 전에 사번별 조 정보를 확보합니다.
+   조 매핑을 가져오지 못하면 buildLocalRange가 본인 외 구성원을 숨기므로 다른 조 노출을 막습니다. */
+function groupEnsureTeamMap(cb) {
+  var u = getCurrentUser(), me = String(u.employeeId || '');
+  var mine = rsTeamNorm(myTeam() || curTeam() || '');
+  if (groupTeamMapUser === me && groupTeamMapLoadedAt && Date.now() - groupTeamMapLoadedAt < 5 * 60000 && rsTeams[me]) {
+    if (cb) cb(true);
+    return;
+  }
+  if (cb) groupTeamMapWaiters.push(cb);
+  if (groupTeamMapBusy) return;
+  groupTeamMapBusy = true;
+  teamLoad(function (r) {
+    var nowUser = getCurrentUser();
+    var sameUser = String(nowUser.employeeId || '') === me;
+    var team = rsTeamNorm((r && r.mine) || myTeam() || mine || '');
+    if (sameUser && team) rsTeams[me] = team;
+    var ok = !!(sameUser && r && r.success && team && rsTeams[me]);
+    groupTeamMapUser = ok ? me : '';
+    groupTeamMapLoadedAt = ok ? Date.now() : 0;
+    groupTeamMapBusy = false;
+    var waiters = groupTeamMapWaiters.slice(); groupTeamMapWaiters = [];
+    waiters.forEach(function (fn) { try { fn(ok); } catch (e) {} });
+  });
+}
 function loadGroupSchedule(silent) {
   var user = getCurrentUser();
   var requestId = ++groupFetchSerial;
@@ -8227,19 +8275,25 @@ function loadGroupSchedule(silent) {
   var cached = peekData('group', startKey, endKey);
   /* 서버 응답 이전의 임시 명단을 먼저 표시하지 않습니다. 기존 표는 조회 중 유지합니다. */
   if (!silent && !groupData) renderGroupTable();
-  if (!cached && !silent) status.textContent = '근무표를 불러오는 중...';
-  fetchData('group', startKey, endKey, !!silent, function (r, fromCache) {
+  if (!cached && !silent) status.textContent = '조별 소속을 확인하고 근무표를 불러오는 중...';
+  groupEnsureTeamMap(function (teamMapOk) {
     if (requestId !== groupFetchSerial || groupWeekDays()[0].key !== startKey || getCurrentUser().employeeId !== user.employeeId) return;
-    groupSetPending(false);
-    if (!r || !r.success) {
-      /* 실패해도 이미 그려진 명단은 지우지 않고 다시 불러오기 버튼을 보여줌 */
-      if (!silent || !groupData) status.textContent = (r && r.message) || '불러오지 못했습니다.';
+    fetchData('group', startKey, endKey, !!silent, function (r, fromCache) {
+      if (requestId !== groupFetchSerial || groupWeekDays()[0].key !== startKey || getCurrentUser().employeeId !== user.employeeId) return;
+      groupSetPending(false);
+      if (!r || !r.success) {
+        /* 실패해도 이미 그려진 명단은 지우지 않고 다시 불러오기 버튼을 보여줌 */
+        if (!silent || !groupData) status.textContent = (r && r.message) || '불러오지 못했습니다.';
+        if (silent) renderGroupTableSoon(); else renderGroupTable();
+        return;
+      }
+      groupData = r;
+      var visibleOthers = (r.members || []).filter(function (m) { return String(m.employeeId) !== String(user.employeeId); }).length;
+      status.textContent = !teamMapOk
+        ? '조별 소속 정보를 확인하지 못해 본인만 표시할 수 있습니다. 연결 상태를 확인하고 다시 불러와 주세요.'
+        : (visibleOthers ? '' : '같은 조 구성원 정보가 없거나 아직 등록되지 않았습니다.');
       if (silent) renderGroupTableSoon(); else renderGroupTable();
-      return;
-    }
-    status.textContent = '';
-    groupData = r;
-    if (silent) renderGroupTableSoon(); else renderGroupTable();
+    });
   });
 }
 function groupCellClass(label, isStatus) {
@@ -10180,7 +10234,7 @@ function saveMyTeam() {
   teamSetRemote(t, function (r) {
     sel.disabled = false;
     if (r && r.success) {
-      teamPut(t); rsTeams[getCurrentUser().employeeId] = t; showToast(t + '로 바꿨어요. 근무표·근무그룹을 ' + t + ' 기준으로 다시 불러와요.');
+      teamPut(t); rsTeams[getCurrentUser().employeeId] = t; groupTeamMapUser = String(getCurrentUser().employeeId || ''); groupTeamMapLoadedAt = 0; showToast(t + '로 바꿨어요. 근무표·근무그룹을 ' + t + ' 기준으로 다시 불러와요.');
       try { renderMyPageProfile(); } catch (e) {}
       /* 지난 근무 고정(2026-06-01 ~ 어제, 바꾸기 전 조 기준) → 새 조 근무표 받기 → 새 조 순서표 팝업 */
       try { var tk = todayKST(), tdk = getDateKey(tk.y, tk.m, tk.d); rsTeamHistAdd(tdk, t, before); rsFreezePast(getCurrentUser().employeeId, tdk, '', { all: true, team: before, backup: true }); } catch (e) {}
@@ -22413,6 +22467,21 @@ function openRoutePlan(dia, dateKey) {
   rpRender(); rpListRender();
   $('rp-panel').classList.add('active');
 }
+/* 근무표에서 선택한 날짜의 DIA·사업일자를 행로표 편집기로 전달 */
+function openRoutePlanForSelectedDay() {
+  if (!selDate) { openRoutePlan(); return; }
+  var dateKey = getDateKey(selDate.y, selDate.m, selDate.d), info = {};
+  try { info = getInfo(selDate.y, selDate.m, selDate.d) || {}; } catch (e) {}
+  var isStatus = info.overrideType === 'status' && !info.nightCarryover;
+  var dia = isStatus ? '' : String(info.dia || '').trim();
+  if (!dia && !isStatus && info.label && typeof diaByNumber === 'function' && diaByNumber(info.label)) dia = String(info.label).trim();
+  if (!dia && typeof rpForDate === 'function') {
+    var linked = rpForDate(dateKey);
+    if (linked && linked.dia) dia = String(linked.dia).trim();
+  }
+  if (!dia && typeof tdGet === 'function') dia = String(tdGet(dateKey) || '').trim();
+  openRoutePlan(dia, dateKey);
+}
 function closeRoutePlan() { $('rp-panel').classList.remove('active'); }
 /* ---------- 임시다이아 (근무 변경 팝업 체크) : 이 폰에만 저장 ---------- */
 function tdKey() { var u = (typeof getCurrentUser === 'function' && getCurrentUser()) || {}; return 'rs_tempdia_' + (u.employeeId || 'guest'); }
@@ -22485,6 +22554,11 @@ function tdSet(dateKey, dia) { var a = tdAll(); if (dia) a[dateKey] = dia; else 
 </style>
 <style id="route-plan-css3">
 #rp-panel .rp-row.auto .rp-in{background:#f6f8fb;color:#6b7686;border-style:dashed}
+</style>
+<style id="dd-route-edit-css">
+#day-detail .dd-route-edit{display:block;width:100%;min-height:40px;margin:10px 0 2px;padding:9px 12px;border:1px solid #9cbcf0;border-radius:10px;background:#f2f7ff;color:#1d4ed8;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+#day-detail .dd-route-edit:active{background:#e3efff}
+html.ui-dark #day-detail .dd-route-edit{border-color:#41658e;background:#202f43;color:#a9ceff}
 </style>
 <script id="route-plan-script2">
 /* 주간 / 야간 */
@@ -30859,8 +30933,11 @@ function swnSeen() {
 
 <style id="wbg-ui">
 /* ===== 메인 바탕: 흐린 보케 트리 (낮=불빛 꺼짐 · 저녁/밤/새벽=1초마다 반짝) + 눈 ===== */
-#wbg{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none;display:none}
+#wbg-base,#wbg{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;display:none}
+#wbg-base{z-index:0;transform:scale(1.035);transform-origin:center center;-webkit-filter:blur(12px);filter:blur(12px)}
+#wbg{z-index:0}
 html.wbg-on #wbg{display:block}
+html.wbg-on.wbg-ios-blur #wbg-base{display:block}
 html.wbg-on:not(#z1):not(#z2),html.wbg-on:not(#z1):not(#z2) body,html.wbg-on:not(#z1):not(#z2) body #main-container,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .page-view,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body #main-container > .page-view.active{background:transparent!important;background-image:none!important}
 html.wbg-on #snow-fx{display:none!important}
 html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6),html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body #main-container{background:transparent!important;background-image:none!important}   /* 게시판(공지 · 건의) 흰 바탕보다 우선 */
@@ -30920,7 +30997,7 @@ html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#
 html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body .board-page .nt-tab{background:rgba(255,255,255,.72)!important;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:none!important}
 html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8) body .board-page .nt-tab.active{background:#fff!important;box-shadow:0 2px 8px rgba(20,40,80,.12)!important}
 </style>
-<canvas id="wbg" aria-hidden="true"></canvas>
+<canvas id="wbg-base" aria-hidden="true"></canvas><canvas id="wbg" aria-hidden="true"></canvas>
 <script id="wbg-js">
 function wbgOn() { try { return localStorage.getItem('rs_wbg') !== '0'; } catch (e) { return true; } }
 function wbgSet(on) {
@@ -30970,9 +31047,13 @@ function wbgGlass() {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
 (function () {
-  var cv = document.getElementById('wbg'); if (!cv) return;
-  document.body.insertBefore(cv, document.body.firstChild);
-  var x = cv.getContext('2d'); if (!x) return; var W = 0, H = 0, DPR = 1, base = null, baseKey = '', night = false, lights = [], snow = [], last = 0, lastBlink = 0;
+  var cv = document.getElementById('wbg'), bgCv = document.getElementById('wbg-base'); if (!cv) return;
+  if (bgCv) document.body.insertBefore(bgCv, document.body.firstChild);
+  document.body.insertBefore(cv, bgCv ? bgCv.nextSibling : document.body.firstChild);
+  var x = cv.getContext('2d'), bx = bgCv && bgCv.getContext('2d'); if (!x) return;
+  var iosDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  function iosBlurMode() { return iosDevice || document.documentElement.classList.contains('ui-ios'); }
+  var W = 0, H = 0, DPR = 1, base = null, baseKey = '', night = false, lights = [], snow = [], last = 0, lastBlink = 0;
   function R(s) { return function () { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
   /* 서울 기준(위도 37.5665, 경도 126.9780) 일출·일몰을 날짜별로 계산한다. 외부 API/위치 권한 불필요. */
   var solarCache = { key: '', sunrise: 6, sunset: 18 };
@@ -31016,6 +31097,9 @@ function wbgGlass() {
   /* iOS Safari에서 Canvas filter가 지원되지 않는 경우 shadowBlur로 대체한다. */
   function soft(q, px) {
     q.shadowBlur = 0; q.shadowColor = 'transparent';
+    /* iOS Safari는 Canvas filter 속성이 있어도 blur가 실제 도형에 적용되지 않는 경우가 있다.
+       iOS에서는 기본 트리를 별도 캔버스에 그린 뒤 DOM CSS filter로 흐리게 처리한다. */
+    if (iosBlurMode()) { if ('filter' in q) q.filter = 'none'; return; }
     if ('filter' in q) { q.filter = px ? 'blur(' + px + 'px)' : 'none'; return; }
     /* 필터 미지원 환경: 선과 도형에 부드러운 외곽 그림자를 적용 */
     q.shadowBlur = px ? px * 1.5 : 0;
@@ -31065,6 +31149,7 @@ function wbgGlass() {
     var key = w + 'x' + h + '@' + d + (night ? 'n' : 'd');
     if (key === baseKey) return; baseKey = key; W = w; H = h; DPR = d; SPR = {};
     cv.width = W * DPR; cv.height = H * DPR; x.setTransform(DPR, 0, 0, DPR, 0, 0);
+    if (bgCv && bx) { bgCv.width = W * DPR; bgCv.height = H * DPR; bx.setTransform(DPR, 0, 0, DPR, 0, 0); }
     document.documentElement.classList.toggle('wbg-night', night);
     bake();
   }
@@ -31106,7 +31191,16 @@ function wbgGlass() {
     var dt = Math.min(3, (now - last) / 16.7); last = now;
     if (isNight() !== night) baseKey = '';
     size();
-    x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1; x.drawImage(base, 0, 0, W, H);
+    var iosBlur = iosBlurMode();
+    document.documentElement.classList.toggle('wbg-ios-blur', iosBlur);
+    x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
+    if (iosBlur && bgCv && bx) {
+      bx.globalCompositeOperation = 'source-over'; bx.globalAlpha = 1; bx.clearRect(0, 0, W, H); bx.drawImage(base, 0, 0, W, H);
+      x.clearRect(0, 0, W, H);
+    } else {
+      x.drawImage(base, 0, 0, W, H);
+      if (bgCv && bx) bx.clearRect(0, 0, W, H);
+    }
     if (night) {
       if (now - lastBlink > 1000) { lastBlink = now; lights.forEach(function (l) { if (Math.random() < .5) l.on = !l.on; }); }   /* 1초마다 반짝 */
       x.globalCompositeOperation = 'lighter';
