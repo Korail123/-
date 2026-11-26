@@ -54,7 +54,10 @@ function uiApply() {
   if (!st) { st = document.createElement('style'); st.id = 'ui-font-style'; document.head.appendChild(st); }
   uiLoadFont(o.font);
   /* 모든 화면 · 모든 글자(버튼 · 입력칸 · 표 · 팝업 · 그림 속 SVG 글자까지)에 같은 글꼴. 코드 표시 글꼴만 제외 */
-  st.textContent = f.fam ? 'html body,html body *:not(code):not(pre):not(kbd):not(samp){font-family:' + f.fam + ',-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif!important}' : '';
+  st.textContent = f.fam ? 'html body,html body *:not(code):not(pre):not(kbd):not(samp){font-family:' + f.fam + ',-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif!important}' :
+    /* 기본(시스템) 글꼴이어도 DIA 카드(날짜 · DIA · 출퇴근 · 열차번호 · 승무원)는 아이폰 · 안드로이드가 같은 글꼴(프리텐다드)로 보이게 */
+    'html body #day-detail .dd-cover,html body #day-detail .dd-cover *{font-family:"Pretendard",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif!important;-webkit-text-size-adjust:100%;text-size-adjust:100%;font-synthesis:none}';
+  if (!f.fam) uiLoadFont('pretendard');
 }
 uiApply();
 /* 밤에만 모드: 1분마다 시각 확인 (저녁 7시 ~ 아침 7시 다크) */
@@ -5860,9 +5863,12 @@ function rsFeedSend(u, t, want, got, name, force) {
     var key = ym[0] + '-' + pad2(ym[1] + 1); keep.push(key);
     var mm = got[key];
     if (!mm) { if (sig[key]) newSig[key] = sig[key]; return; }
-    var h = JSON.stringify([mm.days, mm.ex, name, key === curYm ? t.d : 0, 7, wgLineMode(), uiGet().font]);
+    var pdt = new Date(ym[0], ym[1] - 1, 1), ndt = new Date(ym[0], ym[1] + 1, 1);
+    var pm = got[pdt.getFullYear() + '-' + pad2(pdt.getMonth() + 1)] || null, nm = got[ndt.getFullYear() + '-' + pad2(ndt.getMonth() + 1)] || null;
+    var h = JSON.stringify([mm.days, mm.ex, name, key === curYm ? t.d : 0, 8, wgLineMode(), uiGet().font,
+      pm ? [pm.days.slice(-7), (pm.ex || []).slice(-7)] : 0, nm ? [nm.days.slice(0, 7), (nm.ex || []).slice(0, 7)] : 0]);   /* 앞·뒤 달 날짜도 바뀌면 다시 그림 */
     newSig[key] = h;
-    if (force || sig[key] !== h) todo.push({ key: key, mm: mm, y: ym[0], m: ym[1] });
+    if (force || sig[key] !== h) todo.push({ key: key, mm: mm, y: ym[0], m: ym[1], adj: { prev: pm, next: nm } });
   });
   var lk = rsFeedKey() + '_last', lastAt = 0;
   try { lastAt = +(localStorage.getItem(lk) || 0); } catch (e) {}
@@ -5874,7 +5880,7 @@ function rsFeedSend(u, t, want, got, name, force) {
   var bi = 0;
   (function next() {
     var pngs = {};
-    batches[bi].forEach(function (it) { try { pngs[it.key] = wgDrawPng(it.mm, it.y, it.m, name); } catch (e) {} });
+    batches[bi].forEach(function (it) { try { pngs[it.key] = wgDrawPng(it.mm, it.y, it.m, name, it.adj); } catch (e) {} });
     var lineNow = wgLineMode();
     api({ action: 'widgetSave', employeeId: u.employeeId, token: u.token, name: String(name).slice(0, 20), days: days, pngs: pngs, keep: keep, line: lineNow }, function (res) {
       if (res && res.success && wgLineSending === lineNow) wgLineSending = '';
@@ -5890,7 +5896,7 @@ function rsFeedSend(u, t, want, got, name, force) {
   })();
 }
 /* KWGT 4x4 위젯용 근무표 달력 그림 (흰 둥근 카드, 근무는 색 동그라미, 아래에 교환 상대 · 휴무충당 · 대기충당만) */
-function wgDrawPng(mm, y, m, name) {
+function wgDrawPng(mm, y, m, name, adj) {
   var W = 720, H = 720, S = W / 360;
   var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   var c = cv.getContext('2d');
@@ -5924,27 +5930,32 @@ function wgDrawPng(mm, y, m, name) {
   for (var k = 1; k < 7; k++) { c.beginPath(); c.moveTo(cw * k, top); c.lineTo(cw * k, top + ch * rows); c.stroke(); }
   var t = todayKST();
   var COL = { '주': ['#ffd21f', '#4a3b00'], '야': ['#5b8def', '#ffffff'], '비': ['#5b8def', '#ffffff'], 'X': ['#5b8def', '#ffffff'], '휴': ['#e8590c', '#ffffff'] };
-  for (var d = 1; d <= last; d++) {
-    var idx = first + d - 1, col = idx % 7, row = Math.floor(idx / 7);
+  /* 달력 빈 칸(앞·뒤 달 날짜)도 흐릿하게 채움: 근무 동그라미 · 출퇴근시간까지 */
+  for (var idx = 0; idx < rows * 7; idx++) {
+    var dtc = new Date(y, m, 1 - first + idx), cy2 = dtc.getFullYear(), cm2 = dtc.getMonth(), d = dtc.getDate();
+    var inMonth = (cm2 === m && cy2 === y);
+    var src = inMonth ? mm : (idx < first ? (adj && adj.prev) : (adj && adj.next));
+    var col = idx % 7, row = Math.floor(idx / 7);
     var x = cw * col, y0 = top + ch * row;
-    var cell = String((mm && mm.days && mm.days[d - 1]) || '').split('|');
-    var ex = (mm && mm.ex && mm.ex[d - 1]) || ['', '', ''];
-    var hol = holidayName(y, m, d);
-    if (t.y === y && t.m === m && t.d === d) {
+    var cell = String((src && src.days && src.days[d - 1]) || '').split('|');
+    var ex = (src && src.ex && src.ex[d - 1]) || ['', '', ''];
+    var hol = holidayName(cy2, cm2, d);
+    c.globalAlpha = inMonth ? 1 : 0.34;
+    if (inMonth && t.y === y && t.m === m && t.d === d) {
       c.fillStyle = '#e3eefe'; c.fillRect(x + 1, y0 + 1, cw - 2, ch - 2);
       c.strokeStyle = '#2f80ed'; c.lineWidth = 2.2 * S; c.strokeRect(x + 1.1 * S, y0 + 1.1 * S, cw - 2.2 * S, ch - 2.2 * S);
     }
     /* 날짜 (+ 공휴일 이름) */
     c.font = '500 ' + (8 * S) + 'px ' + F; c.textAlign = 'center';
     c.fillStyle = (hol || col === 0) ? '#e5484d' : col === 6 ? '#2f6fd6' : '#4b5563';
-    var dtxt = (d === 1 ? (m + 1) + '.' : '') + pad2(d) + (hol ? ' ' + hol.slice(0, 4) : '');
+    var dtxt = (d === 1 ? (cm2 + 1) + '.' : '') + pad2(d) + (hol ? ' ' + hol.slice(0, 4) : '');
     c.fillText(dtxt, x + cw / 2, y0 + 10 * S);
     /* 근무 동그라미 */
     var lab = String(cell[0] || '').replace(/^\*/, '');
     var cy = y0 + ch / 2 + 1 * S;   /* 근무 동그라미: 칸의 가운데 */
     if (lab) {
       var clr = COL[lab] || (cell[1] === 'status' ? ['#e53935', '#ffffff'] : ['#5b8def', '#ffffff']);
-      var rad = Math.min(cw, ch) * 0.2;
+      var rad = Math.min(cw, ch) * 0.175;
       c.beginPath(); c.arc(x + cw / 2, cy, rad, 0, Math.PI * 2); c.fillStyle = clr[0]; c.fill();
       var fs = lab.length >= 3 ? 7 : lab.length === 2 ? 8.5 : 11;
       c.font = '700 ' + (fs * S) + 'px ' + F; c.fillStyle = clr[1];
@@ -5963,6 +5974,7 @@ function wgDrawPng(mm, y, m, name) {
       c.fillStyle = '#4b5563';
       c.fillText(line, x + cw / 2, y0 + ch - 7 * S);
     }
+    c.globalAlpha = 1;
   }
   c.restore();
   return cv.toDataURL('image/png');
@@ -6251,7 +6263,13 @@ function wgFillPreview() {
   var img = $('wg-prev'); if (!img) return;
   var u = getCurrentUser(); if (!u) return;
   var t = todayKST();
-  rsWidgetMonth(t.y, t.m, function (mm) { if (mm) img.src = wgDrawPng(mm, t.y, t.m, mm.name || u.name || ''); });
+  rsWidgetMonth(t.y, t.m, function (mm) {
+    if (!mm) return;
+    img.src = wgDrawPng(mm, t.y, t.m, mm.name || u.name || '');
+    var pd = new Date(t.y, t.m - 1, 1), nd = new Date(t.y, t.m + 1, 1), adj = {};
+    rsWidgetMonth(pd.getFullYear(), pd.getMonth(), function (pm) { adj.prev = pm;
+      rsWidgetMonth(nd.getFullYear(), nd.getMonth(), function (nm) { adj.next = nm; img.src = wgDrawPng(mm, t.y, t.m, mm.name || u.name || '', adj); }); });
+  });
 }
 function wgCopy(text) {
   try { navigator.clipboard.writeText(text).then(function () { showToast('복사했어요.'); }, function () { wgCopyOld(text); }); }
@@ -8592,7 +8610,8 @@ function renderGroupTable() {
   if (!bodySame) { bodyEl.innerHTML = html; bodyEl.__h = html; }
   var foot = '<tr><td class="name-col">휴가·휴무·X</td>';
   for (var c = 0; c < 7; c++) {
-    foot += '<td' + (days[c].key === selKey ? ' class="g-sel g-sel-b"' : '') + '>' + counts[c] + '명</td>';
+    var fcl = (days[c].key === todayKey ? 'g-today ' : '') + (days[c].key === selKey ? 'g-sel g-sel-b' : '');
+    foot += '<td' + (fcl.trim() ? ' class="' + fcl.trim() + '"' : '') + '>' + counts[c] + '명</td>';
   }
   foot += '</tr>';
   if (footEl.__h !== foot) { footEl.innerHTML = foot; footEl.__h = foot; }
@@ -26145,8 +26164,24 @@ function schView() { try { return LS.getItem('rs_sch_view') === 'tbl' ? 'tbl' : 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
 function schSetView(v) {
+  var was = schView();
   try { LS.setItem('rs_sch_view', v === 'tbl' ? 'tbl' : 'cal'); } catch (e) {}
   schApplyView();
+  if (v === 'tbl' && was !== 'tbl') schScrollToday();   /* 표로 바꾸면 오늘 줄이 보이게 이동 */
+}
+function schScrollToday() {
+  setTimeout(function () {
+    var tw = $('sch-table-wrap'); if (!tw || tw.hidden) return;
+    var row = tw.querySelector('tr.today') || tw.querySelector('tbody tr'); if (!row) return;
+    var sc = row.parentElement;   /* 실제로 스크롤되는 칸(#main-container)을 찾아서 그 안에서 이동 */
+    while (sc && sc !== document.documentElement) { var cs = getComputedStyle(sc); if (/(auto|scroll)/.test(cs.overflowY) && sc.scrollHeight > sc.clientHeight) break; sc = sc.parentElement; }
+    var isDoc = !sc || sc === document.documentElement;
+    var box = isDoc ? { top: 0, height: window.innerHeight } : sc.getBoundingClientRect();
+    var cur = isDoc ? (window.pageYOffset || document.documentElement.scrollTop || 0) : sc.scrollTop;
+    var off = row.classList.contains('today') ? Math.round(box.height * .38) : 70;
+    var to = Math.max(0, cur + (row.getBoundingClientRect().top - box.top) - off);
+    try { (isDoc ? window : sc).scrollTo({ top: to, behavior: 'smooth' }); } catch (e) { if (isDoc) window.scrollTo(0, to); else sc.scrollTop = to; }
+  }, 60);
 }
 function schApplyView() {
   var tbl = schView() === 'tbl';
@@ -26297,6 +26332,16 @@ function schCloseDay() {
 .sch-tbl .st-sw{font-style:normal;color:#2f6fd6;margin-left:1px;font-size:11px}
 .sch-day-dialog{max-height:86vh;overflow:auto}
 .sch-day-dialog #day-detail{margin:0;box-shadow:none}
+
+/* 근무표(표 보기): 오늘 줄만 색칠 (줄 전체 연하게 + 날짜 칸은 진하게 + 왼쪽 파란 막대) */
+.sch-tbl tr.today td{background:#dcebff!important}
+.sch-tbl tr.today td.st-d{background:#b9d6ff!important;box-shadow:inset 4px 0 0 #2f6fd6}
+html.ui-dark .sch-tbl tr.today td{background:#1f3556!important}
+html.ui-dark .sch-tbl tr.today td.st-d{background:#2c4a7c!important}
+/* 근무표 상단 여백 줄이기: 비어 있는 안내 줄 숨김 · 제목 ~ 달력/표 ~ 본문 간격 축소 */
+html body #schedule-section > #sch-status:empty{display:none!important}
+html body #schedule-section > .sch-head{padding-top:12px!important;margin-bottom:0!important}
+html body #schedule-section > .sch-viewbar{margin:0 0 2px!important}
 </style>
 <script id="team-label-jibu">
 /* 화면 글자 속 '입환조'→'지부조', '육아휴직'→'육아휴가'로 바꿔 보여줌 (값 · 저장은 그대로라 근무표 · 다이아 · 서버와 계속 맞음)
@@ -27504,7 +27549,7 @@ html body #group-section .group-table tbody tr:last-child td{border-bottom:0!imp
 html body #group-section .group-table tbody tr.me td{background:#f2f7ff!important}
 html body #group-section .group-table tbody tr.me td.name-col{color:#3c82d8!important;border-radius:10px 0 0 10px}
 html body #group-section .group-table tbody tr.me td:last-child{border-radius:0 10px 10px 0}
-html body #group-section .group-table td.name-col{font-weight:800!important;color:#173257!important;text-align:left!important;padding-left:8px!important}
+html body #group-section .group-table td.name-col{font-weight:800!important;color:#173257!important;text-align:center!important;padding-left:1px!important;padding-right:1px!important}
 html body #group-section .group-table tfoot td{border-top:1px dashed #e3ecf7!important;font-size:10px!important;color:#6c86a8!important}
 /* 선택한 날짜의 세로 파란 줄을 휴가·휴무·X 인원 합계(tfoot)까지 연결 */
 html body #group-section .group-table th.g-sel,html body #group-section .group-table td.g-sel{box-shadow:inset 2px 0 0 #3182f6,inset -2px 0 0 #3182f6!important}
@@ -31212,7 +31257,7 @@ function wbgGlass() {
   var x = cv.getContext('2d'), bx = bgCv && bgCv.getContext('2d'); if (!x) return;
   var iosDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   function iosBlurMode() { return false; }   /* 트리를 블러 필터 없이(JS 흐림) 그리므로 iOS도 안드로이드와 같은 경로로 그림 */
-  var W = 0, H = 0, DPR = 1, base = null, baseKey = '', night = false, lights = [], snow = [], last = 0, lastBlink = 0, bxDirty = true, bxMode = null;
+  var W = 0, H = 0, DPR = 1, base = null, baseKey = '', night = false, lights = [], snow = [], last = 0, lastBlink = 0, bxDirty = true, bxMode = null, starP = null, meteors = [], nextMeteor = 0;
   function R(s) { return function () { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
   /* 서울 기준(위도 37.5665, 경도 126.9780) 일출·일몰을 날짜별로 계산한다. 외부 API/위치 권한 불필요. */
   var solarCache = { key: '', sunrise: 6, sunset: 18 };
@@ -31319,13 +31364,15 @@ function wbgGlass() {
         var r = R(11); for (var i = 0; i < 300; i++) { var p = inTree(r, g); blob(l, p.x, p.y, (7 + p.t * 13) * k, gr[i % gr.length], .55); }
       });
       if (!n) { var r2 = R(300); for (var j = 0; j < 30; j++) { var p2 = inTree(r2, g); blob(q, p2.x, p2.y, (5 + r2() * 4) * k, COLS[j % COLS.length], .32); } }
-      star(q, g.cx, g.top - 6, 9 * k, n);
+      /* 트리 위 별도 다른 빛망울처럼 살짝 흐리게 (낮 2.2px · 밤 3.2px) */
+      softLayer(q, 2, n ? 3.2 : 2.2, function (l) { star(l, g.cx, g.top - 6, 9 * k, n); });
   }
   function bake() {
     var c = document.createElement('canvas'); c.width = W * DPR; c.height = H * DPR; var q = c.getContext('2d'); q.scale(DPR, DPR);
     var g = geo(), n = night;
     drawTree(q, g, n);
     base = c; bxDirty = true;
+    starP = { x: g.cx, y: g.top - 6, r: 9 * (W / 220) };
     /* 불빛 · 눈 */
     var r3 = R(501), k = W / 220; lights = [];
     if (n) for (var a = 0; a < 120; a++) { var p3 = inTree(r3, g); lights.push({ x: p3.x, y: p3.y, r: (7 + r3() * 6) * k, c: COLS[a % COLS.length], on: r3() > .4, a: 0 }); }
@@ -31398,6 +31445,27 @@ function wbgGlass() {
       if (now - lastBlink > 1000) { lastBlink = now; lights.forEach(function (l) { if (Math.random() < .5) l.on = !l.on; }); }   /* 1초마다 반짝 */
       x.globalCompositeOperation = 'lighter';
       lights.forEach(function (l) { l.a += ((l.on ? .7 : .12) - l.a) * Math.min(1, .25 * dt); x.globalAlpha = l.a; var s = sprite(l.c, Math.round(l.r)); x.drawImage(s, l.x - s.width / DPR / 2, l.y - s.height / DPR / 2, s.width / DPR, s.height / DPR); });
+      /* 저녁: 트리 위 별이 숨 쉬듯 빛남 */
+      if (starP) {
+        var pul = .5 + .5 * Math.sin(now / 750);
+        blob(x, starP.x, starP.y, starP.r * (3.6 + 1.2 * pul), '#ffd983', .30 + .30 * pul);
+        blob(x, starP.x, starP.y, starP.r * 1.25, '#fff2c2', .28 + .32 * pul);
+      }
+      /* 저녁: 별똥별 (3.5~10초마다 하나씩, 오른쪽 위 → 왼쪽 아래로 떨어짐) */
+      if (now > nextMeteor && meteors.length < 2) {
+        var ks = Math.max(.8, W / 360);
+        meteors.push({ x: W * (.45 + Math.random() * .6), y: H * (.02 + Math.random() * .2), vx: -(7 + Math.random() * 3) * ks, vy: (3.2 + Math.random() * 1.8) * ks, age: 0, max: 34 + Math.random() * 14, len: 11 + Math.random() * 5 });
+        nextMeteor = now + 3500 + Math.random() * 6500;
+      }
+      meteors = meteors.filter(function (m) {
+        m.age += dt; m.x += m.vx * dt; m.y += m.vy * dt;
+        var p = m.age / m.max; if (p >= 1) return false;
+        var fade = Math.sin(Math.PI * Math.min(1, p)) , tx = m.x - m.vx * m.len, ty = m.y - m.vy * m.len;
+        var gr = x.createLinearGradient(m.x, m.y, tx, ty); gr.addColorStop(0, 'rgba(255,255,255,' + (.95 * fade).toFixed(3) + ')'); gr.addColorStop(.35, 'rgba(190,215,255,' + (.45 * fade).toFixed(3) + ')'); gr.addColorStop(1, 'rgba(160,190,255,0)');
+        x.globalAlpha = 1; x.strokeStyle = gr; x.lineWidth = 2.1; x.lineCap = 'round'; x.beginPath(); x.moveTo(m.x, m.y); x.lineTo(tx, ty); x.stroke();
+        blob(x, m.x, m.y, 8, '#ffffff', .85 * fade);
+        return true;
+      });
       x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
     }
     x.fillStyle = night ? 'rgba(235,240,255,.75)' : 'rgba(255,255,255,.92)'; x.shadowColor = night ? 'transparent' : 'rgba(90,70,50,.3)'; x.shadowBlur = night ? 0 : 3;
@@ -31798,5 +31866,30 @@ function bkSetRestore(overwrite, cb) {
   document.addEventListener('visibilitychange', function () { if (document.hidden) { try { bkSetSync(false); } catch (e) {} } });
 })();
 </script>
+<style id="table-grid-lines">
+/* 근무그룹표 · 승무근무표 현황: 완전 검정이 아닌 흐린 회색 구분선 */
+html body #group-section .group-table th,
+html body #group-section .group-table td,
+html body #crewboard-section .cb-table th,
+html body #crewboard-section .cb-table td{border:1px solid rgba(70,80,95,.30)!important}
+html body #group-section .group-table tbody tr:last-child td,
+html body #crewboard-section .cb-table tr:last-child td{border-bottom:1px solid rgba(70,80,95,.30)!important}
+html.ui-dark body #group-section .group-table th,
+html.ui-dark body #group-section .group-table td,
+html.ui-dark body #crewboard-section .cb-table th,
+html.ui-dark body #crewboard-section .cb-table td{border-color:rgba(200,210,225,.26)!important}
+</style>
+<style id="group-round-fill">
+/* 근무그룹표: 내 줄 · 오늘 · 선택한 날짜를 둥글게, 맨 아래 '휴가·휴무·X' 칸까지 이어서 칠함 */
+html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tbody tr.me td.name-col{border-radius:14px 0 0 14px!important}
+html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tbody tr.me td:last-child{border-radius:0 14px 14px 0!important}
+html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table thead th.g-today{border-radius:14px 14px 0 0!important}
+html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tbody tr:last-child td.g-today,html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tbody tr:last-child td.g-sel{border-radius:0!important}
+html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tfoot td.g-today{background:rgba(59,130,246,.2)!important;border-radius:0 0 14px 14px!important}
+html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tfoot td.g-sel:not(.g-today){border-radius:0 0 14px 14px!important;box-shadow:inset 1.5px 0 0 rgba(59,130,246,.45),inset -1.5px 0 0 rgba(59,130,246,.45),inset 0 -1.5px 0 rgba(59,130,246,.45)!important}
+html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tbody tr:last-child td.g-sel:not(.g-today){box-shadow:inset 1.5px 0 0 rgba(59,130,246,.45),inset -1.5px 0 0 rgba(59,130,246,.45)!important}
+html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tfoot td.g-today.g-sel{box-shadow:none!important}
+html.ui-dark body #group-section .group-table tfoot td.g-today{background:rgba(96,165,250,.28)!important}
+</style>
 </body>
 </html>
