@@ -10577,12 +10577,12 @@ function changeVacYear(diff) {
   renderVacation();
 }
 var VAC_TYPES = [
-  { key: '연차', label: '연차휴가', color: '#e53935' },
-  { key: '출산휴가', label: '출산휴가', color: '#e0357f' },
-  { key: '육아휴직', label: '육아휴가', color: '#f97316' },   /* 저장 값(key)은 그대로, 화면 이름만 육아휴가 */
-  { key: '돌봄', label: '돌봄휴가', color: '#a855f7' },   /* 화면 이름만 돌봄휴가 */
-  { key: '병가', label: '병가', color: '#0a84c8' },
-  { key: '공가', label: '공가', color: '#14b8a6' }
+  { key: '연차', label: '연차휴가', color: '#ef4444' },
+  { key: '출산휴가', label: '출산휴가', color: '#f97316' },
+  { key: '육아휴직', label: '육아휴가', color: '#f5c000' },   /* 저장 값(key)은 그대로, 화면 이름만 육아휴가 */
+  { key: '돌봄', label: '돌봄휴가', color: '#22c55e' },   /* 화면 이름만 돌봄휴가 */
+  { key: '병가', label: '병가', color: '#3b82f6' },
+  { key: '공가', label: '공가', color: '#6d5df6' }
 ];
 var vacSel = '';
 var vacCalMonth = todayKST().m;
@@ -10798,7 +10798,7 @@ function renderVacation() {
     html += '<button type="button" class="vac-chipbtn' + (sel ? ' on' : '') + '" aria-pressed="' + sel + '"' +
       (sel ? ' style="background:' + t.color + ';border-color:' + t.color + '"' : '') +
       ' onclick="selectVacType(\'' + t.key + '\')">' +
-      '<i style="background:' + (sel ? '#fff' : t.color) + '"></i>' + esc(t.label) + ' <b>' + n + '</b></button>';
+      '<i style="background:' + t.color + (sel ? ';box-shadow:0 0 0 2px rgba(255,255,255,.9)' : '') + '"></i>' + esc(t.label) + ' <b>' + n + '</b></button>';
   }
   cardsEl.innerHTML = html;
   var on = cardsEl.querySelector('.on');
@@ -27859,7 +27859,7 @@ html body #vacation-management-section #vac-dates{background:#fff!important;bord
 #vac-dates .vd-empty{padding:16px 0;text-align:center;font-size:13px;color:#8a96a8}
 html.ui-dark body #vacation-management-section #vac-title,html.ui-dark body #vacation-management-section #vac-cal-title{color:#e8eef8!important}
 html.ui-dark:not(#zz) body #vacation-management-section #vac-cal-wrap{background:transparent!important;border:0!important}
-html.ui-dark:not(#zz) body #vacation-management-section .vac-chipbtn.on i{background:#fff!important}
+html.ui-dark:not(#zz) body #vacation-management-section .vac-chipbtn.on i{box-shadow:0 0 0 2px #fff}
 html.ui-dark body #vacation-management-section .vac-chipbtn:not(.on){background:#1f242c;border-color:#2c333d;color:#d5dce6}
 html.ui-dark body #vacation-management-section #vac-calendar-card,html.ui-dark body #vacation-management-section #vac-dates{background:#1b2027!important;box-shadow:none!important}
 html.ui-dark body #vacation-management-section .vcell .vnum{color:#e3e8ef}
@@ -31239,7 +31239,7 @@ function wbgGlass() {
   if (!on) { [].forEach.call(document.querySelectorAll('.wbg-glass,.wbg-clear'), function (e) { e.classList.remove('wbg-glass', 'wbg-clear'); }); return; }
   var roots = [].slice.call(document.querySelectorAll('#main-container .page-view.active'));
   var nav = document.querySelector('.bottom-nav,#bottom-nav,.tabbar,#tabbar'); if (nav) roots.push(nav);
-  ['#calendar-card', '#vac-calendar-card', '#vac-cards', '#vac-cal-wrap .vcal-grid'].forEach(function (q) { var c = document.querySelector(q); if (c && c.closest('.page-view.active')) c.classList.add('wbg-glass'); });   /* 달력 · 휴가 칸도 유리 */
+  ['#calendar-card', '#vac-calendar-card'].forEach(function (q) { var c = document.querySelector(q); if (c && c.closest('.page-view.active')) c.classList.add('wbg-glass'); });   /* 달력 · 휴가 칸도 유리 */
   [].forEach.call(document.querySelectorAll('.dia-modal.active .dia-dialog,.schedule-edit-modal.active .schedule-edit-dialog'), function (pop) {   /* 팝업창도 같은 반투명 유리 */
     pop.classList.add('wbg-glass', 'wbg-pop'); roots.push(pop);
   });
@@ -32469,7 +32469,12 @@ html.theme-day:not(.spring-day):not(#s1):not(#s2):not(#s3):not(#s4) body .page-v
     if (!on) { if (W) x.clearRect(0, 0, W, H); return; }
     if (now - last < 33) return; var dt = Math.min(3, (now - last) / 16.7); last = now;
     size(); x.clearRect(0, 0, W, H);
-    lampPts.forEach(function (p, i) { blob(x, p.x, p.y, p.r * .9, '#ffe2a0', (night ? .3 : .18) + .1 * Math.sin(now / 800 + i)); });
+    lampPts.forEach(function (p, i) {
+      if (!night) { blob(x, p.x, p.y, p.r * .9, '#ffe2a0', .18 + .1 * Math.sin(now / 800 + i)); return; }
+      var f = Math.sin(now / 260 + i * 1.7) * .5 + Math.sin(now / 570 + i * 2.9) * .5, tw = Math.max(0, Math.sin(now / 900 + i * 2.3)); tw = tw * tw * tw;   /* 일몰~일출: 가로등 불빛 반짝 */
+      blob(x, p.x, p.y, p.r * (.95 + .18 * f + .35 * tw), '#ffe2a0', Math.max(.08, Math.min(.9, .34 + .2 * f + .28 * tw)));
+      if (tw > .08) { var L = p.r * (.9 + tw * .8); x.save(); x.globalAlpha = Math.min(1, tw * .9); x.strokeStyle = '#fff6d6'; x.lineWidth = 1.4; x.beginPath(); x.moveTo(p.x - L, p.y); x.lineTo(p.x + L, p.y); x.moveTo(p.x, p.y - L); x.lineTo(p.x, p.y + L); x.stroke(); x.restore(); }
+    });
     drawStaff(now);
     var pc = night ? ['#f8bbd0', '#fde4ec', '#f3a7cf', '#ffffff'] : ['#f8bbd0', '#f48fb1', '#ffffff', '#fce4ec'];
     petals.forEach(function (p) {
@@ -32572,6 +32577,16 @@ html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(
 html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body #crewboard-section .cb-find svg{stroke:#173257!important}
 html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body #crewboard-section .cb-status{background:rgba(255,255,255,.58)!important;color:#173257!important;border-radius:12px;padding:6px 8px;margin:0 2px 8px}
 html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body #crewboard-section .cb-status>span{color:#173257!important}
+html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body #crewboard-section .cb-wrap{background:rgba(10,18,34,.38)!important;border:1px solid rgba(255,255,255,.22)!important;border-radius:20px!important;padding:6px 4px!important;overflow:hidden;-webkit-backdrop-filter:blur(10px) saturate(120%)!important;backdrop-filter:blur(10px) saturate(120%)!important;box-shadow:0 2px 10px rgba(0,0,0,.18)!important}
+html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body #crewboard-section .cb-wrap{background:rgba(255,255,255,.58)!important;border:1px solid rgba(255,255,255,.7)!important;border-radius:20px!important;padding:6px 4px!important;overflow:hidden;-webkit-backdrop-filter:blur(12px)!important;backdrop-filter:blur(12px)!important}
+html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body #crewboard-section .cb-table :is(th,td){border:0!important}
+html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body #crewboard-section .cb-table :is(th,td)+:is(th,td){border-left:0!important}
+html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body #crewboard-section .cb-wrap{padding:0!important}
+html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body #crewboard-section .cb-table{border-collapse:collapse!important}
+html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body #crewboard-section .cb-table thead th:first-child{border-top-left-radius:19px}
+html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body #crewboard-section .cb-table thead th:last-child{border-top-right-radius:19px}
+html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body #crewboard-section .cb-table tbody tr:last-child td:first-child{border-bottom-left-radius:19px}
+html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body #crewboard-section .cb-table tbody tr:last-child td:last-child{border-bottom-right-radius:19px}
 </style>
 <style id="icon-bright-fix">
 /* 밝은 색 아이콘(귀여운 열차·철도·동물 테마)이 어두운 유리 위에서 더 밝아져 안 보이던 문제: 밝기 보정은 어두운 선 아이콘(기본)에만 */
@@ -32585,5 +32600,22 @@ html.wbg-on[data-icth]:not([data-icth="fam"]):not(#d1):not(#d2):not(#d3):not(#d4
   window.addEventListener('storage', mark);
 })();
 </script>
+<style id="fix-v50">
+/* 휴가관리: 네모 틀 없애기 · 선택한 휴가 종류는 하늘색 반투명 */
+html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#d15) body :is(.vac-panel,#vac-cards,#vac-cal-wrap,#vac-cal-wrap .vcal-grid){background:transparent!important;background-image:none!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#d15) body .vac-chipbtn.on{background:rgba(90,170,255,.38)!important;border-color:rgba(170,210,255,.9)!important;color:#fff!important}
+html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#d15) body .vac-chipbtn.on{background:rgba(110,170,255,.42)!important;border-color:rgba(60,120,210,.8)!important;color:#0f2747!important}
+html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#d15) body .vac-chipbtn:not(.on):is(:active,:focus,:hover){background:rgba(255,255,255,.16)!important;color:#fff!important}
+html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#d15) body .vac-chipbtn:not(.on):is(:active,:focus,:hover){background:rgba(255,255,255,.7)!important}
+/* 행로표 · 사진은 밝기 보정 없이 (아이콘만 보정) */
+html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#d15) body img:not([data-icon]){filter:none!important}
+/* 하단 메뉴: 구분선은 항상 보이게 · 밤에는 선택한 칸 하늘색 */
+html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#d15) body #bottom-nav.bottom-nav .bn-btn+.bn-btn::before{opacity:1!important;background:rgba(255,255,255,.55)!important}
+html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#d15) body #bottom-nav.bottom-nav .bn-btn+.bn-btn::before{opacity:1!important;background:rgba(40,60,100,.35)!important}
+html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#d15) body #bottom-nav.bottom-nav .bn-btn.active,html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#d15) body #bottom-nav.bottom-nav .bn-btn.on{background:rgba(90,170,255,.4)!important;border-radius:14px}
+html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#d15) body #vac-dates{background:rgba(10,18,34,.38)!important;border:1px solid rgba(255,255,255,.22)!important;color:#f3f5ff!important}
+html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#d15) body #vac-dates *{color:#f3f5ff!important}
+html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#d15) body #vac-dates{background:rgba(255,255,255,.58)!important}
+</style>
 </body>
 </html>
