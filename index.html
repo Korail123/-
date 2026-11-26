@@ -12741,9 +12741,10 @@ ring();
 if (alarmRingTimer) clearInterval(alarmRingTimer);
 alarmRingTimer = setInterval(function () {
 rounds++;
-if (rounds >= 10) { clearInterval(alarmRingTimer); alarmRingTimer = null; return; }
+if (rounds >= 2) { clearInterval(alarmRingTimer); alarmRingTimer = null; return; }   /* 소리·진동은 3.5초 안쪽(2번)만 */
 ring();
-}, 3000);
+}, 1800);
+alarmAutoEnd();
 try {
 if (rsAppHas('notify') || ('Notification' in window && Notification.permission === 'granted')) {
 appNotify(w.test ? '출근 알람 테스트' : '출근 알람', { body: msg, tag: w.test ? 'alarm-test-local' : 'alarm-' + key, requireInteraction: true });
@@ -12757,7 +12758,19 @@ var p = $('alarm-ring-panel');
 if (p) p.classList.remove('active');
 };
 window.rsAppRingStopped = function () { /* 휴대폰 알람이 스스로 멈춰도 화면은 [확인]을 누를 때까지 둠 */ };
+var alarmEndTimer = null;
+/* 출근·도중출무 알람: 소리·진동·팝업은 3.5초만 (계속 울리던 문제 방지) */
+function alarmAutoEnd() { if (alarmEndTimer) clearTimeout(alarmEndTimer); alarmEndTimer = setTimeout(function () { alarmEndTimer = null; try { closeAlarmRing(); } catch (e) {} try { navigator.vibrate && navigator.vibrate(0); } catch (e) {} }, 3500); }
+(function () {
+var oB = alarmBeep, bt = null;
+alarmBeep = function (k) {   /* 모든 알림(출근·통과·운휴)의 소리·진동은 3.5초 뒤 확실히 멈춤 */
+var r = oB(k); if (bt) clearTimeout(bt);
+bt = setTimeout(function () { bt = null; try { rsAppCall('stopRing'); } catch (e) {} try { navigator.vibrate && navigator.vibrate(0); } catch (e) {} try { if (typeof appBeepEl !== 'undefined' && appBeepEl) appBeepEl.pause(); } catch (e) {} }, 3500);
+return r;
+};
+})();
 function closeAlarmRing() {
+if (alarmEndTimer) { clearTimeout(alarmEndTimer); alarmEndTimer = null; }
 if (alarmRingTimer) { clearInterval(alarmRingTimer); alarmRingTimer = null; }
 try { rsAppCall('stopRing'); } catch (e) {}
 $('alarm-ring-panel').classList.remove('active');
@@ -12943,7 +12956,8 @@ var rounds = 0;
 function ring() { alarmBeep('alarm'); appVibrate([400, 200, 400, 200, 400], 'alarm'); }
 ring();
 if (alarmRingTimer) clearInterval(alarmRingTimer);
-alarmRingTimer = setInterval(function () { if (++rounds >= 10) { clearInterval(alarmRingTimer); alarmRingTimer = null; return; } ring(); }, 3000);
+alarmRingTimer = setInterval(function () { if (++rounds >= 2) { clearInterval(alarmRingTimer); alarmRingTimer = null; return; } ring(); }, 1800);
+alarmAutoEnd();
 try { if (rsAppHas('notify') || ('Notification' in window && Notification.permission === 'granted')) appNotify('도중출무 알람', { body: a.body, tag: 'mid-' + a.key, requireInteraction: true }); } catch (e) {}
 }
 (function initMidAlarm() {
@@ -31812,6 +31826,11 @@ html.wbg-night:not(#g1):not(#g2):not(#g3):not(#g4):not(#g5):not(#g6):not(#g7):no
 html.wbg-night:not(#g1):not(#g2):not(#g3):not(#g4):not(#g5):not(#g6):not(#g7):not(#g8):not(#g9):not(#g10):not(#g11):not(#g12):not(#g13):not(#g14):not(#g15):not(#g16):not(#g17):not(#g18):not(#g19):not(#g20):not(#g21):not(#g22):not(#g23):not(#g24):not(#g25):not(#g26) body #group-section .group-table thead th.g-hsat,html.ui-dark:not(#g1):not(#g2):not(#g3):not(#g4):not(#g5):not(#g6):not(#g7):not(#g8):not(#g9):not(#g10):not(#g11):not(#g12):not(#g13):not(#g14):not(#g15):not(#g16):not(#g17):not(#g18):not(#g19):not(#g20):not(#g21):not(#g22):not(#g23):not(#g24):not(#g25):not(#g26) body #group-section .group-table thead th.g-hsat,html.wbg-night:not(#g1):not(#g2):not(#g3):not(#g4):not(#g5):not(#g6):not(#g7):not(#g8):not(#g9):not(#g10):not(#g11):not(#g12):not(#g13):not(#g14):not(#g15):not(#g16):not(#g17):not(#g18):not(#g19):not(#g20):not(#g21):not(#g22):not(#g23):not(#g24):not(#g25):not(#g26) body #group-section .group-table thead th.g-hsat .g-dn,html.ui-dark:not(#g1):not(#g2):not(#g3):not(#g4):not(#g5):not(#g6):not(#g7):not(#g8):not(#g9):not(#g10):not(#g11):not(#g12):not(#g13):not(#g14):not(#g15):not(#g16):not(#g17):not(#g18):not(#g19):not(#g20):not(#g21):not(#g22):not(#g23):not(#g24):not(#g25):not(#g26) body #group-section .group-table thead th.g-hsat .g-dn{color:#3d9bff!important;-webkit-text-fill-color:#3d9bff!important}
 html.wbg-night:not(#g1):not(#g2):not(#g3):not(#g4):not(#g5):not(#g6):not(#g7):not(#g8):not(#g9):not(#g10):not(#g11):not(#g12):not(#g13):not(#g14):not(#g15):not(#g16):not(#g17):not(#g18):not(#g19):not(#g20):not(#g21):not(#g22):not(#g23):not(#g24):not(#g25):not(#g26) body #group-section .group-table thead th.g-sel:not(.g-today) .g-dn,html.ui-dark:not(#g1):not(#g2):not(#g3):not(#g4):not(#g5):not(#g6):not(#g7):not(#g8):not(#g9):not(#g10):not(#g11):not(#g12):not(#g13):not(#g14):not(#g15):not(#g16):not(#g17):not(#g18):not(#g19):not(#g20):not(#g21):not(#g22):not(#g23):not(#g24):not(#g25):not(#g26) body #group-section .group-table thead th.g-sel:not(.g-today) .g-dn,html:not(#g1):not(#g2):not(#g3):not(#g4):not(#g5):not(#g6):not(#g7):not(#g8):not(#g9):not(#g10):not(#g11):not(#g12):not(#g13):not(#g14):not(#g15):not(#g16):not(#g17):not(#g18):not(#g19):not(#g20):not(#g21):not(#g22):not(#g23):not(#g24):not(#g25):not(#g26) body #group-section .group-table thead th.g-sel:not(.g-today) .g-dn{background:transparent!important;box-shadow:inset 0 0 0 2px #2f8cf0!important;border:0!important}
 html.wbg-night:not(#g1):not(#g2):not(#g3):not(#g4):not(#g5):not(#g6):not(#g7):not(#g8):not(#g9):not(#g10):not(#g11):not(#g12):not(#g13):not(#g14):not(#g15):not(#g16):not(#g17):not(#g18):not(#g19):not(#g20):not(#g21):not(#g22):not(#g23):not(#g24):not(#g25):not(#g26) body #group-section .group-table thead th.g-sel.g-today .g-dn,html.ui-dark:not(#g1):not(#g2):not(#g3):not(#g4):not(#g5):not(#g6):not(#g7):not(#g8):not(#g9):not(#g10):not(#g11):not(#g12):not(#g13):not(#g14):not(#g15):not(#g16):not(#g17):not(#g18):not(#g19):not(#g20):not(#g21):not(#g22):not(#g23):not(#g24):not(#g25):not(#g26) body #group-section .group-table thead th.g-sel.g-today .g-dn,html:not(#g1):not(#g2):not(#g3):not(#g4):not(#g5):not(#g6):not(#g7):not(#g8):not(#g9):not(#g10):not(#g11):not(#g12):not(#g13):not(#g14):not(#g15):not(#g16):not(#g17):not(#g18):not(#g19):not(#g20):not(#g21):not(#g22):not(#g23):not(#g24):not(#g25):not(#g26) body #group-section .group-table thead th.g-sel.g-today .g-dn{background:#2f8cf0!important;color:#fff!important;box-shadow:0 0 0 2px #2f8cf0!important}
+</style>
+<style id="fix-v82">/* 상단 시계 +13% */
+html:not(#c1):not(#c2):not(#c3):not(#c4):not(#c5):not(#c6):not(#c7):not(#c8):not(#c9):not(#c10):not(#c11):not(#c12):not(#c13):not(#c14) body #main-container > div.top-bar > #liveClock .lc-hm{font-size:85.3px!important}
+html.ui-ios:not(#c1):not(#c2):not(#c3):not(#c4):not(#c5):not(#c6):not(#c7):not(#c8):not(#c9):not(#c10):not(#c11):not(#c12):not(#c13):not(#c14) body #main-container > div.top-bar > #liveClock .lc-hm{font-size:100.6px!important}
+@media(max-width:359px){html:not(#c1):not(#c2):not(#c3):not(#c4):not(#c5):not(#c6):not(#c7):not(#c8):not(#c9):not(#c10):not(#c11):not(#c12):not(#c13):not(#c14) body #main-container > div.top-bar > #liveClock .lc-hm{font-size:79px!important}}
 </style>
 </body>
 </html>
