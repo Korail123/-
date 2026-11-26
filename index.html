@@ -28218,6 +28218,10 @@ html body #main-container #vacation-section .mp-tabs{margin-top:14px!important}
 .st27-note .est-k{font-weight:800}
 html.ui-dark .st27-card{background:#1b2027;box-shadow:none}
 html.ui-dark .st27-donut>div{background:#1b2027}
+/* 근무통계 도넛: 가운데를 실제로 뚫음 (글씨만 남고 카드 바탕이 그대로 보임 · 트리 바탕 유리 효과에서도 같은 모양) */
+.st27-donut{position:relative;background:none!important}
+.st27-donut::before{content:'';position:absolute;inset:0;border-radius:50%;background:var(--st27-bg,#eef2f7);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 19px),#000 calc(100% - 18px));mask:radial-gradient(farthest-side,transparent calc(100% - 19px),#000 calc(100% - 18px))}
+.st27-donut>div,html.ui-dark .st27-donut>div{position:relative;background:transparent!important}
 html.ui-dark .st27-donut b,html.ui-dark .st27-lg b,html.ui-dark #stats-section #stats-title{color:#e8eef8!important}
 html.ui-dark .st27-lg div,html.ui-dark .st27-c em{color:#c9d3e0}
 html.ui-dark .st27-sub span{background:#252c36;color:#c9d3e0}
@@ -28279,7 +28283,7 @@ function st27Render() {
     if (xx && xx.min) { totMin += xx.min; if (xx.restKnown) { restTot += xx.rest; if (xx.rest) restDays++; } else missDays++; } }
   var h = Math.floor(totMin / 60), mm = totMin % 60;
   var leaveTxt = Object.keys(st.leaveKinds || {}).map(function (k) { return esc(k) + ' ' + st.leaveKinds[k]; }).join(' · ');
-  var html = '<div class="st27-card"><div class="st27-top"><div class="st27-donut" style="background:' + bg + '"><div><small>총 근무</small><b>' + h + '<em>h</em></b><span>' + (mm ? mm + '분' : '') + '</span></div></div>' +
+  var html = '<div class="st27-card"><div class="st27-top"><div class="st27-donut" style="--st27-bg:' + bg + '"><div><small>총 근무</small><b>' + h + '<em>h</em></b><span>' + (mm ? mm + '분' : '') + '</span></div></div>' +
     '<div class="st27-lg">' + parts.map(function (p) { return '<div><i style="background:' + p[2] + '"></i>' + p[0] + '<b>' + p[1] + '</b></div>'; }).join('') + '</div></div>' +
     '<div class="st27-sub"><span>근무일 <b>' + ((st.day || 0) + (st.night || 0)) + '일</b></span><span>근무교환 <b>' + (st.swaps || 0) + '회</b></span><span>휴가 <b>' + (st.leave || 0) + '일</b></span></div></div>';
   /* 달력: 7칸 + 맨 오른쪽 '주 합계' (52시간 넘으면 빨강) */
