@@ -123,6 +123,24 @@ function dndOn(c) {
   if (a === b) return true;
   return a < b ? (m >= a && m < b) : (m >= a || m < b);
 }
+/* 알림 종류별 팝업 · 소리 · 진동 (앱 화면 index.html의 nkEff와 같은 규칙, 각자 따로)
+   - 출근 · 도중출무(alarm 등): 출근/출무 알림 설정 (p.popup · p.sound · p.vib)
+   - 운휴(nx) · 통과/도착(pass): 그 알림의 '알림 방식' (아직 정한 적 없으면 켬) — 출근 설정을 빌려 쓰지 않음
+   - 팝업을 끄면 소리 · 진동 없이 알림창에만 조용히 / 볼륨 0이면 소리 없음 */
+function notiFor(p, kind) {
+  p = p || {};
+  function on(v) { return v !== false; }
+  var k;
+  if (kind === 'nx' || kind === 'pass') {
+    var kp = (p.kinds && p.kinds[kind]) || {};
+    k = { popup: on(kp.popup), sound: on(kp.sound), vib: on(kp.vib) };
+  } else {
+    k = { popup: on(p.popup), sound: on(p.sound), vib: on(p.vib) };
+  }
+  if (!k.popup) k.sound = k.vib = false;   /* 팝업을 끄면 알림창에만 조용히 (예전과 같음) */
+  if (typeof p.vol === 'number' && p.vol <= 0) k.sound = false;
+  return k;
+}
 function readPrefs() {
   return caches.open('rs-prefs').then(function (c) { return c.match(scopeUrl('prefs.json')); })
     .then(function (r) { return r ? r.json() : {}; })
@@ -143,11 +161,8 @@ self.addEventListener('push', function (e) {
   var toApp = d.pass ? broadcast({ type: 'rs-pass', pass: d.pass }) : Promise.resolve();
 
   var show = readPrefs().then(function (p) {
-    /* 알림 종류별 설정(운휴 · 통과/도착 · 출근): 팝업 · 소리 · 진동. 종류 설정이 없으면 공통 설정 */
     var kind = d.kind || (d.pass ? 'pass' : (/^nx-/.test(d.tag || '') ? 'nx' : 'alarm'));
-    var kp = (p.kinds && p.kinds[kind]) || {};
-    function pick(k) { return (typeof kp[k] === 'boolean' ? kp[k] : p[k]) !== false; }
-    var popup = pick('popup'), sound = popup && pick('sound'), vib = popup && pick('vib');
+    var ef = notiFor(p, kind), popup = ef.popup, sound = ef.sound, vib = ef.vib;
     if (dndOn(p.dnd)) {   /* 방해금지 시간: 알림을 보이지 않게 (아이폰은 푸시를 받으면 꼭 띄워야 해서, 조용히 띄우고 바로 지움) */
       return self.registration.showNotification(title, { body: d.body || '', tag: 'rs-dnd', silent: true, icon: NOTI_ICON, badge: NOTI_ICON, data: { url: self.registration.scope } })
         .then(function () { return self.registration.getNotifications({ tag: 'rs-dnd' }); })
