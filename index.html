@@ -7674,35 +7674,37 @@ function renderDayDetail() {
   if (!isStatus && diaNo && !isOffDay) { var crewTs = [train1, train2, train3]; try { var xi = xrGet('info', {})[dateKeyForSelectedDay()]; if (xi && xrNorm(xi.dia) === xrNorm(diaNo)) crewTs = crewTs.concat(xi.trains || []); } catch (e) {} html += crewMatesHtml(dateKeyForSelectedDay(), diaNo, crewTs).replace('crew-row', 'crew-row dd-dup'); try { if (crewLinked()) ddCrewR = crewPick(dateKeyForSelectedDay(), diaNo, crewTs, getCurrentUser().name) || { none: 1 }; } catch (e) {} }
   /* 선택한 날짜의 DIA와 행로표: 관리자 정식 행로표가 있으면 개인 예상 행로표 영역을 생략하고,
      정식 행로표가 없는 DIA만 철도비서 예상 행로표와 만들기/수정 버튼을 표시합니다. */
+  /* 행로표: 카드 안 승무원 줄 아래에 합쳐서 보여줌 (펼침이 기본).
+     등록된(관리자 · DB) 행로표가 있으면 그것, 없으면 철도비서가 XROIS의 그 날짜 다이아 정보로 그린 행로표 → (예상)을 꼭 붙임 */
+  var ddRouteHtml = '';
   if ((!isStatus && diaNo) || (typeof rpForDate === 'function' && rpForDate(dateKeyForSelectedDay()))) {
     var ddKey = dateKeyForSelectedDay();
-    var ddOfficial = diaNo ? rsOfficialRouteUrl(diaNo) : '';
-    if (!ddOfficial) {
-      html += '<div class="dd-route">';
-      var ddPlan = (typeof rpForDate === 'function') ? rpForDate(ddKey) : null;
-      if (ddPlan && diaNo && String(ddPlan.dia).toUpperCase() !== diaNo.toUpperCase()) ddPlan = null;
-      /* 이 날짜에 연결된 행로표 → 내 DIA별 저장분 → XROIS에서 받은 공유/임시 행로표 순서 */
-      if (!ddPlan && diaNo && typeof rpSavedUrl === 'function') {
-        var ddSavedUrl = rpSavedUrl(diaNo);
-        if (ddSavedUrl) ddPlan = { dia: diaNo, url: ddSavedUrl };
-      }
-      if (!ddPlan && diaNo && rsPlan && rsPlan.rows && rsPlan.rows.length && typeof rpUrl === 'function') {
-        ddPlan = { dia: diaNo, url: rpUrl(diaNo, rsPlan.rows) };
-      }
-      var ddXr = (typeof xrInfoFor === 'function') ? xrInfoFor(ddKey, diaNo) : null;
-      if (ddXr) html += ddXr;
-      if (ddPlan && ddPlan.url) {
-        html += '<div class="dd-dia-image-wrap"><div class="dd-dia-image-title">행로표 <small class="dd-plan-tag">예상 행로표</small></div>' +
-          '<img class="dd-dia-image" src="' + ddPlan.url + '"' + routeArAttr(ddPlan.url, ddPlan.dia) + ' alt="DIA ' + esc(ddPlan.dia) + ' 예상 행로표" onclick="openRouteViewer(\'' + esc(ddPlan.dia) + '\', this.src)" decoding="async"' +
-          ' onerror="this.style.display=\'none\';var t=this.previousElementSibling;if(t)t.style.display=\'none\';var m=this.nextElementSibling;if(m)m.style.display=\'\'">' +
-          '<div class="dd-dia-image-missing" style="display:none">예상 행로표 이미지를 불러오지 못했어요.</div></div>';
-      } else {
-        html += '<div class="dd-dia-image-wrap"><div class="dd-dia-image-missing">예상 행로표가 아직 없어요.</div></div>';
-      }
-      var hasOwnRoute = !!(ddPlan && ddPlan.url);
-      html += '<button type="button" class="dd-route-edit" onclick="openRoutePlanForSelectedDay()">' +
-        (hasOwnRoute ? '예상 행로표 수정' : '행로표 만들기') + '</button>';
-      html += '</div>';
+    var ddRt = (typeof rsRouteFor === 'function') ? rsRouteFor(ddKey, diaNo) : null;
+    if (!ddRt && diaNo && rsPlan && rsPlan.rows && rsPlan.rows.length && typeof rpUrl === 'function') ddRt = { url: rpUrl(diaNo, rsPlan.rows), dia: diaNo, official: false };
+    var ddAsking = false, ddLinked = false;
+    try { ddLinked = (typeof crewLinked === 'function') && !!crewLinked(); } catch (e) {}
+    if (!ddRt && diaNo && !isStatus) {
+      /* 행로표가 아직 없으면 XROIS에서 그 날짜의 다이아 정보를 받아 예상 행로표를 만듦 (같은 날짜 · 다이아는 10분에 한 번만) */
+      try {
+        window.__ddRtTry = window.__ddRtTry || {};
+        var tk = ddKey + '|' + diaNo, nowT = Date.now();
+        if (typeof crewLinked === 'function' && crewLinked()) {
+          ddAsking = !!(window.__ddRtTry[tk] && nowT - window.__ddRtTry[tk] < 90000);
+          if (!window.__ddRtTry[tk] || nowT - window.__ddRtTry[tk] > 600000) { window.__ddRtTry[tk] = nowT; ddAsking = true; setTimeout(function () { try { rsDiaInfoForEdit(ddKey, diaNo); } catch (e) {} }, 250); }
+        }
+      } catch (e) {}
+    }
+    if (ddRt && ddRt.url) {
+      ddRouteHtml = '<div class="cv-rt-cap">행로표' + (ddRt.official ? '' : ' <em class="cv-rt-est">(예상)</em>') + '<small>눌러서 크게 보기</small></div>' +
+        '<img class="dd-dia-image" src="' + ddRt.url + '"' + routeArAttr(ddRt.url, ddRt.dia) + ' alt="DIA ' + esc(ddRt.dia) + (ddRt.official ? ' 행로표' : ' 예상 행로표') + '" onclick="openRouteViewer(\'' + esc(ddRt.dia) + '\', this.src)" decoding="async"' +
+        ' onerror="this.style.display=\'none\';var m=this.nextElementSibling;if(m)m.style.display=\'\'">' +
+        '<div class="dd-dia-image-missing" style="display:none">행로표 이미지를 불러오지 못했어요. (예상)</div>';
+    } else {
+      ddRouteHtml = '<div class="cv-rt-cap">행로표' + (isStatus ? '' : ' <em class="cv-rt-est">(예상)</em>') + '</div>' +
+        (ddLinked
+          ? '<div class="dd-dia-image-missing">' + (ddAsking ? 'XROIS에서 이 날짜 다이아 정보를 가져와 행로표를 만드는 중이에요…' : '예상 행로표가 아직 없어요.') + '</div>' +
+            '<button type="button" class="dd-route-edit" onclick="openRoutePlanForSelectedDay()">행로표 만들기</button>'
+          : '<div class="dd-dia-image-missing cv-rt-need">[ 마이페이지 - CREW 연동 필요 ]</div>');
     }
   }
   /* 매거진 커버: 날짜 · DIA · 근무구분 · 출근 · 퇴근 · 구속 · 열차번호(누르면 조회) */
@@ -7722,10 +7724,15 @@ function renderDayDetail() {
       '</div>';
     else if (ctone === 'off') cv += '<div class="ln">쉬는 날이에요. 푹 쉬세요</div>';
     /* 승무원: 카드 아래 흰 띠 (10번) · 누르면 열차별 승무원 상세 펼치기 */
-    if (ddCrewR) cv += '<button type="button" class="cv-strip" onclick="ddCrewToggle(this)"><small>승무원</small><b>' + (ddCrewR.none ? '<em>정보 없음</em>' : ddCrewR.level === 1 || ddCrewR.level === 2 ? ddCrewR.mates.map(esc).join(' · ') : '<em>' + (ddCrewR.found ? '단독 승무' : '정보 없음') + '</em>') + '</b></button>';
+    var cvCrewBtn = ddCrewR ? '<button type="button" class="cv-strip" onclick="ddCrewToggle(this)"><small>승무원</small><b>' + (ddCrewR.none ? '<em>정보 없음</em>' : ddCrewR.level === 1 || ddCrewR.level === 2 ? ddCrewR.mates.map(esc).join(' · ') : '<em>' + (ddCrewR.found ? '단독 승무' : '정보 없음') + '</em>') + '</b></button>' : '';
+    if (ddRouteHtml) {
+      /* 승무원 줄 오른쪽에 행로표 접기/펼치기 · 그 아래에 행로표 (펼침이 기본, 날짜를 바꾸면 항상 펼친 상태로 시작) */
+      cv += '<div class="cv-bar">' + (cvCrewBtn || '<span class="cv-bar-sp"></span>') + '<button type="button" class="cv-rt-tog" onclick="ddRouteToggle(this)" aria-expanded="true"><span>행로표 접기</span> <i>▲</i></button></div><div class="cv-rt">' + ddRouteHtml + '</div>';
+    } else cv += cvCrewBtn;
     cv += '</div>';
     html = html.slice(0, ddHeadLen) + cv + html.slice(ddHeadLen);
   } catch (e) {}
+  try { detail.classList.remove('dd-rt-closed'); } catch (e) {}
   detail.innerHTML = html;
 }
 /* ============ 철도비서 기간 시작: 2026년 6월 1일 ============
@@ -31861,5 +31868,33 @@ html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not
 html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tfoot td.g-today{background:rgba(59,130,246,.2)!important;border-radius:0 0 14px 14px!important}
 html.ui-dark body #group-section .group-table tfoot td.g-today{background:rgba(96,165,250,.28)!important}
 </style>
+<style id="dd-route-merge">
+/* 승무원 줄 + 행로표 (카드 안에 합침): 흰 띠 한 덩어리 */
+#day-detail .dd-cover .cv-bar{display:flex;align-items:center;margin:12px -16px 0;background:#fff;color:#1f2a44}
+#day-detail .dd-cover .cv-bar .cv-strip{flex:1;min-width:0;width:auto;margin:0;background:transparent}
+#day-detail .dd-cover .cv-bar-sp{flex:1}
+#day-detail .dd-cover .cv-rt-tog{flex:none;margin:0 14px 0 0;padding:5px 10px;border:1px solid #c9dbf7;border-radius:999px;background:#fff;color:#2f6fd6;font:inherit;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+#day-detail .dd-cover .cv-rt-tog i{font-style:normal;font-size:10px;display:inline-block;transition:transform .2s}
+#day-detail.dd-rt-closed .dd-cover .cv-rt-tog i{transform:rotate(180deg)}
+#day-detail .dd-cover .cv-rt{margin:0 -16px;padding:0 16px 14px;background:#fff;color:#1f2a44}
+#day-detail.dd-rt-closed .dd-cover .cv-rt{display:none}
+#day-detail .dd-cover .cv-rt-cap{display:flex;align-items:baseline;gap:6px;font-size:12.5px;font-weight:800;color:#5b7fb0;margin:2px 0 6px;border-top:1px dashed #d9e3f3;padding-top:8px}
+#day-detail .dd-cover .cv-rt-cap small{margin-left:auto;font-size:10.5px;font-weight:700;color:#9aa6b8}
+#day-detail .dd-cover .cv-rt-est{font-style:normal;color:#e8590c;font-weight:900}
+#day-detail .dd-cover .cv-rt .dd-dia-image{display:block;width:100%;height:auto;border:1px solid #e1e8f3;border-radius:10px;background:#fff}
+#day-detail .dd-cover .cv-rt .dd-dia-image-missing{font-size:12.5px;color:#8a96a8;padding:10px 2px}
+#day-detail .dd-cover .cv-rt .dd-route-edit{display:block;margin:8px 0 0 auto}
+#day-detail .dd-cover .cv-rt .cv-rt-need{text-align:center;font-weight:800;color:#2f6fd6;background:#f2f7ff;border:1px dashed #b9d2f5;border-radius:10px;padding:18px 8px}
+html.ui-dark #day-detail .dd-cover .cv-bar,html.ui-dark #day-detail .dd-cover .cv-rt{background:#1b2027;color:#e3e8ef}
+html.ui-dark #day-detail .dd-cover .cv-rt-tog{background:#232a35;border-color:#2f3946;color:#8db7ff}
+</style>
+<script id="dd-route-toggle-js">
+function ddRouteToggle(btn) {
+  var dd = document.getElementById('day-detail'); if (!dd) return;
+  var closed = !dd.classList.contains('dd-rt-closed');
+  dd.classList.toggle('dd-rt-closed', closed);
+  if (btn) { btn.setAttribute('aria-expanded', String(!closed)); var sp = btn.querySelector('span'); if (sp) sp.textContent = closed ? '행로표 펼치기' : '행로표 접기'; }
+}
+</script>
 </body>
 </html>
