@@ -7677,7 +7677,8 @@ function renderDayDetail() {
   /* 행로표: 카드 안 승무원 줄 아래에 합쳐서 보여줌 (펼침이 기본).
      등록된(관리자 · DB) 행로표가 있으면 그것, 없으면 철도비서가 XROIS의 그 날짜 다이아 정보로 그린 행로표 → (예상)을 꼭 붙임 */
   var ddRouteHtml = '';
-  if ((!isStatus && diaNo) || (typeof rpForDate === 'function' && rpForDate(dateKeyForSelectedDay()))) {
+  var ddOffLike = /휴/.test(String(info.label || '') + ' ' + String(info.status || '') + ' ' + String(diaNo || '')) || (isStatus && !/가일|박/.test(String(info.label || '') + String(info.status || '')));
+  if (!ddOffLike && ((!isStatus && diaNo) || (typeof rpForDate === 'function' && rpForDate(dateKeyForSelectedDay())))) {
     var ddKey = dateKeyForSelectedDay();
     var ddRt = (typeof rsRouteFor === 'function') ? rsRouteFor(ddKey, diaNo) : null;
     if (!ddRt && diaNo && rsPlan && rsPlan.rows && rsPlan.rows.length && typeof rpUrl === 'function') ddRt = { url: rpUrl(diaNo, rsPlan.rows), dia: diaNo, official: false };
@@ -31429,7 +31430,7 @@ function wbgGlass() {
       lights.forEach(function (l) { l.a += ((l.on ? .7 : .12) - l.a) * Math.min(1, .25 * dt); x.globalAlpha = l.a; var s = sprite(l.c, Math.round(l.r)); x.drawImage(s, l.x - s.width / DPR / 2, l.y - s.height / DPR / 2, s.width / DPR, s.height / DPR); });
       /* 저녁: 트리 위 별이 숨 쉬듯 빛남 */
       if (starP) {
-        var pul = .5 + .5 * Math.sin(now / 750);
+        var pul = 0;   /* 반짝임 없이 가장 어두운 밝기로 고정 */
         blob(x, starP.x, starP.y, starP.r * (3.6 + 1.2 * pul), '#ffd983', .30 + .30 * pul);
         blob(x, starP.x, starP.y, starP.r * 1.25, '#fff2c2', .28 + .32 * pul);
       }
