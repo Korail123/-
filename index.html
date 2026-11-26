@@ -3153,8 +3153,8 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="dia-dialog ns-dialog an-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="애니메이션효과" alt="" aria-hidden="true">배경화면 효과</div>
     <label class="an-main" style="display:none"><span><b>메인화면 애니메이션</b><small>로그인하거나 메인화면에 들어올 때 열차가 지나가요</small></span><input type="checkbox" id="an-on" onchange="animToggle(this.checked)"><i class="an-sw"></i></label>
-    <label class="an-main"><span><b id="an-wbg-t">겨울 테마</b><small id="an-wbg-d">반짝이는 크리스마스 트리와 내리는 하얀 눈</small></span><input type="checkbox" id="an-wbg" onchange="wbgSet(this.checked)"><i class="an-sw"></i></label>
-    <div class="an-main" id="an-season" style="display:flex;gap:8px;align-items:center;justify-content:space-between"><span><b>테마 고르기</b></span><span class="ssn-chips"><button type="button" data-s="winter" onclick="seasonSet('winter')">겨울</button><button type="button" data-s="spring" onclick="seasonSet('spring')">봄</button></span></div>
+    <label class="an-main"><span><b id="an-wbg-t">테마 효과</b><small id="an-wbg-d">반짝이는 크리스마스 트리와 내리는 하얀 눈</small></span><input type="checkbox" id="an-wbg" onchange="wbgSet(this.checked)"><i class="an-sw"></i></label>
+    <div class="an-main" id="an-season" style="display:flex;gap:8px;align-items:center;justify-content:space-between"><span><b>테마 고르기</b></span><span class="ssn-chips"><button type="button" data-s="spring" onclick="seasonSet('spring')">봄</button><button type="button" data-s="summer" class="ssn-soon" onclick="try{showToast('여름 테마는 준비 중이에요.')}catch(e){}">여름</button><button type="button" data-s="autumn" class="ssn-soon" onclick="try{showToast('가을 테마는 준비 중이에요.')}catch(e){}">가을</button><button type="button" data-s="winter" onclick="seasonSet('winter')">겨울</button></span></div>
     <div id="an-opts" class="an-opts" style="display:none!important">
       <div class="an-hint">오른쪽 화살표를 눌러 고르세요. 여러 개 고르면 그중에서 랜덤, 고르지 않으면 <b>전체</b>에서 랜덤이에요.</div>
       <div class="an-sec"><div class="an-h">시간대 <button type="button" onclick="animClear('times')">전체</button></div><div id="an-times" class="an-chips"></div></div>
@@ -28151,14 +28151,14 @@ function qsSet(kind, on) {
 </script>
 <style id="mp-group-ui">
 /* 마이페이지: 항목들을 환경설정처럼 한 카드로 붙임 (줄마다 구분선) */
-html body #vacation-section > .mp-sec{margin:0!important;border-radius:0!important;border-top-width:0!important;border-bottom-width:0!important;box-shadow:none!important;padding:0 14px!important}
-html body #vacation-section > .mp-sec:not(.mp-sec + .mp-sec){border-top-width:1px!important;border-radius:15px 15px 0 0!important;margin-top:14px!important}
-html body #vacation-section > .mp-sec:not(:has(+ .mp-sec)){border-bottom-width:1px!important;border-radius:0 0 15px 15px!important;margin-bottom:12px!important;box-shadow:0 1px 3px rgba(16,40,80,.04)!important}
-html body #vacation-section > .mp-sec:not(.mp-sec + .mp-sec):not(:has(+ .mp-sec)){border-radius:15px!important}
-html body #vacation-section > .mp-sec + .mp-sec > .mp-toggle{border-top:1px solid #f0f3f8!important}
-html body #vacation-section > .mp-sec > .mp-toggle{min-height:56px!important;padding:10px 0!important;font-size:15px!important;font-weight:600!important;gap:12px!important}
-html body #vacation-section > .mp-sec > .mp-toggle > img{width:28px!important;height:28px!important;flex:0 0 28px!important}
-html.ui-dark body #vacation-section > .mp-sec + .mp-sec > .mp-toggle{border-top-color:#2a313b!important}
+html body #vacation-section #mp-grp > .mp-sec{margin:0!important;border-radius:0!important;border-top-width:0!important;border-bottom-width:0!important;box-shadow:none!important;padding:0 14px!important}
+html body #vacation-section #mp-grp > .mp-sec:not(.mp-sec + .mp-sec){border-top-width:1px!important;border-radius:15px 15px 0 0!important;margin-top:14px!important}
+html body #vacation-section #mp-grp > .mp-sec:not(:has(+ .mp-sec)){border-bottom-width:1px!important;border-radius:0 0 15px 15px!important;margin-bottom:12px!important;box-shadow:0 1px 3px rgba(16,40,80,.04)!important}
+html body #vacation-section #mp-grp > .mp-sec:not(.mp-sec + .mp-sec):not(:has(+ .mp-sec)){border-radius:15px!important}
+html body #vacation-section #mp-grp > .mp-sec + .mp-sec > .mp-toggle{border-top:1px solid #f0f3f8!important}
+html body #vacation-section #mp-grp > .mp-sec > .mp-toggle{min-height:56px!important;padding:10px 0!important;font-size:15px!important;font-weight:600!important;gap:12px!important}
+html body #vacation-section #mp-grp > .mp-sec > .mp-toggle > img{width:28px!important;height:28px!important;flex:0 0 28px!important}
+html.ui-dark body #vacation-section #mp-grp > .mp-sec + .mp-sec > .mp-toggle{border-top-color:#2a313b!important}
 </style>
 <style id="size-unify">
 /* 아이콘 · 글씨 크기 통일: 메인화면 칸 = 환경설정 바둑판 칸 (아이콘 38px · 글씨 12px 굵게) · 하단 메뉴바 (아이콘 24px · 글씨 10px 굵게) */
@@ -28236,7 +28236,7 @@ html.ui-dark #vacation-section .mp-logout-row{background:#1b2027;border-color:#2
 (function () {
   function add() {
     var sec = document.getElementById('vacation-section'); if (!sec || document.getElementById('mp-logout-row')) return;
-    var list = sec.querySelectorAll(':scope > .mp-sec'); var last = list[list.length - 1]; if (!last) return;
+    var list = sec.querySelectorAll('.mp-sec'); var last = list[list.length - 1]; if (!last) return;
     var b = document.createElement('button'); b.type = 'button'; b.id = 'mp-logout-row'; b.className = 'mp-logout-row';
     b.innerHTML = '<img data-icon="로그아웃" alt="" aria-hidden="true"><span>로그아웃</span>';
     b.onclick = function () { if (typeof logout === 'function') logout(); };
@@ -32575,7 +32575,7 @@ html.theme-day:not(.spring-day):not(#s1):not(#s2):not(#s3):not(#s4) body .page-v
   };
   function labels() {
     var t = document.getElementById('an-wbg-t'), d = document.getElementById('an-wbg-d'), sp = season() === 'spring';
-    if (t) t.textContent = sp ? '봄 테마' : '겨울 테마';
+    if (t) t.textContent = '테마 효과';
     if (d) d.textContent = sp ? '흩날리는 벚꽃잎과 천천히 들어오는 열차' : '반짝이는 크리스마스 트리와 내리는 하얀 눈';
   }
   mark(); labels();
@@ -32817,5 +32817,218 @@ html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6
 <style id="fix-v55">.pp-title .pp-kind{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;vertical-align:2px;background:rgba(80,150,255,.18);color:inherit;opacity:.9}</style>
 
 <style id="fix-v60">#gis-train-panel .gis-list{max-height:34vh;overflow:auto;margin:8px 0 4px;font-size:12.5px}#gis-train-panel .gis-list div{display:flex;justify-content:space-between;gap:10px;padding:5px 2px;border-top:1px solid rgba(255,255,255,.12)}#gis-train-panel .gis-list span{opacity:.85}</style>
+
+<style id="fix-v61">
+/* 선택된 칸: 흰 바탕 + 흰 글씨(안 보임) 방지 → 하늘색 */
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="opt"].on),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="opt"].sel),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="opt"].selected),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="opt"].picked),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="opt"].chosen),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="opt"][aria-pressed="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="opt"][aria-selected="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="row"].on),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="row"].sel),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="row"].selected),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="row"].picked),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="row"].chosen),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="row"][aria-pressed="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="row"][aria-selected="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="card"].on),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="card"].sel),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="card"].selected),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="card"].picked),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="card"].chosen),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="card"][aria-pressed="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="card"][aria-selected="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="folder"].on),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="folder"].sel),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="folder"].selected),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="folder"].picked),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="folder"].chosen),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="folder"][aria-pressed="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="folder"][aria-selected="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="chip"].on),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="chip"].sel),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="chip"].selected),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="chip"].picked),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="chip"].chosen),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="chip"][aria-pressed="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="chip"][aria-selected="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tile"].on),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tile"].sel),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tile"].selected),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tile"].picked),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tile"].chosen),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tile"][aria-pressed="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tile"][aria-selected="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="item"].on),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="item"].sel),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="item"].selected),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="item"].picked),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="item"].chosen),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="item"][aria-pressed="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="item"][aria-selected="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="base"].on),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="base"].sel),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="base"].selected),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="base"].picked),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="base"].chosen),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="base"][aria-pressed="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="base"][aria-selected="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="btn"].on),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="btn"].sel),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="btn"].selected),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="btn"].picked),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="btn"].chosen),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="btn"][aria-pressed="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="btn"][aria-selected="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tab"].on),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tab"].sel),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tab"].selected),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tab"].picked),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tab"].chosen),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tab"][aria-pressed="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tab"][aria-selected="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="pill"].on),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="pill"].sel),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="pill"].selected),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="pill"].picked),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="pill"].chosen),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="pill"][aria-pressed="true"]),
+html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="pill"][aria-selected="true"]){background:rgba(96,176,255,.32)!important;background-image:none!important;border-color:#7cc4ff!important;color:#fff!important;box-shadow:0 0 0 1.5px rgba(124,196,255,.55)!important}
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="opt"].on),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="opt"].sel),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="opt"].selected),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="opt"].picked),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="opt"].chosen),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="opt"][aria-pressed="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="opt"][aria-selected="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="row"].on),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="row"].sel),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="row"].selected),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="row"].picked),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="row"].chosen),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="row"][aria-pressed="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="row"][aria-selected="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="card"].on),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="card"].sel),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="card"].selected),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="card"].picked),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="card"].chosen),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="card"][aria-pressed="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="card"][aria-selected="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="folder"].on),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="folder"].sel),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="folder"].selected),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="folder"].picked),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="folder"].chosen),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="folder"][aria-pressed="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="folder"][aria-selected="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="chip"].on),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="chip"].sel),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="chip"].selected),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="chip"].picked),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="chip"].chosen),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="chip"][aria-pressed="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="chip"][aria-selected="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tile"].on),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tile"].sel),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tile"].selected),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tile"].picked),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tile"].chosen),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tile"][aria-pressed="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tile"][aria-selected="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="item"].on),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="item"].sel),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="item"].selected),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="item"].picked),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="item"].chosen),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="item"][aria-pressed="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="item"][aria-selected="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="base"].on),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="base"].sel),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="base"].selected),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="base"].picked),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="base"].chosen),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="base"][aria-pressed="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="base"][aria-selected="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="btn"].on),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="btn"].sel),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="btn"].selected),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="btn"].picked),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="btn"].chosen),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="btn"][aria-pressed="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="btn"][aria-selected="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tab"].on),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tab"].sel),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tab"].selected),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tab"].picked),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tab"].chosen),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tab"][aria-pressed="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="tab"][aria-selected="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="pill"].on),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="pill"].sel),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="pill"].selected),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="pill"].picked),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="pill"].chosen),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="pill"][aria-pressed="true"]),
+html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4) :is([id$="-panel"],.dia-modal,[class*="modal"],[class*="popup"],[class*="sheet"]) :is([class*="pill"][aria-selected="true"]){background:rgba(96,176,255,.32)!important;background-image:none!important;border-color:#7cc4ff!important;color:#fff!important;box-shadow:0 0 0 1.5px rgba(124,196,255,.55)!important}
+/* 아이콘 설정: 3칸 x 2줄, 이름은 2줄까지 */
+#icon-panel .ic-list{grid-template-columns:repeat(3,1fr)!important;gap:7px!important}
+#icon-panel .ic-card{padding:9px 4px 8px!important;gap:3px!important}
+#icon-panel .ic-card img{width:38px!important;height:38px!important}
+#icon-panel .ic-card .ic-name{font-size:12px!important;line-height:1.25!important;min-height:2.5em!important;white-space:normal!important;overflow-wrap:anywhere;padding:0 2px}
+#icon-panel .ic-ck{top:4px!important;right:4px!important;background:rgba(255,255,255,.35)!important;border-color:rgba(255,255,255,.7)!important}
+#icon-panel .ic-card.on .ic-ck{background:#2f8cf0!important;border-color:#fff!important}
+</style>
+
+<style id="fix-v62">
+/* 휴가관리: 휴가 종류 6칸 · 휴가 기록 칸 = 달력과 같은 반투명(밤 38% / 낮 60%) */
+html.wbg-on:not(.theme-day):not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#e8):not(#e9):not(#e10):not(#e11):not(#e12):not(#e13):not(#e14):not(#e15):not(#e16) body :is(#vac-dates,#vacation-management-section .vac-chipbtn:not(.on)){background:rgba(10,18,34,.38)!important;background-image:none!important;border:1px solid rgba(255,255,255,.22)!important;box-shadow:0 2px 10px rgba(0,0,0,.18)!important;-webkit-backdrop-filter:blur(10px) saturate(1.2)!important;backdrop-filter:blur(10px) saturate(1.2)!important}
+html.wbg-on.theme-day:not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#e8):not(#e9):not(#e10):not(#e11):not(#e12):not(#e13):not(#e14):not(#e15):not(#e16) body :is(#vac-dates,#vacation-management-section .vac-chipbtn:not(.on)){background:rgba(255,255,255,.6)!important;background-image:none!important;border:1px solid rgba(255,255,255,.55)!important;box-shadow:0 8px 22px rgba(50,110,180,.12)!important;-webkit-backdrop-filter:blur(12px)!important;backdrop-filter:blur(12px)!important}
+html.wbg-on:not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#e8):not(#e9):not(#e10):not(#e11):not(#e12):not(#e13):not(#e14):not(#e15):not(#e16) body #vac-dates :is(.vd-row,.vd-head,div,button):not(.vac-chipbtn){background:transparent!important;background-image:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;box-shadow:none!important}
+html.wbg-on:not(.theme-day):not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#e8):not(#e9):not(#e10):not(#e11):not(#e12):not(#e13):not(#e14):not(#e15):not(#e16) body #vac-dates .vd-row{border-bottom-color:rgba(255,255,255,.14)!important}
+/* 마이페이지: 메뉴 칸들을 한 덩어리로 (환경설정 테마 묶음처럼) */
+html.wbg-on:not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#e8):not(#e9):not(#e10):not(#e11):not(#e12):not(#e13):not(#e14):not(#e15):not(#e16) body #vacation-section #mp-grp{border-radius:15px;overflow:hidden;margin:14px 0 14px}
+html.wbg-on:not(.theme-day):not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#e8):not(#e9):not(#e10):not(#e11):not(#e12):not(#e13):not(#e14):not(#e15):not(#e16) body #vacation-section #mp-grp{background:rgba(10,18,34,.38)!important;background-image:none!important;border:1px solid rgba(255,255,255,.22)!important;box-shadow:0 2px 10px rgba(0,0,0,.18)!important;-webkit-backdrop-filter:blur(10px) saturate(1.2)!important;backdrop-filter:blur(10px) saturate(1.2)!important}
+html.wbg-on.theme-day:not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#e8):not(#e9):not(#e10):not(#e11):not(#e12):not(#e13):not(#e14):not(#e15):not(#e16) body #vacation-section #mp-grp{background:rgba(255,255,255,.6)!important;background-image:none!important;border:1px solid rgba(255,255,255,.55)!important;box-shadow:0 8px 22px rgba(50,110,180,.12)!important;-webkit-backdrop-filter:blur(12px)!important;backdrop-filter:blur(12px)!important}
+html.wbg-on:not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#e8):not(#e9):not(#e10):not(#e11):not(#e12):not(#e13):not(#e14):not(#e15):not(#e16) body #vacation-section #mp-grp > *{background:transparent!important;background-image:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;margin:0!important}
+html.wbg-on:not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#e8):not(#e9):not(#e10):not(#e11):not(#e12):not(#e13):not(#e14):not(#e15):not(#e16) body #vacation-section #mp-grp > * + *{border-top:1px solid rgba(255,255,255,.16)!important}
+html.wbg-on.theme-day:not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#e8):not(#e9):not(#e10):not(#e11):not(#e12):not(#e13):not(#e14):not(#e15):not(#e16) body #vacation-section #mp-grp > * + *{border-top-color:rgba(40,60,100,.14)!important}
+html.wbg-on:not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#e8):not(#e9):not(#e10):not(#e11):not(#e12):not(#e13):not(#e14):not(#e15):not(#e16) body #vacation-section #mp-grp > .mp-sec[data-sec="crew"]{padding:0 14px!important}
+html.wbg-on:not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#e8):not(#e9):not(#e10):not(#e11):not(#e12):not(#e13):not(#e14):not(#e15):not(#e16) body #vacation-section #mp-grp .mp-sec + .mp-sec > .mp-toggle{border-top:0!important}
+html.wbg-on:not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#e8):not(#e9):not(#e10):not(#e11):not(#e12):not(#e13):not(#e14):not(#e15):not(#e16) body #vacation-section #mp-grp > .mp-logout-row{width:100%!important;border-radius:0!important}
+/* 밀어서 화면 바꿀 때 투명도(opacity) 변화 없이 움직이기만 → 유리 흐림이 끊기지 않음 */
+@keyframes rsInL{from{transform:translateX(36px)}to{transform:none}}
+@keyframes rsInR{from{transform:translateX(-36px)}to{transform:none}}
+@keyframes mmInL{from{transform:translateX(28px)}to{transform:none}}
+@keyframes mmInR{from{transform:translateX(-28px)}to{transform:none}}
+#calendar-card,#vac-calendar-card,#group-table-card{opacity:1!important}
+html.wbg-on:not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#e8):not(#e9):not(#e10):not(#e11):not(#e12):not(#e13):not(#e14):not(#e15):not(#e16) body #vacation-section #mp-grp > * + *{box-shadow:inset 0 1px 0 rgba(255,255,255,.18)!important}
+html.wbg-on.theme-day:not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#e8):not(#e9):not(#e10):not(#e11):not(#e12):not(#e13):not(#e14):not(#e15):not(#e16) body #vacation-section #mp-grp > * + *{box-shadow:inset 0 1px 0 rgba(40,60,100,.14)!important}
+</style>
+<script id="mp-grp-js">
+/* 마이페이지 메뉴칸(입사일·교환·기록·CREW) + 로그아웃을 한 덩어리 틀에 담기 */
+(function () {
+  function wrap() {
+    var sec = document.getElementById('vacation-section'); if (!sec) return;
+    var g = document.getElementById('mp-grp');
+    var items = [].filter.call(sec.children, function (c) { return c.classList && (c.classList.contains('mp-sec') || c.id === 'mp-logout-row'); });
+    if (!items.length) return;
+    if (!g) { g = document.createElement('div'); g.id = 'mp-grp'; g.className = 'mp-grp wbg-glass'; sec.insertBefore(g, items[0]); }
+    items.forEach(function (c) { g.appendChild(c); });
+  }
+  window.mpGrpWrap = wrap;
+  function boot() { wrap(); setTimeout(wrap, 400); setTimeout(wrap, 1500); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+})();
+</script>
+
+<style id="fix-v63">
+#an-season .ssn-chips{display:grid!important;grid-template-columns:repeat(4,48px);gap:6px;flex:none}
+#an-season .ssn-chips button{width:48px;height:34px;padding:0!important;display:flex;align-items:center;justify-content:center;font-size:13.5px}
+#an-season .ssn-chips button.ssn-soon{opacity:.6}
+</style>
 </body>
 </html>
