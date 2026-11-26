@@ -4484,7 +4484,9 @@ function computeLeaveUsage(year) {
   var consumed = {};
   function ownStatus(k) {
     var o = snapshot.ovMap[myId + '|' + k];
-    return (o && o.type === 'status') ? o.status : '';
+    if (!o) return '';
+    /* 휴가는 저장 방식(휴가만 · 다이아+휴가)이나 이름(육아휴가 등)과 상관없이 같은 종류로 셈 */
+    return vacKeyOfOv(o) || (o.type === 'status' ? o.status : '');
   }
   function baseType(k) {
     return String(snapBaseDay(k, mb.seq, mb.anchor, dia, mb.name).type || '').trim();
@@ -7868,8 +7870,9 @@ function openScheduleEdit(y, m, d) {
     b.type = 'button';
     b.className =
       'schedule-edit-option' +
-      (info && info.manual && ((info.overrideType === 'status' && info.status === name) || info.dutyStatus === name) ? ' selected' : '');
+      (info && info.manual && ((info.overrideType === 'status' && (vacKeyNorm(info.status) || info.status) === name) || (vacKeyNorm(info.dutyStatus) || info.dutyStatus) === name) ? ' selected' : '');
     b.textContent = name === '육아휴직' ? '육아휴가' : name;   /* 저장 값은 그대로 */
+    b.setAttribute('data-value', name);   /* 저장은 화면 글자(육아휴가)가 아니라 원래 값(육아휴직)으로 */
     b.onclick = function () {
       /* 이미 선택된 항목을 한 번 더 누르면 선택 취소 */
       var wasSelected = b.classList.contains('selected');
@@ -7982,8 +7985,14 @@ function saveScheduleEdit() {
   var partnerName = $('schedule-edit-partner') ? $('schedule-edit-partner').value.trim() : '';
   var selectedDutyStatus = '';
   var selected = options ? options.querySelector('.schedule-edit-option.selected') : null;
-  if (selected) selectedDutyStatus = selected.textContent;
+  if (selected) selectedDutyStatus = selected.getAttribute('data-value') || selected.textContent;
   if (scheduleEditDuty) selectedDutyStatus = scheduleEditDuty;
+  /* 휴가(연차·병가·공가 등)를 고르면 그 날 근무를 휴가로 덮어씀:
+     교환·다이아로 미리 채워진 다이아 · 충당 구분은 저장하지 않고 휴가만 저장 (교환 상대 이름은 유지) → 휴가관리에 그대로 카운트 */
+  if (vacKeyNorm(selectedDutyStatus)) {
+    dia = ''; scheduleEditCredit = '';
+    if ($('schedule-edit-temp')) $('schedule-edit-temp').checked = false;
+  }
   if (!dia && !selectedDutyStatus && !scheduleEditCredit) {
     msg.textContent = 'DIA 번호, 근무 상태 또는 충당 구분을 선택하세요.';
     return;
@@ -9440,8 +9449,12 @@ function swapWorkTimes(empId, key, info) {
 }
 /* 교환 뒤 그 사람의 그 날 근무: 기간 안이면 상대 근무, 밖이면 자기 근무 */
 function swapAfterInfo(empId, otherId, key, startKey, endKey) {
-  return swapMemberInfo(key >= startKey && key <= endKey ? otherId : empId, key);
+  /* 휴가인 날(두 사람 중 누구든)은 교환되지 않으므로 교환 뒤에도 원래 근무 */
+  var sw = key >= startKey && key <= endKey && !swapLeaveOf(empId, key) && !swapLeaveOf(otherId, key);
+  return swapMemberInfo(sw ? otherId : empId, key);
 }
+/* 그 날이 휴가(연차·출산·육아·돌봄·병가·공가)면 휴가 종류, 아니면 '' */
+function swapLeaveOf(empId, key) { try { return vacKeyOfDay(swapMemberInfo(empId, key)); } catch (e) { return ''; } }
 function swapGapCheck(empId, otherId, startKey, endKey) {
   var res = { prev: null, next: null };
   if (!startKey || !endKey) return res;
@@ -9560,7 +9573,7 @@ function swapGapGrid(list, startKey, endKey) {
       var info = swapAfterInfo(x.id, x.other, k, startKey, endKey), code = swapDutyLabel(info);
       var isSt = !!(info && info.overrideType === 'status');
       var cls = (!info || code === '-' || code === '') ? 'duty-none' : isSt ? 'duty-off' : code === '주' ? 'duty-day' : (code === '야' || code === '비' || code === 'X') ? 'duty-night' : 'duty-off';
-      var inR = k >= startKey && k <= endKey;
+      var inR = k >= startKey && k <= endKey && !swapLeaveOf(x.id, k) && !swapLeaveOf(x.other, k);   /* 휴가인 날은 교환 안 됨 */
       h += '<div class="cmp-cell' + (inR ? ' sgx-in' : '') + '" style="grid-row:' + dutyRow + ';grid-column:' + (i + 2) + '"><b class="sd-duty ' + cls + '">' + ((inR || (info && info.manual)) ? '*' : '') + esc(code) + '</b>' +
         (tmap[k] ? '<small class="sgx-t">' + tmap[k] + '</small>' : '') + '</div>';
     });
@@ -9620,9 +9633,11 @@ function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
   var daysInMonth = new Date(y, m + 1, 0).getDate();
   var html = '';
   ['일','월','화','수','목','금','토'].forEach(function (w) { html += '<div class="swap-wd">' + w + '</div>'; });
-  for (var e = 0; e < firstDow; e++) html += '<div class="swap-day empty"></div>';
-  for (var d = 1; d <= daysInMonth; d++) {
-    var key = getDateKey(y, m, d);
+  /* 6주(42칸) 고정: 앞쪽은 지난달, 뒤쪽은 다음 달 날짜와 근무도 보여주고 선택 가능 (운영 시작일 이전은 빈칸) */
+  for (var c = 0; c < 42; c++) {
+    var cd = new Date(y, m, 1 - firstDow + c), out = cd.getMonth() !== m, d = cd.getDate();
+    if (rsBeforeStartYm(cd.getFullYear(), cd.getMonth())) { html += '<div class="swap-day empty"></div>'; continue; }
+    var key = getDateKey(cd.getFullYear(), cd.getMonth(), d);
     var info = swapMemberInfo(employeeId, key);
     var label = swapDutyLabel(info);
     var inRange = !!(startKey && endKey && key >= startKey && key <= endKey);
@@ -9636,16 +9651,12 @@ function renderOneSwapCalendar(employeeId, containerId, startKey, endKey) {
       : (dutyCode === '야' || dutyCode === '비' || dutyCode === 'X') ? 'duty-night'
       : 'duty-off';   /* 휴·X·휴가·연차·휴직 등 나머지는 모두 빨강 */
     html += '<button type="button" data-key="' + key + '"' +
-      ' class="swap-day swap-pick-date' + (inRange ? ' in-range' : '') + (edge ? ' range-edge' : '') +
+      ' class="swap-day swap-pick-date' + (out ? ' out' : '') + (inRange ? ' in-range' : '') + (edge ? ' range-edge' : '') +
       '" onclick="selectSwapRangeDate(this.dataset.key)">' +
       (edge ? '<span class="sd-edge sd-edge-top">' + edge + '</span>' : '') +
       '<span class="sd-top"><span class="sd-num">' + d + '</span></span>' +
       '<span class="sd-duty ' + cls + '">' + (info && info.manual ? '*' : '') + esc(label) + '</span></button>';   /* 위 달력에는 휴식시간 표시 안 함 (밑 표에서만) */
       }
-  // 달마다 주 수가 달라져도 달력 높이가 변하지 않도록 6주(42칸) 고정
-  var usedCells = firstDow + daysInMonth;
-  var tail = 42 - usedCells;
-  for (var z = 0; z < tail; z++) html += '<div class="swap-day empty"></div>';
   el.innerHTML = html;
 }
 /* 칸보다 긴 글자(*연차, *공가 등)는 글자 크기를 줄여서 1줄에 맞춤 */
@@ -9715,57 +9726,82 @@ function submitGroupSwap() {
   if (!startKey || !endKey || startKey > endKey) { $('swap-status').textContent = '교환할 기간을 확인해주세요.'; return; }
   var count = (dateKeyToNum(endKey) - dateKeyToNum(startKey)) / 86400000 + 1;
   if (count > 31) { $('swap-status').textContent = '한 번에 최대 31일까지만 교환할 수 있습니다.'; return; }
+  var myId = String(user.employeeId), otId = String(swapTargetMember.employeeId);
+  var partnerId = otId, partnerName = String(swapTargetMember.name || partnerId), myName = String(user.name || myId);
+  /* 휴가(연차·병가·공가 등)인 날은 교환하지 않음: 휴가는 그 사람 것이라 상대에게 넘어가지 않고, 그 날은 두 사람 모두 원래 근무 그대로
+     → 휴가인 날을 뺀 나머지 날을 이어진 구간별로 나눠 교환 */
+  var keys = snapDateKeys(startKey, endKey), leaveDays = [], segs = [], cur = null;
+  keys.forEach(function (k) {
+    var lm = swapLeaveOf(myId, k), lo = swapLeaveOf(otId, k);
+    if (lm || lo) { leaveDays.push({ date: k, me: lm, other: lo }); cur = null; return; }
+    if (!cur) segs.push(cur = []);
+    cur.push(k);
+  });
+  if (!segs.length) { $('swap-status').textContent = '고른 기간이 모두 휴가인 날이라 교환할 근무가 없어요. (휴가는 교환되지 않아요)'; return; }
+  function vl(k) { var t = vacTypeByKey(k); return t ? t.label : k; }
+  function md(k) { var q = k.split('-'); return (+q[1]) + '/' + (+q[2]); }
+  var leaveNote = leaveDays.length ? '\n\n※ 휴가인 날은 교환하지 않고 두 사람 모두 원래대로 둡니다.\n' + leaveDays.map(function (x) {
+    return md(x.date) + ' ' + [x.me ? '나 ' + vl(x.me) : '', x.other ? partnerName + ' ' + vl(x.other) : ''].filter(Boolean).join(' · ');
+  }).join('\n') : '';
   var gapNote = (swapGapWarn && swapGapWarn.length) ? '\n\n⚠ 휴식시간이 ' + swapRestHours() + '시간이 안 되는 곳이 있어요.\n' + swapGapWarn.join('\n') + '\n' : '';
-  if (!confirm((swapTargetMember.name || swapTargetMember.employeeId) + '님과 ' + startKey + '부터 ' + endKey + '까지의 근무를 서로 교환할까요?' + gapNote)) return;
-  var swaps = [];
-  var keys = snapDateKeys(startKey, endKey);
-  for (var i = 0; i < keys.length; i++) {
-    swaps.push({ date: keys[i], mine: swapDayAssignment(user.employeeId, keys[i]), theirs: swapDayAssignment(swapTargetMember.employeeId, keys[i]) });
-  }
-  var swnRows = []; try { swnRows = swnRowsFor(swapTargetMember.employeeId, user.employeeId, keys); } catch (e) {}   /* 상대에게 보낼 전/후 (교환 전에 계산) */
+  if (!confirm(partnerName + '님과 ' + startKey + '부터 ' + endKey + '까지의 근무를 서로 교환할까요?' + leaveNote + gapNote)) return;
+  /* 교환 전 근무로 구간별 교환 내용을 미리 계산 */
+  var segSwaps = segs.map(function (ks) {
+    return ks.map(function (k) { return { date: k, mine: swapDayAssignment(myId, k), theirs: swapDayAssignment(otId, k) }; });
+  });
+  var swapKeys = [].concat.apply([], segs);
+  var swnRows = []; try { swnRows = swnRowsFor(otId, myId, swapKeys); } catch (e) {}   /* 상대에게 보낼 전/후 (교환 전에 계산) */
+  var allTheirs = [];
   swapSubmitting = true;
   $('swap-submit').disabled = true;
   $('swap-status').textContent = '양쪽 근무표에 교환을 저장하는 중...';
-  /* 서버는 app_swapschedulerange RPC로 양쪽 계정의 override를 원자적으로 저장해야 합니다. */
-  api({ action: 'swapScheduleRange', employeeId: user.employeeId, token: user.token,
-        targetEmployeeId: swapTargetMember.employeeId, startDate: startKey, endDate: endKey, swaps: swaps }, function (r) {
-    swapSubmitting = false;
-    $('swap-submit').disabled = false;
-    if (!r || !r.success) {
-      $('swap-status').textContent = ((r && r.message) ? r.message : '서버에 연결하지 못했습니다.') + ' (두 사람의 근무표는 변경되지 않았습니다.)';
-      return;
-    }
-    /* 서버 저장 확인 후: 당사자·상대 모두 로컬에 즉시 반영 (교환 상대 이름 포함) */
-    var partnerId = String(swapTargetMember.employeeId);
-    var partnerName = String(swapTargetMember.name || partnerId);
-    var myName = String(user.name || user.employeeId);
+  function applySeg(swaps) {
     var mineItems = swaps.map(function (w) {
       var t = w.theirs || {};
-      return {
-        date: w.date, type: t.type, dia: t.dia, status: t.status,
-        partnerId: partnerId, partnerName: partnerName, dutyStatus: t.dutyStatus || ''
-      };
+      return { date: w.date, type: t.type, dia: t.dia, status: t.status, partnerId: partnerId, partnerName: partnerName, dutyStatus: t.dutyStatus || '' };
     });
     var theirItems = swaps.map(function (w) {
       var m = w.mine || {};
-      return {
-        date: w.date, type: m.type, dia: m.dia, status: m.status,
-        partnerId: String(user.employeeId), partnerName: myName, dutyStatus: m.dutyStatus || ''
-      };
+      return { date: w.date, type: m.type, dia: m.dia, status: m.status, partnerId: myId, partnerName: myName, dutyStatus: m.dutyStatus || '' };
     });
-    /* 교환 당한 사람에게 다음 로그인 때 팝업 (실패해도 교환은 그대로) */
-    api({ action: 'swapNotice', op: 'add', employeeId: user.employeeId, token: user.token, targetEmployeeId: partnerId, start: startKey, end: endKey, rows: swnRows }, function () {});
-    swapApplyLocal(user.employeeId, mineItems);
+    swapApplyLocal(myId, mineItems);
     swapApplyLocal(partnerId, theirItems);
+    allTheirs = allTheirs.concat(theirItems);
+  }
+  function step(i) {
+    if (i >= segSwaps.length) return finish();
+    var swaps = segSwaps[i];
+    /* 서버는 app_swapschedulerange RPC로 양쪽 계정의 override를 원자적으로 저장해야 합니다. (구간별로 1번씩) */
+    api({ action: 'swapScheduleRange', employeeId: user.employeeId, token: user.token,
+          targetEmployeeId: partnerId, startDate: swaps[0].date, endDate: swaps[swaps.length - 1].date, swaps: swaps }, function (r) {
+      if (!r || !r.success) {
+        swapSubmitting = false;
+        $('swap-submit').disabled = false;
+        var why = (r && r.message) ? r.message : '서버에 연결하지 못했습니다.';
+        if (!i) { $('swap-status').textContent = why + ' (두 사람의 근무표는 변경되지 않았습니다.)'; return; }
+        refreshUiAfterSwap(); scheduleAutoBackup(200);
+        $('swap-status').textContent = why + ' (' + segSwaps[i - 1][segSwaps[i - 1].length - 1].date + '까지는 교환됐고, ' + swaps[0].date + '부터는 변경되지 않았습니다.)';
+        return;
+      }
+      applySeg(swaps);   /* 서버 저장 확인 후: 당사자·상대 모두 로컬에 즉시 반영 (교환 상대 이름 포함) */
+      step(i + 1);
+    });
+  }
+  function finish() {
+    swapSubmitting = false;
+    $('swap-submit').disabled = false;
+    /* 교환 당한 사람에게 다음 로그인 때 팝업 (실패해도 교환은 그대로) */
+    api({ action: 'swapNotice', op: 'add', employeeId: user.employeeId, token: user.token, targetEmployeeId: partnerId, start: swapKeys[0], end: swapKeys[swapKeys.length - 1], rows: swnRows }, function () {});
     refreshUiAfterSwap();
     scheduleAutoBackup(200);   /* 교환 직후 즉시 백업 */
-    $('swap-status').textContent = '근무 교환이 완료되었습니다. 두 근무표·근무그룹에 바로 반영됩니다.';
+    $('swap-status').textContent = '근무 교환이 완료되었습니다. 두 근무표·근무그룹에 바로 반영됩니다.' + (leaveDays.length ? ' (휴가인 ' + leaveDays.length + '일은 교환하지 않았어요)' : '');
     syncPending(function () {
-      swapApplyLocal(partnerId, theirItems);
+      swapApplyLocal(partnerId, allTheirs);
       refreshUiAfterSwap();
       showToast('근무 교환이 반영되었습니다.');
     });
-  });
+  }
+  step(0);
 }
 /* ---- 근무그룹: 근무자·날짜를 누르면 다이아 정보 팝업 ---- */
 function piRow(k, v) {
@@ -10598,6 +10634,22 @@ function vacTypeByKey(k) {
   }
   return null;
 }
+/* 휴가 이름 통일: 화면 이름(연차휴가·육아휴가·돌봄휴가)으로 저장된 값도 휴가관리 종류로 인식 */
+var VAC_ALIAS = { '연차휴가': '연차', '육아휴가': '육아휴직', '돌봄휴가': '돌봄' };
+function vacKeyNorm(v) { v = String(v == null ? '' : v).replace(/^\*/, '').trim(); v = VAC_ALIAS[v] || v; return vacTypeByKey(v) ? v : ''; }
+/* 하루 근무에서 휴가 종류: 휴가만 고른 날(status) + 다이아가 남은 채 휴가를 고른 날(combined·dia의 근무구분) 모두 */
+function vacKeyOfDay(d) {
+  if (!d) return '';
+  if (d.overrideType === 'status') return vacKeyNorm(d.status);
+  if (d.manual && /^(combined|dia|dia-credit)$/.test(String(d.overrideType || ''))) return vacKeyNorm(d.dutyStatus);
+  return '';
+}
+function vacKeyOfOv(o) {
+  if (!o) return '';
+  if (o.type === 'status') return vacKeyNorm(o.status);
+  if (/^(combined|dia|dia-credit|status-credit)$/.test(String(o.type || ''))) return vacKeyNorm(o.dutyStatus);
+  return '';
+}
 /* 한 해 동안 종류별로 휴가를 쓴 날짜 목록 (야간 뒤 비번 자동 반영 포함) */
 function computeLeaveDates(year) {
   var res = {};
@@ -10612,10 +10664,10 @@ function computeLeaveDates(year) {
   if (!mb) return res;
   var keys = snapDateKeys(year + '-01-01', year + '-12-31');
   for (var n = 0; n < keys.length; n++) {
-    var d = snapDayWithAuto(keys[n], mb, dia, snapshot.ovMap);
-    if (d && d.overrideType === 'status' && d.status) {
-      if (!res[d.status]) res[d.status] = [];
-      res[d.status].push(keys[n]);
+    var d = snapDayWithAuto(keys[n], mb, dia, snapshot.ovMap), vk = vacKeyOfDay(d);
+    if (vk) {
+      if (!res[vk]) res[vk] = [];
+      res[vk].push(keys[n]);
     }
   }
   return res;
@@ -19654,7 +19706,15 @@ cursor:pointer;transition:background .15s,transform .05s;-webkit-tap-highlight-c
 .pill-center{display:flex!important;margin:16px auto 0!important;min-width:140px}
 .be-save-top{background:#eef3f9!important;color:#1d4f9a!important;border:1.5px solid #eef3f9!important;height:40px;padding:0 18px!important;font-size:15px!important}
 #notice-admin-actions,.board-write-wrap{display:flex;justify-content:flex-end}
-#swap-revert{border-color:#e53935!important;color:#e53935!important}</style>
+#swap-revert{border-color:#e53935!important;color:#e53935!important}
+/* 근무교환 하단 버튼 3개: 같은 너비 · 높이 · 글자 크기 (좁은 화면에서는 긴 글자만 두 줄) */
+.swap-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px!important;justify-content:stretch!important}
+.swap-actions>button{width:100%!important;min-width:0!important;height:46px!important;padding:0 6px!important;box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;border-radius:999px!important;font-size:14px!important;font-weight:800!important;line-height:1.15!important;letter-spacing:-.3px;white-space:normal!important;word-break:keep-all!important;text-align:center}
+#swap-submit{border:1.5px solid #1769d2!important;background:#1769d2!important;color:#fff!important}
+#swap-submit:disabled{opacity:.5}
+/* 근무교환 달력: 지난달 · 다음 달 날짜는 흐리게 (선택하면 진하게) */
+.swap-day.out{opacity:.45}
+.swap-day.out.in-range,.swap-day.out.range-edge{opacity:.8}</style>
 <script>(function () {
 var PRIMARY = { '확인': 1, '저장': 1, '등록': 1, '저장하기': 1, '적용': 1 };
 function tag(root) {
@@ -30938,6 +30998,8 @@ function swnSeen() {
 #wbg{z-index:0}
 html.wbg-on #wbg{display:block}
 html.wbg-on.wbg-ios-blur #wbg-base{display:block}
+/* iOS: 불빛 캔버스가 트리와 분리돼 있으므로 CSS 합성으로 안드로이드(lighter)와 같은 '빛 더하기' 효과 적용 */
+html.wbg-on.wbg-ios-blur.wbg-night #wbg{mix-blend-mode:screen;mix-blend-mode:plus-lighter}
 html.wbg-on:not(#z1):not(#z2),html.wbg-on:not(#z1):not(#z2) body,html.wbg-on:not(#z1):not(#z2) body #main-container,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .page-view,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body #main-container > .page-view.active{background:transparent!important;background-image:none!important}
 html.wbg-on #snow-fx{display:none!important}
 html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6),html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body #main-container{background:transparent!important;background-image:none!important}   /* 게시판(공지 · 건의) 흰 바탕보다 우선 */
@@ -31052,8 +31114,8 @@ function wbgGlass() {
   document.body.insertBefore(cv, bgCv ? bgCv.nextSibling : document.body.firstChild);
   var x = cv.getContext('2d'), bx = bgCv && bgCv.getContext('2d'); if (!x) return;
   var iosDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  function iosBlurMode() { return iosDevice || document.documentElement.classList.contains('ui-ios'); }
-  var W = 0, H = 0, DPR = 1, base = null, baseKey = '', night = false, lights = [], snow = [], last = 0, lastBlink = 0;
+  function iosBlurMode() { return false; }   /* 트리를 블러 필터 없이(JS 흐림) 그리므로 iOS도 안드로이드와 같은 경로로 그림 */
+  var W = 0, H = 0, DPR = 1, base = null, baseKey = '', night = false, lights = [], snow = [], last = 0, lastBlink = 0, bxDirty = true, bxMode = null;
   function R(s) { return function () { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
   /* 서울 기준(위도 37.5665, 경도 126.9780) 일출·일몰을 날짜별로 계산한다. 외부 API/위치 권한 불필요. */
   var solarCache = { key: '', sunrise: 6, sunset: 18 };
@@ -31115,24 +31177,58 @@ function wbgGlass() {
     var gr = q.createRadialGradient(m, m, 0, m, m, r); gr.addColorStop(0, hex(col, .55)); gr.addColorStop(.75, hex(col, .65)); gr.addColorStop(.92, hex(col, .85)); gr.addColorStop(1, hex(col, 0));
     q.fillStyle = gr; q.beginPath(); q.arc(m, m, r, 0, 6.283); q.fill(); SPR[k] = c; return c;
   }
+  /* ===== 트리 그리기 (iOS · 안드로이드 공통) =====
+     Canvas filter(blur)를 쓰지 않고, 저해상도로 그린 뒤 JS 박스블러(3회=가우시안 근사)로 흐리게 → 모든 기기에서 같은 모양 */
+  function boxBlur(d, w, h, r) {
+    if (r < 1) return; var t = new Uint8ClampedArray(d.length), p, i, x, y, c, s, n = 2 * r + 1;
+    for (p = 0; p < 3; p++) {
+      for (y = 0; y < h; y++) for (c = 0; c < 4; c++) { s = 0; for (i = -r; i <= r; i++) s += d[(y * w + Math.min(w - 1, Math.max(0, i))) * 4 + c];
+        for (x = 0; x < w; x++) { t[(y * w + x) * 4 + c] = s / n; s += d[(y * w + Math.min(w - 1, x + r + 1)) * 4 + c] - d[(y * w + Math.max(0, x - r)) * 4 + c]; } }
+      for (x = 0; x < w; x++) for (c = 0; c < 4; c++) { s = 0; for (i = -r; i <= r; i++) s += t[(Math.min(h - 1, Math.max(0, i)) * w + x) * 4 + c];
+        for (y = 0; y < h; y++) { d[(y * w + x) * 4 + c] = s / n; s += t[(Math.min(h - 1, y + r + 1) * w + x) * 4 + c] - t[(Math.max(0, y - r) * w + x) * 4 + c]; } }
+    }
+  }
+  /* draw(q)를 1/f 해상도로 그리고 blurPx(화면 px)만큼 흐린 뒤 q0에 부드럽게 확대해 붙임 */
+  function softLayer(q0, f, blurPx, draw) {
+    var w = Math.max(2, Math.ceil(W / f)), h = Math.max(2, Math.ceil(H / f)), c = document.createElement('canvas'); c.width = w; c.height = h;
+    var q = c.getContext('2d'); q.scale(w / W, h / H); draw(q);
+    try { var im = q.getImageData(0, 0, w, h); boxBlur(im.data, w, h, Math.round(blurPx / f / 1.7)); q.putImageData(im, 0, 0); } catch (e) {}
+    q0.save(); q0.imageSmoothingEnabled = true; try { q0.imageSmoothingQuality = 'high'; } catch (e) {} q0.drawImage(c, 0, 0, W, H); q0.restore();
+  }
+  function blob(q, x, y, r, col, a) {
+    var g = q.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, hex(col, a)); g.addColorStop(.6, hex(col, a * .7)); g.addColorStop(1, hex(col, 0));
+    q.fillStyle = g; q.beginPath(); q.arc(x, y, r, 0, 6.283); q.fill();
+  }
+  function bgFill(q, n, top, bot, floor) {
+    var bg = q.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, n ? top[1] : top[0]); bg.addColorStop(1, n ? bot[1] : bot[0]); q.fillStyle = bg; q.fillRect(0, 0, W, H);
+    if (floor) { var fl = q.createLinearGradient(0, H * .86, 0, H); fl.addColorStop(0, hex(n ? floor[1] : floor[0], 0)); fl.addColorStop(.35, hex(n ? floor[1] : floor[0], 1)); fl.addColorStop(1, hex(n ? floor[1] : floor[0], 1)); q.fillStyle = fl; q.fillRect(0, H * .86, W, H * .14); }
+  }
+  function star(q, x, y, s, n) {
+    blob(q, x, y, s * 3.2, '#ffd983', n ? .55 : .35);
+    q.save(); q.translate(x, y); q.beginPath();
+    for (var i = 0; i < 10; i++) { var rr = i % 2 ? s * .45 : s, an = -Math.PI / 2 + i * Math.PI / 5; q.lineTo(Math.cos(an) * rr, Math.sin(an) * rr); }
+    q.closePath(); q.fillStyle = n ? '#ffe7a3' : '#f2c75c'; q.globalAlpha = .92; q.fill(); q.restore(); q.globalAlpha = 1;
+  }
+  function floorShadow(q, g, n) { q.fillStyle = n ? 'rgba(0,0,0,.28)' : 'rgba(80,55,35,.18)'; q.beginPath(); q.ellipse(g.cx, g.bot + H * .035, g.hw * 1.05, H * .022, 0, 0, 6.283); q.fill(); }
+  function trunk(q, g, n) { q.fillStyle = n ? '#2a1d16' : '#6b4a33'; q.fillRect(g.cx - g.hw * .07, g.bot - 4, g.hw * .14, H * .05); }
+  var GD = ['#2f6b48', '#3d7d55', '#255a3c', '#4c8a60', '#5f9a6e'], GN = ['#163f2a', '#1d5236', '#0f2d1f', '#24603f', '#2c6b48'];
+  /* 보케 숲 트리: 윤곽선 없이 동그란 빛망울로만 이뤄진 몽환적인 원뿔 (iOS · 안드로이드 동일) */
+  function drawTree(q, g, n) {
+      var gr = n ? GN : GD, k = W / 220;
+      softLayer(q, 4, 10, function (l) {
+        bgFill(l, n, ['#ece3d4', '#30252c'], ['#d8cab4', '#17121a'], ['#c39d77', '#3a2a22']);
+        blob(l, W * .2, H * .22, W * .45, n ? '#ffb46a' : '#ffffff', n ? .14 : .4);
+        floorShadow(l, g, n); trunk(l, g, n);
+        var r = R(11); for (var i = 0; i < 300; i++) { var p = inTree(r, g); blob(l, p.x, p.y, (7 + p.t * 13) * k, gr[i % gr.length], .55); }
+      });
+      if (!n) { var r2 = R(300); for (var j = 0; j < 30; j++) { var p2 = inTree(r2, g); blob(q, p2.x, p2.y, (5 + r2() * 4) * k, COLS[j % COLS.length], .32); } }
+      star(q, g.cx, g.top - 6, 9 * k, n);
+  }
   function bake() {
     var c = document.createElement('canvas'); c.width = W * DPR; c.height = H * DPR; var q = c.getContext('2d'); q.scale(DPR, DPR);
-    var g = geo(), r = R(11), n = night;
-    var bg = q.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, n ? '#3a2f28' : '#d9d0c1'); bg.addColorStop(1, n ? '#22191a' : '#c9bda9'); q.fillStyle = bg; q.fillRect(0, 0, W, H);
-    soft(q, 14); softFill(q, n ? '#4a3226' : '#b98f69'); q.fillRect(-30, H * 0.9, W + 60, H * 0.2);
-    q.fillStyle = n ? 'rgba(255,190,120,.10)' : 'rgba(255,255,255,.22)'; q.beginPath(); q.ellipse(W * 0.18, H * 0.25, W * 0.4, H * 0.3, 0, 0, 6.283); q.fill();
-    var gr = n ? ['#163f2a', '#1d5236', '#0f2d1f'] : ['#2f6b48', '#3d7d55', '#255a3c', '#4c8a60'];
-    soft(q, Math.round(W / 24)); softFill(q, gr[0]); q.beginPath(); q.moveTo(g.cx, g.top - 12);
-    var steps = [[.3, .4], [.32, .3], [.58, .64], [.6, .52], [.82, .84], [.84, .74], [1, 1]];
-    steps.forEach(function (s) { q.lineTo(g.cx + g.hw * s[1], g.top + (g.bot - g.top) * s[0]); });
-    steps.slice(0, 6).reverse().forEach(function (s) { q.lineTo(g.cx - g.hw * s[1], g.top + (g.bot - g.top) * s[0]); });
-    q.lineTo(g.cx - g.hw, g.bot); q.closePath(); q.fill();
-    q.fillStyle = n ? '#2a1d16' : '#6b4a33'; q.fillRect(g.cx - g.hw * 0.08, g.bot - 2, g.hw * 0.16, H * 0.06);
-    soft(q, Math.round(W / 60));
-    for (var i = 0; i < 180; i++) { var p = inTree(r, g); softFill(q, gr[i % gr.length]); q.globalAlpha = .55; q.beginPath(); q.arc(p.x, p.y, (4 + p.t * 7) * W / 220, 0, 6.283); q.fill(); }
-    q.globalAlpha = 1;
-    if (!n) { soft(q, 3); var r2 = R(300); for (var j = 0; j < 26; j++) { var p2 = inTree(r2, g); q.fillStyle = hex(COLS[j % COLS.length], .3); q.beginPath(); q.arc(p2.x, p2.y, (4 + r2() * 3) * W / 220, 0, 6.283); q.fill(); } }   /* 낮: 꺼진 전구 */
-    soft(q, 0); base = c;
+    var g = geo(), n = night;
+    drawTree(q, g, n);
+    base = c; bxDirty = true;
     /* 불빛 · 눈 */
     var r3 = R(501), k = W / 220; lights = [];
     if (n) for (var a = 0; a < 120; a++) { var p3 = inTree(r3, g); lights.push({ x: p3.x, y: p3.y, r: (7 + r3() * 6) * k, c: COLS[a % COLS.length], on: r3() > .4, a: 0 }); }
@@ -31156,9 +31252,10 @@ function wbgGlass() {
   function onMain() { return wbgOn(); }   /* 모든 화면 (환경설정 › 애니메이션 효과에서 켜고 끔) */
   function active() { return onMain() && !document.hidden; }
   /* 눈송이 배열을 재생성하지 않고 기울기에 따른 가속도만 연속 반영한다. */
-  var snowTiltTarget = 0, snowTiltX = 0, snowTiltEnabled = false;
+  var snowTiltTarget = 0, snowTiltX = 0, snowTiltEnabled = false, snowTiltGot = false;
   function snowTiltOrientation(e) {
     if (!snowTiltEnabled || typeof e.gamma !== 'number' || !isFinite(e.gamma)) return;
+    snowTiltGot = true;
     var angle = (screen.orientation && typeof screen.orientation.angle === 'number') ? screen.orientation.angle : (window.orientation || 0);
     var side = (Math.abs(angle) === 90 && typeof e.beta === 'number') ? (angle === 90 ? -e.beta : e.beta) : e.gamma;
     snowTiltTarget = Math.max(-1, Math.min(1, side / 35));
@@ -31168,21 +31265,18 @@ function wbgGlass() {
     snowTiltEnabled = true;
     window.addEventListener('deviceorientation', snowTiltOrientation, { passive: true });
   }
-  /* iOS 13+는 사용자의 직접 터치에서 센서 권한을 요청해야 한다. */
+  /* iOS 13+: 기울기 권한은 사용자 터치 안에서만 요청 가능 → 버튼 없이 화면 첫 터치 때 자동 요청 (트리 바탕 ON/OFF와 무관하게 항상 켬) */
   if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') {
-    var tiltButton = document.createElement('button');
-    tiltButton.type = 'button'; tiltButton.id = 'wbg-tilt-permission';
-    tiltButton.textContent = '눈 기울기 켜기';
-    tiltButton.setAttribute('aria-label', '휴대폰 기울기에 맞춰 눈 내림 활성화');
-    tiltButton.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top, 0px) + 8px);right:10px;z-index:9999;padding:7px 10px;border:1px solid rgba(255,255,255,.5);border-radius:18px;background:rgba(25,48,78,.7);color:white;font-size:12px;display:none;';
-    tiltButton.addEventListener('click', function () {
-      DeviceOrientationEvent.requestPermission().then(function (result) {
-        if (result === 'granted') { snowTiltStart(); tiltButton.style.display = 'none'; }
-        else { tiltButton.textContent = '기울기 권한 필요'; }
-      }).catch(function () { tiltButton.textContent = '기울기 사용 불가'; });
-    });
-    document.body.appendChild(tiltButton);
-    setInterval(function () { tiltButton.style.display = (!snowTiltEnabled && wbgOn()) ? 'block' : 'none'; }, 1200);
+    snowTiltStart();   /* 이미 허용된 경우 바로 동작 */
+    var tiltAsked = false;
+    var tiltAsk = function () {
+      if (tiltAsked) return; tiltAsked = true;
+      document.removeEventListener('touchend', tiltAsk, true); document.removeEventListener('click', tiltAsk, true);
+      if (snowTiltGot) return;   /* 이미 센서 값이 들어오면 다시 묻지 않음 */
+      try { DeviceOrientationEvent.requestPermission().then(function (r) { if (r === 'granted') snowTiltStart(); }).catch(function () {}); } catch (e) {}
+    };
+    document.addEventListener('touchend', tiltAsk, true);
+    document.addEventListener('click', tiltAsk, true);
   } else { snowTiltStart(); }
   function frame(now) {
     requestAnimationFrame(frame);
@@ -31194,12 +31288,14 @@ function wbgGlass() {
     var iosBlur = iosBlurMode();
     document.documentElement.classList.toggle('wbg-ios-blur', iosBlur);
     x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
+    if (bxMode !== iosBlur) { bxMode = iosBlur; bxDirty = true; }
     if (iosBlur && bgCv && bx) {
-      bx.globalCompositeOperation = 'source-over'; bx.globalAlpha = 1; bx.clearRect(0, 0, W, H); bx.drawImage(base, 0, 0, W, H);
+      /* 흐린 트리 캔버스는 바뀔 때만 다시 그림 → iOS가 12px 블러를 매 프레임 재계산하지 않아 반짝임이 끊기지 않음 */
+      if (bxDirty) { bxDirty = false; bx.globalCompositeOperation = 'source-over'; bx.globalAlpha = 1; bx.clearRect(0, 0, W, H); bx.drawImage(base, 0, 0, W, H); }
       x.clearRect(0, 0, W, H);
     } else {
       x.drawImage(base, 0, 0, W, H);
-      if (bgCv && bx) bx.clearRect(0, 0, W, H);
+      if (bxDirty && bgCv && bx) { bxDirty = false; bx.clearRect(0, 0, W, H); }
     }
     if (night) {
       if (now - lastBlink > 1000) { lastBlink = now; lights.forEach(function (l) { if (Math.random() < .5) l.on = !l.on; }); }   /* 1초마다 반짝 */
