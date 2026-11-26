@@ -323,10 +323,10 @@ padding:0;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Ma
 @media (prefers-reduced-motion:reduce){#app-splash .sp-head i{animation:none!important}}
 </style>
 <style id="pp-timeofday-style">.pp-track .pp-sky{position:absolute;inset:0;pointer-events:none;z-index:0}
-.pp-track.tod-dawn,#pass-pop-panel .pp-track.tod-dawn,#nx-ring-panel .pp-track.tod-dawn{background:linear-gradient(to top,#f1ebf2 0 33px,transparent 33px),linear-gradient(180deg,#6f7fb8 0%,#c9a0c2 48%,#f8cfa8 100%)!important}
-.pp-track.tod-day,#pass-pop-panel .pp-track.tod-day,#nx-ring-panel .pp-track.tod-day{background:linear-gradient(to top,#f6faf4 0 33px,transparent 33px),linear-gradient(180deg,#bfe0fb 0%,#e3f1fd 100%)!important}
-.pp-track.tod-dusk,#pass-pop-panel .pp-track.tod-dusk,#nx-ring-panel .pp-track.tod-dusk{background:linear-gradient(to top,#fbf1ea 0 33px,transparent 33px),linear-gradient(180deg,#9b8ccc 0%,#f4a3a3 45%,#ffdcae 100%)!important}
-.pp-track.tod-night,#pass-pop-panel .pp-track.tod-night,#nx-ring-panel .pp-track.tod-night{background:linear-gradient(to top,#3a4d75 0 33px,transparent 33px),linear-gradient(180deg,#2a3f6e 0%,#4a6699 100%)!important;border-color:#4a5f8a!important}
+.pp-track.tod-dawn,#pass-pop-panel .pp-track.tod-dawn,#nx-ring-panel .pp-track.tod-dawn{background:linear-gradient(180deg,#6f7fb8 0%,#c9a0c2 48%,#f8cfa8 100%)!important}
+.pp-track.tod-day,#pass-pop-panel .pp-track.tod-day,#nx-ring-panel .pp-track.tod-day{background:linear-gradient(180deg,#bfe0fb 0%,#e3f1fd 100%)!important}
+.pp-track.tod-dusk,#pass-pop-panel .pp-track.tod-dusk,#nx-ring-panel .pp-track.tod-dusk{background:linear-gradient(180deg,#9b8ccc 0%,#f4a3a3 45%,#ffdcae 100%)!important}
+.pp-track.tod-night,#pass-pop-panel .pp-track.tod-night,#nx-ring-panel .pp-track.tod-night{background:linear-gradient(180deg,#2a3f6e 0%,#4a6699 100%)!important;border-color:#4a5f8a!important}
 .pp-track.tod-day .pp-sky{background:radial-gradient(11px 11px at 86% 22%,#fff3b8 92%,transparent 100%),radial-gradient(20px 20px at 86% 22%,rgba(255,240,170,.45) 60%,transparent 100%),radial-gradient(22px 7px at 30% 20%,#fff 90%,transparent 100%),radial-gradient(14px 6px at 35% 16%,#fff 90%,transparent 100%),radial-gradient(18px 6px at 62% 30%,rgba(255,255,255,.9) 90%,transparent 100%)}
 .pp-track.tod-dawn .pp-sky{background:radial-gradient(14px 14px at 18% 44%,#ffd38a 92%,transparent 100%),radial-gradient(30px 30px at 18% 44%,rgba(255,200,140,.45) 55%,transparent 100%),radial-gradient(1.4px 1.4px at 70% 12%,#fff 90%,transparent),radial-gradient(1.2px 1.2px at 88% 20%,rgba(255,255,255,.8) 90%,transparent)}
 .pp-track.tod-dusk .pp-sky{background:radial-gradient(15px 15px at 82% 42%,#ff9a52 92%,transparent 100%),radial-gradient(32px 32px at 82% 42%,rgba(255,150,90,.45) 55%,transparent 100%),radial-gradient(26px 6px at 34% 24%,rgba(255,214,200,.85) 90%,transparent 100%),radial-gradient(16px 5px at 40% 19%,rgba(255,214,200,.75) 90%,transparent 100%)}
@@ -7854,9 +7854,19 @@ function openGroupSection() {
 groupWeekStart = thisWeekStart();
 groupSelKey = null;
 groupData = null;
-groupSetPending(true);
+/* 이미 받아 둔 근무표(스냅샷)와 내 조 정보가 있으면 기다리지 않고 바로 그리고, 최신 확인은 뒤에서 조용히 */
+var grpQuick = false;
+try {
+var gme = String(getCurrentUser().employeeId || '');
+if (getCurrentUser().token && snapshotUsable() && rsTeams[gme]) {
+var gd = groupWeekDays(), gr = buildLocalRange('group', gd[0].key, gd[6].key);
+if (gr && gr.success) { groupData = gr; grpQuick = true; }
+}
+} catch (e) { grpQuick = false; groupData = null; }
+groupSetPending(!grpQuick);
 switchSection('group-section');
-loadGroupSchedule(false);
+if (grpQuick) { try { $('group-status').textContent = ''; renderGroupTable(); } catch (e) {} }
+loadGroupSchedule(grpQuick);
 groupHardRefresh();
 startGroupAutoRefresh();
 }
@@ -8283,7 +8293,7 @@ function cmpPickerRender() {
 var pk = $('cmp-picker'); if (!pk) return;
 var y = cmpPickMonth.getFullYear(), m = cmpPickMonth.getMonth(), fd = new Date(y, m, 1).getDay(), ld = new Date(y, m + 1, 0).getDate(), tk = todayKeyKST();
 var h = '<div class="cmp-pk-head"><button type="button" class="cmp-nav" onclick="cmpPickerMonth(-1)">◀&#xFE0E;</button><b>' + y + '년 ' + (m + 1) + '월</b><button type="button" class="cmp-nav" onclick="cmpPickerMonth(1)">▶&#xFE0E;</button></div>';
-h += '<div class="cmp-pk-hint">' + (cmpPickB ? '선택한 기간을 불러옵니다' : cmpPickA ? '종료일을 눌러 주세요' : '시작일을 눌러 주세요') + '</div><div class="cmp-pk-grid">';
+h += '<div class="cmp-pk-hint">' + (cmpPickB ? (function () { var a = cmpPickA <= cmpPickB ? cmpPickA : cmpPickB, b = cmpPickA <= cmpPickB ? cmpPickB : cmpPickA; return (a.getMonth() + 1) + '/' + a.getDate() + ' ~ ' + (b.getMonth() + 1) + '/' + b.getDate() + ' 선택됨 · 조회를 눌러 주세요'; })() : cmpPickA ? '종료일을 눌러 주세요' : '시작일을 눌러 주세요') + '</div><div class="cmp-pk-grid">';
 ['일','월','화','수','목','금','토'].forEach(function (w, i) { h += '<i class="w' + (i === 0 ? ' sun' : i === 6 ? ' sat' : '') + '">' + w + '</i>'; });
 for (var i = 0; i < fd; i++) h += '<span></span>';
 var ra = cmpPickA || (cmpRange && cmpRange.a), rb = cmpPickA ? (cmpPickB || null) : (cmpRange && cmpRange.b);
@@ -8294,18 +8304,31 @@ var isS = rl && tt === rl.getTime(), isE = rr && tt === rr.getTime(), inR = rl &
 var lab = isS && isE ? '시작·종료' : isS ? '시작' : isE ? '종료' : '';
 h += '<button type="button" class="cmp-pk-d' + (isS || isE ? ' on' : '') + (inR ? ' in' : '') + (key === tk ? ' today' : '') + '" onclick="cmpPickerTap(' + y + ',' + m + ',' + d + ')">' + d + (lab ? '<em>' + lab + '</em>' : '') + '</button>';
 }
-pk.innerHTML = h + '</div>';
+pk.innerHTML = h + '</div><button type="button" class="cmp-pk-go" onclick="cmpPickerApply()"' + (cmpPickB ? '' : ' disabled') + '>조회</button>';
 }
 function cmpPickerTap(y, m, d) {
 var dt = new Date(y, m, d);
-if (cmpPickB) return;
+if (cmpPickB) { cmpPickA = dt; cmpPickB = null; cmpPickerRender(); return; }   /* 이미 고른 뒤에 누르면 새로 시작 */
 if (!cmpPickA) { cmpPickA = dt; cmpPickerRender(); return; }
 var a = cmpPickA, b = dt; if (b < a) { var t = a; a = b; b = t; }
 if (Math.round((b - a) / 86400000) + 1 > 42) { showToast('기간은 최대 42일까지 선택할 수 있어요.'); return; }
 if (b < RS_START_DATE) { rsStartToast(); return; }
-cmpPickB = dt; cmpPickerRender();   /* 시작일·종료일 표시를 잠깐 보여준 뒤 적용 */
-setTimeout(function () { cmpRange = { a: a, b: b }; cmpPickerClose(); renderGroupCompare(); }, 650);
+cmpPickA = a; cmpPickB = b; cmpPickerRender();   /* 시작일~종료일만 표시하고, 조회 버튼을 누를 때까지 그대로 둠 */
 }
+function cmpPickerApply() {
+if (!cmpPickA || !cmpPickB) return;
+cmpRange = { a: cmpPickA, b: cmpPickB }; cmpPickerClose(); renderGroupCompare();
+}
+(function () {
+var pk = document.getElementById('cmp-picker'); if (!pk) return;
+var sx = 0, sy = 0, on = false;
+pk.addEventListener('touchstart', function (e) { if (e.touches.length !== 1) { on = false; return; } on = true; sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+pk.addEventListener('touchend', function (e) {
+if (!on) return; on = false;
+var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.5) cmpPickerMonth(dx < 0 ? 1 : -1);   /* 왼쪽으로 밀면 다음 달, 오른쪽으로 밀면 이전 달 */
+}, { passive: true });
+})();
 function compareToSwap() {
 var mem = cmpTarget;
 closeGroupCompare();
@@ -31754,6 +31777,26 @@ html:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not
 html.wbg-night:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) .dbs-card .dbs-me,html.ui-dark:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) .dbs-card .dbs-me{background:#2f8cf0!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border:0!important}
 html.wbg-night:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) .dbs-card .dbs-two .dbs-col:nth-child(1) .dbs-ch,html.wbg-night:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) .dbs-card .dbs-two .dbs-col:nth-child(1) .dbs-ch b,html.ui-dark:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) .dbs-card .dbs-two .dbs-col:nth-child(1) .dbs-ch,html.ui-dark:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) .dbs-card .dbs-two .dbs-col:nth-child(1) .dbs-ch b{color:#4da3ff!important;-webkit-text-fill-color:#4da3ff!important}
 html.wbg-night:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) .dbs-card .dbs-two .dbs-col:nth-child(2) .dbs-ch,html.wbg-night:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) .dbs-card .dbs-two .dbs-col:nth-child(2) .dbs-ch b,html.ui-dark:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) .dbs-card .dbs-two .dbs-col:nth-child(2) .dbs-ch,html.ui-dark:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) .dbs-card .dbs-two .dbs-col:nth-child(2) .dbs-ch b{color:#ff5a5a!important;-webkit-text-fill-color:#ff5a5a!important}
+</style>
+<style id="fix-v76">/* 열차운행 애니메이션: 날씨칩 흰 바탕+검정 글씨 / 아래 흰 바닥 삭제 + 정류장 글씨 검정 (한밤 화면만 밝은 글씨) · 날씨칩은 반투명 */
+html:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) body .pp-track .pp-wx-chip,html:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) body .pp-track .pp-wx-chip *{color:#fff!important;-webkit-text-fill-color:#fff!important;text-shadow:none!important}
+html:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) body .pp-track .pp-wx-chip,html:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) body .pp-track.tod-night .pp-wx-chip{background:rgba(15,23,42,.42)!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:none!important}
+html:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) body .pp-track:not(.tod-night) .pp-stop span,html:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) body .pp-track:not(.tod-night) .pp-stop.tgt span{color:#111!important;-webkit-text-fill-color:#111!important;text-shadow:none!important;background:transparent!important}
+html:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) body .pp-track.tod-night .pp-stop span{color:#fff!important;-webkit-text-fill-color:#fff!important;background:transparent!important}
+</style>
+<style id="fix-v77">/* 열차 운행 알림: 불러오는 중에는 흰 칸·테두리 없이 "불러오는 중 + 로딩 표시"만 */
+html:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) body #pass-pop-panel .pp-info:has(.pp-spin){background:transparent!important;background-image:none!important;border:0!important;box-shadow:none!important;padding:4px 2px!important}
+html:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) body #pass-pop-panel .pp-info:has(.pp-spin) .pp-row{background:transparent!important;border:0!important;box-shadow:none!important;justify-content:center!important;gap:10px!important}
+html:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) body #pass-pop-panel .pp-info:has(.pp-spin) .pp-row span{color:#46566e!important;-webkit-text-fill-color:#46566e!important;background:transparent!important}
+html.wbg-night:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) body #pass-pop-panel .pp-info:has(.pp-spin) .pp-row span,html.ui-dark:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) body #pass-pop-panel .pp-info:has(.pp-spin) .pp-row span{color:#fff!important;-webkit-text-fill-color:#fff!important}
+html:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) body #pass-pop-panel .pp-info:has(.pp-spin) .pp-spin{border-color:rgba(130,150,180,.45)!important;border-top-color:#2f8cf0!important;background:transparent!important}
+html:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) body #pass-pop-panel .pp-info:has(.pp-spin),html:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) body #pass-pop-panel .pp-info:has(.pp-spin) *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) body #pass-pop-panel .pp-zone:empty,html:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14):not(#n15):not(#n16):not(#n17):not(#n18):not(#n19):not(#n20):not(#n21):not(#n22) body #nx-ring-panel .pp-zone:empty{display:none!important;background:transparent!important;border:0!important;padding:0!important;margin:0!important}
+</style>
+<style id="fix-v78">
+html:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14) .cmp-pk-go{display:block;width:100%;margin-top:10px;height:42px;border:0;border-radius:12px;background:#2f8cf0!important;color:#fff!important;-webkit-text-fill-color:#fff!important;font:inherit;font-weight:800;font-size:15px}
+html:not(#n1):not(#n2):not(#n3):not(#n4):not(#n5):not(#n6):not(#n7):not(#n8):not(#n9):not(#n10):not(#n11):not(#n12):not(#n13):not(#n14) .cmp-pk-go:disabled{opacity:.4}
+#cmp-picker{touch-action:pan-y}
 </style>
 </body>
 </html>
