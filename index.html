@@ -15254,6 +15254,7 @@ var rows = (j.same || []).length ? j.same : [];
 var out = head;
 if (rows.length) out += rows.map(function (x) { return '<div class="gis-r"><span>예상 지연</span><b>' + esc(String(x.delay || '-')) + '</b></div>' + (x.section ? '<div class="gis-r"><span>지연 구간</span><b>' + esc(x.section) + '</b></div>' : ''); }).join('');
 else out += '<div class="gis-n" style="font-size:13px;opacity:.9">이 날짜의 지연 기록이 없어요.</div>';
+if (!j.from) out += '<div class="gis-n" style="word-break:break-all">자료 항목: ' + esc((j.fields || []).join(', ') || '없음') + '</div>';
 out += '<div class="gis-n">자료 기준일 ' + esc(f8(j.from)) + ' ~ ' + esc(f8(j.to)) + ' (' + esc(String(j.total || 0)) + '건) · 실시간이 아닌 등록 자료예요. 오늘 지연은 NXLogis로 확인하세요.</div><div class="gis-btns">' + nxB + '</div>';
 gisPanel(out);
 }).catch(function (e) { if (tm) { clearTimeout(tm); fail('불러오지 못했어요.<br><span style="font-size:11px;opacity:.75">' + esc(String(e && e.message || e)) + '</span>'); } });
