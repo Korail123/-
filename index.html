@@ -3154,7 +3154,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="애니메이션효과" alt="" aria-hidden="true">배경화면 효과</div>
     <label class="an-main" style="display:none"><span><b>메인화면 애니메이션</b><small>로그인하거나 메인화면에 들어올 때 열차가 지나가요</small></span><input type="checkbox" id="an-on" onchange="animToggle(this.checked)"><i class="an-sw"></i></label>
     <label class="an-main"><span><b id="an-wbg-t">테마 효과</b><small id="an-wbg-d">반짝이는 크리스마스 트리와 내리는 하얀 눈</small></span><input type="checkbox" id="an-wbg" onchange="wbgSet(this.checked)"><i class="an-sw"></i></label>
-    <div class="an-main" id="an-season" style="display:flex;gap:8px;align-items:center;justify-content:space-between"><span><b>테마 고르기</b></span><span class="ssn-chips"><button type="button" data-s="spring" onclick="seasonSet('spring')">봄</button><button type="button" data-s="summer" class="ssn-soon" onclick="try{showToast('여름 테마는 준비 중이에요.')}catch(e){}">여름</button><button type="button" data-s="autumn" class="ssn-soon" onclick="try{showToast('가을 테마는 준비 중이에요.')}catch(e){}">가을</button><button type="button" data-s="winter" onclick="seasonSet('winter')">겨울</button></span></div>
+    <div class="an-main" id="an-season" style="display:flex;gap:8px;align-items:center;justify-content:space-between"><span><b>테마 고르기</b></span><span class="ssn-chips"><button type="button" data-s="spring" onclick="seasonSet('spring')">봄</button><button type="button" data-s="summer" onclick="seasonSet('summer')">여름</button><button type="button" data-s="autumn" class="ssn-soon" onclick="try{showToast('가을 테마는 준비 중이에요.')}catch(e){}">가을</button><button type="button" data-s="winter" onclick="seasonSet('winter')">겨울</button></span></div>
     <div id="an-opts" class="an-opts" style="display:none!important">
       <div class="an-hint">오른쪽 화살표를 눌러 고르세요. 여러 개 고르면 그중에서 랜덤, 고르지 않으면 <b>전체</b>에서 랜덤이에요.</div>
       <div class="an-sec"><div class="an-h">시간대 <button type="button" onclick="animClear('times')">전체</button></div><div id="an-times" class="an-chips"></div></div>
@@ -31611,7 +31611,7 @@ function wbgGlass() {
     var dt = Math.min(3, (now - last) / 16.7); last = now;
     if (isNight() !== night) baseKey = '';
     size();
-    if (document.documentElement.classList.contains('season-spring')) { x.clearRect(0, 0, W, H); return; }   /* 봄 테마는 따로 그림 */
+    if (document.documentElement.classList.contains('season-spring') || document.documentElement.classList.contains('season-summer')) { x.clearRect(0, 0, W, H); return; }   /* 봄 테마는 따로 그림 */
     var iosBlur = iosBlurMode();
     document.documentElement.classList.toggle('wbg-ios-blur', iosBlur);
     x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
@@ -32433,7 +32433,7 @@ html.tx-on-light:not(#z1):not(#z2):not(#z3) body .page-view>h1,html.tx-on-light:
   function on() { try { return localStorage.getItem('rs_autotx') !== '0'; } catch (e) { return true; } }
   function lumOf(css) { var m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/.exec(css || ''); if (!m || (m[4] !== undefined && +m[4] < .05)) return null; return .2126 * m[1] + .7152 * m[2] + .0722 * m[3]; }
   function sample() {
-    var h = document.documentElement, c = document.getElementById(h.classList.contains('season-spring') ? 'sbg-bg' : 'wbg-base');
+    var h = document.documentElement, c = document.getElementById(h.classList.contains('season-spring') ? 'sbg-bg' : h.classList.contains('season-summer') ? 'smr-bg' : 'wbg-base');
     if (h.classList.contains('wbg-on') && c && c.width) {
       try { var t = document.createElement('canvas'); t.width = t.height = 8; var x = t.getContext('2d'); x.drawImage(c, 0, 0, 8, 8); var d = x.getImageData(0, 0, 8, 8).data, l = 0, n = 0;
         for (var i = 0; i < d.length; i += 4) if (d[i + 3] > 20) { l += .2126 * d[i] + .7152 * d[i + 1] + .0722 * d[i + 2]; n++; }
@@ -32538,16 +32538,16 @@ html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6
 html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13) body .wbg-pop .ls-cell.t-night,html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13) body .wbg-pop .ls-cell.t-bi{color:var(--duty-night)!important}
 html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13) body .wbg-pop .ls-cell.t-off{color:var(--duty-off)!important}
 </style>
-<canvas id="sbg-bg" aria-hidden="true"></canvas><canvas id="sbg-fx" aria-hidden="true"></canvas>
+<canvas id="sbg-bg" aria-hidden="true"></canvas><canvas id="sbg-fx" aria-hidden="true"></canvas><canvas id="smr-bg" aria-hidden="true"></canvas><canvas id="smr-fx" aria-hidden="true"></canvas>
 <style id="spring-ui">
 /* ===== 봄 테마: 벚꽃 역 (흐린 역 풍경 + 천천히 들어오는 열차 + 흩날리는 벚꽃잎) ===== */
 #sbg-bg,#sbg-fx{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;display:none;z-index:-1}
 #sbg-bg{-webkit-filter:blur(4px);filter:blur(4px);transform:scale(1.03)}
 html.wbg-on.season-spring #sbg-bg,html.wbg-on.season-spring #sbg-fx{display:block}
-html.season-spring #wbg,html.season-spring #wbg-base{display:none!important}
+html.season-spring #wbg,html.season-spring #wbg-base,html.season-summer #wbg,html.season-summer #wbg-base{display:none!important}
 .ssn-chips{display:flex;gap:6px}
 .ssn-chips button{border:1px solid #d5dbe6;background:#fff;color:#3a4a66;border-radius:999px;padding:6px 16px;font:inherit;font-size:13.5px;font-weight:700}
-html:not(.season-spring) .ssn-chips [data-s="winter"],html.season-spring .ssn-chips [data-s="spring"]{background:#2f6fd6;border-color:#2f6fd6;color:#fff}
+html:not(.season-spring):not(.season-summer) .ssn-chips [data-s="winter"],html.season-spring .ssn-chips [data-s="spring"],html.season-summer .ssn-chips [data-s="summer"]{background:#2f6fd6;border-color:#2f6fd6;color:#fff}
 html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar .lc-d,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar .lc-w,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar .lc-hour,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar .lc-colon,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar .lc-minute,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar .lc-g,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar b,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar i,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body #main-container .page-view>.sch-title,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .page-view .sch-title,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .page-view .sch-note,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .page-view>h1,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .page-view>h2,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .page-view>.sch-eyebrow{color:#3a2a3f!important;text-shadow:none!important;-webkit-text-fill-color:#3a2a3f!important}
 html.spring-day:not(#s1):not(#s2):not(#s3):not(#s4) body .page-view :is(.sch-head,.group-head,[class*="-head"])::before{color:#c2185b!important;opacity:.85!important;text-shadow:none!important}
 html.theme-day:not(.spring-day):not(#s1):not(#s2):not(#s3):not(#s4) body .page-view :is(.sch-head,.group-head,[class*="-head"])::before{color:#4a5f86!important;opacity:.85!important;text-shadow:none!important}
@@ -32557,17 +32557,18 @@ html.theme-day:not(.spring-day):not(#s1):not(#s2):not(#s3):not(#s4) body .page-v
 <script id="spring-js">
 (function () {
   var h = document.documentElement, KEY = 'rs_season';
-  function season() { try { return localStorage.getItem(KEY) === 'spring' ? 'spring' : 'winter'; } catch (e) { return 'winter'; } }
+  function season() { try { var v = localStorage.getItem(KEY); return v === 'spring' || v === 'summer' ? v : 'winter'; } catch (e) { return 'winter'; } }
   function mark() {
     var sp = season() === 'spring', night = h.classList.contains('wbg-night');
     if (h.classList.contains('season-spring') !== sp) h.classList.toggle('season-spring', sp);
+    var sm = season() === 'summer'; if (h.classList.contains('season-summer') !== sm) h.classList.toggle('season-summer', sm);
     var on = h.classList.contains('wbg-on'), sd = sp && on && !night, td = on && !night;
     if (h.classList.contains('spring-day') !== sd) h.classList.toggle('spring-day', sd);
     if (h.classList.contains('theme-day') !== td) h.classList.toggle('theme-day', td);   /* 기본테마 제외 모든 테마: 일출~일몰 = 밝은 유리 / 일몰~일출 = 짙은 남색 유리 */
   }
-  window.seasonName = function () { return season() === 'spring' ? '봄' : '겨울'; };
+  window.seasonName = function () { var q = season(); return q === 'spring' ? '봄' : q === 'summer' ? '여름' : '겨울'; };
   window.seasonSet = function (s) {
-    try { localStorage.setItem(KEY, s === 'spring' ? 'spring' : 'winter'); } catch (e) {}
+    try { localStorage.setItem(KEY, s === 'spring' || s === 'summer' ? s : 'winter'); } catch (e) {}
     mark(); labels();
     try { if (typeof wbgOn === 'function' && !wbgOn()) wbgSet(true); } catch (e) {}
     try { showToast(seasonName() + ' 테마로 바꿨어요.'); } catch (e) {}
@@ -32576,7 +32577,7 @@ html.theme-day:not(.spring-day):not(#s1):not(#s2):not(#s3):not(#s4) body .page-v
   function labels() {
     var t = document.getElementById('an-wbg-t'), d = document.getElementById('an-wbg-d'), sp = season() === 'spring';
     if (t) t.textContent = '테마 효과';
-    if (d) d.textContent = sp ? '흩날리는 벚꽃잎과 천천히 들어오는 열차' : '반짝이는 크리스마스 트리와 내리는 하얀 눈';
+    if (d) d.textContent = sp ? '흩날리는 벚꽃잎과 천천히 들어오는 열차' : (season() === 'summer' ? '낮엔 부산 바다, 밤엔 광안대교 야경과 불꽃놀이' : '반짝이는 크리스마스 트리와 내리는 하얀 눈');
   }
   mark(); labels();
   new MutationObserver(function () { mark(); }).observe(h, { attributes: true, attributeFilter: ['class'] });
@@ -32660,6 +32661,92 @@ html.theme-day:not(.spring-day):not(#s1):not(#s2):not(#s3):not(#s4) body .page-v
       x.beginPath(); x.ellipse(0, 0, p.s, p.s * .6, 0, 0, 6.2832); x.fill(); x.restore();
     });
     x.globalAlpha = 1;
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+
+<style id="summer-css">
+#smr-bg,#smr-fx{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;display:none;z-index:-1}
+#smr-bg{-webkit-filter:blur(3px);filter:blur(3px);transform:scale(1.03)}
+html.wbg-on.season-summer #smr-bg,html.wbg-on.season-summer #smr-fx{display:block}
+</style>
+<script id="summer-js">
+/* 여름 테마: 낮 = 부산 바다 · 광안대교 · 해운대 · 모래 해변 / 밤 = 광안대교 야경 + 불꽃놀이 */
+(function () {
+  var h = document.documentElement, bg = document.getElementById('smr-bg'), fx = document.getElementById('smr-fx'); if (!bg || !fx) return;
+  var bx = bg.getContext('2d'), x = fx.getContext('2d'), W = 0, H = 0, DPR = 1, night = false, key = '', last = 0, stars = [], sparks = [], bursts = [], nextB = 0, HY = 0;
+  function R(s) { return function () { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
+  function rgb(hex) { var n = parseInt(hex.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+  function blob(c, px, py, r, hex, a) { var k = rgb(hex), g = c.createRadialGradient(px, py, 0, px, py, r); g.addColorStop(0, 'rgba(' + k + ',' + a + ')'); g.addColorStop(1, 'rgba(' + k + ',0)'); c.fillStyle = g; c.beginPath(); c.arc(px, py, r, 0, 6.2832); c.fill(); }
+  function geo() { return { hy: H * .5, deck: H * .5 - H * .012, top: H * .5 - H * .13, t1: W * .3, t2: W * .68, x0: -W * .02, x1: W * 1.02 }; }
+  function cy(px, g) { var d = g.deck, tp = g.top; if (px <= g.t1) { var t = Math.min(1, (g.t1 - px) / (g.t1 - g.x0)); return tp + (d - tp) * Math.pow(t, 1.6); } if (px >= g.t2) { var t2 = Math.min(1, (px - g.t2) / (g.x1 - g.t2)); return tp + (d - tp) * Math.pow(t2, 1.6); } var u = (px - g.t1) / (g.t2 - g.t1); return tp + (d - tp) * .55 * Math.pow(2 * u - 1, 2); }
+  function drawBg() {
+    var c = bx, n = night, g = geo(), r = R(21); c.clearRect(0, 0, W, H);
+    var sk = c.createLinearGradient(0, 0, 0, g.hy); sk.addColorStop(0, n ? '#070b24' : '#6fc3f2'); sk.addColorStop(1, n ? '#1c2354' : '#b7e2f4'); c.fillStyle = sk; c.fillRect(0, 0, W, g.hy + 2);
+    if (n) { blob(c, W * .2, H * .12, W * .22, '#cfd8ff', .35); c.fillStyle = '#f4f1e6'; c.beginPath(); c.arc(W * .2, H * .12, W * .035, 0, 6.2832); c.fill(); }
+    else { blob(c, W * .78, H * .14, W * .4, '#ffffff', .75); blob(c, W * .78, H * .14, W * .1, '#fffbe0', .95); [[.25, .2, .2], [.58, .12, .16], [.9, .27, .15]].forEach(function (q) { for (var i = 0; i < 6; i++) blob(c, W * (q[0] + (i - 3) * .03), H * (q[1] + (i % 2) * .012), W * q[2] * .5, '#ffffff', .8); }); }
+    /* 해운대 고층 건물 (오른쪽 먼 곳) */
+    for (var i = 0; i < 16; i++) { var bx0 = W * (.56 + i * .028), bh = H * (.05 + ((i * 37) % 11) * .008 + (i > 5 && i < 12 ? .05 : 0)), bw = W * .022; c.fillStyle = n ? '#10153a' : '#9bb3cc'; c.fillRect(bx0, g.hy - bh, bw, bh);
+      if (n) for (var k = 0; k < 8; k++) { if (r() > .45) { c.fillStyle = 'rgba(255,224,150,' + (.4 + r() * .5) + ')'; c.fillRect(bx0 + 2 + (k % 2) * bw * .45, g.hy - bh + 3 + Math.floor(k / 2) * (bh / 5), 2, 2); } } }
+    c.fillStyle = n ? '#0e1236' : '#8ea6bf'; c.beginPath(); c.moveTo(0, g.hy); c.quadraticCurveTo(W * .08, g.hy - H * .05, W * .2, g.hy - H * .01); c.lineTo(W * .2, g.hy); c.fill();
+    /* 바다 */
+    var sea = c.createLinearGradient(0, g.hy, 0, H * .74); sea.addColorStop(0, n ? '#0e1a4c' : '#3fb5d6'); sea.addColorStop(1, n ? '#060a22' : '#1f8fb8'); c.fillStyle = sea; c.fillRect(0, g.hy, W, H * .24);
+    /* 광안대교 */
+    var lw = Math.max(2, W * .007); c.lineCap = 'round'; if (!n) { c.shadowColor = 'rgba(40,90,140,.55)'; c.shadowBlur = 4; c.shadowOffsetY = 1; }
+    c.strokeStyle = n ? '#d9b8ff' : '#f4f8fc'; c.lineWidth = lw; c.beginPath(); c.moveTo(g.x0, g.deck); c.lineTo(g.x1, g.deck); c.stroke();
+    if (n) { c.strokeStyle = 'rgba(210,150,255,.35)'; c.lineWidth = lw * 3; c.beginPath(); c.moveTo(g.x0, g.deck); c.lineTo(g.x1, g.deck); c.stroke(); }
+    c.fillStyle = n ? '#e2c6ff' : '#f4f8fc'; [g.t1, g.t2].forEach(function (tx) { var tw = W * .012; c.fillRect(tx - tw * 1.6, g.top, tw, g.deck - g.top); c.fillRect(tx + tw * .6, g.top, tw, g.deck - g.top); c.fillRect(tx - tw * 1.8, g.top + H * .02, tw * 3.8, tw * .8); c.fillRect(tx - tw * 1.8, g.top + H * .06, tw * 3.8, tw * .8); });
+    c.strokeStyle = n ? 'rgba(235,190,255,.9)' : 'rgba(255,255,255,.95)'; c.lineWidth = Math.max(1.2, W * .0035); c.beginPath(); for (var px = g.x0; px <= g.x1; px += 4) { var y = cy(px, g); px === g.x0 ? c.moveTo(px, y) : c.lineTo(px, y); } c.stroke();
+    c.lineWidth = .8; c.strokeStyle = n ? 'rgba(230,190,255,.55)' : 'rgba(255,255,255,.7)'; for (var p2 = W * .02; p2 < W; p2 += W * .02) { c.beginPath(); c.moveTo(p2, cy(p2, g)); c.lineTo(p2, g.deck); c.stroke(); }
+    c.shadowColor = 'transparent'; c.shadowBlur = 0; c.shadowOffsetY = 0;
+    /* 바다 반사 (밤: 다리 불빛) */
+    if (n) { for (var q = 0; q < 28; q++) { var rx = W * (q / 28) + (r() - .5) * 8; blob(c, rx, g.hy + H * (.02 + r() * .1), W * .05, '#d9a8ff', .13); } }
+    /* 모래 해변 */
+    var sd = c.createLinearGradient(0, H * .74, 0, H); sd.addColorStop(0, n ? '#34364f' : '#efdcae'); sd.addColorStop(1, n ? '#171a30' : '#d8bf8a'); c.fillStyle = sd;
+    c.beginPath(); c.moveTo(0, H * .76); c.quadraticCurveTo(W * .5, H * .72, W, H * .77); c.lineTo(W, H); c.lineTo(0, H); c.closePath(); c.fill();
+    c.fillStyle = n ? 'rgba(255,255,255,.05)' : 'rgba(150,120,70,.12)'; for (var s2 = 0; s2 < 60; s2++) c.fillRect(r() * W, H * (.8 + r() * .2), 6 + r() * 14, 1.4);
+  }
+  function size() {
+    var vv = window.visualViewport, w = Math.max(1, Math.round(vv ? vv.width : h.clientWidth || innerWidth)), hh = Math.max(1, Math.round(vv ? vv.height : h.clientHeight || innerHeight)), d = Math.min(2, window.devicePixelRatio || 1);
+    night = h.classList.contains('wbg-night');
+    var k = w + 'x' + hh + '@' + d + (night ? 'n' : 'd'); if (k === key) return; key = k; W = w; H = hh; DPR = d;
+    [bg, fx].forEach(function (cv) { cv.width = W * DPR; cv.height = H * DPR; });
+    bx.setTransform(DPR, 0, 0, DPR, 0, 0); x.setTransform(DPR, 0, 0, DPR, 0, 0);
+    drawBg(); var r = R(77); stars = []; for (var i = 0; i < 46; i++) stars.push([r() * W, r() * H * .42, r() * 6.28]);
+  }
+  function burst(now) {
+    var g = geo(), px = W * (.14 + Math.random() * .72), py = H * (.1 + Math.random() * .22), hue = Math.floor(Math.random() * 360), n = 34 + Math.floor(Math.random() * 14);
+    for (var i = 0; i < n; i++) { var a = i / n * 6.2832 + Math.random() * .1, v = (1.4 + Math.random() * 1.3) * Math.max(1, W / 360); sparks.push({ x: px, y: py, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, hue: hue + i * 3, tr: [] }); }
+    blob(x, px, py, W * .12, '#ffffff', .0);
+  }
+  function frame(now) {
+    requestAnimationFrame(frame);
+    var on = h.classList.contains('season-summer') && h.classList.contains('wbg-on') && !document.hidden;
+    if (!on) { if (W) x.clearRect(0, 0, W, H); return; }
+    if (now - last < 33) return; var dt = Math.min(3, (now - last) / 16.7); last = now;
+    size(); x.clearRect(0, 0, W, H); var g = geo(), t = now / 1000;
+    /* 바다 반짝임 */
+    for (var r = 0; r < 14; r++) { var ry = g.hy + 6 + r * (H * .22 / 14); for (var px = 8; px < W; px += 17) { var tw = Math.sin(px * .31 + r * 1.7 + t * (night ? 2.4 : 1.8)); if (tw > .82) { x.fillStyle = night ? 'rgba(230,180,255,' + (.2 + tw * .5) + ')' : 'rgba(255,255,255,' + (.25 + tw * .5) + ')'; x.fillRect(px + tw * 3, ry, 4 + tw * 4, 1.5); } } }
+    /* 파도 거품: 해변에서 밀려왔다 빠지는 흰 물결 */
+    for (var k = 0; k < 3; k++) { var ph = (t * .22 + k * .33) % 1, yb = H * (.735 + ph * .028 * (k + 1)) + Math.sin(t + k) * 1; x.strokeStyle = (night ? 'rgba(200,210,255,' : 'rgba(255,255,255,') + ((night ? .3 : .7) * (1 - ph) + (night ? .05 : .1)).toFixed(2) + ')'; x.lineWidth = 2.2 - k * .4; x.beginPath(); for (var wx = 0; wx <= W; wx += 8) { var wy = yb + Math.sin(wx * .03 + t * 1.5 + k * 2) * 2.2 + (wx / W) * H * .01; wx === 0 ? x.moveTo(wx, wy) : x.lineTo(wx, wy); } x.stroke(); }
+    if (!night) { /* 낮: 구름 천천히 + 윤슬 */
+      for (var c = 0; c < 3; c++) { var cx = ((t * (6 + c * 3) + c * W * .4) % (W * 1.4)) - W * .2; for (var i = 0; i < 5; i++) blob(x, cx + (i - 2) * W * .035, H * (.1 + c * .07) + (i % 2) * 4, W * .06, '#ffffff', .4); }
+      return;
+    }
+    /* 밤: 별 깜빡 */
+    stars.forEach(function (s) { x.fillStyle = 'rgba(255,255,255,' + (.2 + .75 * Math.abs(Math.sin(t * 1.5 + s[2]))) + ')'; x.fillRect(s[0], s[1], 1.6, 1.6); });
+    /* 광안대교 케이블 불빛이 차례로 반짝 */
+    for (var px2 = W * .02; px2 < W; px2 += W * .02) { var a = .5 + .5 * Math.sin(px2 / W * 8 - t * 2.6); if (a > .6) blob(x, px2, cy(px2, g), W * .02, '#ffd6ff', a * .7); }
+    /* 불꽃놀이 */
+    if (now > nextB) { burst(now); if (Math.random() < .35) burst(now); nextB = now + 1500 + Math.random() * 1700; }
+    sparks = sparks.filter(function (p) { return p.life > 0; });
+    sparks.forEach(function (p) {
+      p.tr.push([p.x, p.y]); if (p.tr.length > 5) p.tr.shift();
+      p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .985; p.vy = p.vy * .985 + .035 * dt; p.life -= .011 * dt;
+      for (var i = 0; i < p.tr.length; i++) { x.fillStyle = 'hsla(' + p.hue % 360 + ',95%,70%,' + (p.life * i / p.tr.length * .5) + ')'; x.beginPath(); x.arc(p.tr[i][0], p.tr[i][1], 1.1, 0, 6.2832); x.fill(); }
+      x.fillStyle = 'hsla(' + p.hue % 360 + ',95%,78%,' + Math.max(0, p.life) + ')'; x.beginPath(); x.arc(p.x, p.y, 1.9, 0, 6.2832); x.fill();
+    });
   }
   requestAnimationFrame(frame);
 })();
