@@ -2405,6 +2405,12 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <button type="button" class="set-tile danger" onclick="openDeleteAccountPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="회원탈퇴" alt="" aria-hidden="true" decoding="async"><span class="set-label">회원탈퇴</span></button>
     </div>
   </section>
+  <section class="settings-category" id="autotx-cat">
+    <h2 class="settings-category-title"><span class="settings-category-mark other"></span>글씨 색</h2>
+    <div class="setting-grid">
+      <button type="button" class="set-tile" id="autotx-tile" onclick="autoTxToggle()" style="grid-column:1/-1;flex-direction:row;justify-content:space-between;text-align:left"><span class="set-label">글씨색 자동 조절</span><small id="autotx-sub" class="set-sub"></small><span class="tile-sw" id="autotx-sw" role="switch" aria-checked="true" aria-label="바탕화면에 맞춰 글씨색 자동 조절" tabindex="0"><i></i></span></button>
+    </div>
+  </section>
   <div id="app-version" class="app-ver" onclick="appVersionCheck(true)"></div>
   <div id="appupd-panel" class="dia-modal" onclick="if(event.target===this)closeAppUpdate()">
     <div class="dia-dialog appupd-dialog">
@@ -32159,31 +32165,109 @@ html body #day-detail .crew-row,html body #day-detail.dd-crew-open .crew-row.dd-
 <style id="cb-route-style">
 #crewboard-section .cb-table td.cb-dlink{cursor:pointer;color:#2f6fd6;font-weight:800;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;-webkit-tap-highlight-color:transparent}
 #crewboard-section .cb-table td.cb-dlink:active{background:rgba(47,111,214,.12)}
+#cb-rt-pop{position:fixed;inset:0;z-index:600;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(10,20,40,.45);visibility:hidden;opacity:0;transition:opacity .2s ease,visibility 0s linear .2s}
+#cb-rt-pop.open{visibility:visible;opacity:1;transition:opacity .2s ease,visibility 0s}
+#cb-rt-pop .cbrt-box{width:min(94vw,520px);max-height:86vh;display:flex;flex-direction:column;background:#fff;color:#1f2a44;border-radius:18px;overflow:hidden;box-shadow:0 14px 36px rgba(10,20,40,.35);transform:translateY(12px) scale(.96);transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+#cb-rt-pop.open .cbrt-box{transform:none}
+#cb-rt-pop .cbrt-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;font-weight:800;font-size:15px;background:linear-gradient(90deg,#60a5fa,#2f6fd6);color:#fff}
+#cb-rt-pop .cbrt-hd button{border:0;background:transparent;color:#fff;font-size:18px;line-height:1;padding:2px 4px}
+#cb-rt-pop .cbrt-bd{padding:12px;overflow:auto;min-height:90px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:14px;color:#5b6b83}
+#cb-rt-pop .cbrt-bd img{display:block;width:100%;height:auto;border:1px solid #e1e8f3;border-radius:10px;background:#fff}
+#cb-rt-pop .cbrt-ft{padding:0 14px 10px;font-size:11.5px;color:#8a96a8;text-align:center}
+html.ui-dark #cb-rt-pop .cbrt-box{background:#1b2027;color:#e3e8ef}html.ui-dark #cb-rt-pop .cbrt-bd{color:#a9b4c4}html.ui-dark #cb-rt-pop .cbrt-bd img{border-color:#2f3946}
+@media (prefers-reduced-motion:reduce){#cb-rt-pop,#cb-rt-pop .cbrt-box{transition:none}}
 </style>
+<div id="cb-rt-pop" onclick="if(event.target===this)cbRtClose()" aria-hidden="true">
+  <div class="cbrt-box" role="dialog" aria-label="행로표">
+    <div class="cbrt-hd"><span id="cbrt-title">행로표</span><button type="button" onclick="cbRtClose()" aria-label="닫기">✕</button></div>
+    <div id="cbrt-bd" class="cbrt-bd"></div>
+    <div id="cbrt-ft" class="cbrt-ft"></div>
+  </div>
+</div>
 <script id="cb-route-js">
 /* 승무근무표 현황에서 다이아 이름을 누르면 행로표 팝업
-   ① 관리자 등록(DB) 행로표가 있으면 그것 ② 없으면 XROIS에서 그 다이아 정보를 받아 철도비서가 만든 (예상) 행로표
-   대기근무 다이아는 XROIS에서 가져오지 않음 (관리자 등록 행로표가 있을 때만 보여줌) */
-var cbRtPoll = null;
+   ① 관리자 등록(DB) 행로표 → ② 없으면 XROIS 승무다이아 내역으로 철도비서가 그린 (예상) 행로표
+   · 내 근무표·내 행로표 데이터는 건드리지 않음 (남의 다이아를 눌러도 내 정보가 바뀌지 않게, 결과는 이 화면에만 보관)
+   · 대기근무 다이아는 XROIS에서 가져오지 않음 */
+var cbRtCache = {}, cbRtSeq = 0;
+function cbRtShow(title, html, foot) {
+  var p = document.getElementById('cb-rt-pop'); if (!p) return;
+  document.getElementById('cbrt-title').textContent = title;
+  document.getElementById('cbrt-bd').innerHTML = html;
+  document.getElementById('cbrt-ft').textContent = foot || '';
+  p.classList.add('open'); p.setAttribute('aria-hidden', 'false');
+}
+function cbRtClose() { cbRtSeq++; var p = document.getElementById('cb-rt-pop'); if (p) { p.classList.remove('open'); p.setAttribute('aria-hidden', 'true'); } }
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') cbRtClose(); });
+function cbRtImage(d, url, official) {
+  var bd = document.getElementById('cbrt-bd'); if (!bd) return;
+  bd.innerHTML = '<img alt="DIA ' + esc(d) + ' 행로표" decoding="async">';
+  var img = bd.firstChild; img.src = url; img.onclick = function () { try { openRouteViewer(d, url); } catch (e) {} };
+  document.getElementById('cbrt-title').textContent = 'DIA ' + d + ' 행로표' + (official ? '' : ' (예상)');
+  document.getElementById('cbrt-ft').textContent = '그림을 누르면 크게 볼 수 있어요';
+}
 function cbOpenRoute(dia) {
   var d = String(dia || '').trim().toUpperCase(); if (!d || !cbDate) return;
-  var dk = cbKey(cbDate);
-  function show(r) { openRouteViewer(d, r.url); if (!r.official) { try { $('rv-title').textContent = 'DIA ' + d + ' 행로표 (예상)'; } catch (e) {} } }
-  if (cbRtPoll) { clearInterval(cbRtPoll); cbRtPoll = null; }
-  var r = rsRouteFor(dk, d);
-  if (r && r.url) { show(r); return; }
-  if (rsIsStandbyDia(d)) { showToast(d + '은 대기근무라 행로표가 없어요.'); return; }
-  if (typeof crewLinked !== 'function' || !crewLinked()) { showToast('[ 마이페이지 - CREW 연동 필요 ] XROIS 연동을 하면 행로표를 만들어드려요.'); return; }
-  showToast(d + ' 행로표를 XROIS에서 만드는 중…');
-  try { rsDiaInfoForEdit(dk, d, true); } catch (e) {}
-  var n = 0;
-  cbRtPoll = setInterval(function () {
-    n++; var r2 = null; try { r2 = rsRouteFor(dk, d); } catch (e) {}
-    if (r2 && r2.url) { clearInterval(cbRtPoll); cbRtPoll = null; show(r2); }
-    else if (n >= 25) { clearInterval(cbRtPoll); cbRtPoll = null; showToast(d + ' 행로표를 만들지 못했어요. 잠시 뒤 다시 눌러주세요.'); }
-  }, 1000);
+  var dk = cbKey(cbDate), my = ++cbRtSeq;
+  cbRtShow('DIA ' + d + ' 행로표', '불러오는 중…', '');
+  var r = null; try { r = rsRouteFor(dk, d); } catch (e) {}
+  if (r && r.url) { cbRtImage(d, r.url, r.official); return; }
+  var c = cbRtCache[dk + '|' + d]; if (c) { cbRtImage(d, c, false); return; }
+  if (rsIsStandbyDia(d)) { document.getElementById('cbrt-bd').textContent = d + '은 대기근무라 행로표가 없어요.'; return; }
+  if (typeof crewLinked !== 'function' || !crewLinked()) { document.getElementById('cbrt-bd').textContent = '[ 마이페이지 - CREW 연동 필요 ]'; return; }
+  var pw = getCrewPw(), meta = xrGet('meta', {});
+  if (meta.fail && meta.pwSig === xrSig(pw)) { document.getElementById('cbrt-bd').textContent = 'XROIS 로그인 실패 상태예요. 마이페이지 › CREW 연동에서 비밀번호를 다시 저장해주세요.'; return; }
+  xrCall({ action: 'xrDia', items: [{ dia: d, date: dk }] }, function (err, res) {
+    if (my !== cbRtSeq) return;   /* 그 사이 팝업을 닫았거나 다른 다이아를 눌렀으면 무시 */
+    var bd = document.getElementById('cbrt-bd'); if (!bd) return;
+    if (err) { bd.textContent = (err.message || 'XROIS에서 가져오지 못했어요.'); return; }
+    var x = (res && res.results && res.results[0]) || {};
+    var rows = (x.rows || []).map(function (q) { return { kind: String(q.kind || '').replace(/\s+/g, ''), train: String(q.train || '').toUpperCase(), from: q.from || '', to: q.to || '', dep: rpTime(q.dep), arr: rpTime(q.arr) }; }).filter(function (q) { return q.kind && (q.dep || q.arr); });
+    if (!rows.length) { bd.textContent = 'XROIS에서 ' + d + ' 행로표 내역을 받지 못했어요.'; return; }
+    var url = rpUrl(d, rows); cbRtCache[dk + '|' + d] = url; cbRtImage(d, url, false);
+  });
 }
 document.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.classList && e.target.classList.contains('cb-dlink')) { e.preventDefault(); cbOpenRoute(e.target.textContent); } });
+</script>
+<style id="autotx-style">
+/* 바탕이 어두우면 밝은 글씨, 밝으면 짙은 글씨 — 바탕 위에 바로 놓인 제목·안내 글씨만 */
+html.tx-on-dark:not(#z1):not(#z2):not(#z3) body .page-view>h1,html.tx-on-dark:not(#z1):not(#z2):not(#z3) body .page-view>h2,html.tx-on-dark:not(#z1):not(#z2):not(#z3) body .settings-category-title,html.tx-on-dark:not(#z1):not(#z2):not(#z3) body .app-ver,html.tx-on-dark:not(#z1):not(#z2):not(#z3) body #cb-title{color:#f3f5ff!important;text-shadow:0 1px 3px rgba(0,0,0,.45)}
+html.tx-on-light:not(#z1):not(#z2):not(#z3) body .page-view>h1,html.tx-on-light:not(#z1):not(#z2):not(#z3) body .page-view>h2,html.tx-on-light:not(#z1):not(#z2):not(#z3) body .settings-category-title,html.tx-on-light:not(#z1):not(#z2):not(#z3) body .app-ver,html.tx-on-light:not(#z1):not(#z2):not(#z3) body #cb-title{color:#1f2a44!important;text-shadow:none}
+#autotx-tile .tile-sw{position:static;flex:none}
+</style>
+<script id="autotx-js">
+(function () {
+  function on() { try { return localStorage.getItem('rs_autotx') !== '0'; } catch (e) { return true; } }
+  function lumOf(css) { var m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/.exec(css || ''); if (!m || (m[4] !== undefined && +m[4] < .05)) return null; return .2126 * m[1] + .7152 * m[2] + .0722 * m[3]; }
+  function sample() {
+    var h = document.documentElement, c = document.getElementById('wbg-base');
+    if (h.classList.contains('wbg-on') && c && c.width) {
+      try { var t = document.createElement('canvas'); t.width = t.height = 8; var x = t.getContext('2d'); x.drawImage(c, 0, 0, 8, 8); var d = x.getImageData(0, 0, 8, 8).data, l = 0, n = 0;
+        for (var i = 0; i < d.length; i += 4) if (d[i + 3] > 20) { l += .2126 * d[i] + .7152 * d[i + 1] + .0722 * d[i + 2]; n++; }
+        if (n > 8) return l / n; } catch (e) {}
+      return h.classList.contains('wbg-night') ? 30 : 200;   /* 캔버스를 못 읽으면 낮/밤 표시로 판단 */
+    }
+    if (h.classList.contains('ui-dark')) return 30;
+    var v = lumOf(getComputedStyle(document.body).backgroundColor); if (v === null) v = lumOf(getComputedStyle(h).backgroundColor);
+    return v === null ? 240 : v;
+  }
+  function apply() {
+    var h = document.documentElement; h.classList.remove('tx-on-dark', 'tx-on-light');
+    var sw = document.getElementById('autotx-sw'), sub = document.getElementById('autotx-sub');
+    if (sw) sw.setAttribute('aria-checked', on() ? 'true' : 'false');
+    if (!on()) { if (sub) sub.textContent = '꺼짐'; return; }
+    var dark = sample() < 140; h.classList.add(dark ? 'tx-on-dark' : 'tx-on-light');
+    if (sub) sub.textContent = dark ? '어두운 바탕 · 밝은 글씨' : '밝은 바탕 · 짙은 글씨';
+  }
+  window.autoTxApply = apply;
+  window.autoTxToggle = function () { try { localStorage.setItem('rs_autotx', on() ? '0' : '1'); } catch (e) {} apply(); };
+  document.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.id === 'autotx-sw') { e.preventDefault(); window.autoTxToggle(); } });
+  new MutationObserver(function () { clearTimeout(window.__atx); window.__atx = setTimeout(apply, 60); }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) apply(); });
+  setInterval(function () { if (!document.hidden && on()) apply(); }, 60000);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply); else apply();
+  setTimeout(apply, 1500);
+})();
 </script>
 </body>
 </html>
