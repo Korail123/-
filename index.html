@@ -31918,12 +31918,16 @@ html.ui-dark body #group-section .group-table td{border:0!important}
 html body #group-section .group-table tr.wk td{border:0!important}
 </style>
 <style id="ai-chat-style">
-#ai-fab{position:fixed;right:14px;bottom:96px;z-index:9000;display:none;width:56px;height:56px;border:0;border-radius:50%;background:#e0f0ff;box-shadow:0 4px 12px rgba(59,130,246,.3);align-items:center;justify-content:center;touch-action:none;-webkit-tap-highlight-color:transparent;padding:0}
+#ai-fab{position:fixed;right:14px;bottom:96px;z-index:9000;display:none;width:44px;height:44px;border:0;border-radius:50%;background:#e0f0ff;box-shadow:0 4px 12px rgba(59,130,246,.3);align-items:center;justify-content:center;touch-action:none;-webkit-tap-highlight-color:transparent;padding:0}
 #ai-fab.show{display:flex}
-#ai-fab i{position:absolute;top:-2px;right:-2px;width:12px;height:12px;border-radius:50%;background:#ef4444;border:2px solid #e0f0ff}
+#ai-fab i{position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:#ef4444;border:2px solid #e0f0ff}
 #ai-fab.seen i{display:none}
-#ai-pop{position:fixed;z-index:9001;display:none;flex-direction:column;width:min(92vw,360px);height:min(62vh,470px);background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(20,40,90,.28);color:#1f2a44}
-#ai-pop.open{display:flex}
+#ai-pop{position:fixed;z-index:9001;display:flex;visibility:hidden;opacity:0;pointer-events:none;transform:translateY(14px) scale(.94);transform-origin:bottom right;transition:opacity .22s ease,transform .26s cubic-bezier(.2,.8,.2,1),visibility 0s linear .26s;flex-direction:column;width:min(92vw,360px);height:min(62vh,470px);background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(20,40,90,.28);color:#1f2a44}
+#ai-pop.open{visibility:visible;opacity:1;pointer-events:auto;transform:none;transition:opacity .2s ease,transform .26s cubic-bezier(.2,.8,.2,1),visibility 0s}
+#ai-fab{transition:transform .15s ease}
+#ai-fab:active{transform:scale(.9)}
+#ai-fab.open-on{transform:rotate(18deg)}
+@media (prefers-reduced-motion:reduce){#ai-pop,#ai-pop.open{transition:none}}
 .ai-hd{background:linear-gradient(90deg,#60a5fa,#2f6fd6);color:#fff;padding:12px 14px;font-weight:800;font-size:15px;display:flex;justify-content:space-between;align-items:center}
 .ai-hd button{border:0;background:transparent;color:#fff;font-size:18px;line-height:1;padding:2px 4px}
 .ai-log{flex:1;overflow:auto;background:#f4f8ff;padding:10px 12px;display:flex;flex-direction:column;gap:7px}
@@ -31940,7 +31944,7 @@ html.ui-dark #ai-pop,html.ui-dark .ai-chips{background:#151b28;color:#e3e8ef}
 html.ui-dark .ai-log{background:#10151f}html.ui-dark .ai-msg.bot{background:#222b3d;border-color:#2f3946;color:#e3e8ef}html.ui-dark .ai-msg.me{background:#24407a;color:#fff}
 html.ui-dark .ai-form input{background:#222b3d;border-color:#2f3946;color:#e3e8ef}html.ui-dark .ai-chips button{background:#1b2027;border-color:#2f3946;color:#8db7ff}
 </style>
-<button type="button" id="ai-fab" aria-label="철도비서 AI 열기"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2f6fd6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg><i></i></button>
+<button type="button" id="ai-fab" aria-label="철도비서 AI 열기"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2f6fd6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg><i></i></button>
 <div id="ai-pop" role="dialog" aria-label="철도비서 AI">
   <div class="ai-hd"><span>철도비서 AI</span><button type="button" id="ai-x" aria-label="닫기">✕</button></div>
   <div id="ai-log" class="ai-log" aria-live="polite"></div>
@@ -31951,7 +31955,7 @@ html.ui-dark .ai-form input{background:#222b3d;border-color:#2f3946;color:#e3e8e
 (function () {
   var fab = document.getElementById('ai-fab'), pop = document.getElementById('ai-pop');
   var KEY = 'rsAiFabPos';
-  function clamp(x, y) { return { x: Math.min(Math.max(4, x), window.innerWidth - 60), y: Math.min(Math.max(4, y), window.innerHeight - 60) }; }
+  function clamp(x, y) { return { x: Math.min(Math.max(4, x), window.innerWidth - 48), y: Math.min(Math.max(4, y), window.innerHeight - 48) }; }
   function place(p) { fab.style.left = p.x + 'px'; fab.style.top = p.y + 'px'; fab.style.right = 'auto'; fab.style.bottom = 'auto'; }
   try { var sp = JSON.parse(localStorage.getItem(KEY) || 'null'); if (sp) place(clamp(sp.x, sp.y)); } catch (e) {}
   function placePop() {
