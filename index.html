@@ -3173,10 +3173,9 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="dia-dialog cmp-dialog">
     <div class="dia-dialog-title swap-title"><img class="cmp-ico cmp-ico-lg" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="비교하기" data-ic-center alt="" aria-hidden="true" decoding="async">근무표 비교</div>
     <div class="cmp-head">
-      <button type="button" class="cmp-nav" onclick="changeCompareWeek(-1)" aria-label="이전 주">◀&#xFE0E;</button>
-      <div id="cmp-title" class="cmp-title" onclick="changeCompareWeek(0)" title="이번 주로"></div>
-      <button type="button" class="cmp-nav" onclick="changeCompareWeek(1)" aria-label="다음 주">▶&#xFE0E;</button>
+      <button type="button" id="cmp-title" class="cmp-title cmp-pickbtn" onclick="cmpPickerToggle()">기간 선택 ▾</button>
     </div>
+    <div id="cmp-picker" class="cmp-picker" hidden></div>
     <div id="cmp-table" style="margin-bottom:6px"></div>
     <div class="dia-dialog-actions" style="gap:10px">
       <button type="button" class="dia-text-btn" onclick="compareToSwap()">근무 교환</button>
@@ -8245,7 +8244,7 @@ if (summary.__h !== sumHtml) { summary.innerHTML = sumHtml; summary.__h = sumHtm
 }
 var swapSelectMode = 'swap';      /* 그룹원 선택 팝업을 연 목적: 'swap' 교환 / 'compare' 비교 */
 var cmpTarget = null;
-var cmpWeekStart = null;
+var cmpWeekStart = null, cmpRange = null, cmpPickA = null, cmpPickMonth = null;
 function openGroupCompareSelector() { openGroupSwapSelector('compare'); }
 function openGroupCompare(mem) {
 if (!snapshotUsable()) { showToast('근무표를 먼저 불러와 주세요.'); return; }
@@ -8253,6 +8252,8 @@ cmpTarget = { employeeId: String(mem.employeeId), name: String(mem.name || mem.e
 var t = todayKST();
 cmpWeekStart = groupWeekStart ? new Date(groupWeekStart.getFullYear(), groupWeekStart.getMonth(), groupWeekStart.getDate())
 : weekStartOf(new Date(t.y, t.m, t.d));
+cmpRange = { a: new Date(cmpWeekStart.getFullYear(), cmpWeekStart.getMonth(), cmpWeekStart.getDate()), b: new Date(cmpWeekStart.getFullYear(), cmpWeekStart.getMonth(), cmpWeekStart.getDate() + 6) };
+try { cmpPickerClose(); } catch (e) {}
 $('group-compare-panel').classList.add('active');
 renderGroupCompare();
 }
@@ -8266,6 +8267,35 @@ cmpWeekStart = nw;
 }
 renderGroupCompare();
 }
+function cmpPickerClose() { var pk = $('cmp-picker'); if (pk) pk.hidden = true; var tb = $('cmp-table'); if (tb) tb.hidden = false; cmpPickA = null; }
+function cmpPickerToggle() {
+var pk = $('cmp-picker'); if (!pk) return;
+if (!pk.hidden) { cmpPickerClose(); return; }
+cmpPickA = null; var b = cmpRange ? cmpRange.a : new Date(); cmpPickMonth = new Date(b.getFullYear(), b.getMonth(), 1);
+pk.hidden = false; $('cmp-table').hidden = true; cmpPickerRender();
+}
+function cmpPickerMonth(d) { cmpPickMonth = new Date(cmpPickMonth.getFullYear(), cmpPickMonth.getMonth() + d, 1); cmpPickerRender(); }
+function cmpPickerRender() {
+var pk = $('cmp-picker'); if (!pk) return;
+var y = cmpPickMonth.getFullYear(), m = cmpPickMonth.getMonth(), fd = new Date(y, m, 1).getDay(), ld = new Date(y, m + 1, 0).getDate(), tk = todayKeyKST();
+var h = '<div class="cmp-pk-head"><button type="button" class="cmp-nav" onclick="cmpPickerMonth(-1)">◀&#xFE0E;</button><b>' + y + '년 ' + (m + 1) + '월</b><button type="button" class="cmp-nav" onclick="cmpPickerMonth(1)">▶&#xFE0E;</button></div>';
+h += '<div class="cmp-pk-hint">' + (cmpPickA ? '종료일을 눌러 주세요' : '시작일을 눌러 주세요') + '</div><div class="cmp-pk-grid">';
+['일','월','화','수','목','금','토'].forEach(function (w, i) { h += '<i class="w' + (i === 0 ? ' sun' : i === 6 ? ' sat' : '') + '">' + w + '</i>'; });
+for (var i = 0; i < fd; i++) h += '<span></span>';
+for (var d = 1; d <= ld; d++) {
+var dt = new Date(y, m, d), key = getDateKey(y, m, d), on = cmpPickA && dt.getTime() === cmpPickA.getTime();
+h += '<button type="button" class="cmp-pk-d' + (on ? ' on' : '') + (key === tk ? ' today' : '') + '" onclick="cmpPickerTap(' + y + ',' + m + ',' + d + ')">' + d + '</button>';
+}
+pk.innerHTML = h + '</div>';
+}
+function cmpPickerTap(y, m, d) {
+var dt = new Date(y, m, d);
+if (!cmpPickA) { cmpPickA = dt; cmpPickerRender(); return; }
+var a = cmpPickA, b = dt; if (b < a) { var t = a; a = b; b = t; }
+if (Math.round((b - a) / 86400000) + 1 > 42) { showToast('기간은 최대 42일까지 선택할 수 있어요.'); return; }
+if (b < RS_START_DATE) { rsStartToast(); return; }
+cmpRange = { a: a, b: b }; cmpPickerClose(); renderGroupCompare();
+}
 function compareToSwap() {
 var mem = cmpTarget;
 closeGroupCompare();
@@ -8277,8 +8307,8 @@ var code = swapDutyLabel(info);
 var isStatus = !!(info && info.overrideType === 'status');
 var cls = (!info || code === '-' || code === '') ? 'duty-none'
 : isStatus ? 'duty-off'
-: code === '주' ? 'duty-day'
-: (code === '야' || code === '비' || code === 'X') ? 'duty-night' : 'duty-off';
+: toneOf(code) === 'day' ? 'duty-day'
+: toneOf(code) === 'night' ? 'duty-night' : 'duty-off';
 var diaNo = info && !isStatus ? String(info.dia || '').trim() : '';
 var meta = diaNo ? diaByNumber(diaNo) : null;
 var start = info && !isStatus ? String(info.start || (meta && meta.start) || '') : '';
@@ -8288,15 +8318,15 @@ return { code: code, cls: cls, dia: work ? diaNo : '', start: work ? start.slice
 }
 function renderGroupCompare() {
 if (!cmpTarget || !cmpWeekStart) return;
+if (!cmpRange) cmpRange = { a: new Date(cmpWeekStart), b: new Date(cmpWeekStart.getFullYear(), cmpWeekStart.getMonth(), cmpWeekStart.getDate() + 6) };
 var me = getCurrentUser();
-var ws = cmpWeekStart;
+var ws = cmpRange.a;
+var nDays = Math.max(1, Math.min(42, Math.round((cmpRange.b - cmpRange.a) / 86400000) + 1));
 var days = [];
-for (var i = 0; i < 7; i++) {
+for (var i = 0; i < nDays; i++) {
 var dt = new Date(ws.getFullYear(), ws.getMonth(), ws.getDate() + i);
 days.push({ y: dt.getFullYear(), m: dt.getMonth(), d: dt.getDate(), dow: dt.getDay(), key: getDateKey(dt.getFullYear(), dt.getMonth(), dt.getDate()) });
 }
-var a = days[0], z = days[6];
-$('cmp-title').textContent = a.y + '년 ' + (a.m + 1) + '/' + a.d + ' ~ ' + (z.m + 1) + '/' + z.d;
 var todayKey = todayKeyKST();
 var W = ['일', '월', '화', '수', '목', '금', '토'];
 var rows = [
@@ -8304,7 +8334,7 @@ var rows = [
 { id: cmpTarget.employeeId, name: cmpTarget.name, full: cmpTarget.name }
 ];
 var data = rows.map(function (r) { return days.map(function (dd) { return cmpCellData(r.id, dd.key); }); });
-var h = '<div class="cmp-grid">';
+var h = '<div class="cmp-grid" style="grid-template-columns:40px repeat(' + nDays + ',minmax(' + (nDays > 7 ? 44 : 0) + 'px,1fr));' + (nDays > 7 ? 'width:max-content;min-width:100%' : '') + '">';
 h += '<div class="cmp-corner"></div>';
 days.forEach(function (dd) {
 var hol = holidayName(dd.y, dd.m, dd.d);
@@ -8319,7 +8349,7 @@ h += '<div class="cmp-cell' + (days[i].key === todayKey ? ' today' : '') + '">' 
 });
 });
 h += '</div>';
-$('cmp-table').innerHTML = h;
+$('cmp-table').innerHTML = nDays > 7 ? '<div class="cmp-scroll">' + h + '</div>' : h;
 var bs = document.querySelectorAll('#cmp-table .cmp-cell .sd-duty');
 for (var k = 0; k < bs.length; k++) {
 var el = bs[k], cell = el.parentElement, fs = 16, guard = 0;
@@ -31627,6 +31657,32 @@ html:not(#sw1):not(#sw2):not(#sw3):not(#sw4):not(#sw5):not(#sw6):not(#sw7):not(#
 html:not(#sw1):not(#sw2):not(#sw3):not(#sw4):not(#sw5):not(#sw6):not(#sw7):not(#sw8):not(#sw9):not(#sw10):not(#sw11):not(#sw12):not(#sw13):not(#sw14):not(#sw15):not(#sw16):not(#sw17):not(#sw18):not(#sw19):not(#sw20) body .swap-cal-grid .swap-day .sd-duty.duty-off{color:var(--duty-off,#e53935)!important;-webkit-text-fill-color:var(--duty-off,#e53935)!important}
 html:not(#sw1):not(#sw2):not(#sw3):not(#sw4):not(#sw5):not(#sw6):not(#sw7):not(#sw8):not(#sw9):not(#sw10):not(#sw11):not(#sw12):not(#sw13):not(#sw14):not(#sw15):not(#sw16):not(#sw17):not(#sw18):not(#sw19):not(#sw20) body .swap-cal-grid .swap-day .sd-duty.duty-none{color:#98a2b3!important;-webkit-text-fill-color:#98a2b3!important}
 html:not(#sw1):not(#sw2):not(#sw3):not(#sw4):not(#sw5):not(#sw6):not(#sw7):not(#sw8):not(#sw9):not(#sw10):not(#sw11):not(#sw12):not(#sw13):not(#sw14):not(#sw15):not(#sw16):not(#sw17):not(#sw18):not(#sw19):not(#sw20) body .swap-cal-grid .swap-day.range-edge .sd-duty{color:#fff!important;-webkit-text-fill-color:#fff!important}
+</style>
+<style id="fix-v72">/* 비교하기: 기간 버튼 · 달력 · 근무구분 색 */
+.cmp-pickbtn{border:1px solid #d5dfee;border-radius:12px;background:#f7faff;height:38px;font-family:inherit}
+.cmp-scroll{overflow-x:auto;padding-bottom:4px}
+.cmp-picker[hidden],#cmp-table[hidden]{display:none!important}
+.cmp-pk-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0 6px}.cmp-pk-head b{font-size:15px;font-weight:800}
+.cmp-pk-hint{text-align:center;font-size:12.5px;font-weight:700;margin:0 0 6px;opacity:.85}
+.cmp-pk-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cmp-pk-grid i{font-style:normal;text-align:center;font-size:11px;font-weight:800;padding:2px 0;opacity:.8}
+.cmp-pk-grid i.sun{color:#e53935}.cmp-pk-grid i.sat{color:#1a73e8}
+.cmp-pk-d{height:38px;border:1px solid rgba(120,140,170,.35);border-radius:10px;background:rgba(255,255,255,.1);color:inherit;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.cmp-pk-d.today{box-shadow:inset 0 0 0 1.5px #6b8fd6}.cmp-pk-d.on{background:#2f8cf0;color:#fff;border-color:#2f8cf0}
+html.wbg-on:not(.theme-day):not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) .cmp-pickbtn,html.wbg-on:not(.theme-day):not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) .cmp-pk-head b,html.wbg-on:not(.theme-day):not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) .cmp-pk-hint,html.wbg-on:not(.theme-day):not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) .cmp-pk-d{color:#fff!important;-webkit-text-fill-color:#fff!important}
+html.wbg-on:not(.theme-day):not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) .cmp-pickbtn{background:rgba(255,255,255,.1)!important;border-color:rgba(255,255,255,.3)!important}
+html.wbg-on:not(.theme-day):not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) .cmp-pk-d.on{background:#2f8cf0!important}
+html:not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) body #group-compare-panel .cmp-cell .sd-duty.duty-day{color:var(--duty-day,#e5a800)!important;-webkit-text-fill-color:var(--duty-day,#e5a800)!important}
+html:not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) body #group-compare-panel .cmp-cell .sd-duty.duty-night{color:var(--duty-night,#1a73e8)!important;-webkit-text-fill-color:var(--duty-night,#1a73e8)!important}
+html:not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) body #group-compare-panel .cmp-cell .sd-duty.duty-off{color:var(--duty-off,#e53935)!important;-webkit-text-fill-color:var(--duty-off,#e53935)!important}
+html:not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) body #group-compare-panel .cmp-cell .sd-duty.duty-none{color:#98a2b3!important;-webkit-text-fill-color:#98a2b3!important}
+/* 이름 검색: 결과가 뜨면 아래 칸은 가림 · 입력칸 속 네모 반투명 */
+html:not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) body #group-swap-select-panel .group-swap-select-dialog:has(.sx-drop.open) #swap-select-note,html:not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) body #group-swap-select-panel .group-swap-select-dialog:has(.sx-drop.open) #group-swap-user-list{visibility:hidden!important}
+html:not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) body #group-swap-select-panel .sx-in,html:not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) body #group-swap-select-panel .sx-box{background:transparent!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html.wbg-on:not(.theme-day):not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) #group-swap-select-panel .sx-drop{background:rgba(10,18,34,.6)!important;-webkit-backdrop-filter:blur(16px)!important;backdrop-filter:blur(16px)!important;border-color:rgba(255,255,255,.25)!important}
+html.wbg-on:not(.theme-day):not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) #group-swap-select-panel .sx-it,html.wbg-on:not(.theme-day):not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) #group-swap-select-panel .sx-it *,html.wbg-on:not(.theme-day):not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) #group-swap-select-panel .sx-id,html.wbg-on:not(.theme-day):not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) #group-swap-select-panel .sx-empty{color:#fff!important;-webkit-text-fill-color:#fff!important;background:transparent!important}
+html.wbg-on:not(.theme-day):not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) #group-swap-select-panel .sx-team{background:rgba(255,255,255,.14)!important}
+html:not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20) body #settings-section:has(#set-res .gs-it) > *:not(h1):not(#set-search){visibility:hidden!important}
 </style>
 </body>
 </html>
