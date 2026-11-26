@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<script>/* 로딩 중 흰색 노출 방지: 다크·밤이면 첫 화면부터 어두운 바탕 */
+(function(){try{var h=document.documentElement,o={};try{o=JSON.parse(localStorage.getItem('rs_ui')||'{}')||{}}catch(e){}
+var hr=new Date().getHours(),night=(hr>=19||hr<7),m=o.mode||'light';
+var dark=m==='dark'||(m==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)||(m==='night'&&night);
+var wb=localStorage.getItem('rs_wbg')!=='0';
+if(dark||(wb&&night)){h.classList.add('rs-early-dark');h.style.background='#0b1220';
+setTimeout(function(){h.classList.remove('rs-early-dark');h.style.background=''},2500);}}catch(e){}})();
+</script>
+<style id="early-dark-style">html.rs-early-dark body{background:#0b1220!important}html.rs-early-dark #app-splash{background:#0b1220!important}html.rs-early-dark #app-splash .sp-text{text-shadow:none}</style>
 <meta charset="utf-8">
 <script>window.rsBgMode = /[?&]rsbg=1/.test(location.search) && !!window.RsApp;
 </script>
@@ -67,7 +76,7 @@ html.ui-dark .dia-modal,html.ui-dark .schedule-edit-modal{background:rgba(0,0,0,
 html.ui-dark .dia-dialog{box-shadow:0 12px 36px rgba(0,0,0,.55)!important}
 html.ui-dark input,html.ui-dark textarea,html.ui-dark select{caret-color:#6ea8ff}
 html.ui-dark ::placeholder{color:#6f7682!important}
-html.ui-dark img[data-dk]{filter:invert(.92) hue-rotate(180deg)}
+html.ui-dark img[data-dk]{filter:none}
 html.ui-dark #welcome-card.login-success-card{background:#1c1f24!important;border-color:#2b2f36!important}
 html.ui-dark #welcome-card .welcome-msg{color:#dadee5}
 html.ui-dark #welcome-card .login-success-name{color:#7fb0ff}
@@ -1850,7 +1859,7 @@ for (var i = 0; i < p.length; i += 4) {
 if (!p[i + 3]) continue;
 var r = p[i] / 255, g = p[i + 1] / 255, b = p[i + 2] / 255, lum = 0.299 * r + 0.587 * g + 0.114 * b;
 if (lum < 0.42) { var t = (0.42 - lum) / 0.42; r = r * (1 - t) + 0.86 * t; g = g * (1 - t) + 0.91 * t; b = b * (1 - t) + 0.98 * t; }
-else if (lum > 0.85) { r = r * 0.55 + 0.045; g = g * 0.55 + 0.072; b = b * 0.55 + 0.117; }
+
 p[i] = r * 255; p[i + 1] = g * 255; p[i + 2] = b * 255;
 }
 x.putImageData(d, 0, 0); out[k] = c.toDataURL('image/png');
@@ -1888,7 +1897,7 @@ return t !== 'basic' && window.APP_ICON_THEMES[t][name] ? window.APP_ICON_THEMES
 function uiIsDark() { return document.documentElement.classList.contains('ui-dark'); }
 function appIcon(name) {
 var th = themedIcon(name); if (th) return th;
-if (uiIsDark() && window.APP_ICONS_DARK && window.APP_ICONS_DARK[name]) return window.APP_ICONS_DARK[name];
+/* 다크·밤 테마에서도 아이콘 안쪽 흰 칠 유지: 다크 전용 아이콘 사용 안 함 */
 return (window.APP_ICONS && window.APP_ICONS[name]) || '';
 }
 function applyAppIcons(root) {
@@ -1899,7 +1908,7 @@ if (src && list[i].getAttribute('src') !== src) list[i].setAttribute('src', src)
 if (list[i].hasAttribute('data-ic-center')) icCenter(list[i]);
 var themed = !!themedIcon(nm);
 if (themed) list[i].setAttribute('data-th', '1'); else list[i].removeAttribute('data-th');
-if (!themed && uiIsDark() && window.APP_ICONS_DARK && window.APP_ICONS_DARK[nm]) list[i].setAttribute('data-dk', '1'); else list[i].removeAttribute('data-dk');
+list[i].removeAttribute('data-dk');
 }
 }
 document.addEventListener('DOMContentLoaded', function () { applyAppIcons(); try { if (typeof renderBottomNav === 'function') renderBottomNav(); } catch (e) {} });
@@ -21024,7 +21033,7 @@ var cur = iconTheme(), dark = uiIsDark();
 var el = document.getElementById('ic-list'); if (!el) return;
 var adm = (typeof isBoardAdmin === 'function') && isBoardAdmin();
 el.innerHTML = ICON_THEMES.filter(function (t) { return !t.admin || (adm && window.APP_ICON_THEMES[t.k]); }).map(function (t) {
-var src = t.k === 'basic' ? ((dark && window.APP_ICONS_DARK && window.APP_ICONS_DARK['근무표']) || window.APP_ICONS['근무표']) : window.APP_ICON_THEMES[t.k]['근무표'];
+var src = t.k === 'basic' ? window.APP_ICONS['근무표'] : window.APP_ICON_THEMES[t.k]['근무표'];
 return '<button type="button" class="ic-card' + (t.k === cur ? ' on' : '') + '" onclick="setIconTheme(\'' + t.k + '\')" aria-pressed="' + (t.k === cur) + '" title="' + t.name + ' · ' + t.desc + '">' +
 '<img src="' + src + '" alt=""' + (t.k !== 'basic' ? ' data-th="1"' : '') + '>' +
 '<span class="ic-name">' + t.name.replace('/', '/<wbr>') + (t.admin ? '<em class="ic-adm">관리자</em>' : '') + '</span><small>' + t.desc + '</small><i class="ic-ck" aria-hidden="true"></i></button>';
@@ -29708,7 +29717,7 @@ html.wbg-on.wbg-night #main-section .menu-btn,html.wbg-on.wbg-night #vacation-se
 html.wbg-on.wbg-night #main-section .menu-btn span,html.wbg-on.wbg-night #vacation-section .menu-btn span{color:#f3f5ff!important}
 html.wbg-on.wbg-night #main-container > .top-bar,html.wbg-on.wbg-night #main-container > .top-bar *:not(img):not(svg):not(path){color:#fff!important;text-shadow:0 1px 4px rgba(0,0,0,.35)}
 html.wbg-on.wbg-night:not(#z1) body .page-view > h1,html.wbg-on.wbg-night:not(#z1) body .page-view > h1 span,html.wbg-on.wbg-night:not(#z1) body .page-view > h2,html.wbg-on.wbg-night:not(#z1) body .settings-category-title,html.wbg-on.wbg-night:not(#z1) body .page-view > p{color:#f3f5ff!important;text-shadow:0 1px 4px rgba(0,0,0,.4)}
-html.wbg-on.wbg-night:not(#z1) body .page-view > h1 img{filter:brightness(0) invert(1)}
+html.wbg-on.wbg-night:not(#z1) body .page-view > h1 img{filter:drop-shadow(0 1px 3px rgba(0,0,0,.35))}
 html.wbg-on:not(#z1) body #main-container > .top-bar #liveClock,html.wbg-on:not(#z1) body #main-container > .top-bar #liveClock *,
 html.wbg-on:not(#z1) body .page-view > h1,html.wbg-on:not(#z1) body .page-view > h1 span,html.wbg-on:not(#z1) body .page-view > h2,
 html.wbg-on:not(#z1) body .settings-category-title,html.wbg-on:not(#z1) body .page-view > p,
@@ -29716,13 +29725,13 @@ html.wbg-on:not(#z1) body .sch-head,html.wbg-on:not(#z1) body .sch-head .sch-tit
 html.wbg-on:not(#z1) body .sch-head::before{color:#fff!important;opacity:.9!important;text-shadow:0 1px 4px rgba(0,0,0,.45)}
 html.wbg-on:not(#z1):not(#z2) body .page-view .sch-head .sch-nav,html.wbg-on:not(#z1):not(#z2) body .page-view .sch-head .sch-title,html.wbg-on:not(#z1):not(#z2) body #main-container > .top-bar #liveClock *{color:#fff!important;-webkit-text-fill-color:#fff!important}
 html.wbg-on:not(#z1):not(#z2) body .page-view .sch-head .sch-nav{background:transparent!important;border-color:rgba(255,255,255,.5)!important}
-html.wbg-on:not(#z1) body .page-view > h1 img{filter:brightness(0) invert(1) drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+html.wbg-on:not(#z1) body .page-view > h1 img{filter:drop-shadow(0 1px 3px rgba(0,0,0,.35))}
 html.wbg-on:not(#z1) body .settings-category-mark{filter:brightness(0) invert(1)}
 html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .wbg-glass{background-color:rgba(255,255,255,.72)!important;background-image:none!important;-webkit-backdrop-filter:blur(12px)!important;backdrop-filter:blur(12px)!important}
 html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .wbg-clear{background-color:transparent!important;background-image:none!important}
 html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body #main-container > .board-page.active > .board-page-inner{background:transparent!important;background-image:none!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;padding-left:0!important;padding-right:0!important}
 html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .board-page .board-page-header h1,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .board-page > .board-page-inner > .dia-dialog-note{color:#fff!important;text-shadow:0 1px 5px rgba(0,0,0,.45)!important;background:transparent!important}
-html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .board-page .board-title-art{filter:brightness(0) invert(1) drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .board-page .board-title-art{filter:drop-shadow(0 1px 3px rgba(0,0,0,.35))}
 html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .board-page .board-page-header{border-color:rgba(255,255,255,.35)!important;background:transparent!important}
 html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body #notice-list,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body #suggestion-list{background:rgba(255,255,255,.72)!important;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(221,231,245,.9);border-radius:16px;padding:10px 12px!important;margin:12px 0!important}
 html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .board-page .nt-tabs{background:rgba(255,255,255,.72)!important;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-radius:14px}
@@ -31565,5 +31574,57 @@ html.wbg-on.theme-day:not(#r1):not(#r2):not(#r3):not(#r4):not(#r5):not(#r6) body
 html.wbg-on:not(.theme-day):not(#r1):not(#r2):not(#r3):not(#r4):not(#r5):not(#r6) #app-splash{background:#0b1220!important}
 html.wbg-on:not(#r1):not(#r2):not(#r3):not(#r4):not(#r5):not(#r6) .page-view{animation:none!important}
 </style>
+<script id="icon-white-fill-js">/* 다크·밤 테마: 아이콘 테두리 안쪽(속)을 흰색으로 채워서 보여줌 (원본 라이트 아이콘 기준) */
+(function () {
+var cache = {}, busy = {};
+function nightish() { var c = document.documentElement.classList; return c.contains('ui-dark') || c.contains('wbg-night'); }
+function lightSrc(name) {
+if (name === '그룹탭') name = '근무그룹';
+var t = ''; try { t = iconTheme(); } catch (e) {}
+if (t === 'line') return '';
+var s = '';
+if (t === 'fam') s = (window.FAM_ICONS || {})[name] || '';
+else if (t && t !== 'basic' && window.APP_ICON_THEMES && window.APP_ICON_THEMES[t]) s = window.APP_ICON_THEMES[t][name] || '';
+if (!s && (t === 'basic' || !t || t === 'action')) s = (window.APP_ICONS || {})[name] || '';
+return s;
+}
+function fill(src) {
+if (busy[src]) return; busy[src] = 1;
+var im = new Image();
+im.onload = function () {
+try {
+var w = im.naturalWidth, h = im.naturalHeight; if (!w || !h || w * h > 640000) return;
+var c = document.createElement('canvas'); c.width = w; c.height = h;
+var x = c.getContext('2d'); x.drawImage(im, 0, 0);
+var d = x.getImageData(0, 0, w, h), p = d.data, ext = new Uint8Array(w * h), st = [], i;
+function push(k) { if (!ext[k] && p[k * 4 + 3] < 128) { ext[k] = 1; st.push(k); } }
+for (i = 0; i < w; i++) { push(i); push((h - 1) * w + i); }
+for (i = 0; i < h; i++) { push(i * w); push(i * w + w - 1); }
+while (st.length) { var k = st.pop(), px = k % w; if (px > 0) push(k - 1); if (px < w - 1) push(k + 1); if (k >= w) push(k - w); if (k < w * (h - 1)) push(k + w); }
+for (i = 0; i < w * h; i++) {
+if (ext[i]) continue;
+var o = i * 4, a = p[o + 3] / 255;
+p[o] = Math.round(p[o] * a + 255 * (1 - a)); p[o + 1] = Math.round(p[o + 1] * a + 255 * (1 - a)); p[o + 2] = Math.round(p[o + 2] * a + 255 * (1 - a)); p[o + 3] = 255;
+}
+x.putImageData(d, 0, 0); cache[src] = c.toDataURL('image/png');
+} catch (e) { cache[src] = ''; }
+try { applyAppIcons(document); if (typeof renderBottomNav === 'function') renderBottomNav(); applyAppIcons(document); } catch (e) {}
+};
+im.onerror = function () { cache[src] = ''; };
+im.src = src;
+}
+var oApp = appIcon;
+appIcon = function (name) {
+var base = oApp(name);
+if (!nightish()) return base;
+var ls = lightSrc(name);
+if (!ls || ls.indexOf('data:image/svg') === 0) return base;
+var w = cache[ls]; if (w) return w;
+if (w === undefined) fill(ls);
+return ls;
+};
+try { new MutationObserver(function () { try { applyAppIcons(document); } catch (e) {} }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
+})();
+</script>
 </body>
 </html>
