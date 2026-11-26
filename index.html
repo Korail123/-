@@ -12356,7 +12356,7 @@ doLogin(saved.id, saved.name || '', true);
 - 제목·로고·버튼 등은 고정하고, 달력/표(el) 영역만 손가락을 따라 움직입니다.
 - 손을 떼면 현재 화면이 부드럽게 밀려 나가고, 새 달력/표가 반대쪽에서 슬라이드되어 들어옵니다.
 - 기준 미달이면 부드럽게 제자리로 돌아옵니다. */
-function attachSwipe(el, onPrev, onNext, canPrev, canNext) {
+function attachSwipe(el, onPrev, onNext, canPrev, canNext, opts) {
 if (!el) return;
 var sx = 0, sy = 0, st = 0;
 var ok = false;        // 이번 터치가 스와이프 후보인지
@@ -12383,7 +12383,7 @@ for (var n = target; n && n !== el; n = n.parentNode) {
 if (!n.tagName) continue;
 var tag = n.tagName.toLowerCase();
 if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
-if (n.scrollWidth > n.clientWidth + 2) {
+if (!(opts && opts.noScrollCheck) && n.scrollWidth > n.clientWidth + 2) {
 var ox = window.getComputedStyle(n).overflowX;
 if (ox === 'auto' || ox === 'scroll') return true;
 }
@@ -12478,6 +12478,14 @@ attachSwipe($('group-table-card'),
 function () { changeGroupWeek(-1); },
 function () { changeGroupWeek(1); },
 null, null);
+attachSwipe($('sch-table-wrap'),
+function () { changeMonth(-1); },
+function () { changeMonth(1); },
+function () { return !(calendarYear <= CAL_MIN_Y && calendarMonth === 0); }, null, { noScrollCheck: true });
+attachSwipe($('cb-list'),
+function () { cbMove(-1); },
+function () { cbMove(1); },
+null, null, { noScrollCheck: true });
 attachSwipe($('vac-calendar-card'),
 function () { changeVacMonth(-1); },
 function () { changeVacMonth(1); },
@@ -23036,6 +23044,7 @@ function cbMove(n) { var nd = new Date(cbDate.getFullYear(), cbDate.getMonth(), 
 (function () {
 function boot() {
 var sec = document.getElementById('crewboard-section'); if (!sec) return;
+return;   /* 스와이프는 attachSwipe(cb-list)로 통일 */
 var x0 = 0, y0 = 0, t0 = 0, on = false, swAt = 0;
 sec.addEventListener('touchstart', function (e) {
 if (e.touches.length !== 1) { on = false; return; }
@@ -25016,6 +25025,7 @@ function schView() { try { return LS.getItem('rs_sch_view') === 'tbl' ? 'tbl' : 
 (function () {
 function boot() {
 var w = document.getElementById('sch-table-wrap'); if (!w) return;
+return;   /* 스와이프는 attachSwipe(sch-table-wrap)로 통일 */
 var x0 = 0, y0 = 0, t0 = 0, on = false, dir = 0, swAt = 0;
 w.addEventListener('touchstart', function (e) {
 if (e.touches.length !== 1 || e.target.closest('input,select,textarea')) { on = false; return; }
@@ -31361,7 +31371,7 @@ html.wbg-on:not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#
 @keyframes rsInR{from{transform:translateX(-36px)}to{transform:none}}
 @keyframes mmInL{from{transform:translateX(28px)}to{transform:none}}
 @keyframes mmInR{from{transform:translateX(-28px)}to{transform:none}}
-#calendar-card,#vac-calendar-card,#group-table-card{opacity:1!important}
+#calendar-card,#vac-calendar-card,#group-table-card,#sch-table-wrap,#cb-list{opacity:1!important}
 html.wbg-on:not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#e8):not(#e9):not(#e10):not(#e11):not(#e12):not(#e13):not(#e14):not(#e15):not(#e16) body #vacation-section #mp-grp > * + *{box-shadow:inset 0 1px 0 rgba(255,255,255,.18)!important}
 html.wbg-on.theme-day:not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#e8):not(#e9):not(#e10):not(#e11):not(#e12):not(#e13):not(#e14):not(#e15):not(#e16) body #vacation-section #mp-grp > * + *{box-shadow:inset 0 1px 0 rgba(40,60,100,.14)!important}
 </style>
