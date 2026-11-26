@@ -32068,7 +32068,7 @@ var DOW = ['일', '월', '화', '수', '목', '금', '토'];
   };
   /* ---- 무료 AI (개인정보 없는 질문만) ----
      · 개인정보가 보이면 보내지 않음 · 채팅 내용은 화면에만 있고 어디에도 저장하지 않음 · 사용자 식별자는 보내지 않음 */
-  var AI_ENDPOINT = '';   /* 배포한 Worker 주소 (https://….workers.dev) */
+  var AI_ENDPOINT = 'https://qurksmjiifepecapyfky.supabase.co/functions/v1/railway-ai';   /* Supabase Edge Function (배포 전에는 'AI에 연결하지 못했어요'로 안내) */
   var AI_USER_DAILY = 3, AI_CNT_KEY = 'rsAiCount';
   function hasPersonal(q) {
     if (/(\d{6}\s*-\s*\d{7})|(01\d[-\s]?\d{3,4}[-\s]?\d{4})|(\d{9,})|(@[A-Za-z0-9.-]+\.[A-Za-z]{2,})|(사번|비밀번호|패스워드|주민|계좌|카드번호)/.test(q)) return true;
