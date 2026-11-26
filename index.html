@@ -2373,6 +2373,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <button type="button" class="set-tile" onclick="openIconPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="아이콘설정" alt="" aria-hidden="true"><span>아이콘 설정</span></button>
       <button type="button" class="set-tile" onclick="openFavMenu()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="즐겨찾기메뉴" alt="" aria-hidden="true" decoding="async"><span class="set-label">즐겨찾기 메뉴</span></button>
       <button type="button" class="set-tile" onclick="openAnimSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="애니메이션효과" alt="" aria-hidden="true" decoding="async"><span class="set-label">애니메이션 효과</span><span class="tile-sw" data-qs="wbg" role="switch" aria-checked="true" aria-label="크리스마스 트리 바탕 켜기/끄기" tabindex="0"><i></i></span></button>
+      <button type="button" class="set-tile" id="autotx-tile" onclick="autoTxToggle()" style="order:99;grid-column:1/-1;flex-direction:row;justify-content:space-between;text-align:left"><svg class="set-art" viewBox="0 0 24 24" aria-hidden="true" style="flex:none;fill:none;stroke:#2f6fd6;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M4 19l5-13 5 13M5.8 14.5h6.4"/><path d="M16 9h4M18 7v4" style="stroke:#60a5fa"/><circle cx="18" cy="17" r="2.6"/></svg><span class="set-label">글씨색 자동 조절</span><small id="autotx-sub" class="set-sub"></small><span class="tile-sw" id="autotx-sw" role="switch" aria-checked="true" aria-label="바탕화면에 맞춰 글씨색 자동 조절" tabindex="0"><i></i></span></button>
     </div>
   </section>
   <section class="settings-category">
@@ -2403,12 +2404,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <button type="button" class="set-tile" onclick="openWidgetPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="위젯연결" alt="" aria-hidden="true" decoding="async"><span class="set-label">위젯 연결</span></button>
       <button type="button" class="set-tile danger" onclick="openResetAllDataPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="전체데이터초기화" alt="" aria-hidden="true" decoding="async"><span class="set-label">데이터 초기화</span></button>
       <button type="button" class="set-tile danger" onclick="openDeleteAccountPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="회원탈퇴" alt="" aria-hidden="true" decoding="async"><span class="set-label">회원탈퇴</span></button>
-    </div>
-  </section>
-  <section class="settings-category" id="autotx-cat">
-    <h2 class="settings-category-title"><span class="settings-category-mark other"></span>글씨 색</h2>
-    <div class="setting-grid">
-      <button type="button" class="set-tile" id="autotx-tile" onclick="autoTxToggle()" style="grid-column:1/-1;flex-direction:row;justify-content:space-between;text-align:left"><span class="set-label">글씨색 자동 조절</span><small id="autotx-sub" class="set-sub"></small><span class="tile-sw" id="autotx-sw" role="switch" aria-checked="true" aria-label="바탕화면에 맞춰 글씨색 자동 조절" tabindex="0"><i></i></span></button>
     </div>
   </section>
   <div id="app-version" class="app-ver" onclick="appVersionCheck(true)"></div>
@@ -30835,7 +30830,16 @@ function gsIndex() {
   }
   var TAB = { work: '근무', conv: '편의', my: 'MY' };
   [].forEach.call(document.querySelectorAll('#main-section .menu-btn'), function (b) { add(b, TAB[b.getAttribute('data-tab')] || '메인'); });
-  [].forEach.call(document.querySelectorAll('#settings-section .set-tile'), function (b) { add(b, '환경설정'); });
+  [].forEach.call(document.querySelectorAll('#settings-section .set-tile'), function (b) { if (b.id === 'autotx-tile') return; add(b, '환경설정'); });
+  /* 근무그룹 화면의 기능도 검색 (눌러서 근무그룹으로 이동한 뒤 바로 실행) */
+  [['openGroupSwapSelector', '근무교환', '교환 맞교환 상대 근무 바꾸기 휴식시간'], ['openGroupCompareSelector', '비교하기', '비교 두 근무표 나란히 동료'], ['openGroupFolders', '그룹탭', '그룹 폴더 새 폴더 동료 넣기 나만의 그룹']].forEach(function (g) {
+    var ic = document.querySelector('#group-section [onclick^="' + g[0] + '"] img'), fn = g[0];
+    if (seen['근무그룹' + g[1]]) return; seen['근무그룹' + g[1]] = 1;
+    out.push({ label: g[1], group: '근무그룹', tags: g[2], src: ic ? ic.currentSrc || ic.src : '', btn: { click: function () {
+      try { openGroupSection(); } catch (e) {}
+      setTimeout(function () { try { window[fn](); } catch (e) {} }, 450);
+    } } });
+  });
   return out;
 }
 var gsItems = [];
@@ -30960,7 +30964,7 @@ html.ui-dark .set-sbar,html.ui-dark .set-res{background:#232831}html.ui-dark .se
 var ssItems = [];
 function ssOpen() {
   try { applyAppIcons(document); } catch (e) {}
-  ssItems = gsIndex().filter(function (it) { return it.group === '환경설정'; });
+  ssItems = gsIndex().filter(function (it) { return (it.group === '환경설정' || it.group === '근무그룹'); });
   var w = $('ss-wrap'), h1 = document.querySelector('#settings-section>h1');
   var top = h1 ? Math.max(10, h1.getBoundingClientRect().top + 2) : 12;
   $('ss-box').style.top = top + 'px';
@@ -30983,7 +30987,7 @@ function ssRender() {
 function setRender() {
   var q = gsNorm($('set-q').value), box = $('set-res');
   if (!q) { box.innerHTML = ''; return; }
-  if (!ssItems.length) ssItems = gsIndex().filter(function (it) { return it.group === '환경설정'; });
+  if (!ssItems.length) ssItems = gsIndex().filter(function (it) { return (it.group === '환경설정' || it.group === '근무그룹'); });
   var list = ssItems.map(function (it) {
     var a = gsFind(it.label, q), s = a === 0 ? 0 : a > 0 ? 1 : it.tags.split(' ').some(function (w) { return gsFind(w, q) >= 0; }) ? 2 : -1;
     return { it: it, s: s };
@@ -31004,7 +31008,7 @@ function ssGo(i) { var it = ssItems[i]; if (!it) return; ssClose(); setTimeout(f
       '<button type="button" class="set-sx" aria-label="지우기">✕</button></div><div id="set-res" class="set-res"></div>';
     h1.parentNode.insertBefore(w, h1.nextSibling);
     var q = w.querySelector('#set-q'), x = w.querySelector('.set-sx');
-    q.addEventListener('focus', function () { ssItems = gsIndex().filter(function (it) { return it.group === '환경설정'; }); try { applyAppIcons(document); } catch (e) {} });
+    q.addEventListener('focus', function () { ssItems = gsIndex().filter(function (it) { return (it.group === '환경설정' || it.group === '근무그룹'); }); try { applyAppIcons(document); } catch (e) {} });
     q.addEventListener('input', function () { w.classList.toggle('has', !!q.value); setRender(); });
     q.addEventListener('keydown', function (e) { if (e.key === 'Enter') { var b = document.querySelector('#set-res .gs-it'); if (b) b.click(); } if (e.key === 'Escape') setClear(); });
     x.addEventListener('click', function () { setClear(); q.focus(); });
@@ -32235,7 +32239,7 @@ document.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.
 /* 바탕이 어두우면 밝은 글씨, 밝으면 짙은 글씨 — 바탕 위에 바로 놓인 제목·안내 글씨만 */
 html.tx-on-dark:not(#z1):not(#z2):not(#z3) body .page-view>h1,html.tx-on-dark:not(#z1):not(#z2):not(#z3) body .page-view>h2,html.tx-on-dark:not(#z1):not(#z2):not(#z3) body .settings-category-title,html.tx-on-dark:not(#z1):not(#z2):not(#z3) body .app-ver,html.tx-on-dark:not(#z1):not(#z2):not(#z3) body #cb-title{color:#f3f5ff!important;text-shadow:0 1px 3px rgba(0,0,0,.45)}
 html.tx-on-light:not(#z1):not(#z2):not(#z3) body .page-view>h1,html.tx-on-light:not(#z1):not(#z2):not(#z3) body .page-view>h2,html.tx-on-light:not(#z1):not(#z2):not(#z3) body .settings-category-title,html.tx-on-light:not(#z1):not(#z2):not(#z3) body .app-ver,html.tx-on-light:not(#z1):not(#z2):not(#z3) body #cb-title{color:#1f2a44!important;text-shadow:none}
-#autotx-tile .tile-sw{position:static;flex:none}
+#autotx-tile .tile-sw{position:static;flex:none}#autotx-sub{display:none!important}
 </style>
 <script id="autotx-js">
 (function () {
@@ -32294,7 +32298,7 @@ html.tx-on-light:not(#z1):not(#z2):not(#z3) body .page-view>h1,html.tx-on-light:
     var cards = document.getElementById('vac-cards'), st = document.getElementById('vac-status'); if (!cards) return;
     var ok = confirmed(); cards.classList.toggle('vac-unconfirmed', !ok);
     if (!st) return;
-    if (ok) { st.className = 'vac-ok'; st.textContent = '최신 집계 확인됨 · ' + fmt(snapshot.t); }
+    if (ok) { st.className = ''; st.textContent = ''; }
     else if (snapshotUsable()) { st.className = 'vac-wait'; st.textContent = '저장된 집계예요 (확정 아님) · 마지막 확인 ' + fmt(getOk() || snapshot.t) + ' · 서버 확인 중…'; }
     else st.className = '';
   }
