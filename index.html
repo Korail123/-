@@ -15227,6 +15227,7 @@ p.innerHTML = '<div class="dia-dialog gis-box">' + inner + '</div>'; p.classList
 try { if (typeof wbgGlass === 'function') wbgGlass(); } catch (e) {}
 }
 var HIST_FN = 'train-history';
+function todayKeyKST() { var t = todayKST(); return getDateKey(t.y, t.m, t.d); }
 function gisHist(tno, key) {
 var nxB = '<button type="button" class="dia-text-btn" onclick="gisClose();tqOpenNxWeb(\'' + esc(tno) + '\',\'' + esc(key) + '\')">NXLogis로 보기</button><button type="button" class="dia-text-btn" onclick="gisClose()">닫기</button>';
 gisPanel('<div class="gis-t">' + esc(tno) + '열차 · ' + esc(key) + '</div><div class="gis-n">운행기록을 불러오는 중…</div>');
@@ -15253,8 +15254,12 @@ var rows = '<div class="gis-t">' + esc((trainClassByNo(tno, true) || '') + ' ' +
 '<div class="gis-r"><span>구간</span><b>' + esc(first.stn + ' ' + dep + ' → ' + last.stn + ' ' + arv) + '</b></div>';
 if (dd != null) rows += '<div class="gis-r"><span>출발 지연</span><b class="' + cls(dd).trim() + '">' + dtx(dd) + '</b></div>';
 if (da != null) rows += '<div class="gis-r"><span>도착 지연</span><b class="' + cls(da).trim() + '">' + dtx(da) + '</b></div>';
-rows += '<div class="gis-list">' + st.map(function (x) { return '<div><span>' + esc(x.stn) + '</span><b>' + esc(hm(x.arr) || '-') + ' / ' + esc(hm(x.dep) || '-') + '</b></div>'; }).join('') + '</div>' +
-'<div class="gis-n">공공데이터 운행기록 · 역별 도착 / 출발 실제 시각</div><div class="gis-btns">' + nxB + '</div>';
+var sd = function (x) { var a = x.pa && x.arr ? dl(x.pa, x.arr) : null; return a != null ? a : (x.pd && x.dep ? dl(x.pd, x.dep) : null); };
+var lastOk = null; st.forEach(function (x) { if (x.arr || x.dep) lastOk = x; });
+var lsd = lastOk ? sd(lastOk) : null;
+if (lastOk && lsd != null) rows += '<div class="gis-r"><span>마지막 확인역</span><b class="' + cls(lsd).trim() + '">' + esc(lastOk.stn + ' ' + hm(lastOk.arr || lastOk.dep) + ' · ' + dtx(lsd)) + '</b></div>';
+rows += '<div class="gis-list">' + st.map(function (x) { var d = sd(x); return '<div><span>' + esc(x.stn) + '</span><b>' + esc(hm(x.arr) || '-') + ' / ' + esc(hm(x.dep) || '-') + (d != null ? ' <i class="' + cls(d).trim() + '" style="font-style:normal;font-weight:800">' + (d <= 0 ? '정시' : '+' + d + '분') + '</i>' : '') + '</b></div>'; }).join('') + '</div>' +
+'<div class="gis-n">공공데이터 운행기록 · 실제 시각 − 계획 시각 = 지연' + (key === todayKeyKST() ? ' · 오늘 기록은 늦게 반영될 수 있어요(마지막 확인역까지만 표시)' : '') + '</div><div class="gis-btns">' + nxB + '</div>';
 gisPanel(rows);
 }).catch(function (e) { if (tm) { clearTimeout(tm); fail('운행기록을 불러오지 못했어요.<br><span style="font-size:11px;opacity:.75">' + esc(String(e && e.message || e)) + '</span>'); } });
 }
@@ -15268,13 +15273,13 @@ gisPanel('<div class="gis-t">' + esc(tno) + '열차</div><div class="gis-n" styl
 var num = String(tno).replace(/\D/g, '').replace(/^0+/, '');
 gisPanel('<div class="gis-t">' + esc(tno) + '열차</div><div class="gis-n">코레일 열차위치에서 불러오는 중…</div>');
 gisFetch(function (err, c) {
-if (err) { gisPanel('<div class="gis-t">' + esc(tno) + '열차</div><div class="gis-n" style="font-size:13px;opacity:.9">열차위치를 불러오지 못했어요.<br><span style="font-size:11px;opacity:.75">' + esc(String(err)) + '</span><br>잠시 뒤 다시 시도하거나 NXLogis로 확인해 주세요.</div><div class="gis-btns">' + nxBtn + '<button type="button" class="dia-text-btn" onclick="gisShowTrain(\'' + esc(tno) + '\',\'' + esc(key || '') + '\',true)">다시 시도</button><button type="button" class="dia-text-btn" onclick="gisClose()">닫기</button></div>'); return; }
+if (err) { gisPanel('<div class="gis-t">' + esc(tno) + '열차</div><div class="gis-n" style="font-size:13px;opacity:.9">열차위치를 불러오지 못했어요.<br><span style="font-size:11px;opacity:.75">' + esc(String(err)) + '</span><br>잠시 뒤 다시 시도하거나 NXLogis로 확인해 주세요.</div><div class="gis-btns"><button type="button" class="dia-text-btn" onclick="gisHist(\'' + esc(tno) + '\',\'' + esc(key || today) + '\')">운행기록</button>' + nxBtn + '<button type="button" class="dia-text-btn" onclick="gisShowTrain(\'' + esc(tno) + '\',\'' + esc(key || '') + '\',true)">다시 시도</button><button type="button" class="dia-text-btn" onclick="gisClose()">닫기</button></div>'); return; }
 var f = null;
 c.feats.forEach(function (x) { var pr = x.properties || {}; if (!f && String(pr.trn_no).replace(/^0+/, '') === num) f = pr; });
 var btn = '<div class="gis-btns"><button type="button" class="dia-text-btn" onclick="gisShowTrain(\'' + esc(tno) + '\',\'' + esc(key || '') + '\',true)">새로고침</button><button type="button" class="dia-text-btn" onclick="gisClose()">닫기</button></div>';
 if (!f) {
 gisPanel('<div class="gis-t">' + esc(tno) + '열차</div><div class="gis-n" style="font-size:13px;opacity:.9">지금 운행 중인 열차 목록에 없어요.<br>출발 전이거나 운행이 끝났거나, 오늘 운행하지 않는 열차일 수 있어요.</div>' +
-'<div class="gis-btns"><button type="button" class="dia-text-btn" onclick="gisClose();tqOpenNxWeb(\'' + esc(tno) + '\',\'' + esc(key || '') + '\')">NXLogis로 보기</button>' + btn.replace('<div class="gis-btns">', ''));
+'<div class="gis-btns"><button type="button" class="dia-text-btn" onclick="gisHist(\'' + esc(tno) + '\',\'' + esc(key || today) + '\')">운행기록</button><button type="button" class="dia-text-btn" onclick="gisClose();tqOpenNxWeb(\'' + esc(tno) + '\',\'' + esc(key || '') + '\')">NXLogis로 보기</button>' + btn.replace('<div class="gis-btns">', ''));
 return;
 }
 var g = gisBuild(f, c.stamp);
@@ -15290,7 +15295,7 @@ var d = String(dateKey || '').replace(/[^0-9]/g, '');
 var t = todayKST();
 var key = d.length === 8 ? d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8) : getDateKey(t.y, t.m, t.d);
 var tno = String(train).toUpperCase();
-if (!tqIsLogisTrain(tno)) { gisShowTrain(tno, key); return; }   /* 여객열차: 코레일 열차위치(gis.korail.com) */
+if (!tqIsLogisTrain(tno)) { tqOpenNxWeb(tno, key); return; }   /* 여객열차: NXLogis로 연결 (화물열차만 앱 안에서 Logis.Korail 조회) */
 try { showPassPopup({ kind: 'err', loading: true, train: tno, date: key, msg: infoSrc(tno) + '에서 운행 정보를 불러오는 중…' }, true); } catch (e) {}
 passRunCheck([{ date: key, train: tno }], passCfg || passCfgLocal() || passCfgDefault(), true, { quietToast: true });
 }
@@ -31375,6 +31380,9 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 })();
 </script>
 
+<style id="fix-v65">/* 팝업의 열차번호 칩: 하늘색 칠 + 흰 글씨 */
+html.wbg-on:not(#h1):not(#h2):not(#h3):not(#h4):not(#h5):not(#h6):not(#h7):not(#h8) body :is(.dd-chip,.gd-tn){background:#2f8cf0!important;background-image:none!important;color:#fff!important;border-color:#7cc4ff!important;-webkit-text-fill-color:#fff!important}
+</style>
 <style id="fix-v64">/* 흰 글씨가 흰 칠과 겹치던 칸(오늘 표시·오늘 버튼·브리핑 안내)을 하늘색 칠로 통일 */
 html.wbg-on:not(#f1):not(#f2):not(#f3):not(#f4):not(#f5) body #trainq-panel .tq-daybtn small,
 html.wbg-on:not(#f1):not(#f2):not(#f3):not(#f4):not(#f5) body #trainq-panel .tq-cal-foot button,
