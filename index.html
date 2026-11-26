@@ -31855,15 +31855,10 @@ html.ui-dark body #crewboard-section .cb-table th,
 html.ui-dark body #crewboard-section .cb-table td{border-color:rgba(200,210,225,.26)!important}
 </style>
 <style id="group-round-fill">
-/* 근무그룹표: 내 줄 · 오늘 · 선택한 날짜를 둥글게, 맨 아래 '휴가·휴무·X' 칸까지 이어서 칠함 */
-html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tbody tr.me td.name-col{border-radius:14px 0 0 14px!important}
-html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tbody tr.me td:last-child{border-radius:0 14px 14px 0!important}
-html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table thead th.g-today{border-radius:14px 14px 0 0!important}
-html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tbody tr:last-child td.g-today,html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tbody tr:last-child td.g-sel{border-radius:0!important}
+/* 근무그룹표: 줄 모양은 예전 그대로. 오늘 날짜 열만 맨 아래 '휴가·휴무·X' 칸까지 테두리와 함께 같은 색으로 이어서 칠함 */
+html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tbody tr:last-child td.g-today{border-radius:0!important}
+html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table thead th.g-today,html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tbody td.g-today,html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tfoot td.g-today{border-color:rgba(59,130,246,.2)!important}
 html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tfoot td.g-today{background:rgba(59,130,246,.2)!important;border-radius:0 0 14px 14px!important}
-html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tfoot td.g-sel:not(.g-today){border-radius:0 0 14px 14px!important;box-shadow:inset 1.5px 0 0 rgba(59,130,246,.45),inset -1.5px 0 0 rgba(59,130,246,.45),inset 0 -1.5px 0 rgba(59,130,246,.45)!important}
-html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tbody tr:last-child td.g-sel:not(.g-today){box-shadow:inset 1.5px 0 0 rgba(59,130,246,.45),inset -1.5px 0 0 rgba(59,130,246,.45)!important}
-html:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6):not(#a7):not(#a8):not(#a9) body #group-section .group-table tfoot td.g-today.g-sel{box-shadow:none!important}
 html.ui-dark body #group-section .group-table tfoot td.g-today{background:rgba(96,165,250,.28)!important}
 </style>
 </body>
