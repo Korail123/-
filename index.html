@@ -31621,5 +31621,12 @@ return ls;
 try { new MutationObserver(function () { try { applyAppIcons(document); } catch (e) {} }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
 })();
 </script>
+<style id="fix-v71">/* 근무교환 달력: 근무구분 색 (근무표와 동일) — 팝업 흰 글씨 규칙보다 우선 */
+html:not(#sw1):not(#sw2):not(#sw3):not(#sw4):not(#sw5):not(#sw6):not(#sw7):not(#sw8):not(#sw9):not(#sw10):not(#sw11):not(#sw12):not(#sw13):not(#sw14):not(#sw15):not(#sw16):not(#sw17):not(#sw18):not(#sw19):not(#sw20) body .swap-cal-grid .swap-day .sd-duty.duty-day{color:var(--duty-day,#e5a800)!important;-webkit-text-fill-color:var(--duty-day,#e5a800)!important}
+html:not(#sw1):not(#sw2):not(#sw3):not(#sw4):not(#sw5):not(#sw6):not(#sw7):not(#sw8):not(#sw9):not(#sw10):not(#sw11):not(#sw12):not(#sw13):not(#sw14):not(#sw15):not(#sw16):not(#sw17):not(#sw18):not(#sw19):not(#sw20) body .swap-cal-grid .swap-day .sd-duty.duty-night{color:var(--duty-night,#1a73e8)!important;-webkit-text-fill-color:var(--duty-night,#1a73e8)!important}
+html:not(#sw1):not(#sw2):not(#sw3):not(#sw4):not(#sw5):not(#sw6):not(#sw7):not(#sw8):not(#sw9):not(#sw10):not(#sw11):not(#sw12):not(#sw13):not(#sw14):not(#sw15):not(#sw16):not(#sw17):not(#sw18):not(#sw19):not(#sw20) body .swap-cal-grid .swap-day .sd-duty.duty-off{color:var(--duty-off,#e53935)!important;-webkit-text-fill-color:var(--duty-off,#e53935)!important}
+html:not(#sw1):not(#sw2):not(#sw3):not(#sw4):not(#sw5):not(#sw6):not(#sw7):not(#sw8):not(#sw9):not(#sw10):not(#sw11):not(#sw12):not(#sw13):not(#sw14):not(#sw15):not(#sw16):not(#sw17):not(#sw18):not(#sw19):not(#sw20) body .swap-cal-grid .swap-day .sd-duty.duty-none{color:#98a2b3!important;-webkit-text-fill-color:#98a2b3!important}
+html:not(#sw1):not(#sw2):not(#sw3):not(#sw4):not(#sw5):not(#sw6):not(#sw7):not(#sw8):not(#sw9):not(#sw10):not(#sw11):not(#sw12):not(#sw13):not(#sw14):not(#sw15):not(#sw16):not(#sw17):not(#sw18):not(#sw19):not(#sw20) body .swap-cal-grid .swap-day.range-edge .sd-duty{color:#fff!important;-webkit-text-fill-color:#fff!important}
+</style>
 </body>
 </html>
