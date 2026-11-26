@@ -2372,7 +2372,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <button type="button" class="set-tile" onclick="openUiPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="화면설정" alt="" aria-hidden="true"><span>화면 설정</span></button>
       <button type="button" class="set-tile" onclick="openIconPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="아이콘설정" alt="" aria-hidden="true"><span>아이콘 설정</span></button>
       <button type="button" class="set-tile" onclick="openFavMenu()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="즐겨찾기메뉴" alt="" aria-hidden="true" decoding="async"><span class="set-label">즐겨찾기 메뉴</span></button>
-      <button type="button" class="set-tile" onclick="openAnimSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="애니메이션효과" alt="" aria-hidden="true" decoding="async"><span class="set-label">애니메이션 효과</span><span class="tile-sw" data-qs="wbg" role="switch" aria-checked="true" aria-label="크리스마스 트리 바탕 켜기/끄기" tabindex="0"><i></i></span></button>
+      <button type="button" class="set-tile" onclick="openAnimSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="애니메이션효과" alt="" aria-hidden="true" decoding="async"><span class="set-label">애니메이션 효과</span><span class="tile-sw" data-qs="wbg" role="switch" aria-checked="true" aria-label="겨울 테마 켜기/끄기" tabindex="0"><i></i></span></button>
       <button type="button" class="set-tile" id="autotx-tile" onclick="autoTxToggle()" style="order:99;grid-column:1/-1;flex-direction:row;justify-content:space-between;text-align:left"><svg class="set-art" viewBox="0 0 24 24" aria-hidden="true" style="flex:none;fill:none;stroke:#2f6fd6;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M4 19l5-13 5 13M5.8 14.5h6.4"/><path d="M16 9h4M18 7v4" style="stroke:#60a5fa"/><circle cx="18" cy="17" r="2.6"/></svg><span class="set-label">글씨색 자동 조절</span><small id="autotx-sub" class="set-sub"></small><span class="tile-sw" id="autotx-sw" role="switch" aria-checked="true" aria-label="바탕화면에 맞춰 글씨색 자동 조절" tabindex="0"><i></i></span></button>
     </div>
   </section>
@@ -3153,7 +3153,8 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
   <div class="dia-dialog ns-dialog an-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="애니메이션효과" alt="" aria-hidden="true">애니메이션 효과</div>
     <label class="an-main" style="display:none"><span><b>메인화면 애니메이션</b><small>로그인하거나 메인화면에 들어올 때 열차가 지나가요</small></span><input type="checkbox" id="an-on" onchange="animToggle(this.checked)"><i class="an-sw"></i></label>
-    <label class="an-main"><span><b>크리스마스 트리 바탕 · 눈</b><small>모든 화면 바탕에 흐린 트리 · 저녁~새벽엔 불빛이 1초마다 반짝</small></span><input type="checkbox" id="an-wbg" onchange="wbgSet(this.checked)"><i class="an-sw"></i></label>
+    <label class="an-main"><span><b id="an-wbg-t">겨울 테마</b><small id="an-wbg-d">반짝이는 크리스마스 트리와 내리는 하얀 눈</small></span><input type="checkbox" id="an-wbg" onchange="wbgSet(this.checked)"><i class="an-sw"></i></label>
+    <div class="an-main" id="an-season" style="display:flex;gap:8px;align-items:center;justify-content:space-between"><span><b>테마 고르기</b></span><span class="ssn-chips"><button type="button" data-s="winter" onclick="seasonSet('winter')">겨울</button><button type="button" data-s="spring" onclick="seasonSet('spring')">봄</button></span></div>
     <div id="an-opts" class="an-opts" style="display:none!important">
       <div class="an-hint">오른쪽 화살표를 눌러 고르세요. 여러 개 고르면 그중에서 랜덤, 고르지 않으면 <b>전체</b>에서 랜덤이에요.</div>
       <div class="an-sec"><div class="an-h">시간대 <button type="button" onclick="animClear('times')">전체</button></div><div id="an-times" class="an-chips"></div></div>
@@ -31229,7 +31230,7 @@ function wbgSet(on) {
   try { localStorage.setItem('rs_wbg', on ? '1' : '0'); } catch (e) {}
   document.documentElement.classList.toggle('wbg-on', !!on);
   try { $('an-wbg').checked = !!on; } catch (e) {} try { qsRender(); } catch (e) {}
-  try { showToast(on ? '크리스마스 트리 바탕을 켰어요.' : '크리스마스 트리 바탕을 껐어요.'); } catch (e) {}
+  try { showToast((window.seasonName ? seasonName() : '겨울') + (on ? ' 테마를 켰어요.' : ' 테마를 껐어요.')); } catch (e) {}
 }
 /* 화면 안의 흰 칸 · 버튼을 찾아 반투명 유리로 (안쪽에 겹친 흰 칸은 투명하게) */
 function wbgGlass() {
@@ -31425,6 +31426,7 @@ function wbgGlass() {
     var dt = Math.min(3, (now - last) / 16.7); last = now;
     if (isNight() !== night) baseKey = '';
     size();
+    if (document.documentElement.classList.contains('season-spring')) { x.clearRect(0, 0, W, H); return; }   /* 봄 테마는 따로 그림 */
     var iosBlur = iosBlurMode();
     document.documentElement.classList.toggle('wbg-ios-blur', iosBlur);
     x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
@@ -32246,7 +32248,7 @@ html.tx-on-light:not(#z1):not(#z2):not(#z3) body .page-view>h1,html.tx-on-light:
   function on() { try { return localStorage.getItem('rs_autotx') !== '0'; } catch (e) { return true; } }
   function lumOf(css) { var m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/.exec(css || ''); if (!m || (m[4] !== undefined && +m[4] < .05)) return null; return .2126 * m[1] + .7152 * m[2] + .0722 * m[3]; }
   function sample() {
-    var h = document.documentElement, c = document.getElementById('wbg-base');
+    var h = document.documentElement, c = document.getElementById(h.classList.contains('season-spring') ? 'sbg-bg' : 'wbg-base');
     if (h.classList.contains('wbg-on') && c && c.width) {
       try { var t = document.createElement('canvas'); t.width = t.height = 8; var x = t.getContext('2d'); x.drawImage(c, 0, 0, 8, 8); var d = x.getImageData(0, 0, 8, 8).data, l = 0, n = 0;
         for (var i = 0; i < d.length; i += 4) if (d[i + 3] > 20) { l += .2126 * d[i] + .7152 * d[i + 1] + .0722 * d[i + 2]; n++; }
@@ -32313,35 +32315,171 @@ html.tx-on-light:not(#z1):not(#z2):not(#z3) body .page-view>h1,html.tx-on-light:
 </script>
 <style id="dark-glass">
 /* 크리스마스 트리 배경: 어두운 유리 35% (아이콘·글씨가 배경 위에서 또렷하게) */
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body :is(.wbg-glass:not(#calendar-card):not(#calendar-card *):not(#vac-calendar-card):not(#vac-calendar-card *),#vacation-section .menu-btn,#settings-section .setting-grid,#settings-section #set-flat > button.set-tile,#notice-list,#suggestion-list,.board-page .nt-tab,.bottom-nav,.group-swap-open-btn,.sch-viewseg,.sch-png-btn,.sch-tool-sm,.mm-tabs){background:rgba(10,18,34,.38)!important;background-image:none!important;border:1px solid rgba(255,255,255,.22)!important;-webkit-backdrop-filter:blur(10px) saturate(120%)!important;backdrop-filter:blur(10px) saturate(120%)!important;box-shadow:0 2px 10px rgba(0,0,0,.18)!important;color:#f3f5ff!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body :is(.wbg-glass:not(#calendar-card):not(#calendar-card *):not(#vac-calendar-card):not(#vac-calendar-card *),#vacation-section .menu-btn,#settings-section .setting-grid,#settings-section #set-flat > button.set-tile,#notice-list,#suggestion-list,.board-page .nt-tab,.bottom-nav,.group-swap-open-btn,.sch-viewseg,.sch-png-btn,.sch-tool-sm,.mm-tabs) :where(span,b,small,div,p,label,h2,h3,h4,li,td,th,a,strong,em,i):not([style*="background"]):not([class*="g-"]):not([class*="sun"]):not([class*="sat"]):not([class*="hol"]):not([class*="today"]):not(.on):not(.active):not([aria-selected="true"]):not(.danger):not(.danger *){color:#f3f5ff!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body :is(.wbg-glass:not(#calendar-card):not(#calendar-card *):not(#vac-calendar-card):not(#vac-calendar-card *),#vacation-section .menu-btn,#settings-section .setting-grid,#settings-section #set-flat > button.set-tile,#notice-list,#suggestion-list,.board-page .nt-tab,.bottom-nav,.group-swap-open-btn,.sch-viewseg,.sch-png-btn,.sch-tool-sm,.mm-tabs) .set-sub,html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body :is(.wbg-glass:not(#calendar-card):not(#calendar-card *):not(#vac-calendar-card):not(#vac-calendar-card *),#vacation-section .menu-btn,#settings-section .setting-grid,#settings-section #set-flat > button.set-tile,#notice-list,#suggestion-list,.board-page .nt-tab,.bottom-nav,.group-swap-open-btn,.sch-viewseg,.sch-png-btn,.sch-tool-sm,.mm-tabs) small{color:#bcc8e0!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body :is(.wbg-glass:not(#calendar-card):not(#calendar-card *):not(#vac-calendar-card):not(#vac-calendar-card *),#vacation-section .menu-btn,#settings-section .setting-grid,#settings-section #set-flat > button.set-tile,#notice-list,#suggestion-list,.board-page .nt-tab,.bottom-nav,.group-swap-open-btn,.sch-viewseg,.sch-png-btn,.sch-tool-sm,.mm-tabs).danger,html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body :is(.wbg-glass:not(#calendar-card):not(#calendar-card *):not(#vac-calendar-card):not(#vac-calendar-card *),#vacation-section .menu-btn,#settings-section .setting-grid,#settings-section #set-flat > button.set-tile,#notice-list,#suggestion-list,.board-page .nt-tab,.bottom-nav,.group-swap-open-btn,.sch-viewseg,.sch-png-btn,.sch-tool-sm,.mm-tabs) .danger :where(span,b,small,div,p,label,h2,h3,h4,li,td,th,a,strong,em,i){color:#ff8f8f!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body :is(.wbg-glass:not(#calendar-card):not(#calendar-card *):not(#vac-calendar-card):not(#vac-calendar-card *),#vacation-section .menu-btn,#settings-section .setting-grid,#settings-section #set-flat > button.set-tile,#notice-list,#suggestion-list,.board-page .nt-tab,.bottom-nav,.group-swap-open-btn,.sch-viewseg,.sch-png-btn,.sch-tool-sm,.mm-tabs) img{filter:brightness(1.75) contrast(.95)!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(.menu-list) body :is(#main-section .menu-grid > button.menu-btn){background:rgba(10,18,34,.38)!important;background-image:none!important;border:1px solid rgba(255,255,255,.22)!important;-webkit-backdrop-filter:blur(10px) saturate(120%)!important;backdrop-filter:blur(10px) saturate(120%)!important;box-shadow:0 2px 10px rgba(0,0,0,.18)!important;color:#f3f5ff!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(.menu-list) body :is(#main-section .menu-grid > button.menu-btn) :where(span,b,small,div,p,label,h2,h3,h4,li,td,th,a,strong,em,i):not([style*="background"]):not([class*="g-"]):not([class*="sun"]):not([class*="sat"]):not([class*="hol"]):not([class*="today"]):not(.on):not(.active):not([aria-selected="true"]):not(.danger):not(.danger *){color:#f3f5ff!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(.menu-list) body :is(#main-section .menu-grid > button.menu-btn) .set-sub,html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(.menu-list) body :is(#main-section .menu-grid > button.menu-btn) small{color:#bcc8e0!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(.menu-list) body :is(#main-section .menu-grid > button.menu-btn).danger,html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(.menu-list) body :is(#main-section .menu-grid > button.menu-btn) .danger :where(span,b,small,div,p,label,h2,h3,h4,li,td,th,a,strong,em,i){color:#ff8f8f!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(.menu-list) body :is(#main-section .menu-grid > button.menu-btn) img{filter:brightness(1.75) contrast(.95)!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10).menu-list body :is(#main-section .menu-grid.mm-grid){background:rgba(10,18,34,.38)!important;background-image:none!important;border:1px solid rgba(255,255,255,.22)!important;-webkit-backdrop-filter:blur(10px) saturate(120%)!important;backdrop-filter:blur(10px) saturate(120%)!important;box-shadow:0 2px 10px rgba(0,0,0,.18)!important;color:#f3f5ff!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10).menu-list body :is(#main-section .menu-grid.mm-grid) :where(span,b,small,div,p,label,h2,h3,h4,li,td,th,a,strong,em,i):not([style*="background"]):not([class*="g-"]):not([class*="sun"]):not([class*="sat"]):not([class*="hol"]):not([class*="today"]):not(.on):not(.active):not([aria-selected="true"]):not(.danger):not(.danger *){color:#f3f5ff!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10).menu-list body :is(#main-section .menu-grid.mm-grid) .set-sub,html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10).menu-list body :is(#main-section .menu-grid.mm-grid) small{color:#bcc8e0!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10).menu-list body :is(#main-section .menu-grid.mm-grid).danger,html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10).menu-list body :is(#main-section .menu-grid.mm-grid) .danger :where(span,b,small,div,p,label,h2,h3,h4,li,td,th,a,strong,em,i){color:#ff8f8f!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10).menu-list body :is(#main-section .menu-grid.mm-grid) img{filter:brightness(1.75) contrast(.95)!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10).menu-list body #main-section .menu-grid > button.menu-btn{background:transparent!important;border-color:transparent!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;color:#f3f5ff!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10).menu-list body #main-section .menu-grid > button.menu-btn :where(span,b,small,div,p,label,h2,h3,h4,li,td,th,a,strong,em,i){color:#f3f5ff!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #group-section .g-dn{filter:brightness(2.4)!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #group-section :is(.g-today,.g-sel) .g-dn{filter:none!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body .bottom-nav .bn-btn,html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body .bottom-nav .bn-btn *{color:#fff!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #settings-section .set-sbar{background:rgba(10,18,34,.38)!important;border:1px solid rgba(255,255,255,.22)!important;-webkit-backdrop-filter:blur(10px) saturate(120%);backdrop-filter:blur(10px) saturate(120%);box-shadow:0 2px 10px rgba(0,0,0,.18)!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #settings-section .set-sbar input{color:#fff!important;-webkit-text-fill-color:#fff}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #settings-section .set-sbar input::placeholder{color:rgba(255,255,255,.7)!important;-webkit-text-fill-color:rgba(255,255,255,.7)}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #settings-section .set-sbar svg{stroke:#fff!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #settings-section .set-sx{background:rgba(255,255,255,.18)!important;color:#fff!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #settings-section .set-res{background:rgba(14,22,40,.96)!important;border:1px solid rgba(255,255,255,.22)!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #settings-section .set-res :is(b,span,small){color:#fff!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #settings-section .set-res mark{background:none!important;color:#8fc0ff!important}
-html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #vacation-section .mypage-subtitle,html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #vacation-section .mypage-subtitle *,html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body .mm-tabs button,html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body .mm-tabs button *{color:#fff!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body :is(.wbg-glass:not(#calendar-card):not(#calendar-card *):not(#vac-calendar-card):not(#vac-calendar-card *),#vacation-section .menu-btn,#settings-section .setting-grid,#settings-section #set-flat > button.set-tile,#notice-list,#suggestion-list,.board-page .nt-tab,.bottom-nav,.group-swap-open-btn,.sch-viewseg,.sch-png-btn,.sch-tool-sm,.mm-tabs){background:rgba(10,18,34,.38)!important;background-image:none!important;border:1px solid rgba(255,255,255,.22)!important;-webkit-backdrop-filter:blur(10px) saturate(120%)!important;backdrop-filter:blur(10px) saturate(120%)!important;box-shadow:0 2px 10px rgba(0,0,0,.18)!important;color:#f3f5ff!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body :is(.wbg-glass:not(#calendar-card):not(#calendar-card *):not(#vac-calendar-card):not(#vac-calendar-card *),#vacation-section .menu-btn,#settings-section .setting-grid,#settings-section #set-flat > button.set-tile,#notice-list,#suggestion-list,.board-page .nt-tab,.bottom-nav,.group-swap-open-btn,.sch-viewseg,.sch-png-btn,.sch-tool-sm,.mm-tabs) :where(span,b,small,div,p,label,h2,h3,h4,li,td,th,a,strong,em,i):not([style*="background"]):not([class*="g-"]):not([class*="sun"]):not([class*="sat"]):not([class*="hol"]):not([class*="today"]):not(.on):not(.active):not([aria-selected="true"]):not(.danger):not(.danger *){color:#f3f5ff!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body :is(.wbg-glass:not(#calendar-card):not(#calendar-card *):not(#vac-calendar-card):not(#vac-calendar-card *),#vacation-section .menu-btn,#settings-section .setting-grid,#settings-section #set-flat > button.set-tile,#notice-list,#suggestion-list,.board-page .nt-tab,.bottom-nav,.group-swap-open-btn,.sch-viewseg,.sch-png-btn,.sch-tool-sm,.mm-tabs) .set-sub,html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body :is(.wbg-glass:not(#calendar-card):not(#calendar-card *):not(#vac-calendar-card):not(#vac-calendar-card *),#vacation-section .menu-btn,#settings-section .setting-grid,#settings-section #set-flat > button.set-tile,#notice-list,#suggestion-list,.board-page .nt-tab,.bottom-nav,.group-swap-open-btn,.sch-viewseg,.sch-png-btn,.sch-tool-sm,.mm-tabs) small{color:#bcc8e0!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body :is(.wbg-glass:not(#calendar-card):not(#calendar-card *):not(#vac-calendar-card):not(#vac-calendar-card *),#vacation-section .menu-btn,#settings-section .setting-grid,#settings-section #set-flat > button.set-tile,#notice-list,#suggestion-list,.board-page .nt-tab,.bottom-nav,.group-swap-open-btn,.sch-viewseg,.sch-png-btn,.sch-tool-sm,.mm-tabs).danger,html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body :is(.wbg-glass:not(#calendar-card):not(#calendar-card *):not(#vac-calendar-card):not(#vac-calendar-card *),#vacation-section .menu-btn,#settings-section .setting-grid,#settings-section #set-flat > button.set-tile,#notice-list,#suggestion-list,.board-page .nt-tab,.bottom-nav,.group-swap-open-btn,.sch-viewseg,.sch-png-btn,.sch-tool-sm,.mm-tabs) .danger :where(span,b,small,div,p,label,h2,h3,h4,li,td,th,a,strong,em,i){color:#ff8f8f!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body :is(.wbg-glass:not(#calendar-card):not(#calendar-card *):not(#vac-calendar-card):not(#vac-calendar-card *),#vacation-section .menu-btn,#settings-section .setting-grid,#settings-section #set-flat > button.set-tile,#notice-list,#suggestion-list,.board-page .nt-tab,.bottom-nav,.group-swap-open-btn,.sch-viewseg,.sch-png-btn,.sch-tool-sm,.mm-tabs) img{filter:brightness(1.75) contrast(.95)!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(.menu-list) body :is(#main-section .menu-grid > button.menu-btn){background:rgba(10,18,34,.38)!important;background-image:none!important;border:1px solid rgba(255,255,255,.22)!important;-webkit-backdrop-filter:blur(10px) saturate(120%)!important;backdrop-filter:blur(10px) saturate(120%)!important;box-shadow:0 2px 10px rgba(0,0,0,.18)!important;color:#f3f5ff!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(.menu-list) body :is(#main-section .menu-grid > button.menu-btn) :where(span,b,small,div,p,label,h2,h3,h4,li,td,th,a,strong,em,i):not([style*="background"]):not([class*="g-"]):not([class*="sun"]):not([class*="sat"]):not([class*="hol"]):not([class*="today"]):not(.on):not(.active):not([aria-selected="true"]):not(.danger):not(.danger *){color:#f3f5ff!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(.menu-list) body :is(#main-section .menu-grid > button.menu-btn) .set-sub,html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(.menu-list) body :is(#main-section .menu-grid > button.menu-btn) small{color:#bcc8e0!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(.menu-list) body :is(#main-section .menu-grid > button.menu-btn).danger,html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(.menu-list) body :is(#main-section .menu-grid > button.menu-btn) .danger :where(span,b,small,div,p,label,h2,h3,h4,li,td,th,a,strong,em,i){color:#ff8f8f!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(.menu-list) body :is(#main-section .menu-grid > button.menu-btn) img{filter:brightness(1.75) contrast(.95)!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10).menu-list body :is(#main-section .menu-grid.mm-grid){background:rgba(10,18,34,.38)!important;background-image:none!important;border:1px solid rgba(255,255,255,.22)!important;-webkit-backdrop-filter:blur(10px) saturate(120%)!important;backdrop-filter:blur(10px) saturate(120%)!important;box-shadow:0 2px 10px rgba(0,0,0,.18)!important;color:#f3f5ff!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10).menu-list body :is(#main-section .menu-grid.mm-grid) :where(span,b,small,div,p,label,h2,h3,h4,li,td,th,a,strong,em,i):not([style*="background"]):not([class*="g-"]):not([class*="sun"]):not([class*="sat"]):not([class*="hol"]):not([class*="today"]):not(.on):not(.active):not([aria-selected="true"]):not(.danger):not(.danger *){color:#f3f5ff!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10).menu-list body :is(#main-section .menu-grid.mm-grid) .set-sub,html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10).menu-list body :is(#main-section .menu-grid.mm-grid) small{color:#bcc8e0!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10).menu-list body :is(#main-section .menu-grid.mm-grid).danger,html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10).menu-list body :is(#main-section .menu-grid.mm-grid) .danger :where(span,b,small,div,p,label,h2,h3,h4,li,td,th,a,strong,em,i){color:#ff8f8f!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10).menu-list body :is(#main-section .menu-grid.mm-grid) img{filter:brightness(1.75) contrast(.95)!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10).menu-list body #main-section .menu-grid > button.menu-btn{background:transparent!important;border-color:transparent!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;color:#f3f5ff!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10).menu-list body #main-section .menu-grid > button.menu-btn :where(span,b,small,div,p,label,h2,h3,h4,li,td,th,a,strong,em,i){color:#f3f5ff!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #group-section .g-dn{filter:brightness(2.4)!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #group-section :is(.g-today,.g-sel) .g-dn{filter:none!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body .bottom-nav .bn-btn,html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body .bottom-nav .bn-btn *{color:#fff!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #settings-section .set-sbar{background:rgba(10,18,34,.38)!important;border:1px solid rgba(255,255,255,.22)!important;-webkit-backdrop-filter:blur(10px) saturate(120%);backdrop-filter:blur(10px) saturate(120%);box-shadow:0 2px 10px rgba(0,0,0,.18)!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #settings-section .set-sbar input{color:#fff!important;-webkit-text-fill-color:#fff}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #settings-section .set-sbar input::placeholder{color:rgba(255,255,255,.7)!important;-webkit-text-fill-color:rgba(255,255,255,.7)}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #settings-section .set-sbar svg{stroke:#fff!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #settings-section .set-sx{background:rgba(255,255,255,.18)!important;color:#fff!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #settings-section .set-res{background:rgba(14,22,40,.96)!important;border:1px solid rgba(255,255,255,.22)!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #settings-section .set-res :is(b,span,small){color:#fff!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #settings-section .set-res mark{background:none!important;color:#8fc0ff!important}
+html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #vacation-section .mypage-subtitle,html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body #vacation-section .mypage-subtitle *,html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body .mm-tabs button,html.wbg-on:not(.spring-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10) body .mm-tabs button *{color:#fff!important}
 </style>
+<canvas id="sbg-bg" aria-hidden="true"></canvas><canvas id="sbg-fx" aria-hidden="true"></canvas>
+<style id="spring-ui">
+/* ===== 봄 테마: 벚꽃 역 (흐린 역 풍경 + 천천히 들어오는 열차 + 흩날리는 벚꽃잎) ===== */
+#sbg-bg,#sbg-fx{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;display:none;z-index:-1}
+#sbg-bg{-webkit-filter:blur(4px);filter:blur(4px);transform:scale(1.03)}
+html.wbg-on.season-spring #sbg-bg,html.wbg-on.season-spring #sbg-fx{display:block}
+html.season-spring #wbg,html.season-spring #wbg-base{display:none!important}
+.ssn-chips{display:flex;gap:6px}
+.ssn-chips button{border:1px solid #d5dbe6;background:#fff;color:#3a4a66;border-radius:999px;padding:6px 16px;font:inherit;font-size:13.5px;font-weight:700}
+html:not(.season-spring) .ssn-chips [data-s="winter"],html.season-spring .ssn-chips [data-s="spring"]{background:#2f6fd6;border-color:#2f6fd6;color:#fff}
+html.spring-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar .lc-d,html.spring-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar .lc-w,html.spring-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar .lc-hour,html.spring-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar .lc-colon,html.spring-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar .lc-minute,html.spring-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar .lc-g,html.spring-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar b,html.spring-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar i,html.spring-day:not(#s1):not(#s2):not(#s3):not(#s4) body #main-container .page-view>.sch-title,html.spring-day:not(#s1):not(#s2):not(#s3):not(#s4) body .page-view .sch-title,html.spring-day:not(#s1):not(#s2):not(#s3):not(#s4) body .page-view .sch-note,html.spring-day:not(#s1):not(#s2):not(#s3):not(#s4) body .page-view>h1,html.spring-day:not(#s1):not(#s2):not(#s3):not(#s4) body .page-view>h2,html.spring-day:not(#s1):not(#s2):not(#s3):not(#s4) body .page-view>.sch-eyebrow{color:#3a2a3f!important;text-shadow:none!important;-webkit-text-fill-color:#3a2a3f!important}
+html.spring-day:not(#s1):not(#s2):not(#s3):not(#s4) body .page-view :is(.sch-head,.group-head,[class*="-head"])::before{color:#c2185b!important;opacity:.85!important;text-shadow:none!important}
+#an-season .ssn-chips{display:flex!important;flex-direction:row!important;flex:none}
+#an-season .ssn-chips button{white-space:nowrap;flex:none}
+</style>
+<script id="spring-js">
+(function () {
+  var h = document.documentElement, KEY = 'rs_season';
+  function season() { try { return localStorage.getItem(KEY) === 'spring' ? 'spring' : 'winter'; } catch (e) { return 'winter'; } }
+  function mark() {
+    var sp = season() === 'spring', night = h.classList.contains('wbg-night');
+    if (h.classList.contains('season-spring') !== sp) h.classList.toggle('season-spring', sp);
+    var sd = sp && h.classList.contains('wbg-on') && !night;
+    if (h.classList.contains('spring-day') !== sd) h.classList.toggle('spring-day', sd);
+  }
+  window.seasonName = function () { return season() === 'spring' ? '봄' : '겨울'; };
+  window.seasonSet = function (s) {
+    try { localStorage.setItem(KEY, s === 'spring' ? 'spring' : 'winter'); } catch (e) {}
+    mark(); labels();
+    try { if (typeof wbgOn === 'function' && !wbgOn()) wbgSet(true); } catch (e) {}
+    try { showToast(seasonName() + ' 테마로 바꿨어요.'); } catch (e) {}
+    try { autoTxApply(); } catch (e) {}
+  };
+  function labels() {
+    var t = document.getElementById('an-wbg-t'), d = document.getElementById('an-wbg-d'), sp = season() === 'spring';
+    if (t) t.textContent = sp ? '봄 테마' : '겨울 테마';
+    if (d) d.textContent = sp ? '흩날리는 벚꽃잎과 천천히 들어오는 열차' : '반짝이는 크리스마스 트리와 내리는 하얀 눈';
+  }
+  mark(); labels();
+  new MutationObserver(function () { mark(); }).observe(h, { attributes: true, attributeFilter: ['class'] });
+  var bg = document.getElementById('sbg-bg'), fx = document.getElementById('sbg-fx'); if (!bg || !fx) return;
+  var bx = bg.getContext('2d'), x = fx.getContext('2d'), W = 0, H = 0, DPR = 1, night = false, key = '', petals = [], last = 0, lampPts = [];
+  function R(s) { return function () { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
+  function rgb(hex) { var n = parseInt(hex.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+  function blob(c, px, py, r, hex, a) { var k = rgb(hex), g = c.createRadialGradient(px, py, 0, px, py, r); g.addColorStop(0, 'rgba(' + k + ',' + a + ')'); g.addColorStop(1, 'rgba(' + k + ',0)'); c.fillStyle = g; c.beginPath(); c.arc(px, py, r, 0, 6.2832); c.fill(); }
+  function cherry(c, cx, cy, rad, n, cols, seed, a) { var r = R(seed); for (var i = 0; i < n; i++) { var ang = r() * 6.2832, d = Math.sqrt(r()) * rad; blob(c, cx + Math.cos(ang) * d, cy + Math.sin(ang) * d * .75, rad * (.22 + r() * .2), cols[i % cols.length], a); } }
+  /* 안개 낀 새벽 역: 왼쪽에서 들어오는 열차 · 오른쪽 승강장과 줄지은 가로등 · 벚꽃나무 */
+  function drawBg() {
+    var c = bx, n = night; c.clearRect(0, 0, W, H);
+    var g = c.createLinearGradient(0, 0, 0, H * .7); g.addColorStop(0, n ? '#262c55' : '#ecdde6'); g.addColorStop(1, n ? '#4f5484' : '#fbf1f5'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+    var PK = n ? ['#a07ab0', '#b98cc0', '#c69ac8'] : ['#f8bbd0', '#f48fb1', '#fce4ec', '#f6a5c0'];
+    var HL = n ? ['#3a3f6e', '#323764'] : ['#e6d2dc', '#dcc4d2'];
+    var r0 = R(5);
+    for (var k = 0; k < 2; k++) for (var i = 0; i <= 12; i++) blob(c, W * i / 12, H * (.44 + k * .07) + (r0() - .5) * H * .04, W * (.2 + r0() * .08), HL[k], .75);
+    cherry(c, W * .22, H * .5, W * .13, 12, PK, 3, n ? .35 : .5); cherry(c, W * .4, H * .52, W * .1, 10, PK, 4, n ? .35 : .5); cherry(c, W * .75, H * .47, W * .12, 12, PK, 8, n ? .35 : .5);
+    blob(c, W * .5, H * .58, W * .6, n ? '#8c90bf' : '#ffffff', n ? .25 : .5);
+    c.fillStyle = n ? '#1c1b34' : '#8f8189'; c.fillRect(0, H * .68, W, H * .32);
+    c.fillStyle = n ? '#2a2850' : '#a79aa1'; for (var q = 0; q < 18; q++) c.fillRect(W * (q * .06), H * (.7 + (q % 5) * .05), W * .045, H * .012);
+    c.fillStyle = n ? '#4b4766' : '#d4cad0'; c.beginPath(); c.moveTo(W * .44, H * .70); c.lineTo(W, H * .67); c.lineTo(W, H * .83); c.lineTo(W * .56, H * .78); c.closePath(); c.fill();
+    c.strokeStyle = n ? '#f2d16b' : '#f4cf3d'; c.lineWidth = Math.max(3, W * .011); c.beginPath(); c.moveTo(W * .46, H * .708); c.quadraticCurveTo(W * .56, H * .73, W * .6, H * .79); c.stroke();
+    c.lineCap = 'round'; c.strokeStyle = n ? '#8a8fc0' : '#5d4d55'; c.lineWidth = Math.max(2.5, W * .009);
+    c.beginPath(); c.moveTo(W * .31, H * .69); c.quadraticCurveTo(W * .14, H * .78, 0, H * .93); c.stroke();
+    c.beginPath(); c.moveTo(W * .37, H * .69); c.quadraticCurveTo(W * .3, H * .82, W * .2, H); c.stroke();
+    c.strokeStyle = n ? 'rgba(255,224,150,.5)' : 'rgba(255,255,255,.55)'; c.lineWidth = 1.2;
+    c.beginPath(); c.moveTo(W * .31, H * .683); c.quadraticCurveTo(W * .14, H * .773, 0, H * .92); c.stroke();
+    c.fillStyle = n ? '#2c2330' : '#6d4c41'; c.fillRect(W * .05, H * .42, W * .03, H * .3); c.fillRect(W * .585, H * .55, W * .012, H * .12);
+    cherry(c, W * .06, H * .3, W * .3, 46, PK, 11, n ? .7 : .8);
+    cherry(c, W * .59, H * .5, W * .13, 18, PK, 13, n ? .6 : .7);
+    cherry(c, W * .97, H * .46, W * .22, 26, PK, 17, n ? .6 : .75);
+    c.fillStyle = n ? '#3a3a62' : '#cfc4ca'; c.fillRect(W * .79, H * .62, W * .2, H * .014);
+    var L = [[.86, .1, .76, 1], [.69, .3, .71, .7], [.57, .4, .69, .5], [.47, .45, .68, .4], [.4, .48, .67, .32]]; lampPts = [];
+    L.forEach(function (l) {
+      var px = W * l[0], top = H * l[1], base = H * l[2], s = l[3], arm = W * .07 * s, glow = W * .1 * s;
+      c.strokeStyle = n ? '#9aa0c8' : '#8d838a'; c.lineWidth = Math.max(2, 5 * s); c.beginPath(); c.moveTo(px, base); c.lineTo(px, top + H * .02); c.stroke();
+      c.lineWidth = Math.max(1.5, 3 * s); c.beginPath(); c.moveTo(px - arm, top + H * .012); c.quadraticCurveTo(px, top - H * .012, px + arm, top + H * .012); c.stroke();
+      [[px - arm, top + H * .012], [px + arm, top + H * .012]].forEach(function (p) { blob(c, p[0], p[1], glow, '#ffd98a', n ? .95 : .7); blob(c, p[0], p[1], glow * .35, '#fff6d8', .95); lampPts.push({ x: p[0], y: p[1], r: glow }); });
+    });
+    c.fillStyle = n ? '#14142a' : '#2b2733'; c.fillRect(W * .555, H * .625, W * .016, H * .05); c.beginPath(); c.arc(W * .563, H * .615, W * .011, 0, 6.2832); c.fill();
+    c.fillStyle = '#e53935'; c.fillRect(W * .535, H * .63, W * .026, H * .015);
+    blob(c, W * .5, H * .6, W * .5, n ? '#9fa4d0' : '#ffffff', n ? .12 : .3);
+  }
+  function size() {
+    var vv = window.visualViewport, w = Math.max(1, Math.round(vv ? vv.width : h.clientWidth || innerWidth)), hh = Math.max(1, Math.round(vv ? vv.height : h.clientHeight || innerHeight)), d = Math.min(2, window.devicePixelRatio || 1);
+    night = h.classList.contains('wbg-night');
+    var k = w + 'x' + hh + '@' + d + (night ? 'n' : 'd'); if (k === key) return; key = k; W = w; H = hh; DPR = d;
+    [bg, fx].forEach(function (cv) { cv.width = W * DPR; cv.height = H * DPR; });
+    bx.setTransform(DPR, 0, 0, DPR, 0, 0); x.setTransform(DPR, 0, 0, DPR, 0, 0);
+    drawBg();
+    var r = R(901), cnt = Math.max(26, Math.min(64, Math.round(W / 8))); petals = [];
+    for (var i = 0; i < cnt; i++) petals.push({ x: r() * W, y: r() * H, vy: .5 + r() * .9, vx: -.15 - r() * .35, ph: r() * 6.28, rot: r() * 6.28, rv: (r() - .5) * .08, s: (3 + r() * 4) * Math.max(1, W / 420), c: i % 4 });
+  }
+  var CYC = 36000;
+  function ease(u) { return u * u * (3 - 2 * u); }
+  function trainSt(t) {
+    var p = t % CYC;
+    if (p < 11000) { var u = ease(p / 11000); return { sc: .5 + .5 * u, x: .42 - .16 * u, a: Math.min(1, p / 3000) }; }
+    if (p < 19000) return { sc: 1, x: .26, a: 1 };
+    if (p < 27000) { var v = ease((p - 19000) / 8000); return { sc: 1 + .5 * v, x: .26 - .5 * v, a: 1 - v * .9 }; }
+    return null;
+  }
+  function frame(now) {
+    requestAnimationFrame(frame);
+    var on = h.classList.contains('season-spring') && h.classList.contains('wbg-on') && !document.hidden;
+    if (!on) { if (W) x.clearRect(0, 0, W, H); return; }
+    if (now - last < 33) return; var dt = Math.min(3, (now - last) / 16.7); last = now;
+    size(); x.clearRect(0, 0, W, H);
+    lampPts.forEach(function (p, i) { blob(x, p.x, p.y, p.r * .9, '#ffe2a0', (night ? .3 : .18) + .1 * Math.sin(now / 800 + i)); });
+    var st = trainSt(now);
+    if (st) {
+      var sc = st.sc, lw = W * .27 * sc, lh = H * .11 * sc, cx = W * st.x, yb = H * (.64 + .06 * Math.min(1, (sc - .5) * 2)), n = night;
+      x.globalAlpha = st.a; x.shadowColor = n ? 'rgba(120,130,190,.8)' : 'rgba(255,255,255,.9)'; x.shadowBlur = 9 * sc;
+      var cw = lw * 1.15, ch = lh * .92;
+      x.fillStyle = n ? '#59658a' : '#f5f7fb'; x.fillRect(cx - lw / 2 - cw - 2, yb - ch, cw, ch);
+      x.fillStyle = n ? '#2c3a66' : '#1b4fa8'; x.fillRect(cx - lw / 2 - cw - 2, yb - ch * .3, cw, ch * .12);
+      for (var w2 = 0; w2 < 4; w2++) { x.fillStyle = n ? 'rgba(255,224,130,' + (.75 + .2 * Math.sin(now / 500 + w2)).toFixed(2) + ')' : '#90b4e0'; x.fillRect(cx - lw / 2 - cw + cw * (.06 + w2 * .23), yb - ch * .82, cw * .17, ch * .36); }
+      x.fillStyle = n ? '#2d3f78' : '#2b4fa0'; x.fillRect(cx - lw / 2, yb - lh, lw, lh);
+      x.fillStyle = n ? '#8d99c8' : '#ffffff'; x.fillRect(cx - lw / 2, yb - lh * .42, lw, lh * .14);
+      x.fillStyle = '#e53935'; x.fillRect(cx - lw / 2, yb - lh * .26, lw, lh * .06);
+      x.fillStyle = n ? '#10142c' : '#26304f'; x.fillRect(cx - lw * .36, yb - lh * .86, lw * .2, lh * .3); x.fillRect(cx + lw * .16, yb - lh * .86, lw * .2, lh * .3);
+      x.shadowBlur = 0; x.shadowColor = 'rgba(0,0,0,0)';
+      var pul = .88 + .12 * Math.sin(now / 350);
+      blob(x, cx, yb - lh * .66, W * .17 * sc, '#fff1b8', .9 * pul); blob(x, cx, yb - lh * .66, W * .06 * sc, '#ffffff', 1);
+      x.globalAlpha = 1;
+    }
+    var pc = night ? ['#f8bbd0', '#fde4ec', '#f3a7cf', '#ffffff'] : ['#f8bbd0', '#f48fb1', '#ffffff', '#fce4ec'];
+    petals.forEach(function (p) {
+      p.y += p.vy * dt; p.x += p.vx * dt + Math.sin(now / 900 + p.ph) * .35 * dt; p.rot += p.rv * dt;
+      if (p.y > H + 10) { p.y = -10; p.x = Math.random() * W * 1.1; } if (p.x < -10) p.x = W + 10;
+      x.save(); x.translate(p.x, p.y); x.rotate(p.rot); x.globalAlpha = night ? .85 : .9; x.fillStyle = pc[p.c];
+      x.beginPath(); x.ellipse(0, 0, p.s, p.s * .6, 0, 0, 6.2832); x.fill(); x.restore();
+    });
+    x.globalAlpha = 1;
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
 </body>
 </html>
