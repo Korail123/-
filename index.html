@@ -32057,7 +32057,10 @@ var DOW = ['일', '월', '화', '수', '목', '금', '토'];
     return [(t.m + 1) + '월 휴가·휴무: ' + (out.length ? out.join(', ') : '없음'), stamp()];
   }
   window.aiAsk = function (q) {
+    if (q.replace(/\s/g, '') === 'AI횟수초기화') { try { localStorage.removeItem('rsAiCount'); } catch (e) {} add('bot', '오늘 AI 질문 횟수를 0으로 되돌렸어요.'); return; }
     add('me', q); var a;
+    var other = otherName(q);
+    if (other) { colleagueAnswer(other, q); return; }
     if (/(바꿔|변경|등록|신청|넣어|쉬게|쉬고|해줘|해 줘).*/.test(q) && /(바꿔|변경|등록|신청|넣어|쉬게|교환)/.test(q)) { changeFlow(q); return; }
     if (/이번\s*주|일주일|주간 근무/.test(q)) a = weekAnswer();
     else if (/이번\s*달.*(휴가|연차|휴무)|(휴가|연차|휴무).*(날짜|언제|며칠에)/.test(q)) a = monthLeaveAnswer();
@@ -32070,6 +32073,34 @@ var DOW = ['일', '월', '화', '수', '목', '금', '토'];
      · 개인정보가 보이면 보내지 않음 · 채팅 내용은 화면에만 있고 어디에도 저장하지 않음 · 사용자 식별자는 보내지 않음 */
   var AI_ENDPOINT = 'https://qurksmjiifepecapyfky.supabase.co/functions/v1/railway-ai';   /* Supabase Edge Function (배포 전에는 'AI에 연결하지 못했어요'로 안내) */
   var AI_USER_DAILY = 3, AI_CNT_KEY = 'rsAiCount';
+  /* 같은 근무그룹 사람의 근무: 근무그룹 화면과 똑같은 자료·함수로 계산하고, 그룹 화면에 보이는 사람만 알려줌 (앱 안에서만 처리, AI로 보내지 않음) */
+  function colleagueAnswer(nm, q) {
+    var t = todayKST(), dts = [];
+    if (/이번\s*주|일주일/.test(q)) { for (var i = 0; i < 7; i++) dts.push(new Date(t.y, t.m, t.d + i)); } else dts.push(parseDate(q));
+    function key(d) { return getDateKey(d.getFullYear(), d.getMonth(), d.getDate()); }
+    var res = null; try { if (snapshotUsable()) res = buildLocalRange('group', key(dts[0]), key(dts[dts.length - 1])); } catch (e) {}
+    var mem = null; if (res && res.members) for (var j = 0; j < res.members.length; j++) if (String(res.members[j].name) === nm) { mem = res.members[j]; break; }
+    if (!mem) { add('bot', nm + '님은 내 근무그룹에서 찾을 수 없어요. 같은 근무그룹 사람의 근무만 알려드릴 수 있어요.'); return; }
+    var lines = dts.map(function (d) {
+      var k = key(d), info = mem.days && mem.days[k], txt = '-';
+      try { if (info) txt = String(rsGroupCalendarDuty(info, k, mem) || '-').replace(/<[^>]*>/g, ''); } catch (e) {}
+      return (d.getMonth() + 1) + '/' + d.getDate() + '(' + DOW[d.getDay()] + ') ' + txt;
+    });
+    add('bot', nm + '님 근무\n' + lines.join('\n'), stamp() + ' · 근무그룹 화면과 같은 자료');
+  }
+  /* 질문에 '내 이름이 아닌' 동료 이름이 있으면 그 사람 근무를 내 근무로 잘못 답하지 않도록 따로 처리 */
+  function otherName(q) {
+    try {
+      var u = getCurrentUser(), me = u && u.name ? String(u.name) : '';
+      if (typeof snapshot !== 'undefined' && snapshot && snapshot.raw && snapshot.raw.members) {
+        for (var i = 0; i < snapshot.raw.members.length; i++) { var n = snapshot.raw.members[i] && snapshot.raw.members[i].name; if (n && String(n).length >= 2 && String(n) !== me && q.indexOf(String(n)) >= 0) return String(n); }
+      }
+    } catch (e) {}
+    /* 명단을 못 불러왔을 때: "OO 근무/출근/휴가" 꼴의 한글 2~4자 이름 */
+    var m = q.match(/([가-힣]{2,4})\s*(?:님|씨)?\s*(?:의\s*)?(?:근무|출근|퇴근|휴가|연차|다이아)/);
+    if (m && !/^(오늘|내일|모레|어제|이번|다음|올해|내|나의|제|이번주|이번달|지난|무슨|무슨|몇|내일모레|전체|우리|근무|하루)$/.test(m[1]) && !/(오늘|내일|모레|어제|이번|다음|올해|지난|무슨)$/.test(m[1]) && !/(근무|출근|퇴근)$/.test(m[1])) return m[1];
+    return '';
+  }
   function hasPersonal(q) {
     if (/(\d{6}\s*-\s*\d{7})|(01\d[-\s]?\d{3,4}[-\s]?\d{4})|(\d{9,})|(@[A-Za-z0-9.-]+\.[A-Za-z]{2,})|(사번|비밀번호|패스워드|주민|계좌|카드번호)/.test(q)) return true;
     try {
@@ -32106,5 +32137,13 @@ var DOW = ['일', '월', '화', '수', '목', '금', '토'];
   window.aiSubmit = function (e) { e.preventDefault(); var i = document.getElementById('ai-input'), q = (i.value || '').trim(); if (!q) return; i.value = ''; aiAsk(q); };
 })();
 </script>
+<style id="dd-no-lines">
+/* 승무원 띠와 행로표 사이 · 카드 바깥으로 비치는 선 삭제 (모든 카드 색 공통) / 승무원 펼침 상세 줄 삭제 */
+html body #day-detail .dd-cover .cv-bar{margin-bottom:-2px!important;padding-bottom:2px!important;border:0!important;box-shadow:none!important;position:relative;z-index:1}
+html body #day-detail .dd-cover .cv-rt{margin-top:-1px!important;padding-top:1px!important;border:0!important;box-shadow:none!important}
+html body #day-detail .dd-cover .cv-strip{border:0!important;box-shadow:none!important;outline:0!important}
+html body #day-detail .dd-cover .cv-strip s{display:none!important}
+html body #day-detail .crew-row,html body #day-detail.dd-crew-open .crew-row.dd-dup{display:none!important}
+</style>
 </body>
 </html>
