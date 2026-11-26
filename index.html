@@ -12797,6 +12797,7 @@ if (nowMs >= alarmMs && nowMs < startMs) {
 var mark = key + '|' + cfg.min;
 if (LS.getItem(firedKey) === mark) continue;
 try { LS.setItem(firedKey, mark); } catch (e) {}
+if (rsAppHas('setAlarms')) return;   /* 안드로이드 앱: 폰 예약 알람이 이미 울렸으므로 앱을 열 때 다시 울리지 않음 */
 fireAlarm(w, key, cfg.min);
 return;
 }
@@ -12947,6 +12948,7 @@ if (now >= a.at && now < a.endMs) {
 var mark = a.key + '|' + cfg.min;
 if (fired === mark) continue;
 try { LS.setItem(fk, mark); } catch (e) {}
+if (rsAppHas('setAlarms')) return;   /* 안드로이드 앱: 폰 예약 알람이 담당 */
 fireMidAlarm(a);
 return;
 }
