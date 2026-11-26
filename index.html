@@ -15976,7 +15976,7 @@ var GIS_FN = 'gis-train';   /* Supabase Edge Function 이름 (없으면 코레�
 function gisFetchOne(url, opt, cb) {
   var done = false, tm = setTimeout(function () { if (!done) { done = true; cb('timeout'); } }, 9000);
   try {
-    fetch(url, opt).then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); }).then(function (j) {
+    fetch(url, opt).then(function (r) { if (!r.ok) return r.json().then(function (j) { throw new Error('http ' + r.status + (j && j.error ? ' ' + j.error : '')); }, function () { throw new Error('http ' + r.status); }); return r.json(); }).then(function (j) {
       if (done) return; done = true; clearTimeout(tm);
       if (!j || !Array.isArray(j.features)) { cb('format'); return; }
       cb(null, { at: Date.now(), feats: j.features, stamp: j.timeStamp || '' });
