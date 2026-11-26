@@ -2894,7 +2894,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <div id="nx-panel" class="dia-modal" onclick="if(event.target===this)closeNxSettings()">
   <div class="dia-dialog ns-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차운휴알림" alt="" aria-hidden="true">열차 운휴 알림</div>
-    <div class="freight-only-note"><b>여객열차 알림은 잠시 멈췄어요.</b> 화물열차만 알려드려요.</div>
     <div class="ns-card">
       <div class="ns-row">
         <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차운휴알림" alt="" aria-hidden="true"><span><b class="ns-t">운휴 알림</b><small>내 근무 열차가 운휴되면 알려드려요</small></span></span>
@@ -2926,7 +2925,6 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <div id="pass-panel" class="dia-modal" onclick="if(event.target===this)closePassSettings()">
   <div class="dia-dialog ns-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차통과알림" alt="" aria-hidden="true">열차통과/도착 알림</div>
-    <div class="pa2-fr">🚚 화물열차만 알려드려요</div>
     <div id="pass-card" class="pv2 pa2">
       <div class="pa2-list">
         <details class="pa2-row" id="pa2-tr"><summary><span>열차</span><em id="pa2-tr-sum"></em></summary>
@@ -3036,7 +3034,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <li><b>진입 중</b> · <b>통과</b> 중 받고 싶은 알림을 켜요.</li>
       <li>NXLogis에 <b>앞 역 - 그 역 운행중</b>이 뜨면 <b>진입 중</b>, 그 역에 <b>실제 정차/통과 시각</b>이 찍히면 <b>통과</b> 알림이 와요.</li></ol></details>
     <details class="guide-sec" data-g="nx"><summary>열차 운휴 알림</summary><div class="gd-stage" data-g="nx"></div><ol>
-      <li>환경설정 › <b>열차 운휴 알림</b>을 열고 <b>운휴 알림</b> 스위치를 켜요. (화물열차만)</li>
+      <li>환경설정 › <b>열차 운휴 알림</b>을 열고 <b>운휴 알림</b> 스위치를 켜요.</li>
       <li><b>로그인할 때</b> 오늘~모레 내 근무 열차의 운휴를 조회해서 팝업으로 알려줘요.</li>
       <li><b>앱이 꺼져 있어도</b> 7일 동안 10분마다 확인해서 휴대폰 알림으로 보내줘요.</li>
       <li>바로 확인하려면 <b>더 보기</b> › <b>지금 조회</b>를 누르면 돼요. 알림 방식 · 알림 테스트도 여기 있어요.</li>
@@ -3087,7 +3085,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <div id="trainq-panel" class="dia-modal" style="z-index:405" onclick="if(event.target===this)closeTrainQuery()">
   <div class="dia-dialog ns-dialog tq-dialog">
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차운행조회" alt="" aria-hidden="true">열차운행정보 조회</div>
-    <div class="tq-sub" style="word-break:keep-all">날짜와 열차번호를 넣으면 열차의 <b>운행 위치</b>를 보여줘요.<br>화물열차는 <b>Logis.Korail</b>, 그 밖의 열차는 <b>NXLogis</b>로 열려요.</div>
+    <div class="tq-sub" style="word-break:keep-all">날짜와 열차번호를 입력해 주세요.</div>
     <div class="tq-sec">
       <label class="tq-lab" for="tq-day">날짜</label>
       <input id="tq-day" type="hidden">
@@ -3102,7 +3100,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <input id="tq-in" class="tq-field" inputmode="text" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="예: 3224" autocomplete="off" oninput="tqPrefetch()" onkeydown="if(event.key==='Enter')trainQueryInput()" onblur="this.value=this.value.toUpperCase()">
       <div id="tq-msg" class="tq-msg"></div>
     </div>
-    <div class="tq-btns3"><button type="button" class="tq-b3 pri" onclick="trainQueryInput()">조회</button><button type="button" class="tq-b3 sub" onclick="openPassView()">설정</button><button type="button" class="tq-b3 gh" onclick="closeTrainQuery()">닫기</button></div>
+    <div class="tq-btns3"><button type="button" class="tq-b3 nx" onclick="trainQueryNx()">NXLogis</button><button type="button" class="tq-b3 sub" onclick="openPassView()">설정</button><button type="button" class="tq-b3 pri" onclick="trainQueryInput()">조회</button><button type="button" class="tq-b3 gh" onclick="closeTrainQuery()">닫기</button></div>
   </div>
 </div>
 <div id="tt-pop" class="dia-modal" style="z-index:407" onclick="if(event.target===this)ttClose()">
@@ -15936,6 +15934,16 @@ function tqCalPick(key) {
   $('tq-msg').textContent = '';
 }
 function tqCalPickToday() { tqCalPick(trainQueryToday()); }
+/* NXLogis 버튼: 입력한 날짜 · 열차번호로 NXLogis 사이트를 앱 안의 창으로 열기 */
+function trainQueryNx() {
+  var day = String($('tq-day').value || '');
+  var v = String($('tq-in').value || '').replace(/\s/g, '').toUpperCase();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) { $('tq-msg').textContent = '날짜를 골라주세요.'; return; }
+  if (!/^(?=.*\d)[A-Z0-9-]{1,8}$/.test(v)) { $('tq-msg').textContent = '열차번호를 숫자와 영문으로 입력해 주세요. (예: 3224)'; return; }
+  closeTrainQuery();
+  tqBackOnClose = true;
+  tqOpenNxWeb(v, day);
+}
 function trainQueryInput() {
   var day = String($('tq-day').value || '');
   var v = String($('tq-in').value || '').replace(/\s/g, '').toUpperCase();
@@ -16021,11 +16029,14 @@ function gisPanel(inner) {
 }
 function gisShowTrain(tno, key, force) {
   var t = todayKST(), today = getDateKey(t.y, t.m, t.d);
-  if (key && key !== today) { tqOpenNxWeb(tno, key); return; }   /* 실시간 정보라 오늘만 */
+  var nxBtn = '<button type="button" class="dia-text-btn" onclick="gisClose();tqOpenNxWeb(\'' + esc(tno) + '\',\'' + esc(key || '') + '\')">NXLogis로 보기</button>';
+  if (key && key !== today) {   /* 실시간 정보라 오늘만 · NXLogis는 버튼을 눌러야 열림 */
+    gisPanel('<div class="gis-t">' + esc(tno) + '열차</div><div class="gis-n" style="font-size:13px;opacity:.9">여객열차 실시간 위치는 <b>오늘</b> 열차만 조회돼요.<br>다른 날짜는 NXLogis로 확인해 주세요.</div><div class="gis-btns">' + nxBtn + '<button type="button" class="dia-text-btn" onclick="gisClose()">닫기</button></div>'); return;
+  }
   var num = String(tno).replace(/\D/g, '').replace(/^0+/, '');
   gisPanel('<div class="gis-t">' + esc(tno) + '열차</div><div class="gis-n">코레일 열차위치에서 불러오는 중…</div>');
   gisFetch(function (err, c) {
-    if (err) { gisClose(); showToast('열차위치를 불러오지 못해 NXLogis 화면으로 열어요.'); tqOpenNxWeb(tno, key); return; }
+    if (err) { gisPanel('<div class="gis-t">' + esc(tno) + '열차</div><div class="gis-n" style="font-size:13px;opacity:.9">열차위치를 불러오지 못했어요.<br>잠시 뒤 다시 시도하거나 NXLogis로 확인해 주세요.</div><div class="gis-btns">' + nxBtn + '<button type="button" class="dia-text-btn" onclick="gisShowTrain(\'' + esc(tno) + '\',\'' + esc(key || '') + '\',true)">다시 시도</button><button type="button" class="dia-text-btn" onclick="gisClose()">닫기</button></div>'); return; }
     var f = null;
     c.feats.forEach(function (x) { var pr = x.properties || {}; if (!f && String(pr.trn_no).replace(/^0+/, '') === num) f = pr; });
     var btn = '<div class="gis-btns"><button type="button" class="dia-text-btn" onclick="gisShowTrain(\'' + esc(tno) + '\',\'' + esc(key || '') + '\',true)">새로고침</button><button type="button" class="dia-text-btn" onclick="gisClose()">닫기</button></div>';
@@ -30114,7 +30125,9 @@ function nxwExternal() { var w = null; try { w = window.open(nxwUrl, '_blank', '
 </style>
 <style id="pass-view-ui">
 /* 열차운행정보 조회: 조회 · 설정 · 닫기 같은 크기 */
-#trainq-panel .tq-btns3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px}
+#trainq-panel .tq-btns3{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-top:14px}
+#trainq-panel .tq-b3.nx{background:#fff1e0;color:#b45d00;font-size:13.5px}
+#trainq-panel .tq-b3{font-size:13.5px!important;padding:0 2px}
 #trainq-panel .tq-b3{height:46px;border:0;border-radius:14px;font-family:inherit;font-size:14.5px;font-weight:800;cursor:pointer}
 #trainq-panel .tq-b3.pri{background:#2f6fd6;color:#fff}
 #trainq-panel .tq-b3.sub{background:#e6efff;color:#1d4fae}
@@ -30446,7 +30459,7 @@ function passMapBind(box) {
   var nx = document.getElementById('nx-panel');
   if (nx) {
     var top = nx.querySelector('.ns-card'), nk = nx.querySelector('.nk-card[data-kind="nx"]'), nt = nx.querySelector('.ns-test-card'), pts = top && top.querySelector('.ns-points'), fr = nx.querySelector('.freight-only-note'), res = document.getElementById('nx-result');
-    var sm = top && top.querySelector('.ns-row small'); if (sm) sm.textContent = '화물열차만 · 내 근무 열차가 운휴되면 알려줘요';
+    var sm = top && top.querySelector('.ns-row small'); if (sm) sm.textContent = '내 근무 열차가 운휴되면 알려줘요';
     if (top && nk && nt) {
       var c2 = card(top); grp('더 보기', c2);
       row(c2, '알림 방식', 'gl-nk-sum', [nk]);
