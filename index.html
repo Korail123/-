@@ -32271,5 +32271,41 @@ html.tx-on-light:not(#z1):not(#z2):not(#z3) body .page-view>h1,html.tx-on-light:
   setTimeout(apply, 1500);
 })();
 </script>
+<style id="cache-ux-style">
+.vac-unconfirmed .vac-chipbtn b{opacity:.55}
+.vac-unconfirmed .vac-chipbtn b::after{content:'?';font-weight:600}
+#vac-status.vac-ok{color:#1b8a4b}
+#vac-status.vac-wait{color:#b26a00}
+</style>
+<script id="cache-ux-js">
+/* 캐시 보강 (기존 저장 데이터는 건드리지 않고 '표시'만 추가)
+   · 서버가 마지막으로 확인해 준 시각을 이 폰에 기록
+   · 휴가관리: 서버에서 최신 근무표를 확인한 경우에만 확정값, 아니면 '?'와 안내로 표시 */
+(function () {
+  var OK_KEY = 'rs_last_ok_v1', FRESH = 10 * 60000;
+  function me() { try { return String(getCurrentUser().employeeId || ''); } catch (e) { return ''; } }
+  function getOk() { try { var o = JSON.parse(localStorage.getItem(OK_KEY) || 'null'); return o && o.owner === me() ? +o.t || 0 : 0; } catch (e) { return 0; } }
+  function setOk() { try { localStorage.setItem(OK_KEY, JSON.stringify({ owner: me(), t: Date.now() })); } catch (e) {} }
+  function fmt(t) { if (!t) return '기록 없음'; var d = new Date(t), p = function (n) { return String(n).padStart(2, '0'); }; return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  var _sa = snapApply;
+  snapApply = function (owner, gen, r) { var ok = _sa(owner, gen, r); if (ok) setOk(); return ok; };
+  function confirmed() { return navigator.onLine !== false && snapshotUsable() && Date.now() - snapshot.t < FRESH; }
+  function vacMark() {
+    var cards = document.getElementById('vac-cards'), st = document.getElementById('vac-status'); if (!cards) return;
+    var ok = confirmed(); cards.classList.toggle('vac-unconfirmed', !ok);
+    if (!st) return;
+    if (ok) { st.className = 'vac-ok'; st.textContent = '최신 집계 확인됨 · ' + fmt(snapshot.t); }
+    else if (snapshotUsable()) { st.className = 'vac-wait'; st.textContent = '저장된 집계예요 (확정 아님) · 마지막 확인 ' + fmt(getOk() || snapshot.t) + ' · 서버 확인 중…'; }
+    else st.className = '';
+  }
+  var _rv = renderVacation;
+  renderVacation = function () { _rv(); vacMark(); };
+  var _ov = openVacation;
+  openVacation = function () {
+    _ov();
+    try { if (navigator.onLine !== false && getCurrentUser().token) refreshSnapshot(true, function () { if (document.getElementById('vacation-management-section').classList.contains('active')) renderVacation(); }); } catch (e) {}
+  };
+})();
+</script>
 </body>
 </html>
