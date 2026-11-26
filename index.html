@@ -7727,7 +7727,7 @@ function renderDayDetail() {
     var cvCrewBtn = ddCrewR ? '<button type="button" class="cv-strip" onclick="ddCrewToggle(this)"><small>승무원</small><b>' + (ddCrewR.none ? '<em>정보 없음</em>' : ddCrewR.level === 1 || ddCrewR.level === 2 ? ddCrewR.mates.map(esc).join(' · ') : '<em>' + (ddCrewR.found ? '단독 승무' : '정보 없음') + '</em>') + '</b></button>' : '';
     if (ddRouteHtml) {
       /* 승무원 줄 오른쪽에 행로표 접기/펼치기 · 그 아래에 행로표 (펼침이 기본, 날짜를 바꾸면 항상 펼친 상태로 시작) */
-      cv += '<div class="cv-bar">' + (cvCrewBtn || '<span class="cv-bar-sp"></span>') + '<button type="button" class="cv-rt-tog" onclick="ddRouteToggle(this)" aria-expanded="true"><span>행로표 접기</span> <i>▲</i></button></div><div class="cv-rt">' + ddRouteHtml + '</div>';
+      cv += '<div class="cv-bar">' + (cvCrewBtn || '<span class="cv-bar-sp"></span>') + '<button type="button" class="cv-rt-tog" onclick="ddRouteToggle(this)" aria-expanded="true" aria-label="행로표 접기 · 펼치기"><i>▲</i></button></div><div class="cv-rt">' + ddRouteHtml + '</div>';
     } else cv += cvCrewBtn;
     cv += '</div>';
     html = html.slice(0, ddHeadLen) + cv + html.slice(ddHeadLen);
@@ -8636,7 +8636,7 @@ function renderGroupTable() {
       '<div class="current-dia-value">' + counts[selIdx] + '명</div>' +
       (leaveNames[selIdx].length
         ? '<div style="margin-top:6px;font-size:14px;color:#444;line-height:1.7;white-space:normal;word-break:keep-all">' +
-          esc(leaveNames[selIdx].join(', ')) + '</div>'
+          leaveNames[selIdx].map(function (n, qi, arr) { return '<span style="display:inline-block;white-space:nowrap">' + esc(n) + (qi < arr.length - 1 ? ',' : '') + '</span>'; }).join(' ') + '</div>'
         : '');
     if (summary.__h !== sumHtml) { summary.innerHTML = sumHtml; summary.__h = sumHtml; }
   }
@@ -31893,8 +31893,28 @@ function ddRouteToggle(btn) {
   var dd = document.getElementById('day-detail'); if (!dd) return;
   var closed = !dd.classList.contains('dd-rt-closed');
   dd.classList.toggle('dd-rt-closed', closed);
-  if (btn) { btn.setAttribute('aria-expanded', String(!closed)); var sp = btn.querySelector('span'); if (sp) sp.textContent = closed ? '행로표 펼치기' : '행로표 접기'; }
+  if (btn) btn.setAttribute('aria-expanded', String(!closed));
 }
 </script>
+<style id="dd-route-simple">
+/* 승무원 ~ 행로표 사이 선 삭제 · 접기 버튼은 화살표만 */
+#day-detail .dd-cover .cv-rt-cap{border-top:0!important;padding-top:0!important}
+#day-detail .dd-cover .cv-bar,#day-detail .dd-cover .cv-rt,#day-detail .dd-cover .cv-strip{border:0!important;box-shadow:none!important}
+#day-detail .dd-cover .cv-rt-tog{border:0!important;background:transparent!important;padding:6px 14px 6px 8px!important;margin:0!important;font-size:15px;color:#6f8fb8!important}
+#day-detail .dd-cover .cv-rt-tog i{font-size:13px}
+html.ui-dark #day-detail .dd-cover .cv-rt-tog{background:transparent!important;color:#8db7ff!important}
+</style>
+<style id="group-no-gray">
+/* 근무그룹표: 가로 · 세로 회색 선을 모두 없앰 (선택한 날짜 파란 테두리는 그대로) */
+html body #group-section .group-table th,
+html body #group-section .group-table td,
+html body #group-section .group-table tbody tr td,
+html body #group-section .group-table tbody tr:last-child td,
+html body #group-section .group-table tfoot td,
+html body #group-section .group-table thead th{border:0!important}
+html.ui-dark body #group-section .group-table th,
+html.ui-dark body #group-section .group-table td{border:0!important}
+html body #group-section .group-table tr.wk td{border:0!important}
+</style>
 </body>
 </html>
