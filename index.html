@@ -32081,6 +32081,7 @@ var DOW = ['일', '월', '화', '수', '목', '금', '토'];
     return false;
   }
   function todayCount() { try { var o = JSON.parse(localStorage.getItem(AI_CNT_KEY) || '{}'), d = new Date().toDateString(); return o.d === d ? o.n : 0; } catch (e) { return 0; } }
+  function refundCount() { try { var o = JSON.parse(localStorage.getItem(AI_CNT_KEY) || '{}'); if (o.n > 0) { o.n--; localStorage.setItem(AI_CNT_KEY, JSON.stringify(o)); } } catch (e) {} }   /* 답을 못 받았으면 횟수를 돌려줌 */
   function bumpCount() { try { localStorage.setItem(AI_CNT_KEY, JSON.stringify({ d: new Date().toDateString(), n: todayCount() + 1 })); } catch (e) {} }
   function askAI(q) {
     if (hasPersonal(q)) {
@@ -32097,10 +32098,10 @@ var DOW = ['일', '월', '화', '수', '목', '금', '토'];
       .then(function (r) {
         clearTimeout(tm); if (wait && wait.remove) wait.remove();
         if (r.s === 200 && r.j && r.j.a) { add('bot', r.j.a, 'AI 답변 · 참고용이에요. 중요한 규정은 원문을 확인하세요.'); }
-        else if (r.j && r.j.error === 'personal_info') add('bot', '개인정보가 들어 있는 질문은 받지 않아요.');
-        else add('bot', '지금은 AI를 쓸 수 없어요(오늘 무료 한도 소진 등). 근무·연차 조회와 변경은 그대로 쓸 수 있어요.');
+        else if (r.j && r.j.error === 'personal_info') { refundCount(); add('bot', '개인정보가 들어 있는 질문은 받지 않아요.'); }
+        else { refundCount(); add('bot', '지금은 AI를 쓸 수 없어요(오늘 무료 한도 소진 등). 근무·연차 조회와 변경은 그대로 쓸 수 있어요.'); }
       })
-      .catch(function () { clearTimeout(tm); if (wait && wait.remove) wait.remove(); add('bot', 'AI에 연결하지 못했어요. 근무·연차 조회와 변경은 그대로 쓸 수 있어요.'); });
+      .catch(function () { clearTimeout(tm); if (wait && wait.remove) wait.remove(); refundCount(); add('bot', 'AI에 연결하지 못했어요. 근무·연차 조회와 변경은 그대로 쓸 수 있어요.'); });
   }
   window.aiSubmit = function (e) { e.preventDefault(); var i = document.getElementById('ai-input'), q = (i.value || '').trim(); if (!q) return; i.value = ''; aiAsk(q); };
 })();
