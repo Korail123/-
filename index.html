@@ -2372,7 +2372,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <button type="button" class="set-tile" onclick="openUiPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="화면설정" alt="" aria-hidden="true"><span>화면 설정</span></button>
       <button type="button" class="set-tile" onclick="openIconPanel()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="아이콘설정" alt="" aria-hidden="true"><span>아이콘 설정</span></button>
       <button type="button" class="set-tile" onclick="openFavMenu()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="즐겨찾기메뉴" alt="" aria-hidden="true" decoding="async"><span class="set-label">즐겨찾기 메뉴</span></button>
-      <button type="button" class="set-tile" onclick="openAnimSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="애니메이션효과" alt="" aria-hidden="true" decoding="async"><span class="set-label">애니메이션 효과</span><span class="tile-sw" data-qs="wbg" role="switch" aria-checked="true" aria-label="겨울 테마 켜기/끄기" tabindex="0"><i></i></span></button>
+      <button type="button" class="set-tile" onclick="openAnimSettings()"><img class="set-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="애니메이션효과" alt="" aria-hidden="true" decoding="async"><span class="set-label">배경화면 효과</span><span class="tile-sw" data-qs="wbg" role="switch" aria-checked="true" aria-label="겨울 테마 켜기/끄기" tabindex="0"><i></i></span></button>
       
     </div>
   </section>
@@ -3151,7 +3151,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 </div>
 <div id="anim-panel" class="dia-modal" style="z-index:405" onclick="if(event.target===this)closeAnimSettings()">
   <div class="dia-dialog ns-dialog an-dialog">
-    <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="애니메이션효과" alt="" aria-hidden="true">애니메이션 효과</div>
+    <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="애니메이션효과" alt="" aria-hidden="true">배경화면 효과</div>
     <label class="an-main" style="display:none"><span><b>메인화면 애니메이션</b><small>로그인하거나 메인화면에 들어올 때 열차가 지나가요</small></span><input type="checkbox" id="an-on" onchange="animToggle(this.checked)"><i class="an-sw"></i></label>
     <label class="an-main"><span><b id="an-wbg-t">겨울 테마</b><small id="an-wbg-d">반짝이는 크리스마스 트리와 내리는 하얀 눈</small></span><input type="checkbox" id="an-wbg" onchange="wbgSet(this.checked)"><i class="an-sw"></i></label>
     <div class="an-main" id="an-season" style="display:flex;gap:8px;align-items:center;justify-content:space-between"><span><b>테마 고르기</b></span><span class="ssn-chips"><button type="button" data-s="winter" onclick="seasonSet('winter')">겨울</button><button type="button" data-s="spring" onclick="seasonSet('spring')">봄</button></span></div>
@@ -31240,7 +31240,7 @@ function wbgGlass() {
   var roots = [].slice.call(document.querySelectorAll('#main-container .page-view.active'));
   var nav = document.querySelector('.bottom-nav,#bottom-nav,.tabbar,#tabbar'); if (nav) roots.push(nav);
   ['#calendar-card', '#vac-calendar-card'].forEach(function (q) { var c = document.querySelector(q); if (c && c.closest('.page-view.active')) c.classList.add('wbg-glass'); });   /* 달력 · 휴가 칸도 유리 */
-  [].forEach.call(document.querySelectorAll('.dia-modal.active .dia-dialog,.schedule-edit-modal.active .schedule-edit-dialog'), function (pop) {   /* 팝업창도 같은 반투명 유리 */
+  [].forEach.call(document.querySelectorAll('.dia-modal.active .dia-dialog,.dia-modal.active .group-swap-select-dialog,.dia-modal.active .swap-dialog,.schedule-edit-modal.active .schedule-edit-dialog'), function (pop) {   /* 팝업창도 같은 반투명 유리 */
     pop.classList.add('wbg-glass', 'wbg-pop'); roots.push(pop);
   });
   roots.forEach(function (root) {
@@ -32625,6 +32625,17 @@ html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6
 html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#d15) body #vac-dates{background:rgba(10,18,34,.38)!important;border:1px solid rgba(255,255,255,.22)!important;color:#f3f5ff!important}
 html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#d15) body #vac-dates *{color:#f3f5ff!important}
 html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#d15) body #vac-dates{background:rgba(255,255,255,.58)!important}
+</style>
+<style id="fix-v53">
+html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body .mp-sec+.mp-sec>.mp-toggle{border-top-color:transparent!important}
+html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body .mp-sec{border-color:transparent!important}
+html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body .vac-chipbtn:not(.on){background:rgba(255,255,255,.12)!important;border-color:rgba(255,255,255,.28)!important;color:#f3f5ff!important;transition:none!important}
+html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body .vac-chipbtn:not(.on){background:rgba(255,255,255,.55)!important;border-color:rgba(255,255,255,.7)!important;transition:none!important}
+html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body .vac-chipbtn.on{transition:none!important}
+html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body .vac-chipbtn:not(.on):is(:active,:focus,:hover){background:rgba(255,255,255,.12)!important}
+html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body .vac-chipbtn:not(.on):is(:active,:focus,:hover){background:rgba(255,255,255,.55)!important}
+html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body .dia-modal.active :is(.ui-seg,.ui-list) button.on{box-shadow:inset 0 0 0 2px #4da3ff!important;border-color:#4da3ff!important;background:rgba(77,163,255,.16)!important}
+html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body .dia-modal.active .ui-list button:not(.on){border-color:rgba(255,255,255,.18)!important}
 </style>
 </body>
 </html>
