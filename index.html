@@ -15957,12 +15957,95 @@ function tqOpenNxWeb(train, dateKey) {
   var url = 'https://nxlogis.kr/?act=SearchTrainInfo&q=' + encodeURIComponent(String(train || '').toUpperCase()) + '&d=' + d + '&h=&q2=&q3=';
   nxwOpen(url, String(train || '').toUpperCase());   /* 앱 안의 창으로 */
 }
+/* ============ 여객열차 현재 위치 · 지연: 코레일 열차위치(gis.korail.com) ============
+   화물열차는 Logis.Korail, 여객열차는 gis.korail.com/api/train (전국 열차 한 번에 · 오늘 운행 중인 열차만)
+   앱에서 바로 못 불러오거나(서버가 막는 경우) 오늘이 아니면 → 예전처럼 NXLogis 화면으로 */
+var GIS_URL = 'https://gis.korail.com/api/train?bbox=124.0,33.0,132.0,39.0';
+var GIS_CACHE = { at: 0, feats: null, stamp: '' };
+var GIS_FN = 'gis-train';   /* Supabase Edge Function 이름 (없으면 코레일 주소로 바로 시도) */
+function gisFetchOne(url, opt, cb) {
+  var done = false, tm = setTimeout(function () { if (!done) { done = true; cb('timeout'); } }, 9000);
+  try {
+    fetch(url, opt).then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); }).then(function (j) {
+      if (done) return; done = true; clearTimeout(tm);
+      if (!j || !Array.isArray(j.features)) { cb('format'); return; }
+      cb(null, { at: Date.now(), feats: j.features, stamp: j.timeStamp || '' });
+    }).catch(function (e) { if (done) return; done = true; clearTimeout(tm); cb(String(e && e.message || e)); });
+  } catch (e) { if (!done) { done = true; clearTimeout(tm); cb('fetch'); } }
+}
+/* 순서: ① 철도비서 서버 함수(gis-train) → ② 코레일 주소 직접 → 둘 다 안 되면 오류 */
+function gisFetch(cb, force) {
+  if (!force && GIS_CACHE.feats && Date.now() - GIS_CACHE.at < 15000) { cb(null, GIS_CACHE); return; }
+  var headers = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY };
+  if (/^eyJ/.test(SUPABASE_KEY)) headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
+  var ok = function (c) { GIS_CACHE = c; cb(null, c); };
+  gisFetchOne(SUPABASE_URL + '/functions/v1/' + GIS_FN, { method: 'POST', headers: headers, body: '{}' }, function (e1, c1) {
+    if (!e1) { ok(c1); return; }
+    gisFetchOne(GIS_URL, { credentials: 'omit' }, function (e2, c2) { if (!e2) ok(c2); else cb(e2); });
+  });
+}
+function gisHm(v) { v = String(v || ''); return v.length >= 12 ? v.slice(8, 10) + ':' + v.slice(10, 12) : ''; }
+function gisBuild(pr, stamp) {
+  var nowS = String(pr.now_stn || '').trim(), nx = String(pr.next_stn || '').trim();
+  var prep = /준비/.test(nowS);
+  var pos = prep ? '운행 준비중 (아직 출발 전)' : (/^>/.test(nx) ? nowS + ' → 다음 ' + nx.replace(/^>\s*/, '') : nowS + ' ' + nx.replace(/\.+/g, ''));
+  var dl = pr.unif_delay != null ? pr.unif_delay : pr.delay;
+  var dtxt = prep || dl == null ? '정보 없음' : (+dl <= 0 ? '정시' : dl + '분 지연');
+  var dcls = prep || dl == null ? '' : (+dl >= 10 ? ' gis-late' : (+dl > 0 ? ' gis-slight' : ' gis-ok'));
+  var st = ''; try { if (stamp) { var d = new Date(stamp); st = ('0' + ((d.getUTCHours() + 9) % 24)).slice(-2) + ':' + ('0' + d.getUTCMinutes()).slice(-2) + ' 기준'; } } catch (e) {}
+  return { title: (pr.trn_case || pr.trn_clsf || '') + ' ' + pr.trn_no + '열차 · ' + (pr.up_dn === 'U' ? '상행' : pr.up_dn === 'D' ? '하행' : ''),
+    route: (pr.dpt_stn_nm || '') + ' ' + gisHm(pr.dpt_pln_dttm) + ' → ' + (pr.arv_stn_nm || '') + ' ' + gisHm(pr.arv_pln_dttm),
+    pos: pos, dtxt: dtxt, dcls: dcls, src: pr.delay_source || '', st: st };
+}
+function gisClose() { var p = document.getElementById('gis-train-panel'); if (p) p.classList.remove('active'); }
+function gisPanel(inner) {
+  var p = document.getElementById('gis-train-panel');
+  if (!p) {
+    p = document.createElement('div'); p.id = 'gis-train-panel'; p.className = 'dia-modal'; p.style.zIndex = '186';
+    p.onclick = function (e) { if (e.target === p) gisClose(); };
+    document.body.appendChild(p);
+    var css = document.createElement('style');
+    css.textContent = '#gis-train-panel .gis-box{max-width:340px;margin:auto;padding:18px 18px 14px;border-radius:20px;background:#fff;color:#1f2a44}' +
+      '#gis-train-panel .gis-t{font-size:16px;font-weight:800;margin-bottom:10px}' +
+      '#gis-train-panel .gis-r{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid rgba(120,140,170,.25);font-size:14px}' +
+      '#gis-train-panel .gis-r span{opacity:.7;flex:none}#gis-train-panel .gis-r b{text-align:right}' +
+      '#gis-train-panel .gis-ok{color:#1f9d55}#gis-train-panel .gis-slight{color:#d98a00}#gis-train-panel .gis-late{color:#e5484d}' +
+      '#gis-train-panel .gis-n{font-size:11.5px;opacity:.65;margin-top:8px;line-height:1.5}' +
+      '#gis-train-panel .gis-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}';
+    document.head.appendChild(css);
+  }
+  p.innerHTML = '<div class="dia-dialog gis-box">' + inner + '</div>'; p.classList.add('active');
+  try { if (typeof wbgGlass === 'function') wbgGlass(); } catch (e) {}
+}
+function gisShowTrain(tno, key, force) {
+  var t = todayKST(), today = getDateKey(t.y, t.m, t.d);
+  if (key && key !== today) { tqOpenNxWeb(tno, key); return; }   /* 실시간 정보라 오늘만 */
+  var num = String(tno).replace(/\D/g, '').replace(/^0+/, '');
+  gisPanel('<div class="gis-t">' + esc(tno) + '열차</div><div class="gis-n">코레일 열차위치에서 불러오는 중…</div>');
+  gisFetch(function (err, c) {
+    if (err) { gisClose(); showToast('열차위치를 불러오지 못해 NXLogis 화면으로 열어요.'); tqOpenNxWeb(tno, key); return; }
+    var f = null;
+    c.feats.forEach(function (x) { var pr = x.properties || {}; if (!f && String(pr.trn_no).replace(/^0+/, '') === num) f = pr; });
+    var btn = '<div class="gis-btns"><button type="button" class="dia-text-btn" onclick="gisShowTrain(\'' + esc(tno) + '\',\'' + esc(key || '') + '\',true)">새로고침</button><button type="button" class="dia-text-btn" onclick="gisClose()">닫기</button></div>';
+    if (!f) {
+      gisPanel('<div class="gis-t">' + esc(tno) + '열차</div><div class="gis-n" style="font-size:13px;opacity:.9">지금 운행 중인 열차 목록에 없어요.<br>출발 전이거나 운행이 끝났거나, 오늘 운행하지 않는 열차일 수 있어요.</div>' +
+        '<div class="gis-btns"><button type="button" class="dia-text-btn" onclick="gisClose();tqOpenNxWeb(\'' + esc(tno) + '\',\'' + esc(key || '') + '\')">NXLogis로 보기</button>' + btn.replace('<div class="gis-btns">', ''));
+      return;
+    }
+    var g = gisBuild(f, c.stamp);
+    gisPanel('<div class="gis-t">' + esc(g.title) + '</div>' +
+      '<div class="gis-r"><span>구간</span><b>' + esc(g.route) + '</b></div>' +
+      '<div class="gis-r"><span>현재 위치</span><b>' + esc(g.pos) + '</b></div>' +
+      '<div class="gis-r"><span>지연</span><b class="' + g.dcls.trim() + '">' + esc(g.dtxt) + '</b></div>' +
+      '<div class="gis-n">' + esc(g.st) + ' · 코레일 열차위치' + (g.src ? ' (' + esc(g.src) + ')' : '') + ' · 위치와 지연은 몇 분 늦을 수 있어요.</div>' + btn);
+  }, force);
+}
 function passShowTrainAnim(train, dateKey) {
   var d = String(dateKey || '').replace(/[^0-9]/g, '');
   var t = todayKST();
   var key = d.length === 8 ? d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8) : getDateKey(t.y, t.m, t.d);
   var tno = String(train).toUpperCase();
-  if (!tqIsLogisTrain(tno)) { tqOpenNxWeb(tno, key); return; }
+  if (!tqIsLogisTrain(tno)) { gisShowTrain(tno, key); return; }   /* 여객열차: 코레일 열차위치(gis.korail.com) */
   try { showPassPopup({ kind: 'err', loading: true, train: tno, date: key, msg: infoSrc(tno) + '에서 운행 정보를 불러오는 중…' }, true); } catch (e) {}
   passRunCheck([{ date: key, train: tno }], passCfg || passCfgLocal() || passCfgDefault(), true, { quietToast: true });
 }
