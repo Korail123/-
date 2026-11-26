@@ -2556,14 +2556,15 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="백업동기화" alt="" aria-hidden="true">백업 / 동기화</div>
       <div class="dia-dialog-note" style="white-space:normal">
         ※ 근무표를 추가·수정·삭제하거나 근무교환을 하면 자동으로 서버에 백업됩니다.<br>
-        ※ 백업된 내용은 근무그룹에서 다른 사람에게도 보입니다.<br>
+        ※ 메모와 개인정보를 뺀 나머지 설정도 바뀌면 자동으로 서버에 백업됩니다.<br>
+        ※ 근무 자료는 근무그룹에서 다른 사람에게도 보이고, 설정은 본인만 불러올 수 있습니다.<br>
         ※ 변경 후 잠시 뒤 자동 백업하며, 연결이 안 되면 다시 시도합니다.
       </div>
       <div id="backup-info" class="current-dia-card" style="white-space:normal;line-height:1.8;font-size:14px;color:#344054"></div>
       <button type="button" class="btn" id="backup-download-btn" style="margin-top:10px;background:#6a1b9a" onclick="doRestore()"><span class="btn-ico"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="불러오기" alt="" aria-hidden="true"></span>불러오기 (서버 → 이 폰)</button>
       <div style="margin:8px 4px 0;font-size:11px;color:#7a8696;line-height:1.5">
         ※ 폰을 바꾸거나 앱 데이터를 지웠을 때 불러오기를 사용하세요.<br>
-        ※ 불러오기는 이 폰의 근무설정·휴가 데이터를 서버 백업으로 덮어씁니다.
+        ※ 불러오기는 이 폰의 근무설정·휴가·설정을 서버 백업으로 덮어씁니다. (메모는 그대로 둡니다)
       </div>
       <button type="button" class="btn" id="backup-now-btn" style="margin-top:10px;background:#2f6fd6" onclick="doBackupNow()">지금 백업 (이 폰 → 서버)</button>
       <div style="margin:8px 4px 0;font-size:11px;color:#7a8696;line-height:1.5">
@@ -3463,8 +3464,7 @@ function syncPending(done) {
     var applied = 0;
     if (r && r.success && r.items && r.items.length) {
       r.items.forEach(function (it) {
-        if (it[1] === 'clear') snapRemoveOverride(u.employeeId, it[0]);
-        else snapUpsertOverride(u.employeeId, it[0], it[1], it[2], it[3], it[4], it[5], it[6]);
+        swApplyMine(u.employeeId, it[0], it[1], it[2], it[3], it[4], it[5], it[6]);   /* 내 휴가(①)는 지킴 */
         applied++;
       });
       showToast('근무 교환 ' + r.items.length + '일치가 반영되었습니다.');
@@ -4823,6 +4823,8 @@ function adoptBackupIfNoLocal(owner) {
   if (!mine.seq && !ov.length) return;
   writeLocal(owner, { seq: String(mine.seq || ''), anchor: String(mine.anchor || ''), overrides: ov, backedUpAt: '', base: true });
   showToast('서버의 근무설정·휴가 데이터를 가져왔어요.');
+  /* 새 폰: 이 폰에 없는 설정만 서버 백업에서 채움 (있는 설정은 그대로) */
+  try { bkSetRestore(false, function (s) { if (s && s.success && s.count) showToast('서버의 설정 ' + s.count + '개도 가져왔어요. 앱을 다시 열면 모두 적용돼요.'); }); } catch (e) {}
 }
 /* 근무표 변경사항은 기기에 먼저 저장한 뒤, 연속 수정이 끝나면 자동으로 서버 백업 */
 function saveLocalChange(id, loc) {
@@ -8051,6 +8053,8 @@ function saveScheduleEdit() {
   /* 서버로 보내지 않고 이 폰에만 저장 (백업은 환경설정에서) */
   /* 근무교환 상대: 이름을 지우지 않았으면 다른 다이아로 바꿔도 그대로 (교환 기능으로 넣은 상대 사번도 유지) */
   var prevOvE = (typeof xrMyOverride === 'function') ? xrMyOverride(user.employeeId, params.date) : null;
+  /* 근무교환한 날을 처음 바꿀 때: 교환 근무(②)를 보관 → [원래대로] 누르면 이 근무로 돌아감 */
+  try { if (!swLayerAll(user.employeeId)[params.date]) { var lf = swLayerFromRow(prevOvE); if (lf) swLayerPut(user.employeeId, params.date, lf); } } catch (e) {}
   var keepPid = prevOvE && partnerName && String(prevOvE[6] || '') === partnerName ? String(prevOvE[5] || '') : '';
   snapUpsertOverride(user.employeeId, params.date, params.type, params.dia, params.status, keepPid, partnerName, selectedDutyStatus);
   try { tdSet(params.date, isTempDia ? dia : ''); } catch (e) {}
@@ -8079,9 +8083,51 @@ function saveScheduleEdit() {
   try { var hx = xrGet('info', {})[targetDateKey]; haveXr = !!(hx && xrNorm(hx.dia) === dia && (hx.start || hx.t1)); } catch (e) {}
   if (dia && (dia !== prevDia || !haveXr)) { try { rsDiaInfoForEdit(targetDateKey, dia, true); } catch (e) {} }
 }
+/* ============ 근무 우선순위: ① 내가 근무변경한 것(근무·휴가) > ② 근무교환으로 받은 근무 > ③ 내 순서표 근무 ============
+   근무교환한 날을 내가 다시 바꾸면(예: 연차) 그 아래의 '교환 근무'를 이 폰에 보관해 두었다가,
+   근무변경에서 [원래대로]를 누르면 순서표 근무가 아니라 교환 근무로 돌아감 */
+function swLayerKey(emp) { return 'rs_swap_layer_' + emp; }
+function swLayerAll(emp) { try { var v = JSON.parse(LS.getItem(swLayerKey(emp)) || '{}'); return (v && typeof v === 'object') ? v : {}; } catch (e) { return {}; } }
+function swLayerPut(emp, date, row) {
+  var a = swLayerAll(emp);
+  if (row) a[date] = row; else if (a[date]) delete a[date]; else return;
+  try { LS.setItem(swLayerKey(emp), JSON.stringify(a)); } catch (e) {}
+}
+/* 교환 상대가 붙은 내 기록에서 '교환 근무' 꺼내기 */
+function swLayerFromRow(r) {
+  if (!r || !String(r[5] || '')) return null;
+  if (vacKeyNorm(r[7])) {   /* 이미 교환 뒤 휴가로 바꾼 예전 기록: 다이아가 남아 있으면 그 다이아가 교환 근무 */
+    return (r[1] !== 'status' && String(r[2] || '').trim()) ? [r[0], 'dia', String(r[2]).trim(), '', r[4], r[5], r[6], ''] : null;
+  }
+  return r.slice(0, 8);
+}
+function swSameRow(a, b) { return !!(a && b) && [1, 2, 3, 7].every(function (i) { return String(a[i] || '') === String(b[i] || ''); }); }
+/* 근무교환 · 근무교환 되돌리기로 내 근무가 바뀔 때 (내가 누르든 상대가 누르든):
+   교환한 상대와 [원래대로 되돌리기]를 하면 그 날 교환 뒤에 바꿔 둔 근무변경(휴가 등)까지 모두 지우고 교환 전 본래 근무로 → 보관해 둔 교환 근무도 지움 */
+function swApplyMine(emp, date, type, dia, status, pid, pname, duty) {
+  swLayerPut(emp, date, null);
+  if (type === 'clear') snapRemoveOverride(emp, date);
+  else snapUpsertOverride(emp, date, type, dia, status, pid, pname, duty);
+}
 function restoreOriginalSchedule() {
   if (!scheduleEditDate) return;
   var target = scheduleEditDate;
+  /* 근무교환한 날을 내가 다시 바꿨으면(①) → 내 순서표 근무가 아니라 교환 근무(②)로 되돌림 */
+  try {
+    var swEmp = getCurrentUser().employeeId, swKey = getDateKey(target.y, target.m, target.d), swCur = xrMyOverride(swEmp, swKey);
+    var lay = swLayerAll(swEmp)[swKey] || ((swCur && vacKeyNorm(swCur[7])) ? swLayerFromRow(swCur) : null);
+    if (lay && swSameRow(lay, swCur)) { swLayerPut(swEmp, swKey, null); lay = null; }   /* 위에 바꾼 게 없으면 교환 그 자체 */
+    if (lay) {
+      swLayerPut(swEmp, swKey, null);
+      snapUpsertOverride(swEmp, swKey, lay[1], lay[2], lay[3], lay[5], lay[6], lay[7]);
+      try { tdSet(swKey, ''); } catch (e) {}
+      closeScheduleEdit();
+      selDate = { y: target.y, m: target.m, d: target.d };
+      loadMyMonth();
+      showToast((lay[6] || '상대') + '님과 근무교환한 근무' + (lay[2] ? '(' + lay[2] + ')' : lay[3] ? '(' + lay[3] + ')' : '') + '로 되돌렸어요.');
+      return;
+    }
+  } catch (e) {}
   /* 근무교환 기능으로 바꾼 날은 교환한 사람과 함께 근무교환 화면에서만 되돌림 (한쪽만 되돌리면 두 사람 근무가 어긋남) */
   try {
     var sw = (typeof xrMyOverride === 'function') ? xrMyOverride(getCurrentUser().employeeId, getDateKey(target.y, target.m, target.d)) : null;
@@ -9219,9 +9265,7 @@ function swapApplyLocal(employeeId, items) {
   var me = getCurrentUser().employeeId;
   if (String(employeeId) === String(me)) {
     items.forEach(function (it) {
-      if (it.type === 'clear') snapRemoveOverride(me, it.date);
-      else snapUpsertOverride(me, it.date, it.type, it.dia, it.status,
-        it.partnerId, it.partnerName, it.dutyStatus);
+      swApplyMine(me, it.date, it.type, it.dia, it.status, it.partnerId, it.partnerName, it.dutyStatus);   /* 내 휴가(①)는 지킴 */
     });
     return;
   }
@@ -12153,11 +12197,27 @@ function renderBackupInfo() {
   var el = $('backup-info');
   if (!el) return;
   var n = loc ? loc.overrides.length : 0;
+  var sd = { n: 0 }, sSame = false, sAt = '';
+  try { sd = bkSetCollect(u.employeeId); sSame = LS.getItem(bkSetKey('sig', u.employeeId)) === bkSetSig(sd); sAt = LS.getItem(bkSetKey('at', u.employeeId)) || ''; } catch (e) {}
+  var sState = (typeof bkSetMissing !== 'undefined' && bkSetMissing) ? '서버 준비 필요 (관리자 SQL 적용 전)' : (sSame ? '최신' : '백업 대기 중 (곧 자동 백업)');
   el.innerHTML =
     '이 폰 근무설정: <b>' + (loc && loc.seq ? '설정됨' : '없음') + '</b><br>' +
     '이 폰 근무변경·휴가: <b>' + n + '건</b><br>' +
-    '백업 상태: <b>' + (loc && loc.dirty ? '백업 대기 중 (곧 자동 백업)' : '최신') + '</b><br>' +
-    '마지막 백업: <b>' + esc(loc && loc.backedUpAt ? loc.backedUpAt : '없음') + '</b>';
+    '이 폰 설정 항목: <b>' + (sd.n || 0) + '개</b><br>' +
+    '근무 자료 백업: <b>' + (loc && loc.dirty ? '백업 대기 중 (곧 자동 백업)' : '최신') + '</b> · 마지막 <b>' + esc(loc && loc.backedUpAt ? loc.backedUpAt : '없음') + '</b><br>' +
+    '설정 백업: <b>' + esc(sState) + '</b> · 마지막 <b>' + esc(sAt || '없음') + '</b>' +
+    '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #e4e9f0;font-size:12.5px;line-height:1.7">' +
+      '<b style="color:#1d4f9a">백업하는 항목</b><br>' +
+      '· 근무설정(순서표) · 근무변경 · 휴가 · 근무교환<br>' +
+      '· 조 · 근무 시작일 · 조 변경 이력 · 표현 방식<br>' +
+      '· 직접 만든 행로표 · 임시 다이아 · 근무교환 전 근무<br>' +
+      '· 출근 알람 · 알림 · 방해금지 · 열차 운휴/통과 · 편승 알림 설정<br>' +
+      '· 화면 · 테마 · 아이콘 · 애니메이션 · 즐겨찾기 · 근무그룹 폴더<br>' +
+      '· XROIS 확인 기록 (바꾸기/그대로 두기 선택 등)<br>' +
+      '<b style="color:#b42318">백업하지 않는 항목</b><br>' +
+      '· 메모 · 비밀번호 · 로그인 정보 · 월급 정보 · 위치<br>' +
+      '· CREW/XROIS 승무원 명단 (다른 사람 이름)' +
+    '</div>';
 }
 function backupMsg(text, color) {
   var m = $('backup-message');
@@ -12225,6 +12285,7 @@ function backupNow(cb) {
       writeLocal(u.employeeId, cur);
       if (cur.dirty) scheduleAutoBackup(1000);
       refreshSnapshot(true, null);
+      try { bkSetSync(false); } catch (e) {}   /* 바뀐 설정도 함께 */
     }
     done(r);
   });
@@ -12326,6 +12387,10 @@ function doRestore() {
     renderBackupInfo();
     backupMsg('불러오기가 완료되었습니다.', '#16803c');
     refreshSnapshot(true, null);
+    /* 설정도 서버 백업으로 (메모는 그대로) → 모두 적용되도록 화면을 새로 고침 */
+    try { bkSetRestore(true, function (s) {
+      if (s && s.success && s.count) { backupMsg('불러오기가 완료되었습니다. (설정 ' + s.count + '개 포함) 잠시 후 화면을 새로 고칩니다.', '#16803c'); setTimeout(function () { location.reload(); }, 1500); }
+    }); } catch (e) {}
   });
 }
 /* 전체 데이터 초기화: 서버 RPC가 성공한 경우에만 로컬 캐시를 비웁니다.
@@ -13150,14 +13215,14 @@ function alarmToggleChanged() {
   alarmUiUpdate();
   alarmAutoSave(true);
 }
-function alarmBeep() {
+function alarmBeep(kind) {
   try {
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     /* 처음 화면을 눌렀을 때 준비해 둔 소리 장치를 사용 (새로 만들면 브라우저가 소리를 막을 수 있음) */
     var np = getNotiPrefs();
-    if (!np.sound || np.vol <= 0) return;                    /* 사용자가 소리를 껐으면 울리지 않음 */
-    if (rsAppHas('ring')) { rsAppCall('ring', rsAppSound('beep')); return; }   /* 앱: 알람 음량으로 (무음 모드에서도) */
+    if (!nkEff(kind || 'alarm').sound) return;              /* 그 알림(출근 · 운휴 · 통과/도착)에서 소리를 껐으면 울리지 않음 */
+    if (rsAppHas('ring')) { rsAppCall('ring', rsAppSound('beep', '', '', 1, kind || 'alarm')); return; }   /* 앱: 알람 음량으로 (무음 모드에서도) */
     appAudioSession();
     var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     if (ios && !navigator.audioSession && appBeepEl) {   /* 옛 아이폰: 미디어 재생은 무음 스위치를 무시 */
@@ -13193,8 +13258,8 @@ function fireAlarm(w, key, min) {
   /* 알림은 유지하되 앱 화면을 가리는 시계 아이콘·확인 모달은 표시하지 않음. */
   var rounds = 0;
   function ring() {
-    alarmBeep();
-    appVibrate([400, 200, 400, 200, 400]);
+    alarmBeep('alarm');
+    appVibrate([400, 200, 400, 200, 400], 'alarm');
   }
   ring();
   if (alarmRingTimer) clearInterval(alarmRingTimer);
@@ -13406,7 +13471,7 @@ function fireMidAlarm(a) {
   try { $('alarm-ring-panel').querySelector('.dia-dialog-title').textContent = '도중출무 알람'; } catch (e) {}
   /* 알림은 유지하되 앱 화면을 가리는 시계 아이콘·확인 모달은 표시하지 않음. */
   var rounds = 0;
-  function ring() { alarmBeep(); appVibrate([400, 200, 400, 200, 400]); }
+  function ring() { alarmBeep('alarm'); appVibrate([400, 200, 400, 200, 400], 'alarm'); }
   ring();
   if (alarmRingTimer) clearInterval(alarmRingTimer);
   alarmRingTimer = setInterval(function () { if (++rounds >= 10) { clearInterval(alarmRingTimer); alarmRingTimer = null; return; } ring(); }, 3000);
@@ -14085,7 +14150,7 @@ function passLivePop(list) {
   $('pass-live-title').textContent = list[list.length - 1].title;
   $('pass-live-sub').textContent = list.length > 1 ? list.map(function (x) { return x.title; }).join(' · ') : list[0].body;
   box.classList.add('active');
-  try { alarmBeep(); } catch (e) {} try { appVibrate([300, 150, 300]); } catch (e) {}
+  try { alarmBeep('pass'); } catch (e) {} try { appVibrate([300, 150, 300], 'pass'); } catch (e) {}
 }
 function passLiveClose() { var b = $('pass-live-pop'); if (b) b.classList.remove('active'); }
 function passAdd(kind) {
@@ -14263,7 +14328,7 @@ function klOpen(rule, arrMs, delay) {
   $('kl-title').textContent = rule.train + '열차 ' + rule.station + ' 도착';
   $('kl-sub').innerHTML = '<b>' + klHm(arrMs) + '</b> 도착' + (delay > 0 ? ' · ' + delay + '분 지연' : '') + ' <span>· logis 기준</span><br>' + dstEsc(rule.line) + ' ' + dstEsc(rule.station) + ' → ' + dstEsc(rule.to) + ' 빨리 오는 열차';
   $('kl-panel').classList.add('active');
-  try { alarmBeep(); } catch (e) {} try { appVibrate([400, 200, 400, 200, 600]); } catch (e) {}
+  try { alarmBeep('pass'); } catch (e) {} try { appVibrate([400, 200, 400, 200, 600], 'pass'); } catch (e) {}
   klLoad(false);
 }
 function klClose() { $('kl-panel').classList.remove('active'); }
@@ -16462,7 +16527,7 @@ function passDraw(d, quiet) {
     if (passPopAnim) { try { passPopAnim.cancel(); } catch (e) {} passPopAnim = null; }
     passPopTimers.forEach(clearTimeout); passPopTimers = [];
     $('pass-pop-panel').classList.add('active');
-    if (!quiet) { try { alarmBeep(); } catch (e) {} try { appVibrate([400, 150, 400]); } catch (e) {} }
+    if (!quiet) { try { alarmBeep('pass'); } catch (e) {} try { appVibrate([400, 150, 400], 'pass'); } catch (e) {} }
     return;
   }
   $('pp-track').style.display = '';
@@ -16548,7 +16613,7 @@ function passDraw(d, quiet) {
   $('pp-zone').hidden = !d.note;
   $('pass-pop-panel').classList.add('active');
   passReplay();
-  if (!quiet) { try { alarmBeep(); } catch (e) {} try { appVibrate([400, 150, 400, 150, 400]); } catch (e) {} }
+  if (!quiet) { try { alarmBeep('pass'); } catch (e) {} try { appVibrate([400, 150, 400, 150, 400], 'pass'); } catch (e) {} }
 }
 function passReplay() {
   var d = passPopData;
@@ -16733,6 +16798,15 @@ function nkGet(kind) {
   function b(v, dflt) { return typeof v === 'boolean' ? v : dflt; }
   return { popup: b(k.popup, true), sound: b(k.sound, true), vib: b(k.vib, true),
            n: r.n >= 0 && r.n <= 5 ? +r.n : 3, every: [1, 2, 3, 5, 10].indexOf(+r.every) >= 0 ? +r.every : 2 };
+}
+/* 알림 종류별 실제 적용값 (각자 따로):
+   출근·도중출무(alarm) = 출근/출무 알림 설정의 팝업·소리·진동 / 운휴(nx) · 통과/도착(pass) = 그 알림의 '알림 방식'
+   볼륨 · 무음에서도 울리기는 공통. 운휴·통과/도착은 팝업을 끄면 알림창에만 조용히(소리·진동 없음) */
+function nkEff(kind) {
+  var np = getNotiPrefs(), k;
+  if (kind === 'nx' || kind === 'pass') { k = nkGet(kind); if (!k.popup) k = { popup: false, sound: false, vib: false }; }
+  else k = { popup: np.popup, sound: np.sound, vib: np.vib };
+  return { popup: !!k.popup, sound: !!k.sound && np.vol > 0, vib: !!k.vib, vol: np.vol, loud: np.loud !== false };
 }
 function nkSet(kind, key, val) {
   var p = getNotiPrefs();
@@ -17171,8 +17245,8 @@ function nxLoginRender(list, opts) {
       cancelScenePlay(body);
       /* 처음 보여주거나 운휴 목록이 바뀌었을 때만 소리·진동 */
       if (sig !== nxLoginShownSig) {
-        try { alarmBeep(); } catch (e) {}
-        appVibrate([400, 200, 400]);
+        try { alarmBeep('nx'); } catch (e) {}
+        appVibrate([400, 200, 400], 'nx');
       }
     } else if (s.allFailed) {
       nxShowing = [];
@@ -17390,12 +17464,12 @@ function nxShowRing(items, isTest) {
   $('nx-ring-panel').classList.add('active');
   nxFitRows($('nx-ring-body'));
   cancelScenePlay($('nx-ring-body'));
-  try { alarmBeep(); } catch (e) {}
-  appVibrate([400, 200, 400]);
+  try { alarmBeep('nx'); } catch (e) {}
+  appVibrate([400, 200, 400], 'nx');
   try {
     if (rsAppHas('notify') || ('Notification' in window && Notification.permission === 'granted')) {
       var nbody = items.map(function (it) { return nxDateText(it.date) + ' ' + (it.link ? it.link + ' ' + it.train + '열차' : it.train + '호') + ' 운휴'; }).join(', ');
-      appNotify(isTest ? '열차 운휴 알림 (테스트)' : '열차 운휴 알림', { body: nbody, tag: isTest ? 'nx-test-local' : 'nx-' + items.map(function (it) { return it.date + it.train; }).join('-').slice(0, 50) });
+      appNotify(isTest ? '열차 운휴 알림 (테스트)' : '열차 운휴 알림', { nk: 'nx', body: nbody, tag: isTest ? 'nx-test-local' : 'nx-' + items.map(function (it) { return it.date + it.train; }).join('-').slice(0, 50) });
     }
   } catch (e) {}
 }
@@ -17664,9 +17738,9 @@ function rsAppHas(fn) { var a = rsApp(); return !!(a && typeof a[fn] === 'functi
 function rsAppCall(fn) { if (!rsAppHas(fn)) return undefined; var args = Array.prototype.slice.call(arguments, 1).map(function (v) { return typeof v === 'string' ? v : JSON.stringify(v); }); try { return window.RsApp[fn].apply(window.RsApp, args); } catch (e) { return undefined; } }
 function rsAppVersion() { var v = rsAppCall('version'); return v ? String(v) : ''; }
 /* 앱 알람 소리 설정: 무음 모드에서도 알람 음량으로 (알림 설정 '무음에서도 울리기') */
-function rsAppSound(kind, title, body, repeat) {
-  var np = getNotiPrefs();
-  return { kind: kind || 'alarm', title: title || '철도비서', body: body || '', vol: np.sound ? np.vol : 0, loud: np.loud !== false, vib: np.vib ? [400, 200, 400, 200, 600] : [], repeat: repeat || 1 };
+function rsAppSound(kind, title, body, repeat, nk) {
+  var np = nkEff(nk || 'alarm');   /* 출근 · 도중출무 예약 알람은 출근/출무 알림 설정, 화면 안 소리는 그 알림 종류 설정 */
+  return { kind: kind || 'alarm', title: title || '철도비서', body: body || '', vol: np.sound ? np.vol : 0, loud: np.loud, vib: np.vib ? [400, 200, 400, 200, 600] : [], repeat: repeat || 1 };
 }
 /* 출근 · 도중출무 알람을 앱에 예약 (앱이 꺼져 있어도 휴대폰이 직접 울림) */
 var rsAppAlarmSig = '';
@@ -17870,14 +17944,15 @@ function saveNotiPrefs(p) {
   try { LS.setItem(notiPrefKey(), JSON.stringify(p)); } catch (e) {}
   notiPrefsToSW(p);
 }
-function appVibrate(pattern) {
-  if (!getNotiPrefs().vib) return;
+function appVibrate(pattern, kind) {
+  if (!nkEff(kind || 'alarm').vib) return;                   /* 그 알림에서 진동을 껐으면 울리지 않음 */
   if (rsAppHas('vibrate')) { rsAppCall('vibrate', pattern); return; }   /* 앱: 무음 모드에서도 진동 */
   try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
 }
 /* 휴대폰 알림창 알림 (팝업 끄면 표시 안 함, 소리·진동 설정 반영) */
 function appNotify(title, opt, force) {
-  var np = getNotiPrefs();
+  var nk = (opt && opt.nk) || 'alarm', np = nkEff(nk);      /* 그 알림 종류의 팝업 · 소리 · 진동 */
+  if (opt && opt.nk) { opt = Object.assign({}, opt); delete opt.nk; }
   if (!force && !np.popup) return;
   if (typeof dndNow === 'function' && dndNow()) return;   /* 방해금지 중 */
   if (rsAppHas('notify')) { rsAppCall('notify', { tag: (opt && opt.tag) || '', title: title, body: (opt && opt.body) || '' }); return; }
@@ -24252,7 +24327,14 @@ function doBackupNow() {
   backupMsg('백업하는 중...', '#666');
   backupNow(function (r) {
     if (btn) btn.disabled = false;
-    if (r && r.success) { backupMsg('지금 상태로 서버에 백업했어요.', '#16803c'); try { renderBackupInfo(); } catch (e) {} }
+    if (r && r.success) {
+      backupMsg('근무 자료를 백업했어요. 설정 백업 중...', '#666');
+      bkSetSync(true, function (s) {
+        if (s && s.success) backupMsg('지금 상태로 서버에 백업했어요. (근무 자료 · 설정)', '#16803c');
+        else backupMsg('근무 자료는 백업했어요. 설정 백업은 ' + (bkSetMissing ? '서버 준비(관리자 SQL 적용)가 필요해요.' : '실패했어요. 잠시 후 다시 시도할게요.'), '#b45309');
+        try { renderBackupInfo(); } catch (e) {}
+      });
+    }
     else backupMsg((r && r.message) || '백업하지 못했어요.');
   });
 }
@@ -26533,18 +26615,16 @@ function rsBgStatusHtml() {
 var rsBg = { nxAt: 0, snapAt: 0, done: {} };
 /* 알림 설정(소리 · 진동 · 무음에서도 울리기)에 맞춘 알람 방식 */
 function rsAlertMode(kind) {
-  var np = getNotiPrefs();
-  var choice = nkGet(kind || 'alarm');
-  np = Object.assign({}, np, choice);
-  if (np.sound && np.vol > 0) return np.loud !== false ? 'alarm' : 'sound';
+  var np = nkEff(kind || 'alarm');   /* 그 알림 종류의 소리 · 진동 */
+  if (np.sound) return np.loud ? 'alarm' : 'sound';
   return np.vib ? 'vib' : 'quiet';
 }
 /* 앱 꺼짐 알림: 안드로이드 알람처럼 [끄기]를 누를 때까지 소리 · 진동 반복 (최대 30초) */
 function rsBgNotify(tag, title, body, info) {
   var kind = /^nx-|^bgtest-nx/.test(tag) ? 'nx' : /^p|^bgtest-pass/.test(tag) ? 'pass' : 'alarm';
-  var pref = nkGet(kind);
+  var pref = nkEff(kind);
   if (!pref.popup) return;
-  rsAppCall('notify', { tag: tag, title: title, body: body, mode: rsAlertMode(kind), insist: true, timeout: 30000, vol: pref.sound ? getNotiPrefs().vol : 0, info: info || null });
+  rsAppCall('notify', { tag: tag, title: title, body: body, mode: rsAlertMode(kind), insist: true, timeout: 30000, vol: pref.sound ? pref.vol : 0, info: info || null });
 }
 /* 앱 전체화면 알림에 넣을 그날 근무 요약 { start:'08:40', type:'주간', dia, trains:'3224 · 1671', startMs } */
 function rsDayBrief(key) {
@@ -26603,7 +26683,7 @@ function rsBgPass(c, trains) {
           var allPassed = true, live = passIsLive(c, it.train);
           if (live) {
             var lv = passLiveCheck(it, route);
-            if (lv && nkGet('pass').popup) rsAppCall('notify', { tag: 'plive-' + it.date + '-' + it.train, title: lv.title, body: lv.body, mode: rsAlertMode('pass'), insist: false, timeout: 10000, vol: nkGet('pass').sound ? getNotiPrefs().vol : 0 });
+            if (lv && nkEff('pass').popup) rsAppCall('notify', { tag: 'plive-' + it.date + '-' + it.train, title: lv.title, body: lv.body, mode: rsAlertMode('pass'), insist: false, timeout: 10000, vol: nkGet('pass').sound ? getNotiPrefs().vol : 0 });
             if (!lv || !lv.last) allPassed = false;
           }
           (c.stations || []).forEach(function (station) {
@@ -30230,11 +30310,24 @@ function passMapBind(box) {
     var r = el.getBoundingClientRect();
     return r.width >= window.innerWidth * 0.8 && r.height >= window.innerHeight * 0.5;   /* 화면을 덮는 것만 */
   }
+  /* 그 팝업을 가두는 층(z-index · transform · filter 등)이 위에 있는지: 있으면 아무리 번호를 올려도 바깥 팝업 아래에 깔림 */
+  function trapped(el) {
+    for (var a = el.parentElement; a && a !== document.body && a !== document.documentElement; a = a.parentElement) {
+      if (a.matches(SEL) && !a.classList.contains('page-view')) return false;   /* 팝업 안의 팝업(뷰어 등)은 그대로 */
+      var cs = getComputedStyle(a);
+      if ((cs.position !== 'static' && cs.zIndex !== 'auto') || cs.transform !== 'none' || cs.filter !== 'none' || parseFloat(cs.opacity) < 1 ||
+          (cs.backdropFilter && cs.backdropFilter !== 'none') || (cs.webkitBackdropFilter && cs.webkitBackdropFilter !== 'none') || cs.isolation === 'isolate') return true;
+    }
+    return false;
+  }
   function check(el) {
     if (!(el instanceof HTMLElement) || !el.matches(SEL)) return;
     var v = shown(el), was = seen.get(el);
     seen.set(el, v);
-    if (v && !was) el.style.setProperty('z-index', String(++TOP), 'important');
+    if (v && !was) {
+      if (trapped(el)) { try { document.body.appendChild(el); } catch (e) {} }   /* 갇힌 팝업은 화면 맨 바깥으로 꺼냄 (기능 · 모양은 그대로) */
+      el.style.setProperty('z-index', String(++TOP), 'important');
+    }
   }
   window.rsPopupFront = function (el) { if (el) el.style.setProperty('z-index', String(++TOP), 'important'); };
   new MutationObserver(function (ms) {
@@ -30994,8 +31087,8 @@ function swnSeen() {
 <style id="wbg-ui">
 /* ===== 메인 바탕: 흐린 보케 트리 (낮=불빛 꺼짐 · 저녁/밤/새벽=1초마다 반짝) + 눈 ===== */
 #wbg-base,#wbg{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;display:none}
-#wbg-base{z-index:0;transform:scale(1.035);transform-origin:center center;-webkit-filter:blur(12px);filter:blur(12px)}
-#wbg{z-index:0}
+#wbg-base{z-index:-1;transform:scale(1.035);transform-origin:center center;-webkit-filter:blur(12px);filter:blur(12px)}
+#wbg{z-index:-1}
 html.wbg-on #wbg{display:block}
 html.wbg-on.wbg-ios-blur #wbg-base{display:block}
 /* iOS: 불빛 캔버스가 트리와 분리돼 있으므로 CSS 합성으로 안드로이드(lighter)와 같은 '빛 더하기' 효과 적용 */
@@ -31003,7 +31096,7 @@ html.wbg-on.wbg-ios-blur.wbg-night #wbg{mix-blend-mode:screen;mix-blend-mode:plu
 html.wbg-on:not(#z1):not(#z2),html.wbg-on:not(#z1):not(#z2) body,html.wbg-on:not(#z1):not(#z2) body #main-container,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body .page-view,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body #main-container > .page-view.active{background:transparent!important;background-image:none!important}
 html.wbg-on #snow-fx{display:none!important}
 html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6),html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body,html.wbg-on:not(#a1):not(#a2):not(#a3):not(#a4):not(#a5):not(#a6) body #main-container{background:transparent!important;background-image:none!important}   /* 게시판(공지 · 건의) 흰 바탕보다 우선 */
-html.wbg-on #main-container{position:relative;z-index:1}
+html.wbg-on #main-container{position:relative}   /* z-index를 주지 않음: 주면 화면 본문이 한 층으로 묶여 그 안의 팝업(근무설정 등)이 다른 팝업 아래에 갇힘 → 대신 트리 캔버스를 z-index:-1로 맨 뒤에 */
 html.wbg-on #main-section .menu-btn,html.wbg-on #vacation-section .menu-btn{background:rgba(255,255,255,.7)!important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 html.wbg-on.wbg-night #main-section .menu-btn,html.wbg-on.wbg-night #vacation-section .menu-btn{background:rgba(255,255,255,.16)!important;border-color:rgba(255,255,255,.12)!important}
 html.wbg-on.wbg-night #main-section .menu-btn span,html.wbg-on.wbg-night #vacation-section .menu-btn span{color:#f3f5ff!important}
@@ -31626,5 +31719,80 @@ html.menu-list body #main-section .menu-grid.mm-grid > .menu-cat {display:none!i
 html.wbg-on.menu-list body #main-section .menu-grid.mm-grid {background:rgba(255,255,255,.70)!important;}
 @media(max-width:390px){html.menu-list body #main-section .menu-grid.mm-grid > button.menu-btn{height:62px!important;min-height:62px!important;max-height:62px!important;}}
 </style>
+<script id="rs-settings-backup">
+/* ============ 설정 · 부가 데이터 백업 (메모 · 개인정보 제외) ============
+   근무설정 · 근무변경 · 휴가 · 근무교환은 기존 백업(app_backupdata)으로,
+   그 밖의 설정은 이 폰의 저장값을 모아 app_backupsettings로 서버에 백업 (본인만 불러올 수 있음)
+   ※ 백업 안 함: 메모, 비밀번호 · 로그인 정보, CREW · XROIS 승무원 명단(다른 사람 이름), 월급 정보, 위치, 임시 캐시 */
+var BK_SET_USER = [   /* 이 폰에 '이름_사번'으로 저장되는 사용자별 설정 */
+  'rs_team_', 'rs_team_hist_', 'rs_work_start_', 'rs_first_set_', 'rs_label_style_', 'rs_dia_known_',
+  'rs_myroutes_', 'rs_myroute_dates_', 'rs_tempdia_', 'rs_swap_layer_',
+  'alarmCfg_', 'notiPrefs_', 'midCfg_', 'nxCfg_', 'nxView_', 'nxAck_', 'passCfg_', 'passSync_', 'rs_feed_',
+  'briefOn_', 'briefParts_', 'briefWx_', 'briefDay_', 'noticeSeen_', 'rs_onb_done_',
+  'favMenu_', 'animPrefs_', 'rs_gfolders_', 'rs_mark_order_', 'mpCollapsed_', 'rs_wgline_',
+  'rs_xr_info_', 'rs_xr_kept_', 'rs_xr_pending_', 'rs_xr_spec_', 'rs_xr_mid_', 'rs_xr_midMeta_', 'rs_xr_gplan_', 'rs_xr_weekFill_', 'rs_xr_seen_'
+];
+var BK_SET_GLOBAL = [   /* 이 폰 공통 화면 설정 */
+  'rs_ui', 'rs_wbg', 'rs_icon_theme', 'rs_iconArr', 'rs_dnd', 'rs_topwx', 'rs_main_tab', 'rs_sch_view', 'rs_stats_rest',
+  'rs_swap_rest_h', 'rs_xr_rest_code', 'rs_dia_ar', 'rs_pass_base', 'rs_pass_view', 'rs_appupd_auto', 'dstCfg', 'dstPin', 'dstDestRecent'
+];
+var bkSetMissing = false, bkSetBusy = false, bkSetLastTry = 0;
+function bkSetKey(n, emp) { return 'rs_bkset_' + n + '_' + emp; }
+function bkSetCollect(emp) {
+  var u = {}, g = {}, n = 0;
+  BK_SET_USER.forEach(function (pf) { try { var v = LS.getItem(pf + emp); if (v != null && v !== '') { u[pf] = v; n++; } } catch (e) {} });
+  BK_SET_GLOBAL.forEach(function (k) { try { var v = LS.getItem(k); if (v != null && v !== '') { g[k] = v; n++; } } catch (e) {} });
+  var d = { v: 1, u: u, g: g };
+  if (JSON.stringify(d).length > 1500000 && u.rs_dia_known_) { delete u.rs_dia_known_; n--; }   /* 너무 크면 서버에서 다시 받을 수 있는 지난 다이아 기억은 뺌 */
+  d.n = n;
+  return d;
+}
+function bkSetSig(d) { return xrSig(JSON.stringify([d.u, d.g])); }
+/* 바뀐 설정이 있으면 서버로 (force: 지금 백업 버튼) */
+function bkSetSync(force, cb) {
+  function done(r) { if (cb) cb(r); }
+  var usr = getCurrentUser();
+  if (!usr || !usr.token || window.rsBgMode) return done({ success: false });
+  if (bkSetMissing && !force) return done({ success: false, missing: true });
+  if (bkSetBusy) return done({ success: false, busy: true });
+  var emp = usr.employeeId, d = bkSetCollect(emp), sig = bkSetSig(d);
+  var same = false; try { same = LS.getItem(bkSetKey('sig', emp)) === sig; } catch (e) {}
+  if (same && !force) return done({ success: true, same: true });
+  if (!force && Date.now() - bkSetLastTry < 30000) return done({ success: false, wait: true });
+  bkSetBusy = true; bkSetLastTry = Date.now();
+  postApi({ action: 'backupSettings', employeeId: emp, token: usr.token, data: d }, function (r) {
+    bkSetBusy = false;
+    if (r && r.success) {
+      bkSetMissing = false;
+      try { LS.setItem(bkSetKey('sig', emp), sig); LS.setItem(bkSetKey('at', emp), String(r.updatedAt || stampNow())); } catch (e) {}
+    } else if (r && /app_backupsettings|PGRST202|Could not find|schema cache/i.test(String(r.message || '') + String(r.code || ''))) {
+      bkSetMissing = true;   /* 서버에 설정 백업 함수가 아직 없음 → 이번 실행 동안 다시 시도하지 않음 */
+    }
+    try { var bp = $('backup-panel'); if (bp && bp.classList.contains('active')) renderBackupInfo(); } catch (e) {}
+    done(r || { success: false });
+  });
+}
+/* 서버 설정 불러오기 (overwrite=false: 이 폰에 없는 항목만 채움) — 허용한 항목만 씀 */
+function bkSetRestore(overwrite, cb) {
+  function done(r) { if (cb) cb(r); }
+  var usr = getCurrentUser();
+  if (!usr || !usr.token) return done({ success: false });
+  api({ action: 'restoreSettings', employeeId: usr.employeeId, token: usr.token }, function (r) {
+    if (!r || !r.success || !r.found || !r.data || typeof r.data !== 'object') return done(r || { success: false });
+    var d = r.data, emp = usr.employeeId, n = 0;
+    function put(k, v) { if (typeof v !== 'string') return; try { if (!overwrite && LS.getItem(k) != null) return; LS.setItem(k, v); n++; } catch (e) {} }
+    BK_SET_USER.forEach(function (pf) { put(pf + emp, d.u && d.u[pf]); });
+    BK_SET_GLOBAL.forEach(function (k) { put(k, d.g && d.g[k]); });
+    try { LS.setItem(bkSetKey('sig', emp), bkSetSig(bkSetCollect(emp))); if (r.updatedAt) LS.setItem(bkSetKey('at', emp), String(r.updatedAt)); } catch (e) {}
+    done({ success: true, count: n, updatedAt: r.updatedAt || '' });
+  });
+}
+/* 설정이 바뀌면 자동 백업: 화면이 켜져 있는 동안 1분마다 바뀐 게 있는지 확인 · 앱을 내릴 때 한 번 더 */
+(function () {
+  setTimeout(function () { try { bkSetSync(false); } catch (e) {} }, 8000);
+  setInterval(function () { if (!document.hidden) { try { bkSetSync(false); } catch (e) {} } }, 60000);
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { try { bkSetSync(false); } catch (e) {} } });
+})();
+</script>
 </body>
 </html>
