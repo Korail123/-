@@ -15995,7 +15995,7 @@ function gisBuild(pr, stamp) {
   var dtxt = prep || dl == null ? '정보 없음' : (+dl <= 0 ? '정시' : dl + '분 지연');
   var dcls = prep || dl == null ? '' : (+dl >= 10 ? ' gis-late' : (+dl > 0 ? ' gis-slight' : ' gis-ok'));
   var st = ''; try { if (stamp) { var d = new Date(stamp); st = ('0' + ((d.getUTCHours() + 9) % 24)).slice(-2) + ':' + ('0' + d.getUTCMinutes()).slice(-2) + ' 기준'; } } catch (e) {}
-  return { title: (pr.trn_case || pr.trn_clsf || '') + ' ' + pr.trn_no + '열차 · ' + (pr.up_dn === 'U' ? '상행' : pr.up_dn === 'D' ? '하행' : ''),
+  return { title: (pr.trn_case || trainClassByNo(pr.trn_no, true) || pr.trn_clsf || '') + ' ' + pr.trn_no + '열차 · ' + (pr.up_dn === 'U' ? '상행' : pr.up_dn === 'D' ? '하행' : ''),
     route: (pr.dpt_stn_nm || '') + ' ' + gisHm(pr.dpt_pln_dttm) + ' → ' + (pr.arv_stn_nm || '') + ' ' + gisHm(pr.arv_pln_dttm),
     pos: pos, dtxt: dtxt, dcls: dcls, src: pr.delay_source || '', st: st };
 }
@@ -16068,6 +16068,49 @@ function passFreightLoco(no) {
 var PASS_FIXED_ART = { '3223': 'run_freight_e', '3224': 'run_freight_e', '3226': 'run_freight_e', '3227': 'run_freight_e',
   '1208': 'run_mug_d', '1279': 'run_mug_d' };
 function passTrainNo(no) { return String(parseInt(String(no || '').replace(/\D/g, ''), 10) || ''); }
+/* ============ 여객열차 번호대 → 열차종류 (코레일 열차번호 체계) ============
+   정확한 번호(STRONG)가 우선, 없으면 넓은 번호대(WEAK: 임시 · 관광 · 시운전)로 짐작.
+   ※ '1001~1025 중 지정 번호' 같은 칸은 ITX-마음으로 따로 적힌 번호를 뺀 나머지를 ITX-새마을로 봄 */
+var TRN_STRONG = [
+  ['KTX-이음', [[701, 720], [731, 738], [751, 756]]],
+  ['KTX', [[1, 239], [251, 295], [301, 398], [401, 494], [501, 700], [801, 828], [840, 849], [851, 872], [881, 888]]],
+  ['ITX-마음', [[1007, 1007], [1011, 1011], [1014, 1015], [1018, 1018], [1124, 1124], [1131, 1134], [1136, 1136], [1142, 1145], [1221, 1223], [1231, 1238], [1241, 1246], [1301, 1302], [1311, 1312], [1331, 1332], [1403, 1404], [1406, 1407], [1501, 1501], [1506, 1507], [1511, 1512], [1514, 1514], [1521, 1530], [1541, 1542], [1601, 1604], [1611, 1614], [1641, 1642], [1701, 1702], [1721, 1721], [1801, 1807], [1814, 1814], [1821, 1822], [1824, 1824], [1831, 1831], [1841, 1844], [1901, 1904]]],
+  ['ITX-청춘', [[2001, 2036], [2051, 2102]]],
+  ['새마을호', [[1201, 1210], [1931, 1932]]],
+  ['ITX-새마을', [[1001, 1025], [1101, 1102], [1111, 1112], [1121, 1122], [1141, 1141], [1146, 1146], [1401, 1410], [1421, 1428], [1441, 1442], [1502, 1505]]],
+  ['누리로', [[1781, 1782], [1851, 1854], [1861, 1866], [1871, 1871], [1874, 1876], [1879, 1882], [1885, 1888]]],
+  ['무궁화호', [[1151, 1164], [1166, 1166], [1171, 1177], [1181, 1182], [1191, 1197], [1271, 1288], [1451, 1452], [1461, 1464], [1471, 1472], [1481, 1484], [1491, 1492], [1571, 1576], [1651, 1652], [1661, 1662], [1671, 1678], [1681, 1682], [1751, 1762], [1771, 1778], [1791, 1800], [1891, 1892], [1981, 1982], [1991, 1994], [2601, 2620], [2627, 2634], [4301, 4304]]],
+  ['동해산타열차', [[2502, 2503]]],
+  ['백두대간협곡열차(V-Train)', [[2511, 2514]]],
+  ['남도해양열차(S-Train)', [[2521, 2522], [2525, 2526]]],
+  ['정선아리랑열차(A-Train)', [[2541, 2542]]],
+  ['서해금빛열차(G-Train)', [[2551, 2552]]]
+];
+var TRN_WEAK = [
+  ['KTX 임시열차', [[4000, 4199]]],
+  ['KTX 중련 편성', [[9000, 9999]]],
+  ['ITX-청춘 임시열차', [[4200, 4299]]],
+  ['레일크루즈 해랑', [[4300, 4399]]],
+  ['충북영동국악와인열차', [[4700, 4799]]],
+  ['교육열차(E-Train)', [[4800, 4899]]],
+  ['관광열차', [[4500, 4699]]],
+  ['임시 여객열차', [[4000, 4999]]],
+  ['시운전 열차', [[7000, 7999]]]
+];
+function trainClassTag(d) {
+  var k = (d && d.trainKind) || trainClassByNo(d && d.train, true);
+  return k ? ' <small class="pp-kind">' + esc(k) + '</small>' : '';
+}
+function trainClassByNo(no, weak) {
+  var n = parseInt(String(no || '').replace(/\D/g, ''), 10);
+  if (!(n > 0)) return '';
+  var lists = weak ? [TRN_STRONG, TRN_WEAK] : [TRN_STRONG];
+  for (var li = 0; li < lists.length; li++) {
+    var L = lists[li];
+    for (var i = 0; i < L.length; i++) for (var j = 0; j < L[i][1].length; j++) if (n >= L[i][1][j][0] && n <= L[i][1][j][1]) return L[i][0];
+  }
+  return '';
+}
 function passTrainType(kind, no) {
   /* 종류: freight(화물) · mugunghwa(무궁화) · saemaul(ITX-새마을) · ktx · itx(ITX-청춘·마음) · srt */
   var fx = PASS_FIXED_ART[passTrainNo(no)];
@@ -16485,7 +16528,7 @@ function passRunCheck(list, c, overviewOnly, opts) {
 
       if (page && j && j._staleMin && page.kind !== 'err') page.note = '⚠ 서버 응답이 늦어 ' + j._staleMin + '분 전 정보를 보여줘요. 열차를 누르면 다시 불러와요.' + (page.note ? ' ' + page.note : '');
       if (page && !page.stations && j && Array.isArray(j.stations)) page.stations = j.stations.map(function (x) { return { name: x.name, plan: x.plan, act: x.act, delay: x.delay }; });   /* 열차시간표 실시간 위치용 */
-      if (page) { page.trainKind = String((j && (j.kind || j.trnKind || j.trn_kind)) || ''); page.trainType = passTrainType(page.trainKind, it.train); pages[n] = page; }
+      if (page) { page.trainKind = (function (tb, sk) { return (tb && !(tb === 'KTX' && sk)) ? tb : (sk || trainClassByNo(it.train, true)); })(trainClassByNo(it.train), String((j && (j.kind || j.trnKind || j.trn_kind)) || ''));   /* KTX는 서버가 산천 · 이음까지 알려주면 그걸 따름 */   /* 열차번호대로 종류 확정 */ page.trainType = passTrainType(page.trainKind, it.train); pages[n] = page; }
       if (--left === 0) {
         pages = pages.filter(Boolean);
         if (opts.refresh) { passApplyRefresh(pages); return; }
@@ -16652,7 +16695,7 @@ function passDraw(d, quiet) {
   if ($('pp-cancel-scene')) { $('pp-cancel-scene').hidden = true; $('pp-cancel-scene').innerHTML = ''; }
   if (d.kind === 'err') {
     $('pp-badge').className = 'pp-badge k-now'; $('pp-badge').textContent = d.loading ? '조회 중' : '조회 실패';
-    $('pp-title').innerHTML = '<b>' + esc(d.train) + '</b>열차';
+    $('pp-title').innerHTML = '<b>' + esc(d.train) + '</b>열차' + trainClassTag(d);
     $('pp-date').textContent = d.date ? String(d.date).replace(/-/g, '.') : '';
     $('pp-stops').innerHTML = ''; $('pp-info').innerHTML = '<div class="pp-row"><span>' + esc(d.msg || '') + '</span></div>'; $('pp-zone').textContent = '';
     if (passPopAnim) { try { passPopAnim.cancel(); } catch (e) {} }
@@ -16696,7 +16739,7 @@ function passDraw(d, quiet) {
   badge.textContent = d.composing ? '조성대기' : d.phase === 'boarding' ? '운행대기' : d.phase === 'before' ? '출발 전' : d.phase === 'done' ? '운행 종료' : d.waiting ? '연결대기' : (d.overview ? '실시간 열차 위치' :
     (kind === 'pass' ? '지정역 통과' :
       (d.approaching ? '지정역 진입 중' : kind === 'soon' ? '진입 중' : '현재 위치')));
-  $('pp-title').innerHTML = d.live ? '<b>' + esc(d.train) + '</b>열차 ' + esc(String(d.station || '').replace(/역$/, '')) + '역 통과중' : '<b>' + esc(d.train) + '</b>열차';
+  $('pp-title').innerHTML = d.live ? '<b>' + esc(d.train) + '</b>열차 ' + esc(String(d.station || '').replace(/역$/, '')) + '역 통과중' : '<b>' + esc(d.train) + '</b>열차' + trainClassTag(d);
   if (d.live) { badge.className = 'pp-badge k-live'; badge.textContent = '실시간'; }
   var currentLabel = d.currentText || d.station || '-';
   var dateLabel = d.date ? String(d.date).replace(/-/g, '.') : '';
@@ -32723,5 +32766,6 @@ html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(
 html.wbg-on:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body .dia-modal.active :is(.ui-seg,.ui-list) button.on{box-shadow:inset 0 0 0 2px #4da3ff!important;border-color:#4da3ff!important;background:rgba(77,163,255,.16)!important}
 html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body .dia-modal.active .ui-list button:not(.on){border-color:rgba(255,255,255,.18)!important}
 </style>
+<style id="fix-v55">.pp-title .pp-kind{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;vertical-align:2px;background:rgba(80,150,255,.18);color:inherit;opacity:.9}</style>
 </body>
 </html>
