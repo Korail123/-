@@ -31980,8 +31980,9 @@ html.ui-dark .ai-form input{background:#222b3d;border-color:#2f3946;color:#e3e8e
   fab.addEventListener('pointerup', function () { if (!down) return; down = false; if (moved) { var r = fab.getBoundingClientRect(); try { localStorage.setItem(KEY, JSON.stringify({ x: r.left, y: r.top })); } catch (e) {} } else open(!pop.classList.contains('open')); });
   document.getElementById('ai-x').onclick = function () { open(false); };
   window.addEventListener('resize', function () { var r = fab.getBoundingClientRect(); place(clamp(r.left, r.top)); if (pop.classList.contains('open')) placePop(); });
+  function aiAllowed() { try { return typeof isBoardAdmin === 'function' && isBoardAdmin(); } catch (e) { return false; } }   /* 지금은 관리자만 사용 */
   var _ss = switchSection;
-  switchSection = function (id) { _ss(id); var on = id !== 'login-section' && id !== 'signup-section'; fab.classList.toggle('show', on); if (!on) open(false); };
+  switchSection = function (id) { _ss(id); var on = id !== 'login-section' && id !== 'signup-section' && aiAllowed(); fab.classList.toggle('show', on); if (!on) open(false); };
 var DOW = ['일', '월', '화', '수', '목', '금', '토'];
   function esc2(t) { return String(t).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
   function add(cls, txt, note) {
@@ -32132,6 +32133,7 @@ var DOW = ['일', '월', '화', '수', '목', '금', '토'];
   function refundCount() { try { var o = JSON.parse(localStorage.getItem(AI_CNT_KEY) || '{}'); if (o.n > 0) { o.n--; localStorage.setItem(AI_CNT_KEY, JSON.stringify(o)); } } catch (e) {} }   /* 답을 못 받았으면 횟수를 돌려줌 */
   function bumpCount() { try { localStorage.setItem(AI_CNT_KEY, JSON.stringify({ d: new Date().toDateString(), n: todayCount() + 1 })); } catch (e) {} }
   function askAI(q) {
+    if (!aiAllowed()) { add('bot', 'AI 채팅봇은 지금 관리자만 사용할 수 있어요.'); return; }
     if (hasPersonal(q)) {
       var l = document.getElementById('ai-log'); if (l && l.lastChild) l.removeChild(l.lastChild);   /* 개인정보가 담긴 질문은 화면에도 남기지 않음 */
       add('bot', '개인정보(이름·사번·연락처 등)가 들어 있는 질문은 받지 않아요. 보내지도 저장하지도 않았어요. 개인정보 없이 다시 물어봐 주세요.'); return;
