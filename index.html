@@ -31465,6 +31465,7 @@ html.wbg-on:not(#g1):not(#g2):not(#g3):not(#g4):not(#g5):not(#g6):not(#g7):not(#
       var els = mods[m].querySelectorAll('*');
       for (var i = 0; i < els.length && i < 2500; i++) {
         var el = els[i]; if (el.dataset && el.dataset.cg) continue;
+        if (el.closest('.dd-chip,.dd-cover,.dbs-card')) continue;   /* 열차번호 칩 · 상세카드는 정해진 색만 (색이 바뀌는 현상 방지) */
         if (!hasText(el)) continue;
         var cs = getComputedStyle(el), bg = rgba(cs.backgroundColor);
         if (bg[3] < .6 || lum(bg) < .5) continue;
@@ -31544,6 +31545,25 @@ html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6
 html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7) .onb-card em:empty{display:none!important}
 html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7) .onb-card .onb-sw{background:rgba(255,255,255,.18)!important;border:1px solid rgba(255,255,255,.3)!important}
 html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7) .onb-card .onb-btn.pri{background:#2f8cf0!important}
+</style>
+<style id="fix-v69">/* 동병상련: 색칠 없이 반투명 · 글씨 흰색 */
+html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card *:not(i):not(svg):not(path){background:transparent!important;background-image:none!important;color:#fff!important;-webkit-text-fill-color:#fff!important;box-shadow:none!important;text-shadow:none!important}
+html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .db-x,html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .db-seg,html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .dbs-col,html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .dbs-p,html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .dbs-row.me,html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .dbs-ti.me,html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .dbs-me,html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .dbs-ti em:not(.dbs-me){background:rgba(255,255,255,.12)!important}
+html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .db-seg button.on{background:rgba(255,255,255,.26)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.45)!important}
+html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .db-seg i{background:rgba(255,255,255,.2)!important;color:#fff!important}
+html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .dbs-row{border-bottom:1px solid rgba(255,255,255,.2)!important}
+html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .dbs-row.me{border-bottom-color:transparent!important}
+html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .dbs-tl{border-left:2px solid rgba(255,255,255,.4)!important}
+html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .dbs-me{border:1px solid rgba(255,255,255,.55)!important}
+html.wbg-on:not(.theme-day):not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .dbs-ti i{background:rgba(255,255,255,.9)!important;border-color:rgba(255,255,255,.9)!important}
+html.wbg-on.theme-day:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card *:not(i):not(svg):not(path){background:transparent!important;box-shadow:none!important}
+html.wbg-on.theme-day:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .db-seg,html.wbg-on.theme-day:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .dbs-col,html.wbg-on.theme-day:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .dbs-p,html.wbg-on.theme-day:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .dbs-row.me,html.wbg-on.theme-day:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .dbs-ti.me,html.wbg-on.theme-day:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#q8) .dbs-card .db-x{background:rgba(255,255,255,.4)!important}
+</style>
+<style id="fix-v70">/* 화면 넘어갈 때 흰 칸이 잠깐 보이던 현상: 유리 클래스가 붙기 전에도 처음부터 반투명 */
+html.wbg-on:not(.theme-day):not(#r1):not(#r2):not(#r3):not(#r4):not(#r5):not(#r6) body :is(.stats-card,.mypage-box,.mypage-profile,#calendar-card,.group-table-container,.pk-dd,.ps-card,#welcome-card,.login-success-card,.board-write-btn,.bp-back,.be-save-top,.be-att-btn,.bp-content,.bp-composer,.crew-refresh,#vac-calendar-card){background-color:rgba(10,18,34,.38)!important;background-image:none!important}
+html.wbg-on.theme-day:not(#r1):not(#r2):not(#r3):not(#r4):not(#r5):not(#r6) body :is(.stats-card,.mypage-box,.mypage-profile,#calendar-card,.group-table-container,.pk-dd,.ps-card,#welcome-card,.login-success-card,.board-write-btn,.bp-back,.be-save-top,.be-att-btn,.bp-content,.bp-composer,.crew-refresh,#vac-calendar-card){background-color:rgba(255,255,255,.72)!important;background-image:none!important}
+html.wbg-on:not(.theme-day):not(#r1):not(#r2):not(#r3):not(#r4):not(#r5):not(#r6) #app-splash{background:#0b1220!important}
+html.wbg-on:not(#r1):not(#r2):not(#r3):not(#r4):not(#r5):not(#r6) .page-view{animation:none!important}
 </style>
 </body>
 </html>
