@@ -31395,33 +31395,8 @@ function wbgGlass() {
   }
   function onMain() { return wbgOn(); }   /* 모든 화면 (환경설정 › 애니메이션 효과에서 켜고 끔) */
   function active() { return onMain() && !document.hidden; }
-  /* 눈송이 배열을 재생성하지 않고 기울기에 따른 가속도만 연속 반영한다. */
-  var snowTiltTarget = 0, snowTiltX = 0, snowTiltEnabled = false, snowTiltGot = false;
-  function snowTiltOrientation(e) {
-    if (!snowTiltEnabled || typeof e.gamma !== 'number' || !isFinite(e.gamma)) return;
-    snowTiltGot = true;
-    var angle = (screen.orientation && typeof screen.orientation.angle === 'number') ? screen.orientation.angle : (window.orientation || 0);
-    var side = (Math.abs(angle) === 90 && typeof e.beta === 'number') ? (angle === 90 ? -e.beta : e.beta) : e.gamma;
-    snowTiltTarget = Math.max(-1, Math.min(1, side / 35));
-  }
-  function snowTiltStart() {
-    if (snowTiltEnabled || !window.DeviceOrientationEvent) return;
-    snowTiltEnabled = true;
-    window.addEventListener('deviceorientation', snowTiltOrientation, { passive: true });
-  }
-  /* iOS 13+: 기울기 권한은 사용자 터치 안에서만 요청 가능 → 버튼 없이 화면 첫 터치 때 자동 요청 (트리 바탕 ON/OFF와 무관하게 항상 켬) */
-  if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') {
-    snowTiltStart();   /* 이미 허용된 경우 바로 동작 */
-    var tiltAsked = false;
-    var tiltAsk = function () {
-      if (tiltAsked) return; tiltAsked = true;
-      document.removeEventListener('touchend', tiltAsk, true); document.removeEventListener('click', tiltAsk, true);
-      if (snowTiltGot) return;   /* 이미 센서 값이 들어오면 다시 묻지 않음 */
-      try { DeviceOrientationEvent.requestPermission().then(function (r) { if (r === 'granted') snowTiltStart(); }).catch(function () {}); } catch (e) {}
-    };
-    document.addEventListener('touchend', tiltAsk, true);
-    document.addEventListener('click', tiltAsk, true);
-  } else { snowTiltStart(); }
+  /* 폰 기울기에 따라 눈 방향이 바뀌는 기능: 꺼 둠 (아이폰 · 갤럭시 모두). 기울기 센서도 읽지 않고 권한도 묻지 않음 → 눈은 항상 같은 방향 */
+  var snowTiltTarget = 0, snowTiltX = 0;
   function frame(now) {
     requestAnimationFrame(frame);
     var on = active(); document.documentElement.classList.toggle('wbg-on', onMain());
