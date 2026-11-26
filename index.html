@@ -7364,7 +7364,8 @@ function openCrewSetting() {
   openMyPage();
 }
 /* 승무원(함께 타는 기관사) 표시를 하지 않는 날: 비번·휴무·대기근무 */
-var CREW_STANDBY_DIAS = ['12941', '12942', '12901', '12902', '12932', '12B07', '12937'];
+var CREW_STANDBY_DIAS = ['12901', '12902', '12903', '12905', '12907', '12913', '12921', '12922', '12931', '12932', '12933', '12934', '12935', '12936', '12937', '12941', '12942', '12K57', '12K58', '12V06', '12B07'];
+function rsIsStandbyDia(d) { return CREW_STANDBY_DIAS.indexOf(String(d || '').trim().toUpperCase()) >= 0; }   /* 대기근무: XROIS에서 정보를 가져오지 않음 */
 function crewSkipDay(diaNo, type, status, label) {
   var t = String(type || '').trim(), st = String(status || '').trim(), lb = String(label || '').trim();
   var combined = (t + ' ' + st + ' ' + lb).toUpperCase().replace(/\s+/g, ' ');
@@ -7684,7 +7685,8 @@ function renderDayDetail() {
     if (!ddRt && diaNo && rsPlan && rsPlan.rows && rsPlan.rows.length && typeof rpUrl === 'function') ddRt = { url: rpUrl(diaNo, rsPlan.rows), dia: diaNo, official: false };
     var ddAsking = false, ddLinked = false;
     try { ddLinked = (typeof crewLinked === 'function') && !!crewLinked(); } catch (e) {}
-    if (!ddRt && diaNo && !isStatus) {
+    var ddStandby = rsIsStandbyDia(diaNo);
+    if (!ddRt && diaNo && !isStatus && !ddStandby) {
       /* 행로표가 아직 없으면 XROIS에서 그 날짜의 다이아 정보를 받아 예상 행로표를 만듦 (같은 날짜 · 다이아는 10분에 한 번만) */
       try {
         window.__ddRtTry = window.__ddRtTry || {};
@@ -7700,7 +7702,7 @@ function renderDayDetail() {
         '<img class="dd-dia-image" src="' + ddRt.url + '"' + routeArAttr(ddRt.url, ddRt.dia) + ' alt="DIA ' + esc(ddRt.dia) + (ddRt.official ? ' 행로표' : ' 예상 행로표') + '" onclick="openRouteViewer(\'' + esc(ddRt.dia) + '\', this.src)" decoding="async"' +
         ' onerror="this.style.display=\'none\';var m=this.nextElementSibling;if(m)m.style.display=\'\'">' +
         '<div class="dd-dia-image-missing" style="display:none">행로표 이미지를 불러오지 못했어요. (예상)</div>';
-    } else {
+    } else if (!ddStandby) {
       ddRouteHtml = '<div class="cv-rt-cap">행로표' + (isStatus ? '' : ' <em class="cv-rt-est">(예상)</em>') + '</div>' +
         (ddLinked
           ? '<div class="dd-dia-image-missing">' + (ddAsking ? 'XROIS에서 이 날짜 다이아 정보를 가져와 행로표를 만드는 중이에요…' : '예상 행로표가 아직 없어요.') + '</div>' +
@@ -7985,6 +7987,7 @@ function rsUseSharedDia(dia, dk, e, quiet) {
 function rsDiaInfoForEdit(dk, dia, fromEdit) {
   dia = String(dia || '').trim().toUpperCase();
   if (!dia) return;
+  if (rsIsStandbyDia(dia)) return;                                /* 대기근무는 XROIS에서 가져오지 않음 */
   if (diaByNumber(dia)) return;                                   /* ① 서버 다이아 목록에 있음 */
   var shared = rsSharedDiaFind(dia, dk);
   if (shared) { rsUseSharedDia(dia, dk, shared); return; }        /* ② 서버에 공유된 같은 다이아 */
@@ -24120,7 +24123,7 @@ function cbRender() {
     var names = cbNames(r);
     var hit = nameHit(r);   /* 내 이름이 있는 줄만 (비번·휴무 날은 이름이 없으니 색칠 없음) */
     var t1 = r.t1 != null ? r.t1 : ((r.trains || [])[0] || ''), t2 = r.t2 != null ? r.t2 : ((r.trains || [])[1] || '');
-    return '<tr' + (hit ? ' class="me"' : '') + '><td class="cb-d">' + esc(r.dia || '') + '</td><td>' + esc(t1) + '</td><td>' + esc(t2) + '</td>' +
+    return '<tr' + (hit ? ' class="me"' : '') + '><td class="cb-d cb-dlink" onclick="cbOpenRoute(this.textContent)" role="button" tabindex="0" title="눌러서 행로표 보기">' + esc(r.dia || '') + '</td><td>' + esc(t1) + '</td><td>' + esc(t2) + '</td>' +
       '<td>' + esc(r.start || '') + '</td><td>' + esc(r.end || '') + '</td>' +
       names.map(function (n) { return '<td class="cb-n">' + esc(n) + '</td>'; }).join('') + '</tr>';
   }).join('');
@@ -32015,6 +32018,7 @@ var DOW = ['일', '월', '화', '수', '목', '금', '토'];
   var VAC_WORDS = [['병가', '병가'], ['공가', '공가'], ['육아', '육아휴직'], ['출산', '출산휴가'], ['돌봄', '돌봄'], ['휴무', '휴무'], ['연차', '연차'], ['휴가', '연차'], ['쉬', '연차']];
   function vacOf(q) { for (var i = 0; i < VAC_WORDS.length; i++) if (q.indexOf(VAC_WORDS[i][0]) >= 0) return VAC_WORDS[i][1]; return ''; }
   var pending = null;
+  var lastCtx = null;
   function addActions(txt, onYes) {
     var l = document.getElementById('ai-log'); if (!l) return;
     var d = document.createElement('div'); d.className = 'ai-msg bot'; d.textContent = txt;
@@ -32063,13 +32067,16 @@ var DOW = ['일', '월', '화', '수', '목', '금', '토'];
   window.aiAsk = function (q) {
     if (q.replace(/\s/g, '') === 'AI횟수초기화') { try { localStorage.removeItem('rsAiCount'); } catch (e) {} add('bot', '오늘 AI 질문 횟수를 0으로 되돌렸어요.'); return; }
     add('me', q); var a;
+    /* 후속 질문: "그럼 모레는?" → 바로 앞에 물은 사람·종류를 이어서 (이 기기 화면 안에서만 기억, 저장하지 않음) */
+    var fu = /^(그럼|그러면|그리고)?\s*(오늘|내일|모레|어제|\d{1,2}\s*월\s*\d{1,2}\s*일|\d{1,2}\s*일)\s*(은|는|도|엔|에는)?\s*(요|\?)*$/.exec(q.trim());
+    if (fu && lastCtx) q = fu[2] + ' ' + (lastCtx.person ? lastCtx.person + ' ' : '') + '근무';
     var other = otherName(q);
-    if (other) { colleagueAnswer(other, q); return; }
+    if (other) { lastCtx = { person: other }; colleagueAnswer(other, q); return; }
     if (/(바꿔|변경|등록|신청|넣어|쉬게|쉬고|해줘|해 줘).*/.test(q) && /(바꿔|변경|등록|신청|넣어|쉬게|교환)/.test(q)) { changeFlow(q); return; }
     if (/이번\s*주|일주일|주간 근무/.test(q)) a = weekAnswer();
     else if (/이번\s*달.*(휴가|연차|휴무)|(휴가|연차|휴무).*(날짜|언제|며칠에)/.test(q)) a = monthLeaveAnswer();
     else if (/연차|휴가|남은/.test(q)) a = leaveAnswer(q);
-    else if (/근무표|근무|출근|퇴근|다이아|오늘|내일|모레|어제|\d\s*일/.test(q) && !/규정|용어|뜻|의미|설명|방법/.test(q)) a = dayAnswer(q);
+    else if (/근무표|근무|출근|퇴근|다이아|오늘|내일|모레|어제|\d\s*일/.test(q) && !/규정|용어|뜻|의미|설명|방법/.test(q)) { lastCtx = { person: '' }; a = dayAnswer(q); }
     else { askAI(q); return; }
     add('bot', a[0], a[1]);
   };
@@ -32149,5 +32156,34 @@ html body #day-detail .dd-cover .cv-strip{border:0!important;box-shadow:none!imp
 html body #day-detail .dd-cover .cv-strip s{display:none!important}
 html body #day-detail .crew-row,html body #day-detail.dd-crew-open .crew-row.dd-dup{display:none!important}
 </style>
+<style id="cb-route-style">
+#crewboard-section .cb-table td.cb-dlink{cursor:pointer;color:#2f6fd6;font-weight:800;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;-webkit-tap-highlight-color:transparent}
+#crewboard-section .cb-table td.cb-dlink:active{background:rgba(47,111,214,.12)}
+</style>
+<script id="cb-route-js">
+/* 승무근무표 현황에서 다이아 이름을 누르면 행로표 팝업
+   ① 관리자 등록(DB) 행로표가 있으면 그것 ② 없으면 XROIS에서 그 다이아 정보를 받아 철도비서가 만든 (예상) 행로표
+   대기근무 다이아는 XROIS에서 가져오지 않음 (관리자 등록 행로표가 있을 때만 보여줌) */
+var cbRtPoll = null;
+function cbOpenRoute(dia) {
+  var d = String(dia || '').trim().toUpperCase(); if (!d || !cbDate) return;
+  var dk = cbKey(cbDate);
+  function show(r) { openRouteViewer(d, r.url); if (!r.official) { try { $('rv-title').textContent = 'DIA ' + d + ' 행로표 (예상)'; } catch (e) {} } }
+  if (cbRtPoll) { clearInterval(cbRtPoll); cbRtPoll = null; }
+  var r = rsRouteFor(dk, d);
+  if (r && r.url) { show(r); return; }
+  if (rsIsStandbyDia(d)) { showToast(d + '은 대기근무라 행로표가 없어요.'); return; }
+  if (typeof crewLinked !== 'function' || !crewLinked()) { showToast('[ 마이페이지 - CREW 연동 필요 ] XROIS 연동을 하면 행로표를 만들어드려요.'); return; }
+  showToast(d + ' 행로표를 XROIS에서 만드는 중…');
+  try { rsDiaInfoForEdit(dk, d, true); } catch (e) {}
+  var n = 0;
+  cbRtPoll = setInterval(function () {
+    n++; var r2 = null; try { r2 = rsRouteFor(dk, d); } catch (e) {}
+    if (r2 && r2.url) { clearInterval(cbRtPoll); cbRtPoll = null; show(r2); }
+    else if (n >= 25) { clearInterval(cbRtPoll); cbRtPoll = null; showToast(d + ' 행로표를 만들지 못했어요. 잠시 뒤 다시 눌러주세요.'); }
+  }, 1000);
+}
+document.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.classList && e.target.classList.contains('cb-dlink')) { e.preventDefault(); cbOpenRoute(e.target.textContent); } });
+</script>
 </body>
 </html>
