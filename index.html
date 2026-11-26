@@ -5025,6 +5025,7 @@ empty.className = 'cell empty rs-adjacent-date';
 var prevDate = new Date(calendarYear, calendarMonth, 1 - firstDay + i);
 empty.innerHTML = rsAdjacentDutyHtml(prevDate);
 empty.setAttribute('aria-label', (prevDate.getMonth() + 1) + '월 ' + prevDate.getDate() + '일 (이전 달)');
+empty.onclick = (function (dt) { return function () { rsPickAdjacent(dt); }; })(prevDate);
 grid.appendChild(empty);
 }
 for (var d = 1; d <= lastDate; d++) {
@@ -5108,6 +5109,7 @@ emptyTail.className = 'cell empty rs-adjacent-date';
 var nextDate = new Date(calendarYear, calendarMonth + 1, t + 1);
 emptyTail.innerHTML = rsAdjacentDutyHtml(nextDate);
 emptyTail.setAttribute('aria-label', (nextDate.getMonth() + 1) + '월 ' + nextDate.getDate() + '일 (다음 달)');
+emptyTail.onclick = (function (dt) { return function () { rsPickAdjacent(dt); }; })(nextDate);
 grid.appendChild(emptyTail);
 }
 fitSwapBadges(grid);
@@ -7336,7 +7338,7 @@ if (!window.__ddRtTry[tk] || nowT - window.__ddRtTry[tk] > 600000) { window.__dd
 } catch (e) {}
 }
 if (ddRt && ddRt.url) {
-ddRouteHtml = '<div class="cv-rt-cap">행로표' + (ddRt.official ? '' : ' <em class="cv-rt-est">(예상)</em>') + '<small>눌러서 크게 보기</small></div>' +
+ddRouteHtml = '<div class="cv-rt-cap">행로표' + (ddRt.official ? '' : ' <em class="cv-rt-est">(예상)</em>') + '</div>' +
 '<img class="dd-dia-image" src="' + ddRt.url + '"' + routeArAttr(ddRt.url, ddRt.dia) + ' alt="DIA ' + esc(ddRt.dia) + (ddRt.official ? ' 행로표' : ' 예상 행로표') + '" onclick="openRouteViewer(\'' + esc(ddRt.dia) + '\', this.src)" decoding="async"' +
 ' onerror="this.style.display=\'none\';var m=this.nextElementSibling;if(m)m.style.display=\'\'">' +
 '<div class="dd-dia-image-missing" style="display:none">행로표 이미지를 불러오지 못했어요. (예상)</div>';
@@ -7378,6 +7380,13 @@ var RS_START = { y: 2026, m: 5, d: 1 };
 var RS_START_DATE = new Date(2026, 5, 1);
 function rsBeforeStartYm(y, m) { return y * 12 + m < RS_START.y * 12 + RS_START.m; }
 function rsStartToast() { try { showToast('철도비서 근무 기록은 2026년 6월부터 볼 수 있어요.'); } catch (e) {} }
+function rsPickAdjacent(dt) {
+var y = dt.getFullYear(), m = dt.getMonth();
+if (rsBeforeStartYm(y, m)) { rsStartToast(); return; }
+selDate = { y: y, m: m, d: dt.getDate() };
+calendarYear = y; calendarMonth = m;
+renderCalendar(); renderDayDetail(); loadMyMonth();
+}
 function changeMonth(diff) {
 var cy = calendarYear, cm = calendarMonth + diff;
 if (cm > 11) { cm = 0; cy++; } else if (cm < 0) { cm = 11; cy--; }
@@ -8639,7 +8648,7 @@ line('열차번호', duty.trains.length ? esc(duty.trains.join(', ')) : '-');
 if (duty && (!duty.off || briefMidToday().length)) dh += line('도중출무', briefMidHtml());
 if (duty && !duty.off) {
 var rt = rsRouteFor(todayKeyKST(), duty.dia);
-if (rt) dh += '<div class="brief-route"><div class="brief-route-cap">' + (rt.official ? '행로표' : '예상 행로표') + ' <small>눌러서 크게 보기</small></div>' +
+if (rt) dh += '<div class="brief-route"><div class="brief-route-cap">' + (rt.official ? '행로표' : '예상 행로표') + ' </div>' +
 '<img src="' + rt.url + '" alt="DIA ' + esc(rt.dia) + ' 행로표" onclick="openRouteViewer(\'' + esc(rt.dia) + '\', this.src)" decoding="async"></div>';
 else if (duty.dia) dh += '<div class="brief-route"><div class="brief-route-cap">예상 행로표</div><div class="brief-route-none">행로표 이미지가 없습니다.</div></div>';
 }
@@ -12401,7 +12410,7 @@ function slideAndChange(dir, fromX) {
 var w = el.offsetWidth || 320;
 var outX = dir * w;
 busy = true;
-el.style.willChange = 'transform, opacity';
+el.style.willChange = 'transform';
 el.style.transition = 'transform ' + OUT_MS + 'ms cubic-bezier(.4,0,1,1), opacity ' + OUT_MS + 'ms ease-in';
 el.style.transform = 'translate3d(' + outX + 'px,0,0)';
 el.style.opacity = '0';
@@ -12434,7 +12443,7 @@ if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { ok = false; return; }
 if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy) * 1.15) return;
 moved = true;
 el.style.transition = 'none';
-el.style.willChange = 'transform, opacity';
+el.style.willChange = 'transform';
 }
 var allowed = dx < 0 ? (!canNext || canNext()) : (!canPrev || canPrev());
 var factor = allowed ? 0.9 : 0.25;
@@ -28321,7 +28330,7 @@ if (ttBackOnClose) { ttBackOnClose = false; try { $('pass-pop-panel').classList.
 function passTimetable() {
 var d = passPopData || {};
 if (!d.train) { showToast('열차번호를 알 수 없어요.'); return; }
-var t = todayKST(), day = getDateKey(t.y, t.m, t.d);   /* 열차시간표는 늘 오늘 기준 */
+var t = todayKST(), day = /^\d{4}-\d{2}-\d{2}$/.test(String(d.date || '')) ? String(d.date) : getDateKey(t.y, t.m, t.d);   /* 열차시간표는 조회한 날짜 기준 (날짜가 없으면 오늘) */
 ttOpen(String(d.train).toUpperCase(), day);
 }
 function ttDateLabel(dk) { var p = dk.split('-'); return (+p[1]) + '월 ' + (+p[2]) + '일(' + '일월화수목금토'.charAt(new Date(+p[0], +p[1] - 1, +p[2]).getDay()) + ')'; }
@@ -28426,6 +28435,8 @@ var lastAct = -1; rows.forEach(function (r, i) { if (r.act) lastAct = i; });
 var passed = -1;
 if (lastAct >= 0) passed = lastAct;
 else rows.forEach(function (r, i) { var t = (r.dep !== null ? r.dep : r.plan); if (t !== null && t + dl <= now) passed = i; });
+var tkN = todayKST(), isTd = day === getDateKey(tkN.y, tkN.m, tkN.d);
+if (!isTd) { passed = -1; dl = 0; }   /* 오늘이 아닌 날짜는 현재 위치 · 지연 없이 시각표만 */
 var n = rows.length, frac = 0;
 if (passed >= 0 && passed < n - 1) {
 var a = rows[passed].dep !== null ? rows[passed].dep + dl : null, c = rows[passed + 1].plan !== null ? rows[passed + 1].plan + dl : null;
@@ -28446,13 +28457,13 @@ h += '<div class="tt-row' + (done ? ' done' : '') + (i === n - 1 ? ' end' : '') 
 if (i === passed && i < n - 1) h += '<div class="tt-now"><span class="tt-now-l">지금</span><span class="tt-loco" style="--f:' + frac.toFixed(2) + '"><img src="' + ttLocoSrc() + '" alt=""></span><span class="tt-now-r">' + esc(dTxt || '운행 중') + '</span></div>';
 });
 h += '</div>';
-var state = passed < 0 ? '<div class="tt-state">출발 전이에요' + (first !== null ? ' · ' + ttHm(first + dl) + ' 출발 예정' : '') + '</div>' : passed >= n - 1 ? '<div class="tt-state">운행을 마쳤어요</div>' : '';
+var state = !isTd ? '' : passed < 0 ? '<div class="tt-state">출발 전이에요' + (first !== null ? ' · ' + ttHm(first + dl) + ' 출발 예정' : '') + '</div>' : passed >= n - 1 ? '<div class="tt-state">운행을 마쳤어요</div>' : '';
 b.innerHTML = head + state + h + ttSrc(j);
 var nowEl = b.querySelector('.tt-now'); if (nowEl) setTimeout(function () { try { nowEl.scrollIntoView({ block: 'center' }); } catch (e) {} }, 50);
 ttTick = setInterval(function () { if (!$('tt-pop').classList.contains('active')) { clearInterval(ttTick); ttTick = null; return; } if (ttLast) ttRender(ttLast.j, ttLast.no, ttLast.day); }, 60000);   /* 1분마다 위치 다시 계산 */
 }
 function ttLocoSrc() { try { return (PASS_TRAIN_ART && (PASS_TRAIN_ART.dloco || PASS_TRAIN_ART.eloco)) || ''; } catch (e) { return ''; } }
-function ttSrc(j) { return '<div class="tt-src">시각표: ' + (j && (j.fallback || j.mixed) ? '오늘 운행계획(Logis.Korail)' + (j.mixed ? ' · 정차 사유는 공공데이터포털 시간표' : '') : '공공데이터포털 ' + esc((j && j.dataset) || '한국철도공사_화물열차운행 시간표')) + ' · 주황색은 실제 도착 시각, 예상은 계획 시각에 지금 지연을 더한 값이에요.</div>'; }
+function ttSrc(j) { return '<div class="tt-src">시각표: ' + (j && (j.fallback || j.mixed) ? '운행계획(Logis.Korail)' + (j.mixed ? ' · 정차 사유는 공공데이터포털 시간표' : '') : '공공데이터포털 ' + esc((j && j.dataset) || '한국철도공사_화물열차운행 시간표')) + ' · 주황색은 실제 도착 시각, 예상은 계획 시각에 지금 지연을 더한 값이에요.</div>'; }
 </script>
 <style id="tab-swipe-ui">@keyframes rsInL{from{opacity:.4;transform:translateX(36px)}to{opacity:1;transform:none}}
 @keyframes rsInR{from{opacity:.4;transform:translateX(-36px)}to{opacity:1;transform:none}}
@@ -31416,7 +31427,12 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 </script>
 
 <style id="fix-v65">/* 팝업의 열차번호 칩: 하늘색 칠 + 흰 글씨 */
-html.wbg-on:not(#h1):not(#h2):not(#h3):not(#h4):not(#h5):not(#h6):not(#h7):not(#h8) body :is(.dd-chip,.gd-tn){background:#2f8cf0!important;background-image:none!important;color:#fff!important;border-color:#7cc4ff!important;-webkit-text-fill-color:#fff!important}
+html.wbg-on:not(#h1):not(#h2):not(#h3):not(#h4):not(#h5):not(#h6):not(#h7):not(#h8) body :is(.gd-tn){background:#2f8cf0!important;background-image:none!important;color:#fff!important;border-color:#7cc4ff!important;-webkit-text-fill-color:#fff!important}
+html.wbg-on:not(#k1):not(#k2):not(#k3):not(#k4):not(#k5):not(#k6):not(#k7):not(#k8) body .brief-mates .bm-kind,html.wbg-on:not(#k1):not(#k2):not(#k3):not(#k4):not(#k5):not(#k6):not(#k7):not(#k8) body .brief-mates .bm-kind.in,html.wbg-on:not(#k1):not(#k2):not(#k3):not(#k4):not(#k5):not(#k6):not(#k7):not(#k8) body .brief-mates .bm-kind.out{background:#2f8cf0!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+html.wbg-on:not(#m1):not(#m2):not(#m3):not(#m4):not(#m5):not(#m6):not(#m7):not(#m8) body #pass-pop-panel .pp-delay{background-image:none!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border:0!important;box-shadow:0 1px 4px rgba(0,0,0,.25)!important}
+html.wbg-on:not(#m1):not(#m2):not(#m3):not(#m4):not(#m5):not(#m6):not(#m7):not(#m8) body #pass-pop-panel .pp-delay.ontime{background:#21a35a!important}
+html.wbg-on:not(#m1):not(#m2):not(#m3):not(#m4):not(#m5):not(#m6):not(#m7):not(#m8) body #pass-pop-panel .pp-delay.late{background:#e5484d!important}
+html.wbg-on:not(#m1):not(#m2):not(#m3):not(#m4):not(#m5):not(#m6):not(#m7):not(#m8) body #pass-pop-panel .pp-delay.early{background:#2f8cf0!important}
 </style>
 <style id="fix-v64">/* 흰 글씨가 흰 칠과 겹치던 칸(오늘 표시·오늘 버튼·브리핑 안내)을 하늘색 칠로 통일 */
 html.wbg-on:not(#f1):not(#f2):not(#f3):not(#f4):not(#f5) body #trainq-panel .tq-daybtn small,
@@ -31432,6 +31448,65 @@ html.wbg-on:not(#g1):not(#g2):not(#g3):not(#g4):not(#g5):not(#g6):not(#g7):not(#
 <style id="fix-v63">#an-season .ssn-chips{display:grid!important;grid-template-columns:repeat(4,48px);gap:6px;flex:none}
 #an-season .ssn-chips button{width:48px;height:34px;padding:0!important;display:flex;align-items:center;justify-content:center;font-size:13.5px}
 #an-season .ssn-chips button.ssn-soon{opacity:.6}
+</style>
+<script id="contrast-guard-js">
+/* 안전망: 배경화면 테마에서 팝업 안의 밝은 칠(흰색·회색·연한색) 위에 밝은 글씨가 겹쳐 안 보이는 칸을 자동으로 하늘색 칠 + 흰 글씨로 바꿈 */
+(function () {
+  var h = document.documentElement, tm = 0, SKY = '#2f8cf0';
+  function rgba(c) { var m = String(c).match(/[\d.]+/g); return m ? [+m[0], +m[1], +m[2], m[3] == null ? 1 : +m[3]] : [0, 0, 0, 0]; }
+  function lum(r) { var a = [r[0], r[1], r[2]].map(function (v) { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * a[0] + .7152 * a[1] + .0722 * a[2]; }
+  function cr(a, b) { var x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); }
+  function hasText(el) { for (var n = el.firstChild; n; n = n.nextSibling) if (n.nodeType === 3 && n.nodeValue.trim()) return true; return false; }
+  function run() {
+    tm = 0; if (!h.classList.contains('wbg-on')) return;
+    var mods = document.querySelectorAll('.dia-modal.active'); if (!mods.length) return;
+    for (var m = 0; m < mods.length; m++) {
+      var els = mods[m].querySelectorAll('*');
+      for (var i = 0; i < els.length && i < 2500; i++) {
+        var el = els[i]; if (el.dataset && el.dataset.cg) continue;
+        if (!hasText(el)) continue;
+        var cs = getComputedStyle(el), bg = rgba(cs.backgroundColor);
+        if (bg[3] < .6 || lum(bg) < .5) continue;
+        var fg = rgba(cs.color); if (fg[3] < 1) continue;
+        if (cr(fg, bg) >= 2.2) continue;
+        el.style.setProperty('background', SKY, 'important'); el.style.setProperty('background-image', 'none', 'important');
+        el.style.setProperty('color', '#fff', 'important'); el.style.setProperty('-webkit-text-fill-color', '#fff', 'important');
+        if (el.dataset) el.dataset.cg = '1';
+      }
+    }
+  }
+  function later() { if (!tm) tm = setTimeout(run, 250); }
+  function boot() {
+    try { new MutationObserver(later).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] }); } catch (e) {}
+    later();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+})();
+</script>
+<style id="fix-v66">/* 겹쳐 보이는 이전·다음 달 날짜도 선택 가능 */
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #schedule-section #calendar-grid .cell.empty.rs-adjacent-date{pointer-events:auto!important;cursor:pointer}
+/* 근무교환 달력: 근무표와 같은 근무구분 색 */
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body .swap-cal-grid .swap-day .sd-duty.duty-day,html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body .swap-cal-grid .swap-day .sd-duty.duty-day *{color:#e5a800!important}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body .swap-cal-grid .swap-day .sd-duty.duty-night,html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body .swap-cal-grid .swap-day .sd-duty.duty-night *{color:#1a73e8!important}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body .swap-cal-grid .swap-day .sd-duty.duty-off,html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body .swap-cal-grid .swap-day .sd-duty.duty-off *{color:#e53935!important}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body .swap-cal-grid .swap-day.range-edge .sd-duty{color:#fff!important}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body .swap-cal-grid .swap-day:not(.range-edge):not(.in-range){background:rgba(255,255,255,.88)!important}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body .swap-cal-grid .swap-day:not(.range-edge) .sd-num{color:#475569!important}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body .swap-cal-grid .swap-day.in-range:not(.range-edge){background:#dceeff!important}
+/* 근무 상세정보 카드: 열차번호 칩 · 승무원 띠 · 행로표 머리 */
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover.c-day{--ddt:#3d2a00;--ddf:rgba(255,255,255,.72);--dda:#b86e00}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover.c-night{--ddt:#fff;--ddf:rgba(8,22,64,.5);--dda:#9fc4ff}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover.c-off{--ddt:#fff;--ddf:rgba(120,12,18,.42);--dda:#ffd1d3}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover .row a.dd-chip{background:var(--ddf)!important;color:var(--ddt)!important;-webkit-text-fill-color:var(--ddt)!important;box-shadow:inset 3px 0 0 var(--dda)!important;border:0!important}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover .row a.dd-chip::after{border-top-color:var(--dda)!important;border-right-color:var(--dda)!important}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover.c-day .cv-bar,html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover.c-day .cv-rt,html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover.c-day .cv-strip,html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover.c-day .cv-rt-tog{background:#fff!important}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover.c-night .cv-bar,html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover.c-night .cv-rt,html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover.c-off .cv-bar,html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover.c-off .cv-rt{background:rgba(255,255,255,.16)!important}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover .cv-bar .cv-strip,html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover.c-night .cv-strip,html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover.c-off .cv-strip{background:transparent!important}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover.c-day .cv-bar .cv-strip{background:transparent!important}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover .cv-strip,html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover .cv-strip small,html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover .cv-strip b,html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover .cv-strip b em,html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover .cv-strip s,html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover .cv-rt-cap,html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover .cv-rt-cap small,html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover .cv-rt-tog,html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover .cv-rt-tog i{color:var(--ddt)!important}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover .cv-rt-tog{border-color:var(--dda)!important;background:transparent!important}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover.c-day .cv-rt-tog{background:#fff!important}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body #day-detail .dd-cover .cv-rt-cap{border-top-color:var(--dda)!important}
 </style>
 </body>
 </html>
