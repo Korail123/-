@@ -31917,5 +31917,157 @@ html.ui-dark body #group-section .group-table th,
 html.ui-dark body #group-section .group-table td{border:0!important}
 html body #group-section .group-table tr.wk td{border:0!important}
 </style>
+<style id="ai-chat-style">
+#ai-fab{position:fixed;right:14px;bottom:96px;z-index:9000;display:none;width:56px;height:56px;border:0;border-radius:50%;background:#e0f0ff;box-shadow:0 4px 12px rgba(59,130,246,.3);align-items:center;justify-content:center;touch-action:none;-webkit-tap-highlight-color:transparent;padding:0}
+#ai-fab.show{display:flex}
+#ai-fab i{position:absolute;top:-2px;right:-2px;width:12px;height:12px;border-radius:50%;background:#ef4444;border:2px solid #e0f0ff}
+#ai-fab.seen i{display:none}
+#ai-pop{position:fixed;z-index:9001;display:none;flex-direction:column;width:min(92vw,360px);height:min(62vh,470px);background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(20,40,90,.28);color:#1f2a44}
+#ai-pop.open{display:flex}
+.ai-hd{background:linear-gradient(90deg,#60a5fa,#2f6fd6);color:#fff;padding:12px 14px;font-weight:800;font-size:15px;display:flex;justify-content:space-between;align-items:center}
+.ai-hd button{border:0;background:transparent;color:#fff;font-size:18px;line-height:1;padding:2px 4px}
+.ai-log{flex:1;overflow:auto;background:#f4f8ff;padding:10px 12px;display:flex;flex-direction:column;gap:7px}
+.ai-msg{max-width:86%;padding:8px 11px;border-radius:13px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:keep-all}
+.ai-msg.me{align-self:flex-end;background:#dbeafe;color:#1f2a44}
+.ai-msg.bot{align-self:flex-start;background:#fff;border:1px solid #e3ecf8}
+.ai-msg small{display:block;margin-top:3px;color:#8a96a8;font-size:11px}
+.ai-chips{display:flex;gap:6px;padding:7px 10px 0;flex-wrap:wrap;background:#fff}
+.ai-chips button{border:1px solid #c9dbf7;background:#fff;color:#2f6fd6;border-radius:999px;padding:4px 10px;font:inherit;font-size:12px;font-weight:700}
+.ai-form{display:flex;gap:6px;padding:8px 10px}
+.ai-form input{flex:1;min-width:0;border:1px solid #dbe6f7;border-radius:999px;padding:9px 13px;font:inherit;font-size:15px;background:#fff;color:#1f2a44}
+.ai-form button{width:38px;height:38px;border:0;border-radius:50%;background:#2f6fd6;color:#fff;font-size:15px}
+html.ui-dark #ai-pop,html.ui-dark .ai-chips{background:#151b28;color:#e3e8ef}
+html.ui-dark .ai-log{background:#10151f}html.ui-dark .ai-msg.bot{background:#222b3d;border-color:#2f3946;color:#e3e8ef}html.ui-dark .ai-msg.me{background:#24407a;color:#fff}
+html.ui-dark .ai-form input{background:#222b3d;border-color:#2f3946;color:#e3e8ef}html.ui-dark .ai-chips button{background:#1b2027;border-color:#2f3946;color:#8db7ff}
+</style>
+<button type="button" id="ai-fab" aria-label="철도비서 AI 열기"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2f6fd6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg><i></i></button>
+<div id="ai-pop" role="dialog" aria-label="철도비서 AI">
+  <div class="ai-hd"><span>철도비서 AI</span><button type="button" id="ai-x" aria-label="닫기">✕</button></div>
+  <div id="ai-log" class="ai-log" aria-live="polite"></div>
+  <div class="ai-chips"><button type="button" onclick="aiAsk('오늘 근무')">오늘 근무</button><button type="button" onclick="aiAsk('내일 근무')">내일 근무</button><button type="button" onclick="aiAsk('올해 연차')">올해 연차</button></div>
+  <form class="ai-form" onsubmit="aiSubmit(event)"><input id="ai-input" type="text" autocomplete="off" placeholder="메시지를 입력하세요..." aria-label="질문 입력"><button type="submit" aria-label="보내기">➤</button></form>
+</div>
+<script id="ai-chat-js">
+(function () {
+  var fab = document.getElementById('ai-fab'), pop = document.getElementById('ai-pop');
+  var KEY = 'rsAiFabPos';
+  function clamp(x, y) { return { x: Math.min(Math.max(4, x), window.innerWidth - 60), y: Math.min(Math.max(4, y), window.innerHeight - 60) }; }
+  function place(p) { fab.style.left = p.x + 'px'; fab.style.top = p.y + 'px'; fab.style.right = 'auto'; fab.style.bottom = 'auto'; }
+  try { var sp = JSON.parse(localStorage.getItem(KEY) || 'null'); if (sp) place(clamp(sp.x, sp.y)); } catch (e) {}
+  function placePop() {
+    var r = fab.getBoundingClientRect(), w = Math.min(window.innerWidth * .92, 360), h = Math.min(window.innerHeight * .62, 470);
+    var left = Math.min(Math.max(8, r.right - w), window.innerWidth - w - 8);
+    var top = r.top - h - 10; if (top < 8) top = Math.min(r.bottom + 10, window.innerHeight - h - 8);
+    pop.style.left = left + 'px'; pop.style.top = Math.max(8, top) + 'px';
+  }
+  function open(v) { pop.classList.toggle('open', v); if (v) { fab.classList.add('seen'); placePop(); aiGreet(); var l = document.getElementById('ai-log'); l.scrollTop = l.scrollHeight; } }
+  var sx, sy, ox, oy, moved = false, down = false;
+  fab.addEventListener('pointerdown', function (e) { down = true; moved = false; sx = e.clientX; sy = e.clientY; var r = fab.getBoundingClientRect(); ox = r.left; oy = r.top; try { fab.setPointerCapture(e.pointerId); } catch (x) {} });
+  fab.addEventListener('pointermove', function (e) { if (!down) return; var dx = e.clientX - sx, dy = e.clientY - sy; if (!moved && Math.abs(dx) + Math.abs(dy) < 8) return; moved = true; place(clamp(ox + dx, oy + dy)); if (pop.classList.contains('open')) placePop(); });
+  fab.addEventListener('pointerup', function () { if (!down) return; down = false; if (moved) { var r = fab.getBoundingClientRect(); try { localStorage.setItem(KEY, JSON.stringify({ x: r.left, y: r.top })); } catch (e) {} } else open(!pop.classList.contains('open')); });
+  document.getElementById('ai-x').onclick = function () { open(false); };
+  window.addEventListener('resize', function () { var r = fab.getBoundingClientRect(); place(clamp(r.left, r.top)); if (pop.classList.contains('open')) placePop(); });
+  var _ss = switchSection;
+  switchSection = function (id) { _ss(id); var on = id !== 'login-section' && id !== 'signup-section'; fab.classList.toggle('show', on); if (!on) open(false); };
+var DOW = ['일', '월', '화', '수', '목', '금', '토'];
+  function esc2(t) { return String(t).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+  function add(cls, txt, note) {
+    var l = document.getElementById('ai-log'); if (!l) return;
+    var d = document.createElement('div'); d.className = 'ai-msg ' + cls; d.innerHTML = esc2(txt) + (note ? '<small>' + esc2(note) + '</small>' : '');
+    l.appendChild(d); l.scrollTop = l.scrollHeight;
+  }
+  function stamp() { var n = new Date(); return '조회 ' + (n.getMonth() + 1) + '/' + n.getDate() + ' ' + ('0' + n.getHours()).slice(-2) + ':' + ('0' + n.getMinutes()).slice(-2); }
+  window.aiGreet = function () { var l = document.getElementById('ai-log'); if (l && !l.children.length) add('bot', '안녕하세요, 철도비서 AI예요. 지금은 내 근무와 연차를 조회할 수 있어요. (조회 전용 · 수정은 하지 않아요)'); };
+  function parseDate(q) {
+    var t = todayKST(), dt = new Date(t.y, t.m, t.d), m;
+    if (/모레/.test(q)) dt.setDate(dt.getDate() + 2);
+    else if (/내일/.test(q)) dt.setDate(dt.getDate() + 1);
+    else if (/어제/.test(q)) dt.setDate(dt.getDate() - 1);
+    else if ((m = q.match(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/))) dt = new Date(t.y, +m[1] - 1, +m[2]);
+    else if ((m = q.match(/(\d{1,2})\s*일/))) dt = new Date(t.y, t.m, +m[1]);
+    return dt;
+  }
+  function dayAnswer(q) {
+    var dt = parseDate(q), y = dt.getFullYear(), m = dt.getMonth(), d = dt.getDate();
+    var info = null; try { info = getInfo(y, m, d); } catch (e) {}
+    var head = (m + 1) + '월 ' + d + '일(' + DOW[dt.getDay()] + ')';
+    if (!info) return [head + ' 근무정보를 찾지 못했어요. 지금은 화면에 불러온 달만 조회돼요. 근무표 화면에서 그 달을 열어보세요.', stamp()];
+    var lines = [head + ' · ' + (info.label || '-')];
+    if (info.dia) lines.push('다이아: ' + info.dia);
+    if (info.start) lines.push('출근: ' + info.start);
+    if (info.end) lines.push('퇴근: ' + info.end);
+    var tr = [info.train1, info.train2, info.train3].filter(Boolean); if (tr.length) lines.push('열차: ' + tr.join(', '));
+    return [lines.join('\n'), stamp()];
+  }
+  function leaveAnswer(q) {
+    var y = todayKST().y, m = q.match(/(20\d\d)\s*년/); if (m) y = +m[1];
+    var u = null; try { u = computeLeaveUsage(y); } catch (e) {}
+    if (!u) return ['연차 정보를 아직 불러오지 못했어요. 잠시 뒤 다시 물어봐 주세요.', stamp()];
+    var keys = Object.keys(u.counts || {}), lines = [y + '년 휴가 사용: 총 ' + u.total + '일'];
+    keys.forEach(function (k) { lines.push('· ' + k + ' ' + u.counts[k] + '일'); });
+    return [lines.join('\n'), stamp()];
+  }
+  /* ---- 명령 분석 (AI 없이): 동의어 · 날짜 · 휴가 종류 ---- */
+  var VAC_WORDS = [['병가', '병가'], ['공가', '공가'], ['육아', '육아휴직'], ['출산', '출산휴가'], ['돌봄', '돌봄'], ['휴무', '휴무'], ['연차', '연차'], ['휴가', '연차'], ['쉬', '연차']];
+  function vacOf(q) { for (var i = 0; i < VAC_WORDS.length; i++) if (q.indexOf(VAC_WORDS[i][0]) >= 0) return VAC_WORDS[i][1]; return ''; }
+  var pending = null;
+  function addActions(txt, onYes) {
+    var l = document.getElementById('ai-log'); if (!l) return;
+    var d = document.createElement('div'); d.className = 'ai-msg bot'; d.textContent = txt;
+    var row = document.createElement('div'); row.style.cssText = 'display:flex;gap:6px;margin-top:8px';
+    function mk(t, bg, fn) { var b = document.createElement('button'); b.type = 'button'; b.textContent = t; b.style.cssText = 'flex:1;border:0;border-radius:10px;padding:8px;font:inherit;font-weight:800;color:#fff;background:' + bg; b.onclick = function () { if (row.dataset.done) return; row.dataset.done = '1'; row.remove(); fn(); }; return b; }
+    row.appendChild(mk('승인', '#2f6fd6', onYes)); row.appendChild(mk('취소', '#8a96a8', function () { pending = null; add('bot', '취소했어요. 아무것도 변경하지 않았어요.'); }));
+    d.appendChild(row); l.appendChild(d); l.scrollTop = l.scrollHeight;
+  }
+  function changeFlow(q) {
+    if (/교환|바꿔.*(랑|이랑|와|과)|(랑|이랑|와|과).*바꿔/.test(q) && !/연차|휴가|병가|공가|휴무|쉬/.test(q)) { add('bot', '근무교환은 상대방 동의가 필요해서 아직 챗봇으로 할 수 없어요. 근무표 화면의 교환 기능을 이용해 주세요.'); return; }
+    var vt = vacOf(q);
+    if (!vt) { add('bot', '어떤 근무로 바꿀지 알려주세요. 예) "내일 연차로 바꿔줘" (연차 · 병가 · 공가 · 육아휴가 · 돌봄 · 출산휴가 · 휴무)'); return; }
+    var dt = parseDate(q), y = dt.getFullYear(), m = dt.getMonth(), d = dt.getDate();
+    var info = null; try { info = getInfo(y, m, d); } catch (e) {}
+    var head = (m + 1) + '월 ' + d + '일(' + DOW[dt.getDay()] + ')';
+    if (!info) { add('bot', head + ' 근무정보를 아직 불러오지 못해서 변경할 수 없어요. 근무표 화면에서 그 달을 먼저 열어주세요.'); return; }
+    var cur = String(info.status || info.label || '-');
+    if ((vacKeyNorm(info.status) || info.status) === vt && info.manual) { add('bot', head + '은 이미 ' + (vt === '육아휴직' ? '육아휴가' : vt) + '로 등록되어 있어요.'); return; }
+    var nm = vt === '육아휴직' ? '육아휴가' : vt;
+    pending = { y: y, m: m, d: d, vt: vt };
+    addActions('변경 내용을 확인해 주세요.\n대상: 본인\n날짜: ' + head + '\n기존 근무: ' + cur + (info.dia ? ' (DIA ' + info.dia + ')' : '') + '\n변경: ' + nm + '\n\n이 폰의 근무표에 저장돼요. 승인할까요?', function () {
+      var p = pending; pending = null; if (!p) return;
+      try {
+        openScheduleEdit(p.y, p.m, p.d);
+        var opt = document.querySelector('#schedule-edit-options .schedule-edit-option[data-value="' + p.vt + '"]');
+        if (!opt) { add('bot', '변경 항목을 찾지 못했어요. 근무표 화면에서 직접 변경해 주세요.'); return; }
+        if (!opt.classList.contains('selected')) opt.click();
+        saveScheduleEdit();
+        var em = document.getElementById('schedule-edit-message'); var err = em && em.textContent;
+        var after = getInfo(p.y, p.m, p.d);
+        if (after && (vacKeyNorm(after.status) || after.status) === p.vt) add('bot', (p.m + 1) + '월 ' + p.d + '일을 ' + (p.vt === '육아휴직' ? '육아휴가' : p.vt) + '로 변경했어요. 근무표에서 확인해 보세요.', stamp());
+        else add('bot', '변경을 확인하지 못했어요.' + (err ? ' (' + err + ')' : '') + ' 근무표 화면에서 확인해 주세요.');
+      } catch (e) { add('bot', '변경 중 오류가 났어요. 근무표 화면에서 직접 변경해 주세요.'); }
+    });
+  }
+  function weekAnswer() {
+    var t = todayKST(), lines = [];
+    for (var i = 0; i < 7; i++) { var dt = new Date(t.y, t.m, t.d + i), info = null; try { info = getInfo(dt.getFullYear(), dt.getMonth(), dt.getDate()); } catch (e) {} lines.push((dt.getMonth() + 1) + '/' + dt.getDate() + '(' + DOW[dt.getDay()] + ') ' + (info ? (info.dia || info.label || '-') + (info.start ? ' ' + info.start + '~' + (info.end || '') : '') : '정보 없음')); }
+    return [lines.join('\n'), stamp()];
+  }
+  function monthLeaveAnswer() {
+    var t = todayKST(), last = new Date(t.y, t.m + 1, 0).getDate(), out = [];
+    for (var d = 1; d <= last; d++) { var info = null; try { info = getInfo(t.y, t.m, d); } catch (e) {} if (info && isLeaveInfo(info) && info.label !== 'X') out.push(d + '일(' + (info.status || info.label) + ')'); }
+    return [(t.m + 1) + '월 휴가·휴무: ' + (out.length ? out.join(', ') : '없음'), stamp()];
+  }
+  window.aiAsk = function (q) {
+    add('me', q); var a;
+    if (/(바꿔|변경|등록|신청|넣어|쉬게|쉬고|해줘|해 줘).*/.test(q) && /(바꿔|변경|등록|신청|넣어|쉬게|교환)/.test(q)) { changeFlow(q); return; }
+    if (/이번\s*주|일주일|주간 근무/.test(q)) a = weekAnswer();
+    else if (/이번\s*달.*(휴가|연차|휴무)|(휴가|연차|휴무).*(날짜|언제|며칠에)/.test(q)) a = monthLeaveAnswer();
+    else if (/연차|휴가|남은/.test(q)) a = leaveAnswer(q);
+    else if (/근무|출근|퇴근|다이아|열차|몇 시|뭐야|오늘|내일|모레|어제|\d\s*일/.test(q)) a = dayAnswer(q);
+    else a = ['이 질문은 아직 답할 수 없어요. 예) "내일 출근 몇 시야?", "이번 주 근무", "내일 연차로 바꿔줘" (AI 연결은 다음 단계예요)', ''];
+    add('bot', a[0], a[1]);
+  };
+  window.aiSubmit = function (e) { e.preventDefault(); var i = document.getElementById('ai-input'), q = (i.value || '').trim(); if (!q) return; i.value = ''; aiAsk(q); };
+})();
+</script>
 </body>
 </html>
