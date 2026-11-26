@@ -15234,6 +15234,30 @@ document.head.appendChild(css);
 p.innerHTML = '<div class="dia-dialog gis-box">' + inner + '</div>'; p.classList.add('active');
 try { if (typeof wbgGlass === 'function') wbgGlass(); } catch (e) {}
 }
+function isRailAdmin() { try { var u = getCurrentUser() || {}; return String(u.employeeId || '') === '199878'; } catch (e) { return false; } }
+function gisDelay(tno, key) {
+var nxB = '<button type="button" class="dia-text-btn" onclick="gisClose();tqOpenNxWeb(\'' + esc(tno) + '\',\'' + esc(key) + '\')">NXLogis로 보기</button><button type="button" class="dia-text-btn" onclick="gisClose()">닫기</button>';
+var head = '<div class="gis-t">' + esc((trainClassByNo(tno, true) || '') + ' ' + tno + '열차 · ' + key) + '</div>';
+var fail = function (m) { gisPanel(head + '<div class="gis-n" style="font-size:13px;opacity:.9">' + m + '</div><div class="gis-btns">' + nxB + '</div>'); };
+gisPanel(head + '<div class="gis-n">TIDS 지연정보를 찾는 중…</div>');
+var headers = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY };
+if (/^eyJ/.test(SUPABASE_KEY)) headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
+var tm = setTimeout(function () { fail('불러오지 못했어요.<br><span style="font-size:11px;opacity:.75">timeout</span>'); tm = 0; }, 15000);
+fetch(SUPABASE_URL + '/functions/v1/train-delay', { method: 'POST', headers: headers, body: JSON.stringify({ trn: tno, date: key }) })
+.then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+.then(function (o) {
+if (!tm) return; clearTimeout(tm);
+var j = o.j || {};
+if (!o.ok || j.error) { fail('불러오지 못했어요.<br><span style="font-size:11px;opacity:.75">' + esc(String(j.error || 'error')) + '</span>'); return; }
+var f8 = function (v) { v = String(v || ''); return v.length === 8 ? v.slice(0, 4) + '-' + v.slice(4, 6) + '-' + v.slice(6) : '-'; };
+var rows = (j.same || []).length ? j.same : [];
+var out = head;
+if (rows.length) out += rows.map(function (x) { return '<div class="gis-r"><span>예상 지연</span><b>' + esc(String(x.delay || '-')) + '</b></div>' + (x.section ? '<div class="gis-r"><span>지연 구간</span><b>' + esc(x.section) + '</b></div>' : ''); }).join('');
+else out += '<div class="gis-n" style="font-size:13px;opacity:.9">이 날짜의 지연 기록이 없어요.</div>';
+out += '<div class="gis-n">자료 기준일 ' + esc(f8(j.from)) + ' ~ ' + esc(f8(j.to)) + ' (' + esc(String(j.total || 0)) + '건) · 실시간이 아닌 등록 자료예요. 오늘 지연은 NXLogis로 확인하세요.</div><div class="gis-btns">' + nxB + '</div>';
+gisPanel(out);
+}).catch(function (e) { if (tm) { clearTimeout(tm); fail('불러오지 못했어요.<br><span style="font-size:11px;opacity:.75">' + esc(String(e && e.message || e)) + '</span>'); } });
+}
 var HIST_FN = 'train-history';
 function todayKeyKST() { var t = todayKST(); return getDateKey(t.y, t.m, t.d); }
 function gisHist(tno, key) {
@@ -15303,7 +15327,7 @@ var d = String(dateKey || '').replace(/[^0-9]/g, '');
 var t = todayKST();
 var key = d.length === 8 ? d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8) : getDateKey(t.y, t.m, t.d);
 var tno = String(train).toUpperCase();
-if (!tqIsLogisTrain(tno)) { tqOpenNxWeb(tno, key); return; }   /* 여객열차: NXLogis로 연결 (화물열차만 앱 안에서 Logis.Korail 조회) */
+if (!tqIsLogisTrain(tno)) { if (isRailAdmin()) { gisDelay(tno, key); return; } tqOpenNxWeb(tno, key); return; }   /* 여객열차: NXLogis로 연결 (화물열차만 앱 안에서 Logis.Korail 조회) */
 try { showPassPopup({ kind: 'err', loading: true, train: tno, date: key, msg: infoSrc(tno) + '에서 운행 정보를 불러오는 중…' }, true); } catch (e) {}
 passRunCheck([{ date: key, train: tno }], passCfg || passCfgLocal() || passCfgDefault(), true, { quietToast: true });
 }
