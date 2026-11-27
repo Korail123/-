@@ -13431,7 +13431,7 @@ try { ctl = new AbortController(); } catch (e) {}
 timer = setTimeout(function () { try { if (ctl) ctl.abort(); } catch (e) {} fin({ success: false, message: '서버 응답이 늦어요.' }, true); }, ms);
 fetch(SUPABASE_URL + '/functions/v1/' + PASS_FN, {
 method: 'POST', headers: headers, signal: ctl ? ctl.signal : undefined, cache: 'no-store',
-body: JSON.stringify({ mode: 'route', train: train, date: String(dateKey).replace(/-/g, ''), raw: !!raw })
+body: JSON.stringify((function (b) { try { var u = getCurrentUser() || {}; if (u.employeeId && u.token) { b.employeeId = u.employeeId; b.token = u.token; } } catch (e) {} return b; })({ mode: 'route', train: train, date: String(dateKey).replace(/-/g, ''), raw: !!raw }))   /* 화물열차(logis) 조회는 로그인 확인 필요 (서버 smart-handler) */
 }).then(function (r) {
 if (!r.ok && r.status >= 500) throw new Error('HTTP ' + r.status);
 return r.json();
@@ -15442,7 +15442,7 @@ gisPanel(head + '<div class="gis-n">TIDS 지연정보를 찾는 중…</div>');
 var headers = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY };
 if (/^eyJ/.test(SUPABASE_KEY)) headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
 var tm = setTimeout(function () { fail('불러오지 못했어요.<br><span style="font-size:11px;opacity:.75">timeout</span>'); tm = 0; }, 15000);
-fetch(SUPABASE_URL + '/functions/v1/train-delay', { method: 'POST', headers: headers, body: JSON.stringify({ trn: tno, date: key }) })
+fetch(SUPABASE_URL + '/functions/v1/train-delay', { method: 'POST', headers: headers, body: JSON.stringify((function () { var u = getCurrentUser() || {}; return { trn: tno, date: key, employeeId: u.employeeId || '', token: u.token || '' }; })()) })   /* 서버에서 관리자 확인 */
 .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
 .then(function (o) {
 if (!tm) return; clearTimeout(tm);
@@ -15593,7 +15593,7 @@ var fx = PASS_FIXED_ART[passTrainNo(no)];
 if (fx) return /freight/.test(fx) ? 'freight' : 'mugunghwa';
 var k = String(kind || '').replace(/\s/g, '').toUpperCase();
 var n = parseInt(String(no || '').replace(/\D/g, ''), 10);
-if ((n >= 3000 && n < 4000) || (n >= 6000 && n < 7000)) return 'freight';   /* 3000번대 · 6000번대 = 화물열차 */
+if ((n >= 3000 && n < 4000) || (n >= 5000 && n < 8000)) return 'freight';   /* 3000 · 5000 · 6000 · 7000번대 = 화물열차 (서버 smart-handler · push 알림과 같은 기준) */
 if (/화물|컨테이너|양회|시멘트|유류|석탄|화차|소화물/.test(k)) return 'freight';
 if (/SRT|수서/.test(k)) return 'srt';
 if (/KTX|산천|이음|청룡/.test(k)) return 'ktx';
@@ -16614,11 +16614,11 @@ timer = setTimeout(function () { ctl.abort(); }, 40000);
 fetch(SUPABASE_URL + '/functions/v1/smart-handler', {
 method: 'POST',
 headers: headers,
-body: JSON.stringify({
+body: JSON.stringify((function (b) { try { var u = getCurrentUser() || {}; if (u.employeeId && u.token) { b.employeeId = u.employeeId; b.token = u.token; } } catch (e) {} return b; })({
 items: batch.map(function (it) {
 return { train: it.train, date: it.date };
 })
-}),
+})),   /* 화물열차 운휴 확인은 로그인 확인 필요 */
 signal: ctl ? ctl.signal : undefined
 })
 .then(function (r) {
