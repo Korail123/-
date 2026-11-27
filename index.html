@@ -4,9 +4,9 @@
 <script>/* 로딩 중 흰색 노출 방지: 다크·밤이면 첫 화면부터 어두운 바탕 */
 (function(){try{var h=document.documentElement,o={};try{o=JSON.parse(localStorage.getItem('rs_ui')||'{}')||{}}catch(e){}
 var hr=new Date().getHours(),night=(hr>=19||hr<7),m=o.mode||'light';
-try{/* 앱 본문의 밤 판정(서울 일출·일몰)과 동일하게 맞춤 */var K=new Date(Date.now()+9*36e5),Y=K.getUTCFullYear(),Mo=K.getUTCMonth()+1,Dd=K.getUTCDate(),rd=Math.PI/180,la=37.5665,lo=126.978;
+window.rsIsNight=function(){var night=(new Date().getHours()>=19||new Date().getHours()<7);try{/* 앱 본문의 밤 판정(서울 일출·일몰)과 동일하게 맞춤 */var K=new Date(Date.now()+9*36e5),Y=K.getUTCFullYear(),Mo=K.getUTCMonth()+1,Dd=K.getUTCDate(),rd=Math.PI/180,la=37.5665,lo=126.978;
 function sh(rise){var n=Math.floor((Date.UTC(Y,Mo-1,Dd)-Date.UTC(Y,0,1))/864e5)+1,lh=lo/15,t=n+((rise?6:18)-lh)/24,M=0.9856*t-3.289,L=(M+1.916*Math.sin(M*rd)+0.02*Math.sin(2*M*rd)+282.634)%360;if(L<0)L+=360;var RA=(Math.atan(0.91764*Math.tan(L*rd))/rd+360)%360;RA+=Math.floor(L/90)*90-Math.floor(RA/90)*90;RA/=15;var sd=0.39782*Math.sin(L*rd),cd=Math.cos(Math.asin(sd)),ch=(Math.cos(90.833*rd)-sd*Math.sin(la*rd))/(cd*Math.cos(la*rd));if(ch<-1||ch>1)return null;var H=(rise?360-Math.acos(ch)/rd:Math.acos(ch)/rd)/15;return(H+RA-0.06571*t-6.622-lh+24)%24}
-var a=sh(true),b=sh(false);if(a!=null&&b!=null){var mn=K.getUTCHours()*60+K.getUTCMinutes();night=mn<((a+9)%24)*60||mn>=((b+9)%24)*60}}catch(e){}
+var a=sh(true),b=sh(false);if(a!=null&&b!=null){var mn=K.getUTCHours()*60+K.getUTCMinutes();night=mn<((a+9)%24)*60||mn>=((b+9)%24)*60}}catch(e){}return night};night=window.rsIsNight();
 var dark=m==='dark'||(m==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)||(m==='night'&&night);
 var wb=localStorage.getItem('rs_wbg')!=='0';
 if(dark||(wb&&night)){h.classList.add('rs-early-dark');h.style.background='#0b1220';
@@ -39,7 +39,7 @@ var uiMq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)')
 function uiApply() {
 var o = uiGet(), root = document.documentElement;
 var hr = new Date().getHours();
-var dark = o.mode === 'dark' || (o.mode === 'system' && uiMq && uiMq.matches) || (o.mode === 'night' && (hr >= 19 || hr < 7));
+var dark = o.mode === 'dark' || (o.mode === 'system' && uiMq && uiMq.matches) || (o.mode === 'night' && (typeof window.rsIsNight === 'function' ? window.rsIsNight() : (hr >= 19 || hr < 7)));   /* 첫 화면·wbg 배경과 같은 서울 일출·일몰 기준 */
 var wasDark = root.classList.contains('ui-dark');
 root.classList.toggle('ui-dark', !!dark);
 if (wasDark !== !!dark && typeof applyAppIcons === 'function') { try { applyAppIcons(); } catch (e) {} }
@@ -210,17 +210,19 @@ else if (r.type === 4 || r.type === 12) { var inner = []; walk(r.cssRules, inner
 } catch (e) {}
 }
 }
-var done = typeof WeakSet === 'function' ? new WeakSet() : null, styleEl = null;
+var styleEl = null;
 function buildSheets() {
 if (!styleEl) { styleEl = document.createElement('style'); styleEl.id = 'ui-dark-generated'; document.head.appendChild(styleEl); }
 var acc = [];
+/* 규칙 개수만 비교하면 같은 개수에서 색상만 바뀐 CSS를 놓친다.
+   매 호출마다 접근 가능한 스타일시트를 다시 읽고 결과를 통째로 교체해 중복 누적도 방지한다. */
 for (var i = 0; i < document.styleSheets.length; i++) {
 var sh = document.styleSheets[i];
 if (sh.ownerNode === styleEl || (sh.ownerNode && /^ui-dark-/.test(sh.ownerNode.id || ''))) continue;
-if (done && done.has(sh.ownerNode)) continue;
-try { walk(sh.cssRules, acc); if (done && sh.ownerNode) done.add(sh.ownerNode); } catch (e) {}
+try { walk(sh.cssRules, acc); } catch (e) {}
 }
-if (acc.length) styleEl.appendChild(document.createTextNode(acc.join('\n')));
+var txt = acc.join('\n');
+if (styleEl.textContent !== txt) styleEl.textContent = txt;   /* 같으면 다시 쓰지 않음 (쓰면 감시가 또 깨워 무한 반복) */
 }
 function skipEl(el) { try { return !!el.closest(SKIP_EL); } catch (e) { return false; } }
 function darkInline(el) {
@@ -271,10 +273,10 @@ var m = muts[i];
 if (m.type === 'attributes') { if (m.attributeName === 'src') markDk(m.target); else darkInline(m.target); }
 else for (var j = 0; j < m.addedNodes.length; j++) {
 var n = m.addedNodes[j];
-if (n.nodeName === 'STYLE' || n.nodeName === 'LINK') newSheet = true;
+if (n.nodeName === 'STYLE' || n.nodeName === 'LINK') { if (!/^ui-dark-/.test(n.id || '')) newSheet = true; }
 else scan(n);
 }
-if (m.type === 'characterData' || (m.target && m.target.nodeName === 'STYLE')) newSheet = true;
+if (m.type === 'characterData' || (m.target && m.target.nodeName === 'STYLE' && !/^ui-dark-/.test(m.target.id || ''))) newSheet = true;   /* 내가 만든 변환 스타일의 변경은 무시 */
 }
 if (newSheet) { clearTimeout(sheetTimer); sheetTimer = setTimeout(buildSheets, 60); }
 });
@@ -2548,9 +2550,9 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       </div>
       
       <div class="ns-row nu-row" id="mid-row">
-        <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차통과알림" alt="" aria-hidden="true"><span><b class="ns-t">도중출무 알람</b><small id="mid-sum">XROIS 출무현황의 도중출무 예정일시 기준</small></span></span>
-        <button type="button" class="nu-fold" id="mid-chevron" aria-expanded="false" aria-controls="mid-detail" aria-label="도중출무 알람 시간 조절 펼치기" onclick="midToggleDetail()">⌄</button>
-        <input type="checkbox" id="mid-on" class="ns-switch" onchange="midToggleChanged()" aria-label="도중출무 알람">
+        <span class="ns-k"><img class="ns-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="열차통과알림" alt="" aria-hidden="true"><span><b class="ns-t">중간출무 알람</b><small id="mid-sum">XROIS 출무현황의 중간출무 예정일시 기준</small></span></span>
+        <button type="button" class="nu-fold" id="mid-chevron" aria-expanded="false" aria-controls="mid-detail" aria-label="중간출무 알람 시간 조절 펼치기" onclick="midToggleDetail()">⌄</button>
+        <input type="checkbox" id="mid-on" class="ns-switch" onchange="midToggleChanged()" aria-label="중간출무 알람">
       </div>
       <div id="mid-detail" class="nu-detail" style="display:none">
         <div id="mid-value" class="ns-alarm-value"></div>
@@ -2878,7 +2880,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <li><b>사파리(Safari)</b>로 철도비서 주소(korail123.github.io/-/)를 열어요. (iOS 16.4 이상은 크롬에서도 돼요)</li>
       <li>주소창 옆 <b>공유 버튼(□↑)</b>을 눌러요.</li>
       <li>목록을 내려 <b>홈 화면에 추가</b> › 오른쪽 위 <b>추가</b>를 눌러요.</li>
-      <li>바탕화면의 <b>철도비서 아이콘</b>으로 열면 주소창 없는 앱처럼 열려요. <b>출근 알람 · 도중출무 알람 · 운휴 알림은 이 아이콘으로 연 철도비서에서만</b> 받을 수 있어요.</li>
+      <li>바탕화면의 <b>철도비서 아이콘</b>으로 열면 주소창 없는 앱처럼 열려요. <b>출근 알람 · 중간출무 알람 · 운휴 알림은 이 아이콘으로 연 철도비서에서만</b> 받을 수 있어요.</li>
       <li>알림이 몇 초 뒤 사라지지 않게 하려면 아이폰 <b>설정 › 알림 › 철도비서 › 배너 스타일</b>을 <b>지속적</b>으로 바꿔 주세요. (아이폰은 앱이 대신 바꿀 수 없어요)</li>
       <li>※ 아이폰은 사파리와 홈 화면 앱의 저장 공간이 따로라서, 아이콘으로 처음 열면 <b>로그인과 CREW 연동 비밀번호를 한 번 더</b> 넣어야 해요.</li></ol></details>
     <details class="guide-sec" data-g="pwa_and"><summary>갤럭시: 앱 설치 · 바탕화면에 추가</summary><div class="gd-stage" data-g="pwa_and"></div><ol>
@@ -2918,9 +2920,9 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
       <li>그 역에서 <b>가장 빨리 오는 열차</b>와 도착 시각, 갈아타야 하면 <b>최소 환승</b> 경로를 보여줘요.</li>
       <li><b>고정</b>을 누르면 메인화면에 편승열차 칸이 생기고 2분마다 새로 고쳐져요. 다시 누르면 고정이 풀려요.</li>
       <li>서울시 실시간 도착정보를 쓰기 때문에, 서울시 밖의 역은 실시간 정보가 안 나올 수 있어요.</li></ol></details>
-    <details class="guide-sec" data-g="alarm"><summary>출근 · 도중출무 알람</summary><ol>
+    <details class="guide-sec" data-g="alarm"><summary>출근 · 중간출무 알람</summary><ol>
       <li>환경설정 › <b>출근/출무 알림 설정</b>을 열어요.</li>
-      <li><b>출근 알람</b>(근무 몇 분 전) · <b>도중출무 알람</b>을 켜고, 휴대폰 팝업 · 소리 · 진동 · <b>무음 모드에서도 울리기</b>를 골라요.</li>
+      <li><b>출근 알람</b>(근무 몇 분 전) · <b>중간출무 알람</b>을 켜고, 휴대폰 팝업 · 소리 · 진동 · <b>무음 모드에서도 울리기</b>를 골라요.</li>
       <li>아래 <b>기타</b>의 <b>앱 권한</b>을 눌러 '확인 필요'가 있으면 허용해 주세요. <b>알림 테스트</b>로 바로 울려 볼 수 있어요.</li></ol></details>
     <details class="guide-sec" data-g="pass"><summary>열차통과/도착 알림</summary><div class="gd-stage" data-g="pass"></div><ol>
       <li>환경설정 › <b>열차통과/도착 알림</b>을 열어요.</li>
@@ -8782,10 +8784,10 @@ if (items.length) {
 var mc = getMidCfg();
 return items.map(function (it) {
 var p = it.at.split(' '), tm = +p[1].slice(0, 2) * 60 + +p[1].slice(3);
-return esc(p[1]) + (it.info ? ' <small>' + esc(it.info) + '</small>' : '') + (mc.on ? ' <small>· 알람 ' + alarmClockText(tm - mc.min) + '</small>' : '');
+return '<small>중간출무</small> ' + esc(p[1]) + (it.info ? ' <small>' + esc(it.info) + '</small>' : '') + (mc.on ? ' <small>· 알람 ' + alarmClockText(tm - mc.min) + '</small>' : '');
 }).join('<br>');
 }
-if (!meta.at) return '<small>출근/출무 알림 설정에서 도중출무 알람을 켜면 XROIS에서 가져와요</small>';
+if (!meta.at) return '<small>출근/출무 알림 설정에서 중간출무 알람을 켜면 XROIS에서 가져와요</small>';
 return '예정 없음';
 }
 function briefingLoginCheck(gen) {
@@ -12762,7 +12764,7 @@ if (p) p.classList.remove('active');
 };
 window.rsAppRingStopped = function () { /* 휴대폰 알람이 스스로 멈춰도 화면은 [확인]을 누를 때까지 둠 */ };
 var alarmEndTimer = null;
-/* 출근·도중출무 알람: 소리·진동·팝업은 3.5초만 (계속 울리던 문제 방지) */
+/* 출근·중간출무 알람: 소리·진동·팝업은 3.5초만 (계속 울리던 문제 방지) */
 function alarmAutoEnd() { if (alarmEndTimer) clearTimeout(alarmEndTimer); alarmEndTimer = setTimeout(function () { alarmEndTimer = null; try { closeAlarmRing(); } catch (e) {} try { navigator.vibrate && navigator.vibrate(0); } catch (e) {} }, 3500); }
 (function () {
 var oB = alarmBeep, bt = null;
@@ -12797,7 +12799,7 @@ if (nowMs >= alarmMs && nowMs < startMs) {
 var mark = key + '|' + cfg.min;
 if (LS.getItem(firedKey) === mark) continue;
 try { LS.setItem(firedKey, mark); } catch (e) {}
-if (rsAppHas('setAlarms')) return;   /* 안드로이드 앱: 폰 예약 알람이 이미 울렸으므로 앱을 열 때 다시 울리지 않음 */
+if (rsAppHas('setAlarms') && rsSchedHas('alarm-' + key, alarmMs)) return;   /* 같은 예정 시각이 폰에 예약된 경우에만 웹 중복 알람 생략 */
 fireAlarm(w, key, cfg.min);
 return;
 }
@@ -12810,8 +12812,8 @@ if (!document.hidden) runAlarmCheck();
 });
 setTimeout(runAlarmCheck, 3000);
 })();
-/* ============ 도중출무 알람 ============
-XROIS 출무현황에서 출무구분이 '도중출무'인 줄의 예정일시를 가져와(12시간마다 근무표 확인 때 같이),
+/* ============ 중간출무 알람 (v115 감사 수정) ============
+XROIS 출무현황에서 종류 '도중' · 상태 '출무전'인 줄을 모두 가져와(어제·오늘·내일 사업일자, 로그인 및 근무표 확인 때),
 예정일시 1시간 전 ~ 10분 전 중 고른 시각에 알람 (앱이 꺼져 있어도 푸시로) */
 function midKey() { return 'midCfg_' + (getCurrentUser().employeeId || ''); }
 function getMidCfg() {
@@ -12821,11 +12823,25 @@ return cfg;
 }
 function midItems() {
 var list = (typeof xrGet === 'function' ? xrGet('mid', []) : []) || [], now = Date.now(), out = [];
+if (!Array.isArray(list)) return out;
 list.forEach(function (it) {
 var m = String(it && it.at || '').match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/);
 if (!m) return;
-var ms = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) - 9 * 3600000;
-if (ms > now - 60000) out.push({ at: it.at, ms: ms, info: String(it.info || ''), kind: String(it.kind || ''), key: m[1] + m[2] + m[3] + m[4] + m[5] });
+var y = +m[1], mo = +m[2], day = +m[3], hh = +m[4], mm = +m[5];
+/* Date.UTC의 자동 날짜 보정을 이용하지 않고 잘못된 XROIS 날짜를 제외 */
+var check = new Date(Date.UTC(y, mo - 1, day, hh, mm));
+if (check.getUTCFullYear() !== y || check.getUTCMonth() !== mo - 1 || check.getUTCDate() !== day || hh > 23 || mm > 59) return;
+var ms = check.getTime() - 9 * 3600000;
+/* 과거·현재 알람은 여기서 제외. 아래 해시 계산에서 미초기화 변수가 생기지 않게 함 */
+if (!isFinite(ms) || ms <= now - 60000) return;
+var kd0 = String(it.kind || '');
+if (kd0 && kd0 !== '도중출무') return;   /* 중간출무(XROIS 종류 '도중')만 알람. 출근 출무전은 출근 알람이 담당 → 구버전 서버의 '출무전'(출근 섞임)도 제외 */
+var kd = '도중출무'; /* v115: 서버의 중간출무 전용 kind와 일치 */
+var inf = String(it.info || ''), h = 0;
+for (var ci = 0; ci < inf.length; ci++) h = (h * 31 + inf.charCodeAt(ci)) % 46656;
+var k0 = m[1] + m[2] + m[3] + m[4] + m[5] + (kd === '출무전' ? 'P' : 'M') + h.toString(36);
+if (out.some(function (o) { return o.key === k0; })) return;
+out.push({ at: it.at, ms: ms, info: inf, kind: kd, key: k0 });
 });
 out.sort(function (a, b) { return a.ms - b.ms; });
 return out;
@@ -12840,7 +12856,7 @@ $('mid-range').value = String((60 - cfg.min) / 10);
 midUiUpdate();
 }
 function midToggleDetail() {
-if (!$('mid-on').checked) { showToast('도중출무 알람을 켜면 시간 조절을 펼칠 수 있습니다.'); return; }
+if (!$('mid-on').checked) { showToast('중간출무 알람을 켜면 시간 조절을 펼칠 수 있습니다.'); return; }
 midDetailOpen = !midDetailOpen; midUiUpdate();
 }
 function midUiUpdate() {
@@ -12849,7 +12865,7 @@ var min = midUiMin(), on = $('mid-on').checked;
 var pct = (parseInt(rng.value, 10) / 5) * 100;
 rng.style.background = 'linear-gradient(to right,#9dbdf7 ' + pct + '%,#e3e8f0 ' + pct + '%)';
 rng.disabled = !on; rng.style.opacity = on ? '1' : '.45';
-$('mid-value').textContent = '도중출무 ' + alarmMinText(min);
+$('mid-value').textContent = '중간출무 ' + alarmMinText(min);
 $('mid-value').style.color = on ? '#1a73e8' : '#9aa5b4';
 var open = !!(on && midDetailOpen);
 $('mid-detail').style.display = open ? '' : 'none';
@@ -12857,19 +12873,22 @@ var ch = $('mid-chevron'); if (ch) { ch.textContent = open ? '⌃' : '⌄'; ch.s
 var items = midItems(), pw = (typeof getCrewPw === 'function') && getCrewPw();
 var sum = $('mid-sum');
 if (sum) {
-if (!on) sum.textContent = '꺼짐 · XROIS 출무현황의 도중출무 예정일시 기준';
-else if (!pw) sum.textContent = 'CREW 연동(마이페이지)을 해야 도중출무를 가져올 수 있어요';
-else sum.textContent = '도중출무 ' + alarmMinText(min) + ' · ' + (items.length ? '예정 ' + items.length + '건' : '예정된 도중출무 없음');
+if (!on) sum.textContent = '꺼짐 · XROIS 출무현황의 중간출무 예정일시 기준';
+else if (!pw) sum.textContent = 'CREW 연동(마이페이지)을 해야 중간출무를 가져올 수 있어요';
+else {
+var preCount = items.length;
+sum.textContent = alarmMinText(min) + ' · ' + (preCount ? '예정 중간출무 ' + preCount + '건' : '예정된 중간출무 없음');
+}
 }
 var lst = $('mid-list');
 if (lst) {
 var meta = (typeof xrGet === 'function') ? xrGet('midMeta', {}) : {};
 var h = items.slice(0, 5).map(function (it) {
 var p = it.at.split(' '), d = p[0].split('-');
-return '· ' + (+d[1]) + '/' + (+d[2]) + ' <b>' + p[1] + '</b> ' + (it.kind === '출무전' ? '출무 전' : '도중출무') + (it.info ? ' (' + esc(it.info) + ')' : '') + ' → 알람 ' + alarmClockText(+p[1].slice(0, 2) * 60 + +p[1].slice(3) - min);
+return '· ' + (+d[1]) + '/' + (+d[2]) + ' <b>' + p[1] + '</b> ' + '중간출무' + (it.info ? ' (' + esc(it.info) + ')' : '') + ' → 알람 ' + alarmClockText(+p[1].slice(0, 2) * 60 + +p[1].slice(3) - min);
 }).join('<br>');
-var dg = $('mid-diag'); if (dg) dg.hidden = !(meta.err || (!items.length && xrGet('midWhy', null)));
-lst.innerHTML = (h || '<span class="mid-none">가져온 도중출무 예정이 없어요.</span>') +
+var dg = $('mid-diag'); if (dg) dg.hidden = !(meta.err || xrGet('midCheck', null) || (!items.length && xrGet('midWhy', null)));   /* 성공해도 판별 근거를 보낼 수 있게 */
+lst.innerHTML = (h || '<span class="mid-none">가져온 중간출무 예정이 없어요.</span>') +
 (meta.stamp ? '<br><span class="mid-none">XROIS 확인 ' + esc(meta.stamp) + (meta.err ? ' · ' + esc(meta.err) : '') + ' · 로그인할 때 확인</span>' : '');
 }
 }
@@ -12878,52 +12897,124 @@ var cfg = { on: $('mid-on').checked, min: midUiMin() };
 try { LS.setItem(midKey(), JSON.stringify(cfg)); } catch (e) {}
 if (cfg.on) {
 pushEnsureSub(true).then(function () { pushSyncAlarms(true); try { permRender(); } catch (e) {} });
-var meta = xrGet('midMeta', {});
-if (!meta.at && getCrewPw()) midFetchNow();
+var meta = xrGet('midMeta', {}), lastAttempt = Number(meta.attemptAt || meta.at || 0);
+/* 최초 조회뿐 아니라 일시적 서버·네트워크 실패 후에도 재시도한다. 최근 실패 직후 반복 호출은 피한다. */
+if (getCrewPw() && (!meta.at || (meta.ok === false && Date.now() - lastAttempt >= 5 * 60000))) midFetchNow();
 } else pushSyncAlarms(true);
 renderAlarmSub();
 midUiUpdate();
-if (withToast) showToast(cfg.on ? '도중출무 ' + alarmMinText(cfg.min) + ' 알람을 켰습니다.' : '도중출무 알람을 껐습니다.');
+if (withToast) showToast(cfg.on ? '중간출무 ' + alarmMinText(cfg.min) + ' 알람을 켰습니다.' : '중간출무 알람을 껐습니다.');
 }
 function midToggleChanged() {
-if ($('mid-on').checked && !getCrewPw()) showToast('마이페이지에서 CREW 연동을 하면 XROIS 도중출무를 가져와요.');
+if ($('mid-on').checked && !getCrewPw()) showToast('마이페이지에서 CREW 연동을 하면 XROIS 중간출무를 가져와요.');
 midUiUpdate(); midAutoSave(true);
 }
-function midStore(d) {
-if (!d || (d.mid === undefined && d.midWhy === undefined)) return;
-var meta = { at: Date.now(), stamp: stampNow().slice(5, 16), err: '' };
-if (Array.isArray(d.mid)) {
-xrPut('mid', d.mid.filter(function (x) { return x && x.at; }).slice(0, 40));
+function midStore(d, source) {
+/* 성공 응답이어도 mid/midWhy가 없으면 이전 캐시를 새 데이터로 오인하지 않는다. */
+if (!d || (d.mid === undefined && d.midWhy === undefined)) return false;
+var meta = { at: Date.now(), stamp: stampNow().slice(5, 16), err: '', ok: Array.isArray(d.mid), source: source || 'unknown' };
+if (d.midCheck) xrPut('midCheck', d.midCheck);   /* 줄별 판별 근거(종류·상태 코드) → 진단 내용 복사에 포함 */
+var failed = !!(d.midWhy && (d.midWhy.ok === false || (d.midWhy.why && !Array.isArray(d.mid))));
+if (failed && Array.isArray(d.mid) && !d.mid.length) {
+/* 서버가 '실패'를 알리면서 빈 목록을 보낸 경우: 예전에 가져온 중간출무를 지우지 않음 (일시 오류로 알람이 사라지는 것 방지) */
+meta.ok = false; meta.err = d.midWhy.why || '출무현황을 읽지 못했어요'; meta.count = midItems().length;
+} else if (Array.isArray(d.mid)) {
+var valid = d.mid.filter(function (x) { return x && typeof x.at === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(x.at.trim()); });
+if (d.mid.length && !valid.length) {
+/* 비어 있지 않은데 전부 형식이 잘못된 응답은 정상 0건이 아니다. 기존 정상 캐시를 보존한다. */
+meta.ok = false; meta.err = '서버가 출무 데이터를 반환했지만 예정일시(at)가 없어 기존 목록을 유지했어요.'; meta.count = midItems().length;
+} else {
+xrPut('mid', valid.slice(0, 40));
+meta.count = Math.min(valid.length, 40);
 if (!d.mid.length && d.midWhy && d.midWhy.why) meta.err = d.midWhy.why;
-} else if (d.midWhy) meta.err = (d.midWhy.why || '출무현황을 읽지 못했어요');
+if (valid.length < d.mid.length) meta.invalidCount = d.mid.length - valid.length;
+}
+} else if (d.midWhy) { meta.ok = false; meta.err = (d.midWhy.why || '출무현황을 읽지 못했어요'); }
 if (d.midWhy) xrPut('midWhy', d.midWhy);       /* 화면 모양이 다를 때 고치기 위한 진단 (이름·개인정보는 서버에서 가림) */
 xrPut('midMeta', meta);
 try { midUiUpdate(); } catch (e) {}
 try { pushSyncAlarms(false); } catch (e) {}
+return true;
 }
 var midFetching = false;
+/* xrMid 단독 action이 배포 서버에 없거나 응답 스키마가 다른 경우, 이미 자동 동기화에서 사용하는
+   xrRoster(withMid:true) 경로로 한 번 대체 조회한다. 서버 파서 자체의 실패는 숨기지 않는다. */
+function xrRosterMonthsAndCrewDates() {
+var t = todayKST(), first = new Date(t.y, t.m, 1), second = new Date(t.y, t.m + 1, 1);
+var yms = [first, second].map(function (d) { return d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0'); });
+var crewDates = [], haveRos = xrGet('roster', {}), todayKey = getDateKey(t.y, t.m, t.d);
+[yms[0], yms[1]].forEach(function (ym) {
+var yy = +ym.slice(0, 4), mm = +ym.slice(4, 6) - 1, last = new Date(yy, mm + 1, 0).getDate();
+for (var day = 1; day <= last; day++) {
+var cdk = getDateKey(yy, mm, day);
+if (cdk < todayKey && haveRos[cdk]) continue;
+crewDates.push(cdk.replace(/-/g, ''));
+}
+});
+return { yms: yms, crewDates: crewDates.slice(0, 62) };
+}
+function xrMidRosterBody() {
+var t = todayKST(), ymInfo = xrRosterMonthsAndCrewDates(), yms = ymInfo.yms;
+var pv = new Date(t.y, t.m - 1, 1), specYms = [pv.getFullYear() + String(pv.getMonth() + 1).padStart(2, '0'), yms[0]];
+return { action: 'xrRoster', yms: yms, crewDates: ymInfo.crewDates, specYms: specYms, withMid: true };
+}
 function midFetchNow(manual) {
 if (midFetching || typeof xrCall !== 'function') return;
 if (manual && !getCrewPw()) { showToast('마이페이지에서 CREW(XROIS) 연동을 먼저 해주세요.'); return; }
+if (typeof xrBusy !== 'undefined' && xrBusy) { if (manual) showToast('XROIS 근무표를 확인 중이에요. 잠시 후 다시 시도해주세요.'); return; }
+try { var xm0 = xrGet('meta', {}); if (xm0.fail && xm0.pwSig === xrSig(getCrewPw())) { if (manual) showToast('비밀번호가 틀려서 멈춰 있어요. 비밀번호를 다시 저장해주세요.'); return; } } catch (e) {}   /* 로그인 실패 반복 → XROIS 계정 잠김 방지 */
 midFetching = true;
 var b = $('mid-fetch'); if (b) { b.disabled = true; b.textContent = '가져오는 중…'; }
-xrCall({ action: 'xrMid' }, function (err, d) {
+function finish(err, d, route) {
 midFetching = false;
 if (b) { b.disabled = false; b.textContent = '지금 가져오기'; }
 if (err) {
-xrPut('midMeta', { at: Date.now(), stamp: stampNow().slice(5, 16), err: err.message });
-xrPut('midWhy', { why: err.message, code: err.code });
+var old = xrGet('midMeta', {}), at = Date.now();
+xrPut('midMeta', { at: at, attemptAt: at, stamp: stampNow().slice(5, 16), err: err.message || 'XROIS 출무현황 조회 실패', ok: false, source: route || 'xrMid' });
+xrPut('midWhy', { why: err.message || 'XROIS 출무현황 조회 실패', code: err.code || 'UNKNOWN', route: route || 'xrMid' });
+if (err.code === 'LOGIN_FAILED') { try { var xm1 = xrGet('meta', {}); xm1.fail = true; xm1.pwSig = xrSig(getCrewPw()); xrPut('meta', xm1); } catch (e) {} }   /* 근무표 자동 확인과 같은 멈춤 규칙 */
 try { midUiUpdate(); } catch (e) {}
-if (manual) showToast('도중출무를 가져오지 못했어요: ' + err.message);
+if (manual) showToast('중간출무를 가져오지 못했어요: ' + (err.message || '서버 응답을 확인해주세요.'));
 return;
 }
-midStore(d);
-if (manual) { var n = midItems().length; showToast(n ? '도중출무 예정 ' + n + '건을 가져왔어요' : ((xrGet('midMeta', {}).err) || '앞으로 31일 안에 도중출무 예정이 없어요')); }
+if (!midStore(d, route)) {
+var shape = d && typeof d === 'object' ? Object.keys(d).join(', ') : typeof d;
+var msg = '서버 응답에 mid/midWhy 데이터가 없어요. 응답 필드: ' + (shape || '(없음)');
+var at2 = Date.now();
+xrPut('midMeta', { at: at2, attemptAt: at2, stamp: stampNow().slice(5, 16), err: msg, ok: false, source: route || 'unknown' });
+xrPut('midWhy', { why: msg, code: 'MID_SCHEMA_MISSING', route: route || 'unknown', fields: shape });
+try { midUiUpdate(); } catch (e) {}
+if (manual) showToast('중간출무 응답 형식이 예상과 달라요. 진단 내용을 확인해주세요.');
+return;
+}
+if (manual) { var n = midItems().length, m = xrGet('midMeta', {}); showToast(n ? '중간출무 예정 ' + n + '건을 가져왔어요' : (m.err || '오늘·내일 중간출무 예정이 없어요')); }
+}
+function fallback(reason) {
+xrCall(xrMidRosterBody(), function (err2, d2) {
+if (err2) { finish({ code: err2.code || 'MID_FALLBACK_FAILED', message: 'xrMid 조회 실패(' + (reason || '응답 형식 오류') + '), xrRoster 대체 조회도 실패: ' + (err2.message || '서버 오류') }, null, 'xrRoster-fallback'); return; }
+if (!d2 || (d2.mid === undefined && d2.midWhy === undefined)) {
+finish(null, d2, 'xrRoster-fallback'); return;
+}
+finish(null, d2, 'xrRoster-fallback');
+});
+}
+xrCall({ action: 'xrMid' }, function (err, d) {
+if (err) {
+var em = String(err.message || ''), ec = String(err.code || '');
+if (/HTTP400|HTTP404|UNKNOWN_ACTION|NOT_FOUND/i.test(ec) || /unknown action|unsupported action|action.{0,20}(not found|지원하지)/i.test(em)) { fallback(em || ec); return; }
+finish(err, null, 'xrMid'); return;
+}
+if (d && d.mid !== undefined) { finish(null, d, 'xrMid'); return; }
+/* 현재 서버는 파서 실패를 midWhy만으로 명시한다. 이는 스키마 누락이 아니라 조회 실패이므로
+   중복 로그인·중복 XROIS 조회를 하지 않고 기존 캐시를 보존한다. */
+if (d && d.midWhy !== undefined) { finish(null, d, 'xrMid'); return; }
+/* mid/midWhy가 모두 없는 구버전·불완전 응답만 통합 roster 경로로 대체 조회한다. */
+fallback('xrMid 응답에 mid/midWhy 필드 없음');
 });
 }
 function midCopyDiag() {
-var w = xrGet('midWhy', null), m = xrGet('midMeta', {});
-var t = JSON.stringify({ meta: m, why: w }, null, 1);
+var w = xrGet('midWhy', null), m = xrGet('midMeta', {}), arr = xrGet('mid', []);
+var t = JSON.stringify({ meta: m, why: w, check: xrGet('midCheck', null), cachedMidCount: Array.isArray(arr) ? arr.length : null, cachedMidFields: Array.isArray(arr) && arr[0] ? Object.keys(arr[0]) : [] }, null, 1);
 var done = function () { showToast('진단 내용을 복사했어요. 채팅에 붙여 넣어 주세요.'); };
 try { navigator.clipboard.writeText(t).then(done, function () { prompt('아래 내용을 복사해 주세요', t); }); } catch (e) { prompt('아래 내용을 복사해 주세요', t); }
 }
@@ -12933,7 +13024,7 @@ if (!cfg.on) return out;
 midItems().forEach(function (it) {
 var at = it.ms - cfg.min * 60000;
 var hm = it.at.split(' ')[1], d = it.at.split(' ')[0].split('-');
-out.push({ at: at, endMs: it.ms, key: it.key, body: (+d[1]) + '/' + (+d[2]) + ' ' + (it.kind === '출무전' ? '출무 전' : '도중출무') + ' ' + hm + (it.info ? ' · ' + it.info : '') + ' (' + alarmMinText(cfg.min).replace(' 전', '') + ' 전)' });
+out.push({ at: at, endMs: it.ms, key: it.key, kind: it.kind, body: (+d[1]) + '/' + (+d[2]) + ' ' + '중간출무' + ' ' + hm + (it.info ? ' · ' + it.info : '') + ' (' + alarmMinText(cfg.min).replace(' 전', '') + ' 전)' });
 });
 return out;
 }
@@ -12941,29 +13032,34 @@ function runMidCheck() {
 if (!getCurrentUser().token) return;
 var cfg = getMidCfg(); if (!cfg.on) return;
 var now = Date.now(), fk = 'midFired_' + getCurrentUser().employeeId, fired = LS.getItem(fk) || '';
+var firedSet = fired.split(',');
 var list = midAlarmList(cfg);
 for (var i = 0; i < list.length; i++) {
 var a = list[i];
 if (now >= a.at && now < a.endMs) {
 var mark = a.key + '|' + cfg.min;
-if (fired === mark) continue;
-try { LS.setItem(fk, mark); } catch (e) {}
-if (rsAppHas('setAlarms')) return;   /* 안드로이드 앱: 폰 예약 알람이 담당 */
+/* 구버전은 종류·정보 해시가 없는 YYYYMMDDHHmm 키를 사용했을 수 있어,
+   같은 시각의 기존 실행 기록을 읽어 업데이트 직후 중복 울림을 방지 */
+var legacyMark = a.kind === '출무전' ? '' : a.key.slice(0, 12) + '|' + cfg.min;   /* 구버전 기록은 도중출무만 있었음 → 출무전 알람은 구버전 기록에 막히지 않음 */
+if (firedSet.indexOf(mark) >= 0 || (legacyMark && firedSet.indexOf(legacyMark) >= 0)) continue;
+firedSet.push(mark); try { LS.setItem(fk, firedSet.slice(-30).join(',')); } catch (e) {}
+if (rsAppHas('setAlarms') && rsSchedHas('mid-' + a.key, a.at)) return;   /* 같은 예정 시각이 폰에 예약된 경우에만 웹 중복 알람 생략 */
 fireMidAlarm(a);
 return;
 }
 }
 }
 function fireMidAlarm(a) {
-$('alarm-ring-body').innerHTML = '도중출무 시간이 다가오고 있어요.<br><b>' + esc(a.body) + '</b>';
-try { $('alarm-ring-panel').querySelector('.dia-dialog-title').textContent = '도중출무 알람'; } catch (e) {}
+var preK = a.kind === '출무전';
+$('alarm-ring-body').innerHTML = '중간출무 시간이 다가오고 있어요.' + '<br><b>' + esc(a.body) + '</b>';
+try { $('alarm-ring-panel').querySelector('.dia-dialog-title').textContent = '중간출무 알람'; } catch (e) {}
 var rounds = 0;
 function ring() { alarmBeep('alarm'); appVibrate([400, 200, 400, 200, 400], 'alarm'); }
 ring();
 if (alarmRingTimer) clearInterval(alarmRingTimer);
 alarmRingTimer = setInterval(function () { if (++rounds >= 2) { clearInterval(alarmRingTimer); alarmRingTimer = null; return; } ring(); }, 1800);
 alarmAutoEnd();
-try { if (rsAppHas('notify') || ('Notification' in window && Notification.permission === 'granted')) appNotify('도중출무 알람', { body: a.body, tag: 'mid-' + a.key, requireInteraction: true }); } catch (e) {}
+try { if (rsAppHas('notify') || ('Notification' in window && Notification.permission === 'granted')) appNotify('중간출무 알람', { body: a.body, tag: 'mid-' + a.key, requireInteraction: true }); } catch (e) {}
 }
 (function initMidAlarm() {
 setInterval(runMidCheck, 20000);
@@ -13150,7 +13246,7 @@ return list;
 function pushMidList() {
 var now = Date.now();
 return midAlarmList(getMidCfg()).filter(function (a) { return a.at > now + 30000; }).map(function (a) {
-return { at: new Date(a.at).toISOString(), title: '도중출무 알람', body: a.body, tag: 'mid-' + a.key };
+return { at: new Date(a.at).toISOString(), title: '중간출무 알람', body: a.body, tag: 'mid-' + a.key };
 });
 }
 function pushSyncAlarms(force) {
@@ -17157,7 +17253,7 @@ cbFetch(false, true);
 loadSeqRules();            /* 순서별 다이아 규칙(여자 16번 = 12937) 서버에서 받기 */   /* CREW 연동: 승무원 자동 불러오기 (관리자만) */
 nxLoginCheck(gen);         /* 열차 운휴: 로그인할 때마다 즉시 결과 팝업 */
 briefingLoginCheck(gen);   /* 오늘의 브리핑: 켠 사용자만 하루 첫 접속 때 */
-setTimeout(function () { try { if (gen === loginPopupGen && getMidCfg().on && getCrewPw()) midFetchNow(false); } catch (e) {} }, 3500);   /* 출무현황(출무전·도중출무): 로그인할 때마다 자동으로 가져옴 */
+setTimeout(function () { try { if (gen === loginPopupGen && getMidCfg().on && getCrewPw()) midFetchNow(false); } catch (e) {} }, 3500);   /* 출무현황(중간출무): 로그인할 때마다 자동으로 가져옴 */
 noticeCheckNew(gen);       /* 새 공지사항: 사용자별 최초 1회 (운휴 팝업 위에 표시) */
 setTimeout(function () { permAutoPrompt(gen); }, 4000);   /* 알림 권한(소리·진동·팝업): 처음 한 번 안내 */
 setTimeout(function () { try { if (getNotiPrefs().retry) nkSyncServer(); } catch (e) {} }, 6000);   /* 다시 알림 설정을 서버 구독에 맞춰 둠 */
@@ -17194,6 +17290,33 @@ if (kind === 'alarm') o.info = { kind: 'alarm', start: '', type: '테스트', di
 rsAppTestItem = o; rsAppAlarmSig = '';
 rsAppSyncAlarms(true);
 }
+/* 앱 예약 이력은 사용자별로 분리하고, 현재 네이티브 예약 목록의 tag → epoch(ms)만 보관.
+   이전 전역 키(rsAppSchedHist)는 소유 계정을 알 수 없으므로 안전하게 읽지 않고 그대로 둔다. */
+function rsSchedKey() { return 'rsAppSchedHist_' + String((getCurrentUser() && getCurrentUser().employeeId) || ''); }
+function rsSchedGet() {
+var u0 = getCurrentUser(); if (!u0 || !u0.employeeId) return {};
+try {
+var h = JSON.parse(LS.getItem(rsSchedKey()) || '{}');
+return h && typeof h === 'object' && !Array.isArray(h) ? h : {};
+} catch (e) { return {}; }
+}
+function rsSchedHas(tag, expectedAt) {
+var h = rsSchedGet(), saved = Number(h[tag]), expected = Number(expectedAt);
+return !!(saved > 0 && expected > 0 && Math.abs(saved - expected) < 1000);
+}
+function rsSchedPut(list) {
+var u0 = getCurrentUser(); if (!u0 || !u0.employeeId) return;   /* 사번이 없으면 공통 빈 키에 쓰지 않음 */
+var prev = rsSchedGet(), h = {}, now = Date.now();
+/* 울릴 시각이 이미 지난 예약 = 폰이 울린 알람 기록 → 하루 보관 (지우면 앱을 열 때 웹 알람이 다시 울림) */
+Object.keys(prev).forEach(function (k) { var pa = Number(prev[k]); if (isFinite(pa) && pa <= now && pa > now - 86400000) h[k] = pa; });
+/* 앞으로 울릴 예약은 이번에 보낸 목록으로 통째로 교체 (취소·시간 변경된 예약은 남지 않음) */
+(list || []).forEach(function (o) {
+if (!o || !o.id || !o.at) return;
+var at = Number(o.at);
+if (isFinite(at) && at > now - 60000) h[String(o.id)] = at;
+});
+try { LS.setItem(rsSchedKey(), JSON.stringify(h)); } catch (e) {}
+}
 function rsAppSyncAlarms(force) {
 if (!rsAppHas('setAlarms')) return;
 try { rsBgSync(); } catch (e) {}
@@ -17210,8 +17333,27 @@ return o;
 });
 list = list.filter(Boolean);
 if (rsAppTestItem && rsAppTestItem.at > Date.now()) list.push(rsAppTestItem);
-var sig = JSON.stringify(list); if (sig === rsAppAlarmSig) return;
-rsAppAlarmSig = sig; rsAppCall('setAlarms', list);
+var sig = String(u.employeeId || '') + '|' + JSON.stringify(list); if (sig === rsAppAlarmSig) return;
+/* 예약 호출이 오류 없이 끝났을 때만 '예약함'으로 기록 → 실패하면 다음 동기화 때 다시 시도하고, 웹 알람이 대신 울린다 */
+try {
+var ack = window.RsApp.setAlarms(JSON.stringify(list));
+/* Android JavascriptInterface의 동기 반환값을 최대한 엄격히 판독한다.
+   Promise는 완료 여부를 여기서 기다릴 수 없으므로 성공으로 오인하지 않는다.
+   반환값이 없는 구버전 브리지는 호환성을 위해 기존 동작(성공 간주)을 유지하되 실제 예약은 미검증이다. */
+if (ack === false || (typeof ack === 'string' && ack.trim().toLowerCase() === 'false')) throw new Error('setAlarms rejected');
+if (ack && typeof ack === 'object') {
+  if (typeof ack.then === 'function') throw new Error('setAlarms returned async result; synchronous ACK required');
+  if (ack.ok === false) throw new Error('setAlarms rejected');
+}
+if (typeof ack === 'string') {
+  var ackText = ack.trim();
+  if (ackText.charAt(0) === '{') {
+    var aj = null; try { aj = JSON.parse(ackText); } catch (e3) {}
+    if (aj && aj.ok === false) throw new Error('setAlarms rejected');
+  }
+}
+rsAppAlarmSig = sig; rsSchedPut(list);
+} catch (e2) { rsAppAlarmSig = ''; }
 } catch (e) {}
 }
 /* ============ 환경설정 › 앱 업데이트 (안드로이드 앱 안에서만 보임) ============
@@ -17529,7 +17671,7 @@ guide = '<b>아이폰 진동·소리 설정</b><br>' +
 '· 집중 모드(방해금지)에서는 철도비서를 <b>허용된 앱</b>에 추가';
 } else if (rsAppIn()) {
 guide = '<b>철도비서 앱 알림</b><br>' +
-'· 출근 알람 · 도중출무 알람: 휴대폰에 직접 예약돼서 <b>앱을 닫아도</b> 울려요<br>' +
+'· 출근 알람 · 중간출무 알람: 휴대폰에 직접 예약돼서 <b>앱을 닫아도</b> 울려요<br>' +
 (rsAppHas('bgWatch')
 ? '· 열차 운휴 · 통과/도착 알림: <b>앱을 닫아도</b> 확인해요<br>' + rsBgStatusHtml()
 : '· 열차 운휴 · 통과/도착 알림: 앱이 <b>열려 있을 때</b> 와요 (앱 업데이트 1.1.0부터 꺼져도 와요)<br>') +
@@ -17548,7 +17690,7 @@ var g = $('perm-guide'); if (g) g.innerHTML = guide;
 var bgi = $('bg-watch-info');
 if (bgi) {
 if (rsAppIn()) {
-bgi.innerHTML = '<b>철도비서 앱 알림</b><br>· 출근 · 도중출무 알람: 휴대폰에 예약돼서 <b>앱을 닫아도</b> 울려요<br>' +
+bgi.innerHTML = '<b>철도비서 앱 알림</b><br>· 출근 · 중간출무 알람: 휴대폰에 예약돼서 <b>앱을 닫아도</b> 울려요<br>' +
 (rsAppHas('bgWatch') ? '· 열차 운휴 · 통과/도착: <b>앱을 닫아도</b> 확인해요<br>' + rsBgStatusHtml()
 : '· 열차 운휴 · 통과/도착: 앱이 <b>열려 있을 때</b> 와요 · <a href="javascript:void 0" onclick="openAppUpdate()">앱 업데이트(1.1.0)</a>하면 꺼져도 와요') +
 '<div class="rp-goto" onclick="openNotiMode()">앱 권한은 <b>환경설정 › 기타 › 종합 알림모드 설정</b>에서 확인 · 허용해요 ›</div>';
@@ -22226,6 +22368,16 @@ html.ui-dark #xr-change .xr-keep{background:#2a3038!important;color:#e9edf2!impo
 · 가져온 내용은 모두 이 폰에만 저장 */
 var XR_EVERY = 12 * 3600000;
 var xrBusy = false;
+var xrNextMonthRetryTimer = null;
+function xrScheduleNextMonthRetry(attempt) {
+if (xrNextMonthRetryTimer) clearTimeout(xrNextMonthRetryTimer);
+var delays = [30 * 60000, 60 * 60000, 3 * 3600000, 6 * 3600000];
+var delay = delays[Math.min(Math.max(0, Number(attempt) || 0), delays.length - 1)];
+xrNextMonthRetryTimer = setTimeout(function () {
+xrNextMonthRetryTimer = null;
+try { if (getCurrentUser() && getCurrentUser().token && getCrewPw()) xrAutoSync(true, false); } catch (e) {}
+}, delay);
+}
 function xrKey(n) { return 'rs_xr_' + n + '_' + ((getCurrentUser() || {}).employeeId || ''); }
 function xrGet(n, d) { try { var v = JSON.parse(localStorage.getItem(xrKey(n))); return v == null ? d : v; } catch (e) { return d; } }
 function xrPut(n, v) { try { localStorage.setItem(xrKey(n), JSON.stringify(v)); } catch (e) {} }
@@ -22267,35 +22419,42 @@ if (!u || !u.token || !pw || xrBusy) { if (manual && !pw) showToast('CREW 연동
 var m = xrGet('meta', {}), sig = xrSig(pw), now = Date.now();
 if (m.fail && m.pwSig === sig && !force) return;                 /* 로그인 실패 → 새 비밀번호 전까지 멈춤 */
 if (m.fail && m.pwSig === sig && manual) { showToast('비밀번호가 틀려서 멈춰 있어요. 비밀번호를 다시 저장해주세요.'); return; }
-if (!force && m.at && now - m.at < XR_EVERY) return;            /* 12시간에 한 번 */
+if (!force && m.ok !== false && m.at && now - m.at < XR_EVERY) return; /* 성공 상태일 때만 12시간 간격 적용 */
+if (!force && m.ok === false && m.tryAt && now - m.tryAt < 5 * 60000) return; /* 일시 오류 재시도 폭주 방지(5분) */
 if (manual && m.at && now - m.at < 60000) { showToast('방금 확인했어요. 잠시 후에 다시 눌러주세요.'); return; }
-var t = todayKST(), yms = [t.y + String(t.m + 1).padStart(2, '0')];
-var nx = new Date(t.y, t.m + 1, 1); yms.push(nx.getFullYear() + String(nx.getMonth() + 1).padStart(2, '0'));
+var t = todayKST(), ymInfo = xrRosterMonthsAndCrewDates(), yms = ymInfo.yms;
 xrBusy = true;
-m.at = now; m.stamp = stampNow().slice(5, 16); xrPut('meta', m);
+/* 요청 시각은 별도 보관하고, 성공 시각(m.at)은 성공 응답을 받은 뒤에만 갱신한다. */
+m.tryAt = now; m.tryStamp = stampNow().slice(5, 16); xrPut('meta', m);
 if (manual) xrStatus('XROIS 근무표 확인 중…');
 /* 승무원(승무근무표 현황): 이번 달 중 근무 있는 날 · 같은 로그인 안에서
 지난 날은 한 번 가져왔으면 다시 안 가져옴(바뀌지 않음), 오늘 이후는 12시간마다 새로 */
-var crewDates = [], haveRos = xrGet('roster', {}), lastDay = new Date(t.y, t.m + 1, 0).getDate();
-for (var ci = 1; ci <= lastDay; ci++) {
-var cdk = getDateKey(t.y, t.m, ci);
-if (ci < t.d && haveRos[cdk]) continue;
-crewDates.push(cdk.replace(/-/g, ''));
-}
+var crewDates = ymInfo.crewDates;
 var pv = new Date(t.y, t.m - 1, 1), specYms = [pv.getFullYear() + String(pv.getMonth() + 1).padStart(2, '0'), yms[0]];
 xrCall({ action: 'xrRoster', yms: yms, crewDates: crewDates, specYms: specYms, withMid: getMidCfg().on }, function (err, d) {
 xrBusy = false;
 var mm = xrGet('meta', {});
 if (err) {
-mm.ok = false; mm.msg = err.message;
+mm.ok = false; mm.msg = err.message; mm.tryAt = now; mm.tryStamp = stampNow().slice(5, 16);
 if (err.code === 'LOGIN_FAILED') { mm.fail = true; mm.pwSig = sig; }
 xrPut('meta', mm); xrRenderStatus();
 try { renderCrewSetting(); } catch (e) {}
 if (manual) showToast(err.message);
 return;
 }
-mm.ok = true; mm.msg = ''; mm.fail = false; xrPut('meta', mm);
-try { midStore(d); } catch (e) {}
+mm.ok = true; mm.msg = ''; mm.fail = false; mm.at = Date.now(); mm.stamp = stampNow().slice(5, 16); mm.tryAt = now;
+/* 서버가 월별 조회 성공 여부를 제공하면 다음 달 미등록 상태를 구분해 재시도한다. */
+try {
+var nextYm = yms[1], monthRows = Array.isArray(d.rosterMonths) ? d.rosterMonths : null;
+if (monthRows && nextYm) {
+var nextStatus = monthRows.filter(function (x) { return String(x.ym) === nextYm; })[0];
+mm.nextMonthMissing = !nextStatus || !nextStatus.ok || !nextStatus.count;
+if (mm.nextMonthMissing) { mm.nextRetryCount = Math.min(4, (Number(mm.nextRetryCount) || 0) + 1); xrScheduleNextMonthRetry(mm.nextRetryCount - 1); }
+else { mm.nextRetryCount = 0; if (xrNextMonthRetryTimer) clearTimeout(xrNextMonthRetryTimer); xrNextMonthRetryTimer = null; }
+}
+} catch (e) {}
+xrPut('meta', mm);
+try { midStore(d, 'xrRoster'); } catch (e) {}
 try { var sp = xrGet('spec', {}); Object.keys(d.spec || {}).forEach(function (k) { sp[k] = d.spec[k]; }); var od = new Date(t.y, t.m - 13, 1), ok = getDateKey(od.getFullYear(), od.getMonth(), 1); Object.keys(sp).forEach(function (k) { if (k < ok) delete sp[k]; }); xrPut('spec', sp); } catch (e) {}
 xrApply(d.days || [], manual, d.crew || {});
 try { renderCrewSetting(); } catch (e) {}
@@ -26788,7 +26947,7 @@ else if (kind === 'perm') {
 try { alarmLoadUi(); } catch (e) {} try { midLoadUi(); } catch (e) {}
 document.getElementById('alarm-on').checked = on; try { alarmToggleChanged(); } catch (e) { alarmAutoSave(!on ? false : true); }
 if (!on && getMidCfg().on) { document.getElementById('mid-on').checked = false; try { midToggleChanged(); } catch (e) { midAutoSave(false); } }
-if (!on) showToast('출근 · 도중출무 알람을 껐습니다.');
+if (!on) showToast('출근 · 중간출무 알람을 껐습니다.');
 }
 else if (kind === 'pass') {
 var c = qsPassCfg(), key = 'passPrevOpts_' + (u.employeeId || '');
