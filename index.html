@@ -3445,7 +3445,9 @@ function esc(t) {
 return String(t == null ? '' : t)
 .replace(/&/g, '&amp;')
 .replace(/</g, '&lt;')
-.replace(/>/g, '&gt;');
+.replace(/>/g, '&gt;')
+.replace(/"/g, '&quot;')   /* 속성값(title="…", src="…") 안에서 따옴표로 빠져나오는 공격 방지 (게시물 첨부 주소 등) */
+.replace(/'/g, '&#39;');
 }
 function getDateKey(y, m, d) {
 return y + '-' + pad2(m + 1) + '-' + pad2(d);
@@ -9517,6 +9519,7 @@ xrPut('gplanTry', tries);
 xrGroupBusy[key] = true;
 xrCall({ action: 'xrDia', items: [{ dia: dia, date: dk }], withCrew: true }, function (err, d) {
 delete xrGroupBusy[key];
+if (err && err.code === 'LOGIN_FAILED') { var mm = xrGet('meta', {}); mm.fail = true; mm.pwSig = xrSig(pw); xrPut('meta', mm); }   /* v116 수정: 로그인 실패 → 멈춤 상태 기록 */
 if (err) { if (onDone) onDone(false); return; }
 var r = (d.results || [])[0] || {};
 var cr = Array.isArray(r.crew) ? (r.crew.filter(function (x) { return xrNorm(x.dia) === dia; })[0] || null) : null;
@@ -12813,7 +12816,7 @@ if (!document.hidden) runAlarmCheck();
 setTimeout(runAlarmCheck, 3000);
 })();
 /* ============ 중간출무 알람 (v115 감사 수정) ============
-XROIS 출무현황에서 종류 '도중' · 상태 '출무전'인 줄을 모두 가져와(어제·오늘·내일 사업일자, 로그인 및 근무표 확인 때),
+XROIS 출무현황에서 종류 '도중' · 상태 '출무전'인 줄을 모두 가져와(당일 사업일자, 로그인 및 근무표 확인 때),
 예정일시 1시간 전 ~ 10분 전 중 고른 시각에 알람 (앱이 꺼져 있어도 푸시로) */
 function midKey() { return 'midCfg_' + (getCurrentUser().employeeId || ''); }
 function getMidCfg() {
@@ -12987,7 +12990,7 @@ try { midUiUpdate(); } catch (e) {}
 if (manual) showToast('중간출무 응답 형식이 예상과 달라요. 진단 내용을 확인해주세요.');
 return;
 }
-if (manual) { var n = midItems().length, m = xrGet('midMeta', {}); showToast(n ? '중간출무 예정 ' + n + '건을 가져왔어요' : (m.err || '오늘·내일 중간출무 예정이 없어요')); }
+if (manual) { var n = midItems().length, m = xrGet('midMeta', {}); showToast(n ? '중간출무 예정 ' + n + '건을 가져왔어요' : (m.err || '오늘 중간출무 예정이 없어요')); }
 }
 function fallback(reason) {
 xrCall(xrMidRosterBody(), function (err2, d2) {
@@ -22375,7 +22378,7 @@ var delays = [30 * 60000, 60 * 60000, 3 * 3600000, 6 * 3600000];
 var delay = delays[Math.min(Math.max(0, Number(attempt) || 0), delays.length - 1)];
 xrNextMonthRetryTimer = setTimeout(function () {
 xrNextMonthRetryTimer = null;
-try { if (getCurrentUser() && getCurrentUser().token && getCrewPw()) xrAutoSync(true, false); } catch (e) {}
+try { if (getCurrentUser() && getCurrentUser().token && getCrewPw()) { var rm = xrGet('meta', {}); if (rm.fail && rm.pwSig === xrSig(getCrewPw())) return; xrAutoSync(true, false); } } catch (e) {}   /* v116 수정: 비밀번호 틀림 멈춤 상태면 재시도하지 않음 (계정 잠김 방지) */
 }, delay);
 }
 function xrKey(n) { return 'rs_xr_' + n + '_' + ((getCurrentUser() || {}).employeeId || ''); }
@@ -23460,6 +23463,8 @@ var fresh = !force && st.at && Date.now() - st.at < XR_EVERY;
 if (force) st.stopAt = '';
 var need = dates.filter(function (k) { return !st.board[k] && !(st.stopAt && k >= st.stopAt); });
 if (fresh && !need.length) { cbfRender(q, st, dates); return; }
+var cbfMeta = xrGet('meta', {});   /* v116 수정: 비밀번호 틀림 멈춤 상태면 XROIS에 다시 로그인하지 않음 (cbFetch와 같은 규칙) */
+if (cbfMeta.fail && cbfMeta.pwSig === xrSig(getCrewPw())) { $('cbf-out').innerHTML = '<div class="cbf-load" style="color:#e03131">' + esc('XROIS 로그인 실패 상태예요. 마이페이지 › CREW 연동에서 비밀번호를 다시 저장해주세요.') + '</div>'; return; }
 if (cbfBusy) return;
 cbfBusy = true;
 $('cbf-sub').textContent = '';
@@ -23467,6 +23472,7 @@ $('cbf-out').innerHTML = '<div class="cbf-load"><div class="cb-skel" style="heig
 var ask = fresh ? need : dates;
 xrCall({ action: 'xrBoardRange', dates: ask.map(function (k) { return k.replace(/-/g, ''); }) }, function (err, d) {
 cbfBusy = false;
+if (err && err.code === 'LOGIN_FAILED') { var mm = xrGet('meta', {}); mm.fail = true; mm.pwSig = xrSig(getCrewPw()); xrPut('meta', mm); }   /* v116 수정: 로그인 실패 → 멈춤 상태 기록 */
 if (err) { $('cbf-out').innerHTML = '<div class="cbf-load" style="color:#e03131">' + esc(err.message || 'XROIS에서 가져오지 못했어요.') + '</div>'; return; }
 var b = (d && d.board) || null;
 if (!b || !Object.keys(b).length) {
@@ -30942,6 +30948,7 @@ if (typeof crewLinked !== 'function' || !crewLinked()) { document.getElementById
 var pw = getCrewPw(), meta = xrGet('meta', {});
 if (meta.fail && meta.pwSig === xrSig(pw)) { document.getElementById('cbrt-bd').textContent = 'XROIS 로그인 실패 상태예요. 마이페이지 › CREW 연동에서 비밀번호를 다시 저장해주세요.'; return; }
 xrCall({ action: 'xrDia', items: [{ dia: d, date: dk }] }, function (err, res) {
+if (err && err.code === 'LOGIN_FAILED') { var mm = xrGet('meta', {}); mm.fail = true; mm.pwSig = xrSig(pw); xrPut('meta', mm); }   /* v116 수정: 로그인 실패 → 멈춤 상태 기록 */
 if (my !== cbRtSeq) return;   /* 그 사이 팝업을 닫았거나 다른 다이아를 눌렀으면 무시 */
 var bd = document.getElementById('cbrt-bd'); if (!bd) return;
 if (err) { bd.textContent = (err.message || 'XROIS에서 가져오지 못했어요.'); return; }
@@ -30973,11 +30980,13 @@ var v = lumOf(getComputedStyle(document.body).backgroundColor); if (v === null) 
 return v === null ? 240 : v;
 }
 function apply() {
-var h = document.documentElement; h.classList.remove('tx-on-dark', 'tx-on-light');
+var h = document.documentElement;   /* v116 수정: 값이 같을 때 class를 지웠다 다시 넣지 않음 (자기 MutationObserver 재호출 → 60ms 무한 반복 방지) */
 var sw = document.getElementById('autotx-sw'), sub = document.getElementById('autotx-sub');
 if (sw) sw.setAttribute('aria-checked', on() ? 'true' : 'false');
-if (!on()) { if (sub) sub.textContent = '꺼짐'; return; }
-var dark = sample() < 140; h.classList.add(dark ? 'tx-on-dark' : 'tx-on-light');
+if (!on()) { if (h.classList.contains('tx-on-dark') || h.classList.contains('tx-on-light')) h.classList.remove('tx-on-dark', 'tx-on-light'); if (sub) sub.textContent = '꺼짐'; return; }
+var dark = sample() < 140, want = dark ? 'tx-on-dark' : 'tx-on-light', other = dark ? 'tx-on-light' : 'tx-on-dark';
+if (h.classList.contains(other)) h.classList.remove(other);
+if (!h.classList.contains(want)) h.classList.add(want);
 if (sub) sub.textContent = dark ? '어두운 바탕 · 밝은 글씨' : '밝은 바탕 · 짙은 글씨';
 }
 window.autoTxApply = apply;
@@ -32018,5 +32027,57 @@ html.wbg-on.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4):not(#z5):not(#z6):not(
 html.wbg-on.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4):not(#z5):not(#z6):not(#z7):not(#z8):not(#z9):not(#z10):not(#z11):not(#z12):not(#z13):not(#z14) #app-splash .sp-text,html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4):not(#z5):not(#z6):not(#z7):not(#z8):not(#z9):not(#z10):not(#z11):not(#z12):not(#z13):not(#z14) #app-splash .sp-text{text-shadow:none}
 html.wbg-night:not(#z1):not(#z2):not(#z3):not(#z4):not(#z5):not(#z6):not(#z7):not(#z8):not(#z9):not(#z10):not(#z11):not(#z12):not(#z13):not(#z14) body #schedule-section .sch-viewseg,html.ui-dark:not(#z1):not(#z2):not(#z3):not(#z4):not(#z5):not(#z6):not(#z7):not(#z8):not(#z9):not(#z10):not(#z11):not(#z12):not(#z13):not(#z14) body #schedule-section .sch-viewseg{background:rgba(255,255,255,.16)!important}
 </style>
+<style id="fix-v87">
+/* 밤·다크: 흰 글씨인데 바탕이 흰색·회색이라 안 보이는 칸 → 파란 바탕 (사용자 규칙) */
+html.wbg-night:not(#zb1):not(#zb2):not(#zb3):not(#zb4):not(#zb5):not(#zb6):not(#zb7):not(#zb8):not(#zb9):not(#zb10):not(#zb11):not(#zb12):not(#zb13):not(#zb14):not(#zb15):not(#zb16):not(#zb17):not(#zb18):not(#zb19):not(#zb20) body .rs-blue-fill,html.ui-dark:not(#zb1):not(#zb2):not(#zb3):not(#zb4):not(#zb5):not(#zb6):not(#zb7):not(#zb8):not(#zb9):not(#zb10):not(#zb11):not(#zb12):not(#zb13):not(#zb14):not(#zb15):not(#zb16):not(#zb17):not(#zb18):not(#zb19):not(#zb20) body .rs-blue-fill{background:#2f8cf0!important;background-image:none!important;border-color:#2f8cf0!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+</style>
+<script id="fix-v87-js">
+/* 밤·다크에서만, 화면 전환·누를 때 한 번씩 검사 (감시자·반복 타이머 없음 → 무한 반복 없음) */
+(function () {
+  function dark() { var c = document.documentElement.classList; return c.contains('wbg-night') || c.contains('ui-dark'); }
+  function L(v) { var m = String(v || '').match(/[\d.]+/g); if (!m || m.length < 3) return null; return { l: (0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2]) / 255, a: m[3] === undefined ? 1 : +m[3] }; }
+  var SEL = 'button,a,span,b,small,em,label,td,th,div,li,p,strong';
+  var PROPS = ['background-color', 'background-image', 'color', '-webkit-text-fill-color'];
+  function unpaint() {   /* 낮·라이트로 돌아가면 직접 칠한 파란색을 되돌림 */
+    var m = document.querySelectorAll('[data-rsbf]');
+    for (var i = 0; i < m.length; i++) {
+      var e = m[i], org = {}; try { org = JSON.parse(e.getAttribute('data-rsbf')) || {}; } catch (x) {}
+      PROPS.forEach(function (k) { e.style.removeProperty(k); var o = org[k]; if (o && o[0]) e.style.setProperty(k, o[0], o[1] || ''); });   /* 칠하기 전 원래 인라인 값 그대로 복원 */
+      e.removeAttribute('data-rsbf'); e.classList.remove('rs-blue-fill');
+    }
+  }
+  function scan() {
+    if (!dark()) { unpaint(); return; }
+    var roots = document.querySelectorAll('.page-view.active, .dia-modal, [role="dialog"], .bottom-nav, #app-header, header');
+    for (var i = 0; i < roots.length; i++) {
+      var r = roots[i]; if (!r.offsetParent && getComputedStyle(r).position !== 'fixed') continue;
+      var els = r.querySelectorAll(SEL);
+      for (var j = 0; j < els.length; j++) {
+        var e = els[j]; if (e.classList.contains('rs-blue-fill')) continue;
+        var t = ''; for (var k = 0; k < e.childNodes.length; k++) if (e.childNodes[k].nodeType === 3) t += e.childNodes[k].textContent; if (!t.trim()) continue;
+        var w = e.offsetWidth, h = e.offsetHeight; if (!w || !h || w > 420 || h > 140) continue;   /* 칸·배지·버튼 크기만 (큰 판넬 제외) */
+        var cs = getComputedStyle(e), fg = L(cs.webkitTextFillColor && cs.webkitTextFillColor !== 'rgba(0, 0, 0, 0)' ? cs.webkitTextFillColor : cs.color), bg = L(cs.backgroundColor);
+        if (fg && bg && fg.l >= 0.82 && bg.a >= 0.5 && bg.l >= 0.62) {
+          e.classList.add('rs-blue-fill');
+          var b2 = L(getComputedStyle(e).backgroundColor);
+          if (b2 && b2.l >= 0.62) {   /* 다른 규칙(인라인 !important)이 이기면 직접 칠하고 표시 → 낮 테마에서 되돌림 */
+            var org = {}; PROPS.forEach(function (k) { org[k] = [e.style.getPropertyValue(k), e.style.getPropertyPriority(k)]; });
+            e.setAttribute('data-rsbf', JSON.stringify(org));
+            e.style.setProperty('background-color', '#2f8cf0', 'important'); e.style.setProperty('background-image', 'none', 'important');
+            e.style.setProperty('color', '#fff', 'important'); e.style.setProperty('-webkit-text-fill-color', '#fff', 'important');
+          }
+        }
+      }
+    }
+  }
+  var tm = 0, tm2 = 0; function later(ms) { clearTimeout(tm); clearTimeout(tm2); tm = setTimeout(scan, ms || 160); tm2 = setTimeout(scan, 800); }   /* 늦게 그려지는 칸까지 한 번 더 */
+  document.addEventListener('click', function () { later(160); }, true);
+  if (typeof window.switchSection === 'function' && !window.switchSection.__v87) {
+    var o = window.switchSection; window.switchSection = function () { var x = o.apply(this, arguments); later(120); return x; }; window.switchSection.__v87 = true;
+  }
+  window.rsBlueFillScan = scan;
+  setTimeout(scan, 1500);
+})();
+</script>
 </body>
 </html>
