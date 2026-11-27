@@ -13017,7 +13017,7 @@ fallback('xrMid 응답에 mid/midWhy 필드 없음');
 }
 function midCopyDiag() {
 var w = xrGet('midWhy', null), m = xrGet('midMeta', {}), arr = xrGet('mid', []);
-var t = JSON.stringify({ meta: m, why: w, check: xrGet('midCheck', null), cachedMidCount: Array.isArray(arr) ? arr.length : null, cachedMidFields: Array.isArray(arr) && arr[0] ? Object.keys(arr[0]) : [] }, null, 1);
+var t = JSON.stringify({ meta: m, why: w, check: xrGet('midCheck', null), storage: rsStorageStats(), cachedMidCount: Array.isArray(arr) ? arr.length : null, cachedMidFields: Array.isArray(arr) && arr[0] ? Object.keys(arr[0]) : [] }, null, 1);
 var done = function () { showToast('진단 내용을 복사했어요. 채팅에 붙여 넣어 주세요.'); };
 try { navigator.clipboard.writeText(t).then(done, function () { prompt('아래 내용을 복사해 주세요', t); }); } catch (e) { prompt('아래 내용을 복사해 주세요', t); }
 }
@@ -22382,8 +22382,40 @@ try { if (getCurrentUser() && getCurrentUser().token && getCrewPw()) { var rm = 
 }, delay);
 }
 function xrKey(n) { return 'rs_xr_' + n + '_' + ((getCurrentUser() || {}).employeeId || ''); }
-function xrGet(n, d) { try { var v = JSON.parse(localStorage.getItem(xrKey(n))); return v == null ? d : v; } catch (e) { return d; } }
-function xrPut(n, v) { try { localStorage.setItem(xrKey(n), JSON.stringify(v)); } catch (e) {} }
+/* 폰 저장공간(localStorage)이 가득 차서 저장이 실패해도, 이번 실행 동안은 메모리 값으로 화면·알람이 동작하게 함 */
+var XR_MEM = {};
+function xrGet(n, d) {
+var k = xrKey(n);
+if (Object.prototype.hasOwnProperty.call(XR_MEM, k)) { try { var mv = JSON.parse(XR_MEM[k]); return mv == null ? d : mv; } catch (e) { return d; } }
+try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; }
+}
+function xrPut(n, v) {
+var k = xrKey(n), str = JSON.stringify(v);
+try { localStorage.setItem(k, str); delete XR_MEM[k]; return; } catch (e) {}
+try { rsStorageRelief(k); localStorage.setItem(k, str); delete XR_MEM[k]; return; } catch (e2) {}   /* 다시 받을 수 있는 XROIS 캐시를 정리하고 한 번 더 */
+XR_MEM[k] = str;
+if (!xrPut.__warned) { xrPut.__warned = true; try { showToast('폰 저장공간이 가득 차서 일부를 저장하지 못했어요. 지금 화면에는 보이지만 앱을 다시 열면 다시 가져와요.'); } catch (e3) {} }
+}
+/* 저장공간 부족 시 정리 대상: 다시 받을 수 있는 XROIS 캐시만 (사용자 입력 데이터 · 설정 · 로그인은 건드리지 않음)
+   ① 이 폰에 남은 다른 계정의 XROIS 캐시 ② 내 동료찾기 한 달 캐시 · 근무그룹 행로표 캐시 */
+function rsStorageRelief(keep) {
+var me = String((getCurrentUser() || {}).employeeId || ''), drop = [];
+if (!me) return 0;
+for (var i = 0; i < localStorage.length; i++) {
+var k = localStorage.key(i); if (!k || k === keep || k.indexOf('rs_xr_') !== 0) continue;
+var mine = k.slice(-(me.length + 1)) === '_' + me;
+if (!mine || k === 'rs_xr_boardMonth2_' + me || k === 'rs_xr_gplan_' + me || k === 'rs_xr_gplanTry_' + me) drop.push(k);
+}
+drop.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
+return drop.length;
+}
+/* 진단용: 저장공간 사용량 (키 이름의 사번 등 숫자는 가림) */
+function rsStorageStats() {
+var tot = 0, arr = [];
+try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i), n = (k.length + (localStorage.getItem(k) || '').length) * 2; tot += n; arr.push([k.replace(/\d{5,}/g, '#'), Math.round(n / 1024)]); } } catch (e) {}
+arr.sort(function (a, b) { return b[1] - a[1]; });
+return { totalKB: Math.round(tot / 1024), keys: arr.length, top: arr.slice(0, 10), memOnly: Object.keys(XR_MEM).map(function (k) { return k.replace(/\d{5,}/g, '#'); }) };
+}
 function xrSig(t) { var h = 5381; t = String(t || ''); for (var i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return String(h); }
 function xrNorm(v) { return String(v == null ? '' : v).replace(/\s+/g, '').toUpperCase(); }
 function xrDateLabel(dk) { var p = dk.split('-'), w = '일월화수목금토'.charAt(new Date(+p[0], +p[1] - 1, +p[2]).getDay()); return (+p[1]) + '월 ' + (+p[2]) + '일(' + w + ')'; }
