@@ -23344,9 +23344,14 @@ html.ui-dark #crewboard-section .cb-table tbody tr.me > td{background:#1d3357!im
 var cbDate = null, cbBusy = false, cbRequestDate = null, cbAwaitFresh = false;
 function cbKey(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function cbStore() { return (typeof xrGet === 'function') ? xrGet('board', {}) : {}; }
-function cbSave(obj) {
-var ks = Object.keys(obj).sort();
-while (ks.length > 10) delete obj[ks.shift()];
+function cbSave(obj, keep) {
+/* 10일치까지만 보관. 방금 가져온 날짜(keep)는 절대 지우지 않고, 오늘에서 가장 먼 날짜부터 지움
+   (예전: 날짜순으로 가장 이른 것부터 지워서, 미래 날짜 10개가 있으면 방금 가져온 오늘이 바로 지워짐) */
+var t = todayKST(), t0 = Date.UTC(t.y, t.m, t.d), keepSet = {};
+(keep || []).forEach(function (k) { keepSet[k] = 1; });
+var dist = function (k) { var p = String(k).split('-'); var v = Date.UTC(+p[0], +p[1] - 1, +p[2]); return isFinite(v) ? Math.abs(v - t0) : Infinity; };
+var ks = Object.keys(obj).filter(function (k) { return !keepSet[k]; }).sort(function (a, b) { return dist(b) - dist(a); });
+while (Object.keys(obj).length > 10 && ks.length) delete obj[ks.shift()];
 if (typeof xrPut === 'function') xrPut('board', obj);
 }
 function cbMyDia(dk) {
@@ -23408,8 +23413,9 @@ if (err.code === 'LOGIN_FAILED') { var mm = xrGet('meta', {}); mm.fail = true; m
 cbErr = err.message || 'XROIS에서 가져오지 못했어요.'; cbRender(); return;
 }
 var st = cbStore(), now = Date.now();
-Object.keys((d && d.board) || {}).forEach(function (k) { st[k] = { at: now, rows: d.board[k] || [] }; });
-cbSave(st); cbRender();
+var got = Object.keys((d && d.board) || {});
+got.forEach(function (k) { st[k] = { at: now, rows: d.board[k] || [] }; });
+cbSave(st, got.concat([dk])); cbRender();
 });
 }
 var cbErr = '';
