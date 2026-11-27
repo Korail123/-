@@ -12825,7 +12825,7 @@ list.forEach(function (it) {
 var m = String(it && it.at || '').match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/);
 if (!m) return;
 var ms = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) - 9 * 3600000;
-if (ms > now - 60000) out.push({ at: it.at, ms: ms, info: String(it.info || ''), key: m[1] + m[2] + m[3] + m[4] + m[5] });
+if (ms > now - 60000) out.push({ at: it.at, ms: ms, info: String(it.info || ''), kind: String(it.kind || ''), key: m[1] + m[2] + m[3] + m[4] + m[5] });
 });
 out.sort(function (a, b) { return a.ms - b.ms; });
 return out;
@@ -12866,7 +12866,7 @@ if (lst) {
 var meta = (typeof xrGet === 'function') ? xrGet('midMeta', {}) : {};
 var h = items.slice(0, 5).map(function (it) {
 var p = it.at.split(' '), d = p[0].split('-');
-return '· ' + (+d[1]) + '/' + (+d[2]) + ' <b>' + p[1] + '</b> 도중출무' + (it.info ? ' (' + esc(it.info) + ')' : '') + ' → 알람 ' + alarmClockText(+p[1].slice(0, 2) * 60 + +p[1].slice(3) - min);
+return '· ' + (+d[1]) + '/' + (+d[2]) + ' <b>' + p[1] + '</b> ' + (it.kind === '출무전' ? '출무 전' : '도중출무') + (it.info ? ' (' + esc(it.info) + ')' : '') + ' → 알람 ' + alarmClockText(+p[1].slice(0, 2) * 60 + +p[1].slice(3) - min);
 }).join('<br>');
 var dg = $('mid-diag'); if (dg) dg.hidden = !(meta.err || (!items.length && xrGet('midWhy', null)));
 lst.innerHTML = (h || '<span class="mid-none">가져온 도중출무 예정이 없어요.</span>') +
@@ -12933,7 +12933,7 @@ if (!cfg.on) return out;
 midItems().forEach(function (it) {
 var at = it.ms - cfg.min * 60000;
 var hm = it.at.split(' ')[1], d = it.at.split(' ')[0].split('-');
-out.push({ at: at, endMs: it.ms, key: it.key, body: (+d[1]) + '/' + (+d[2]) + ' 도중출무 ' + hm + (it.info ? ' · ' + it.info : '') + ' (' + alarmMinText(cfg.min).replace(' 전', '') + ' 전)' });
+out.push({ at: at, endMs: it.ms, key: it.key, body: (+d[1]) + '/' + (+d[2]) + ' ' + (it.kind === '출무전' ? '출무 전' : '도중출무') + ' ' + hm + (it.info ? ' · ' + it.info : '') + ' (' + alarmMinText(cfg.min).replace(' 전', '') + ' 전)' });
 });
 return out;
 }
@@ -17157,6 +17157,7 @@ cbFetch(false, true);
 loadSeqRules();            /* 순서별 다이아 규칙(여자 16번 = 12937) 서버에서 받기 */   /* CREW 연동: 승무원 자동 불러오기 (관리자만) */
 nxLoginCheck(gen);         /* 열차 운휴: 로그인할 때마다 즉시 결과 팝업 */
 briefingLoginCheck(gen);   /* 오늘의 브리핑: 켠 사용자만 하루 첫 접속 때 */
+setTimeout(function () { try { if (gen === loginPopupGen && getMidCfg().on && getCrewPw()) midFetchNow(false); } catch (e) {} }, 3500);   /* 출무현황(출무전·도중출무): 로그인할 때마다 자동으로 가져옴 */
 noticeCheckNew(gen);       /* 새 공지사항: 사용자별 최초 1회 (운휴 팝업 위에 표시) */
 setTimeout(function () { permAutoPrompt(gen); }, 4000);   /* 알림 권한(소리·진동·팝업): 처음 한 번 안내 */
 setTimeout(function () { try { if (getNotiPrefs().retry) nkSyncServer(); } catch (e) {} }, 6000);   /* 다시 알림 설정을 서버 구독에 맞춰 둠 */
