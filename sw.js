@@ -2,7 +2,7 @@
    - 앱 화면(index.html) 저장 · 빠른 실행 · 뒤에서 최신본 확인
    - 백그라운드 푸시 알림
 */
-var SHELL_CACHE = 'rs-shell-v7';
+var SHELL_CACHE = 'rs-shell-v8';   /* 2026-11-28: 팀장조 순서표·근무구분 반영본 — 이름을 바꾸면 폰에 저장된 예전 화면을 지우고 새로 받음 */
 var SHELL_KEY = 'app-shell';
 var NOTI_ICON = 'icon-192.png?v=7';
 
