@@ -12542,7 +12542,7 @@ function closeFoodMap() { try { returnToPreviousSection(); } catch (e) { switchS
 function foodInitMap() {
 if (FOOD.map) { setTimeout(function () { try { FOOD.map.relayout(); foodFit(); } catch (e) {} }, 60); return; }
 FOOD.map = new kakao.maps.Map($('food-map'), { center: new kakao.maps.LatLng(FOOD_HOME.lat, FOOD_HOME.lng), level: 5 });
-FOOD.info = new kakao.maps.InfoWindow({ zIndex: 3, removable: false });
+FOOD.info = new kakao.maps.InfoWindow({ zIndex: 3, removable: true });
 }
 function foodLoad() {
 var u = foodUser();
@@ -12583,7 +12583,7 @@ return '<div class="food-item" id="food-it-' + (+x.id) + '" onclick="foodPick(' 
 '<span class="fi-meta">' + foodEsc(x.address || '주소 없음') + (x.phone ? ' · ' + foodEsc(x.phone) : '') + '</span>' +
 (x.memo ? '<span class="fi-memo">' + foodEsc(x.memo) + '</span>' : '') +
 '<div class="fi-my"><span>내 별점</span><span class="food-stars">' + foodStarsHtml(+x.myScore || 0, +x.id) + '</span></div>' +
-'<div class="fi-foot"><span class="fi-by">' + (x.by ? '등록 ' + foodEsc(x.by) : '') + '</span><span class="fi-btns">' +
+'<div class="fi-foot"><span class="fi-by">' + foodEsc([x.by ? '등록 ' + x.by : '', String(x.createdAt || x.updatedAt || '').replace(/^\d{4}-/, '').replace('-', '.')].filter(Boolean).join(' · ')) + '</span><span class="fi-btns">' +
 (url ? '<a class="fi-link" href="' + foodEsc(url) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">카카오맵 ↗</a>' : '') +
 '<button type="button" onclick="event.stopPropagation();foodFormOpen(' + (+x.id) + ')">수정</button><button type="button" class="fi-del" onclick="event.stopPropagation();foodDelete(' + (+x.id) + ')">삭제</button></span></div></div>';
 }).join('');
@@ -12613,10 +12613,22 @@ var all = document.querySelectorAll('#food-list .food-item'); for (var k = 0; k 
 var m = FOOD.marks.filter(function (z) { return z.id === id; })[0];
 if (m && FOOD.map) {
 try { FOOD.map.panTo(new kakao.maps.LatLng(+m.x.lat, +m.x.lng)); } catch (e) {}
-try { var box = document.createElement('div'); box.style.cssText = 'padding:6px 10px;font-size:12px;font-weight:700;color:#173257;white-space:nowrap'; box.textContent = m.x.name || ''; FOOD.info.setContent(box); FOOD.info.open(FOOD.map, m.mk); } catch (e) {}
+try { FOOD.info.setContent(foodInfoBox(m.x)); FOOD.info.open(FOOD.map, m.mk); } catch (e) {}
 if (fromList) { var mp = $('food-map'); if (mp) mp.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
 }
 if (!fromList) { var el = $('food-it-' + id); if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+}
+function foodInfoBox(x) {   /* 지도 마커 정보: 흰 바탕 · 글자는 textContent로만 넣음 */
+var box = document.createElement('div');
+box.className = 'food-info';
+box.style.cssText = 'box-sizing:border-box;width:230px;max-width:70vw;padding:10px 12px 10px;background:#fff;color:#173257;font-size:12px;line-height:1.45;white-space:normal;word-break:keep-all;text-align:left;border-radius:6px';
+var add = function (txt, css, cls) { if (!txt) return; var d = document.createElement('div'); d.style.cssText = css; if (cls) d.className = cls; d.textContent = txt; box.appendChild(d); };
+add(x.name || '', 'font-size:14px;font-weight:900;color:#173257;margin-bottom:3px', 'fi-i-name');
+add(x.address || '', 'color:#4a5872', 'fi-i-addr');
+add(x.memo || '', 'margin-top:5px;padding:6px 8px;border-radius:8px;background:#f3f7fd;color:#263a5c', 'fi-i-memo');
+var when = String(x.createdAt || x.updatedAt || '').replace(/^\d{4}-/, '').replace('-', '.');
+add([x.by ? '등록 ' + x.by : '', when].filter(Boolean).join(' · '), 'margin-top:6px;font-size:11px;color:#8a96a8', 'fi-i-by');
+return box;
 }
 function foodRate(id, score) {
 var u = foodUser(); if (!u) return;
@@ -28015,6 +28027,26 @@ return r;
   </div>
 </div>
 <style id="food-map-ui">#food-section{padding-bottom:110px}
+html body #food-section .food-item,html body #food-section .food-form{background:#fff!important;background-image:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;border:1px solid #dfe7f2!important;box-shadow:0 2px 10px rgba(23,50,87,.08)!important}
+html body #food-section .food-item.sel{border-color:#7fb0f0!important;box-shadow:0 0 0 2px rgba(47,111,214,.25)!important}
+html body #food-section .food-item b,html body #food-section .ff-title{color:#173257!important;-webkit-text-fill-color:#173257!important}
+html body #food-section .food-item .fi-meta,html body #food-section .fi-my,html body #food-section .ff-star-n{color:#5b6678!important;-webkit-text-fill-color:#5b6678!important}
+html body #food-section .fi-memo{color:#334766!important;-webkit-text-fill-color:#334766!important}
+html body #food-section .fi-by,html body #food-section .fi-cnt{color:#8a96a8!important;-webkit-text-fill-color:#8a96a8!important}
+html body #food-section .ff-label{color:#3d5274!important;-webkit-text-fill-color:#3d5274!important}
+html body #food-section .fs-star{color:#d4dbe6!important;-webkit-text-fill-color:#d4dbe6!important}html body #food-section .fs-star.on{color:#f5b301!important;-webkit-text-fill-color:#f5b301!important}
+html.ui-dark body #food-section .food-item,html.ui-dark body #food-section .food-form,html.wbg-on:not(.theme-day) body #food-section .food-item,html.wbg-on:not(.theme-day) body #food-section .food-form{background:#1b2433!important;border-color:rgba(160,190,240,.22)!important;box-shadow:none!important}
+html.ui-dark body #food-section .food-item b,html.ui-dark body #food-section .ff-title,html.wbg-on:not(.theme-day) body #food-section .food-item b,html.wbg-on:not(.theme-day) body #food-section .ff-title{color:#e8eef8!important;-webkit-text-fill-color:#e8eef8!important}
+html.ui-dark body #food-section .food-item .fi-meta,html.ui-dark body #food-section .fi-my,html.ui-dark body #food-section .ff-star-n,html.ui-dark body #food-section .ff-label,html.wbg-on:not(.theme-day) body #food-section .food-item .fi-meta,html.wbg-on:not(.theme-day) body #food-section .fi-my,html.wbg-on:not(.theme-day) body #food-section .ff-star-n,html.wbg-on:not(.theme-day) body #food-section .ff-label{color:#c9d3e0!important;-webkit-text-fill-color:#c9d3e0!important}
+html.ui-dark body #food-section .fi-memo,html.wbg-on:not(.theme-day) body #food-section .fi-memo{color:#d5e2f5!important;-webkit-text-fill-color:#d5e2f5!important}
+html.ui-dark body #food-section .fi-by,html.ui-dark body #food-section .fi-cnt,html.wbg-on:not(.theme-day) body #food-section .fi-by,html.wbg-on:not(.theme-day) body #food-section .fi-cnt{color:#a9b6c8!important;-webkit-text-fill-color:#a9b6c8!important}
+html.ui-dark body #food-section .fs-star,html.wbg-on:not(.theme-day) body #food-section .fs-star{color:#4a5872!important;-webkit-text-fill-color:#4a5872!important}html.ui-dark body #food-section .fs-star.on,html.wbg-on:not(.theme-day) body #food-section .fs-star.on{color:#ffc83d!important;-webkit-text-fill-color:#ffc83d!important}
+/* 지도 정보 상자는 어떤 테마든 흰 바탕 (선택자에 ui-dark가 들어 있어 자동 다크 변환에서 빠짐) */
+html body #food-map .food-info:not(.ui-dark):not(#z1):not(#z2):not(#z3):not(#z4){background:#fff!important;background-image:none!important;color:#173257!important;-webkit-text-fill-color:#173257!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;box-shadow:none!important;border:0!important}
+html body #food-map .food-info:not(.ui-dark):not(#z1):not(#z2):not(#z3):not(#z4) .fi-i-name{color:#173257!important;-webkit-text-fill-color:#173257!important;background:transparent!important}
+html body #food-map .food-info:not(.ui-dark):not(#z1):not(#z2):not(#z3):not(#z4) .fi-i-addr{color:#4a5872!important;-webkit-text-fill-color:#4a5872!important;background:transparent!important}
+html body #food-map .food-info:not(.ui-dark):not(#z1):not(#z2):not(#z3):not(#z4) .fi-i-memo{color:#263a5c!important;-webkit-text-fill-color:#263a5c!important;background:#f3f7fd!important;background-image:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;border:0!important}
+html body #food-map .food-info:not(.ui-dark):not(#z1):not(#z2):not(#z3):not(#z4) .fi-i-by{color:#8a96a8!important;-webkit-text-fill-color:#8a96a8!important;background:transparent!important}
 .food-top{display:flex;align-items:center;gap:8px;margin:4px 4px 10px}.food-top .food-chips{flex:1;margin:0}
 .food-add{flex:0 0 auto;height:34px;padding:0 14px;border:0;border-radius:999px;background:#2f6fd6;color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
 .food-item{text-align:left}.fi-head{display:flex;align-items:center;gap:6px}.fi-head b{flex:1;min-width:0}
@@ -30594,6 +30626,7 @@ roots.forEach(function (root) {
 if (/^(INPUT|TEXTAREA|SELECT|CANVAS|IMG|SVG|PATH)$/i.test(e.tagName)) return;
 if (/^(I|B|SPAN|SMALL|EM|STRONG)$/i.test(e.tagName) && !e.closest('.wbg-pop')) return;   /* 팝업 안의 작은 흰 칸(예시 칸 등)은 유리로 */
 if (e.closest('.dd-cover')) return;   /* 상세정보 카드(승무원 띠·행로표)는 유리 효과 제외 */
+if (e.closest('.food-item,.food-form,#food-map')) return;   /* 맛집지도 카드 · 등록 칸 · 지도는 흰색 그대로 (유리 효과 제외) */
 var md = e.closest('.dia-modal,.schedule-edit-modal'); if (md && !md.classList.contains('active')) return;
 if (e.classList.contains('wbg-glass') || e.classList.contains('wbg-clear')) return;
 if (e.classList.contains('board-page-inner')) return;
