@@ -2102,7 +2102,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
 <div id="food-section" class="page-view">
   <h1 class="screen-title"><span class="page-heading-icon" aria-hidden="true"><img class="heading-art" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="맛집지도" alt="" decoding="async"></span>맛집지도</h1>
   <div id="food-browse">
-    <div class="food-top"><div class="food-chips" id="food-cats"><button type="button" class="on" data-c="" onclick="foodCat('')">전체</button><button type="button" data-c="맛집" onclick="foodCat('맛집')">맛집</button><button type="button" data-c="카페" onclick="foodCat('카페')">카페</button><button type="button" data-c="기타" onclick="foodCat('기타')">기타</button></div><button type="button" class="food-add" onclick="foodFormOpen(0)">＋ 등록</button></div>
+    <div class="food-top"><div class="food-chips" id="food-cats"><button type="button" class="on" data-c="" onclick="foodCat('')">전체</button><button type="button" data-c="맛집" onclick="foodCat('맛집')">맛집</button><button type="button" data-c="카페" onclick="foodCat('카페')">카페</button><button type="button" data-c="술집" onclick="foodCat('술집')">술집</button><button type="button" data-c="기타" onclick="foodCat('기타')">기타</button></div><button type="button" class="food-add" onclick="foodFormOpen(0)">＋ 등록</button></div>
     <div id="food-map" class="food-map"></div>
     <div id="food-status" class="food-status"></div>
     <div id="food-list" class="food-list"></div>
@@ -2114,7 +2114,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div id="ff-results" class="ff-results"></div>
     <div class="ff-label">상호명</div><input id="ff-name" class="ff-in" maxlength="60" placeholder="상호명">
     <div class="ff-label">분류</div>
-    <div class="ff-seg" id="ff-cat"><button type="button" data-c="맛집" onclick="foodFormCat('맛집')">맛집</button><button type="button" data-c="카페" onclick="foodFormCat('카페')">카페</button><button type="button" data-c="기타" onclick="foodFormCat('기타')">기타</button></div>
+    <div class="ff-seg" id="ff-cat"><button type="button" data-c="맛집" onclick="foodFormCat('맛집')">맛집</button><button type="button" data-c="카페" onclick="foodFormCat('카페')">카페</button><button type="button" data-c="술집" onclick="foodFormCat('술집')">술집</button><button type="button" data-c="기타" onclick="foodFormCat('기타')">기타</button></div>
     <div class="ff-label">주소</div><input id="ff-addr" class="ff-in" maxlength="200" placeholder="상호명으로 찾으면 자동으로 채워져요">
     <div class="ff-label">전화번호</div><input id="ff-tel" class="ff-in" maxlength="30" inputmode="tel" placeholder="(선택)">
     <div class="ff-label">메모</div><textarea id="ff-memo" class="ff-in ff-memo" maxlength="200" placeholder="추천 메뉴 · 영업시간 등 (선택)"></textarea>
@@ -4833,7 +4833,62 @@ var nextId = String(u && u.employeeId || 'guest');
 var str = JSON.stringify(u);
 LS.setItem(USER_KEY, str);
 SS.setItem(USER_KEY, str);
+if (u && u.employeeId && u.employeeId !== 'guest' && u.token) {
+try { LS.setItem(AUTH_LAST_ACTIVE_PREFIX + u.employeeId, String(Date.now())); } catch (e) {}
 }
+}
+/* 로그인은 앱 재실행 후에도 유지하되, 30분 동안 실제 사용이 없으면 재로그인을 요구합니다.
+   마지막 사용 시각은 사원별로 저장하며 근무표·설정 등 업무 데이터는 삭제하지 않습니다. */
+var AUTH_IDLE_LIMIT_MS = 30 * 60 * 1000;
+var AUTH_LAST_ACTIVE_PREFIX = 'railwaySecretaryLastActive_';
+var authLastActivityWriteAt = 0;
+function authLastActiveKey(id) { return AUTH_LAST_ACTIVE_PREFIX + String(id || ''); }
+function authSessionExpired(u) {
+if (!u || !u.employeeId || u.employeeId === 'guest' || !u.token) return false;
+var key = authLastActiveKey(u.employeeId), last = 0;
+try { last = Number(LS.getItem(key) || 0); } catch (e) {}
+/* 기존 로그인 세션에 활동 시각이 없는 경우에는 최초 1회 유예시간을 부여합니다. */
+if (!last || !isFinite(last)) {
+try { LS.setItem(key, String(Date.now())); } catch (e) {}
+return false;
+}
+return Date.now() - last >= AUTH_IDLE_LIMIT_MS;
+}
+function authTouch() {
+var u = getCurrentUser();
+if (!u || !u.token || !u.employeeId || u.employeeId === 'guest') return;
+var now = Date.now();
+if (now - authLastActivityWriteAt < 15000) return;
+authLastActivityWriteAt = now;
+try { LS.setItem(authLastActiveKey(u.employeeId), String(now)); } catch (e) {}
+}
+function authLockForIdle() {
+logout(true);
+/* ID·이름만으로 로그인하는 현재 인증 방식에서는 자동 입력도 남기지 않고 재입력을 받습니다. */
+try { clearSavedLogin(); } catch (e) {}
+var emp = $('login-empno'), name = $('login-id'), remember = $('remember');
+if (emp) emp.value = '';
+if (name) name.value = '';
+if (remember) remember.checked = false;
+var msg = $('login-message');
+if (msg) msg.textContent = '30분 동안 사용하지 않아 로그아웃되었습니다. 다시 로그인해주세요.';
+}
+(function initIdleSessionGuard() {
+var events = ['pointerdown', 'touchstart', 'keydown', 'click', 'scroll', 'input'];
+events.forEach(function (type) {
+try { document.addEventListener(type, authTouch, { passive: true, capture: true }); }
+catch (e) { document.addEventListener(type, authTouch, true); }
+});
+function checkIdle() {
+var u = getCurrentUser();
+if (u && u.token && u.employeeId !== 'guest' && authSessionExpired(u)) authLockForIdle();
+}
+setInterval(checkIdle, 15000);
+document.addEventListener('visibilitychange', function () {
+if (!document.hidden) { checkIdle(); authTouch(); }
+});
+window.addEventListener('pageshow', function () { checkIdle(); authTouch(); });
+})();
 var appSectionHistory = [];
 var suppressSectionHistory = false;
 function switchSection(id) {
@@ -10652,7 +10707,7 @@ var hasSeq20 = rl.some(function (x) { return String(x && x.seq || '').trim() ===
 for (var i = 0; i < rl.length; i++) {
 var it = rl[i];
 var tone = toneOf(it.type);
-var lc = tone === 'day' ? ' l-day' : tone === 'bi' ? ' l-bi' : tone === 'off' ? ' l-off' : '';
+var lc = tone === 'day' ? ' l-day' : tone === 'night' ? ' l-bi' : (tone === 'off' || tone === 'status') ? ' l-off' : '';
 var isTwentieth = hasSeq20 ? String(it.seq || '').trim() === '20' : i === 19;
 var hide = isTwentieth ? { '3331': true } : null;
 var trainLabels = diaTrainMarkup(it, rl, i, hide);
@@ -12772,7 +12827,7 @@ var url = /^https:\/\/place\.map\.kakao\.com\/\d+$/.test(String(x.placeUrl || ''
 var avg = +x.avg > 0 ? '<span class="fi-avg">★ ' + Number(x.avg).toFixed(1) + '</span><span class="fi-cnt">(' + (+x.cnt) + '명)</span>' : '<span class="fi-cnt">아직 별점 없음</span>';
 var op = !!(FOOD.open && FOOD.open[+x.id]);
 return '<div class="food-item' + (op ? ' open' : '') + '" id="food-it-' + (+x.id) + '">' +
-'<button type="button" class="fi-head" aria-expanded="' + (op ? 'true' : 'false') + '" onclick="foodToggle(' + (+x.id) + ')"><b>' + foodEsc(x.name) + '</b><span class="fi-cat c-' + (x.category === '카페' ? 'cafe' : x.category === '기타' ? 'etc' : 'food') + '">' + foodEsc(x.category) + '</span><span class="fi-chev" aria-hidden="true">⌄</span></button><div class="fi-body">' +
+'<button type="button" class="fi-head" aria-expanded="' + (op ? 'true' : 'false') + '" onclick="foodToggle(' + (+x.id) + ')"><b>' + foodEsc(x.name) + '</b><span class="fi-cat c-' + (x.category === '카페' ? 'cafe' : x.category === '술집' ? 'bar' : x.category === '기타' ? 'etc' : 'food') + '">' + foodEsc(x.category) + '</span><span class="fi-chev" aria-hidden="true">⌄</span></button><div class="fi-body">' +
 '<div class="fi-rate">' + avg + '</div>' +
 '<span class="fi-meta">' + foodEsc(x.address || '주소 없음') + (x.phone ? ' · ' + foodEsc(x.phone) : '') + '</span>' +
 (x.memo ? '<span class="fi-memo">' + foodEsc(x.memo) + '</span>' : '') +
@@ -12871,6 +12926,7 @@ function foodFormStar(n, keep) { FOOD.formStar = (!keep && FOOD.formStar === n) 
 function foodGuessCat(d) {
 var g = String(d.category_group_code || ''), n = String(d.category_name || '');
 if (g === 'CE7' || /카페|커피|디저트|베이커리/.test(n)) return '카페';
+if (/술집|주점|호프|맥주|포차|이자카야|바\b|펍|와인바|칵테일/.test(n)) return '술집';
 if (g === 'FD6' || /음식점/.test(n)) return '맛집';
 return '기타';
 }
@@ -12987,9 +13043,10 @@ alert('회원탈퇴가 완료되었습니다.');
 switchSection('login-section');
 });
 }
-function logout() {
+function logout(preserveLocalState) {
+var u = getCurrentUser();
 try { if (window.RsWidget) { rsWidgetLast = ''; window.RsWidget.update(JSON.stringify({ months: {}, name: '', at: '' })); } } catch (e) {}   /* 앱 위젯 비우기 */
-try { pushClearOnLogout(); } catch (e) {}
+if (!preserveLocalState) { try { pushClearOnLogout(); } catch (e) {} }
 loginPopupGen++;
 if (nxLoginTimer) { clearInterval(nxLoginTimer); nxLoginTimer = null; }
 closeNoticePopup();
@@ -13001,11 +13058,12 @@ groupData = null;
 myMonth = null;
 mySettings = { seq: '', anchor: '' };
 metaLoadedAt = 0;
-clearDataCache();
+if (!preserveLocalState) clearDataCache();
 LS.removeItem(USER_KEY);
 SS.removeItem(USER_KEY);
+try { if (u && u.employeeId) LS.removeItem(authLastActiveKey(u.employeeId)); } catch (e) {}
 lcSetName('');   /* 시계 아래 이전 사용자 이름 바로 지우기 */
-try { rsAppCall('setAlarms', []); rsAppAlarmSig = ''; } catch (e) {}   /* 앱에 예약한 알람도 지우기 */
+if (!preserveLocalState) { try { rsAppCall('setAlarms', []); rsAppAlarmSig = ''; } catch (e) {} }   /* 일반 로그아웃 때만 앱 예약 알람 비우기 */
 var saved = readSavedLogin();
 if (saved) {
 writeSavedLogin(saved.id, saved.name, false);
@@ -13061,13 +13119,19 @@ $('login-message').textContent = '로그인이 만료되었습니다. 다시 로
 });
 }
 var u = getCurrentUser();
-if (u.token && u.employeeId && u.employeeId !== 'guest') {
+var expiredAtStartup = false;
+if (u.token && u.employeeId && u.employeeId !== 'guest' && authSessionExpired(u)) {
+authLockForIdle();
+expiredAtStartup = true;
+saved = null;
+}
+if (u.token && u.employeeId && u.employeeId !== 'guest' && !expiredAtStartup) {
 lcSetName(u.name || '');
 restoreLastSection();
 softRevalidate(u);
 return;
 }
-if (saved && saved.auto) {
+if (saved && saved.auto && !expiredAtStartup) {
 doLogin(saved.id, saved.name || '', true);
 }
 })();
@@ -17500,6 +17564,14 @@ var st = nxStatus[it.id];
 return st && !st.fail && (st.state === 'ok' || st.state === 'cancel');
 });
 }
+/* 확인 버튼으로 닫은 운휴는 같은 열차·날짜 조합으로 다시 로그인해도 표시하지 않음 */
+function nxLoginUnacknowledged(list) {
+var ack = nxAckLoad();
+return (list || []).filter(function (it) {
+var st = nxStatus[it.id];
+return st && st.state === 'cancel' && !ack[it.id];
+});
+}
 var nxLoginTimer = null;
 function nxLoginCheck(gen) {
 if (nxLoginTimer) { clearInterval(nxLoginTimer); nxLoginTimer = null; }
@@ -17516,7 +17588,8 @@ var list = nxCollectTrains();
 if (!list.length) { used(); return; }
 nxCacheLoad(24 * 3600000);
 var fromCache = nxCacheCovers(list);
-if (fromCache && nxSummarize(list).cancelled.length) nxLoginRender(list);
+var cachedPending = fromCache ? nxLoginUnacknowledged(list) : [];
+if (cachedPending.length) nxLoginRender(cachedPending);
 nxBusy = false;
 nxLastFetch = 0;
 nxRefresh(true, function (fresh) {
@@ -17526,11 +17599,13 @@ var panel = $('nx-ring-panel');
 var stillOpen = panel.classList.contains('active') && panel.getAttribute('data-login') === '1';
 var s = nxSummarize(fresh);
 if (s.allFailed) return;                     /* 확인 실패면 아무것도 띄우지 않음 */
-if (!s.cancelled.length) {
+var pending = nxLoginUnacknowledged(fresh);
+if (!pending.length) {
 if (stillOpen) { panel.classList.remove('active'); panel.removeAttribute('data-login'); nxShowing = []; }
 return;
 }
-if (stillOpen || nxLoginSig(s) !== nxLoginShownSig) nxLoginRender(fresh);
+/* 확인하지 않은 새 운휴만 팝업에 표시 */
+nxLoginRender(pending);
 }, true);
 }
 if (snapshotUsable() && findMyMember()) { start(); return; }
@@ -28284,7 +28359,7 @@ html body #food-map .food-info:not(.ui-dark):not(#z1):not(#z2):not(#z3):not(#z4)
 .fi-chev{flex:0 0 auto;width:18px;text-align:center;font-size:16px;line-height:1;color:#8a96a8;transition:transform .2s}.food-item.open .fi-chev{transform:rotate(180deg)}
 .fi-body{display:none;padding:0 12px 12px}.food-item.open .fi-body{display:block}
 html.ui-dark .fi-chev,html.wbg-on:not(.theme-day) .fi-chev{color:#a9b6c8}
-.fi-cat{flex:0 0 auto;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:#fff1e6;color:#c2410c}.fi-cat.c-cafe{background:#efe7ff;color:#6d28d9}.fi-cat.c-etc{background:#e9eef5;color:#475569}
+.fi-cat{flex:0 0 auto;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:#fff1e6;color:#c2410c}.fi-cat.c-cafe{background:#efe7ff;color:#6d28d9}.fi-cat.c-bar{background:#e0f2fe;color:#0369a1}.fi-cat.c-etc{background:#e9eef5;color:#475569}
 .fi-rate{margin-top:3px;font-size:12.5px}.fi-avg{color:#e5a800;font-weight:900}.fi-cnt{margin-left:4px;color:#7a8696;font-size:12px}
 .fi-memo{display:block;margin-top:4px;font-size:12.5px;color:#334766;line-height:1.45;word-break:keep-all}
 .fi-my{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:#5b6678}
@@ -28312,7 +28387,7 @@ html.ui-dark .ff-cancel,html.wbg-on:not(.theme-day) .ff-cancel{background:rgba(1
 html.ui-dark .fi-memo,html.wbg-on:not(.theme-day) .fi-memo{color:#d5e2f5}html.ui-dark .fi-my,html.wbg-on:not(.theme-day) .fi-my,html.ui-dark .ff-star-n,html.wbg-on:not(.theme-day) .ff-star-n{color:#c9d3e0}
 html.ui-dark .fs-star,html.wbg-on:not(.theme-day) .fs-star{color:#4a5872}html.ui-dark .fs-star.on,html.wbg-on:not(.theme-day) .fs-star.on{color:#ffc83d}
 html.ui-dark .fi-btns button,html.wbg-on:not(.theme-day) .fi-btns button{background:rgba(120,160,230,.14);border-color:rgba(160,190,240,.3);color:#cfe0ff}html.ui-dark .fi-btns .fi-del,html.wbg-on:not(.theme-day) .fi-btns .fi-del{background:rgba(229,72,77,.16);border-color:rgba(255,140,145,.35);color:#ff9a9e}
-html.ui-dark .fi-cat,html.wbg-on:not(.theme-day) .fi-cat{background:rgba(255,160,90,.2);color:#ffb37a}html.ui-dark .fi-cat.c-cafe,html.wbg-on:not(.theme-day) .fi-cat.c-cafe{background:rgba(170,130,255,.22);color:#c9b0ff}html.ui-dark .fi-cat.c-etc,html.wbg-on:not(.theme-day) .fi-cat.c-etc{background:rgba(160,180,210,.2);color:#cdd8e8}
+html.ui-dark .fi-cat,html.wbg-on:not(.theme-day) .fi-cat{background:rgba(255,160,90,.2);color:#ffb37a}html.ui-dark .fi-cat.c-cafe,html.wbg-on:not(.theme-day) .fi-cat.c-cafe{background:rgba(170,130,255,.22);color:#c9b0ff}html.ui-dark .fi-cat.c-bar,html.wbg-on:not(.theme-day) .fi-cat.c-bar{background:rgba(56,189,248,.2);color:#7dd3fc}html.ui-dark .fi-cat.c-etc,html.wbg-on:not(.theme-day) .fi-cat.c-etc{background:rgba(160,180,210,.2);color:#cdd8e8}
 html.ui-dark #food-section input,html.ui-dark #food-section textarea,html.wbg-on:not(.theme-day) #food-section input,html.wbg-on:not(.theme-day) #food-section textarea{background:rgba(15,25,45,.6)!important;border-color:rgba(160,190,240,.35)!important;color:#e6ecf5!important;-webkit-text-fill-color:#e6ecf5!important;color-scheme:dark}
 html.ui-dark #food-section input::placeholder,html.ui-dark #food-section textarea::placeholder,html.wbg-on:not(.theme-day) #food-section input::placeholder,html.wbg-on:not(.theme-day) #food-section textarea::placeholder{color:#8fa1bb!important;-webkit-text-fill-color:#8fa1bb!important}
 html.ui-dark .fi-by,html.wbg-on:not(.theme-day) .fi-by,html.ui-dark .fi-cnt,html.wbg-on:not(.theme-day) .fi-cnt{color:#a9b6c8}
@@ -28789,6 +28864,24 @@ setInterval(function () { var lg = $('leader-guide'), op = $('onb-pop'); if (lg 
 html.ui-dark #pattern-section .pk-dd,html.ui-dark #pattern-section .pk-menu{background:#1d2533;border-color:#33405a}
 html.ui-dark #pattern-section .pk-dd,html.ui-dark #pattern-section .pk-menu button{color:#e6ecf5}
 html.ui-dark #pattern-section .pk-menu button.on{background:rgba(47,111,214,.18)}
+/* 밤테마: 조 선택 버튼과 펼침 목록의 모든 글자(내 조 표시·체크 포함)를 흰색으로 통일 */
+html.ui-dark #pattern-section .pk-dd,
+html.ui-dark #pattern-section .pk-dd *,
+html.ui-dark #pattern-section .pk-menu button,
+html.ui-dark #pattern-section .pk-menu button *{color:#fff!important}
+html.ui-dark #pattern-section .pk-dd i,
+html.ui-dark #pattern-section .pk-menu i{background:#29476d!important}
+/* 밤테마: 근무패턴 순서표를 근무구분별로 구분 */
+html.ui-dark body #pattern-section #pattern-list > .dia-item.l-day{background:#3b321d!important;border-color:#79642d!important}
+html.ui-dark body #pattern-section #pattern-list > .dia-item.l-bi{background:#1c3049!important;border-color:#315d91!important}
+html.ui-dark body #pattern-section #pattern-list > .dia-item.l-off{background:#3a2429!important;border-color:#79434b!important}
+html.ui-dark body #pattern-section #pattern-list > .dia-item.l-day .dia-seq,
+html.ui-dark body #pattern-section #pattern-list > .dia-item.l-day .dia-train-numbers{color:#f0dfb0!important}
+html.ui-dark body #pattern-section #pattern-list > .dia-item.l-bi .dia-seq,
+html.ui-dark body #pattern-section #pattern-list > .dia-item.l-bi .dia-train-numbers{color:#c8dcf7!important}
+html.ui-dark body #pattern-section #pattern-list > .dia-item.l-off .dia-seq,
+html.ui-dark body #pattern-section #pattern-list > .dia-item.l-off .dia-train-numbers{color:#f2cbd0!important}
+html.ui-dark body #pattern-section #pattern-list > .dia-item.selected{box-shadow:inset 0 0 0 2px #69baff!important}
 </style>
 <script id="pt-team-js">var ptTeam = '', ptActive = false, ptT = null;
 function ptMine() { return curTeam() || '부기관사조'; }
