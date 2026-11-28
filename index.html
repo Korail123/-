@@ -3104,7 +3104,7 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="애니메이션효과" alt="" aria-hidden="true">배경화면 효과</div>
     <label class="an-main" style="display:none"><span><b>메인화면 애니메이션</b><small>로그인하거나 메인화면에 들어올 때 열차가 지나가요</small></span><input type="checkbox" id="an-on" onchange="animToggle(this.checked)"><i class="an-sw"></i></label>
     <label class="an-main"><span><b id="an-wbg-t">테마 효과</b><small id="an-wbg-d">반짝이는 크리스마스 트리와 내리는 하얀 눈</small></span><input type="checkbox" id="an-wbg" onchange="wbgSet(this.checked)"><i class="an-sw"></i></label>
-    <div class="an-main" id="an-season" style="display:flex;gap:8px;align-items:center;justify-content:space-between"><span><b>테마 고르기</b></span><span class="ssn-chips"><button type="button" data-s="spring" onclick="seasonSet('spring')">봄</button><button type="button" data-s="summer" onclick="seasonSet('summer')">여름</button><button type="button" data-s="autumn" onclick="seasonSet('autumn')">가을</button><button type="button" data-s="winter" onclick="seasonSet('winter')">겨울</button></span></div>
+    <div class="an-main" id="an-season" style="display:flex;gap:8px;align-items:center;justify-content:space-between"><span><b>테마 고르기</b></span><span class="ssn-chips"><button type="button" data-s="spring" onclick="seasonSet('spring')">봄</button><button type="button" data-s="summer" onclick="seasonSet('summer')">여름</button><button type="button" data-s="autumn" onclick="seasonSet('autumn')">가을</button><button type="button" data-s="winter" onclick="seasonSet('winter')">겨울</button><button type="button" data-s="heart" onclick="seasonSet('heart')">하트</button></span></div>
     <div id="an-opts" class="an-opts" style="display:none!important">
       <div class="an-hint">오른쪽 화살표를 눌러 고르세요. 여러 개 고르면 그중에서 랜덤, 고르지 않으면 <b>전체</b>에서 랜덤이에요.</div>
       <div class="an-sec"><div class="an-h">시간대 <button type="button" onclick="animClear('times')">전체</button></div><div id="an-times" class="an-chips"></div></div>
@@ -31043,7 +31043,7 @@ if (!on || now - last < 33) return;   /* 30fps · 메인화면이 아니거나 �
 var dt = Math.min(3, (now - last) / 16.7); last = now;
 if (isNight() !== night) baseKey = '';
 size();
-if (document.documentElement.classList.contains('season-spring') || document.documentElement.classList.contains('season-summer') || document.documentElement.classList.contains('season-autumn')) { x.clearRect(0, 0, W, H); return; }   /* 봄 테마는 따로 그림 */
+if (document.documentElement.classList.contains('season-spring') || document.documentElement.classList.contains('season-summer') || document.documentElement.classList.contains('season-autumn') || document.documentElement.classList.contains('season-heart')) { x.clearRect(0, 0, W, H); return; }   /* 봄 테마는 따로 그림 */
 var iosBlur = iosBlurMode();
 document.documentElement.classList.toggle('wbg-ios-blur', iosBlur);
 x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
@@ -31833,7 +31833,7 @@ html.tx-on-light:not(#z1):not(#z2):not(#z3) body .page-view>h1,html.tx-on-light:
 function on() { try { return localStorage.getItem('rs_autotx') !== '0'; } catch (e) { return true; } }
 function lumOf(css) { var m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/.exec(css || ''); if (!m || (m[4] !== undefined && +m[4] < .05)) return null; return .2126 * m[1] + .7152 * m[2] + .0722 * m[3]; }
 function sample() {
-var h = document.documentElement, c = document.getElementById(h.classList.contains('season-spring') ? 'sbg-bg' : h.classList.contains('season-summer') ? 'smr-bg' : h.classList.contains('season-autumn') ? 'aut-bg' : 'wbg-base');
+var h = document.documentElement, c = document.getElementById(h.classList.contains('season-spring') ? 'sbg-bg' : h.classList.contains('season-summer') ? 'smr-bg' : h.classList.contains('season-autumn') ? 'aut-bg' : h.classList.contains('season-heart') ? 'hrt-bg' : 'wbg-base');
 if (h.classList.contains('wbg-on') && c && c.width) {
 try { var t = document.createElement('canvas'); t.width = t.height = 8; var x = t.getContext('2d'); x.drawImage(c, 0, 0, 8, 8); var d = x.getImageData(0, 0, 8, 8).data, l = 0, n = 0;
 for (var i = 0; i < d.length; i += 4) if (d[i + 3] > 20) { l += .2126 * d[i] + .7152 * d[i + 1] + .0722 * d[i + 2]; n++; }
@@ -31935,14 +31935,14 @@ html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6
 html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13) body .wbg-pop .ls-cell.t-night,html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13) body .wbg-pop .ls-cell.t-bi{color:var(--duty-night)!important}
 html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13) body .wbg-pop .ls-cell.t-off{color:var(--duty-off)!important}
 </style>
-<canvas id="sbg-bg" aria-hidden="true"></canvas><canvas id="sbg-fx" aria-hidden="true"></canvas><canvas id="smr-bg" aria-hidden="true"></canvas><canvas id="smr-fx" aria-hidden="true"></canvas><canvas id="aut-bg" aria-hidden="true"></canvas><canvas id="aut-fx" aria-hidden="true"></canvas>
+<canvas id="sbg-bg" aria-hidden="true"></canvas><canvas id="sbg-fx" aria-hidden="true"></canvas><canvas id="smr-bg" aria-hidden="true"></canvas><canvas id="smr-fx" aria-hidden="true"></canvas><canvas id="aut-bg" aria-hidden="true"></canvas><canvas id="aut-fx" aria-hidden="true"></canvas><canvas id="hrt-bg" aria-hidden="true"></canvas><canvas id="hrt-fx" aria-hidden="true"></canvas>
 <style id="spring-ui">#sbg-bg,#sbg-fx{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;display:none;z-index:-1}
 #sbg-bg{-webkit-filter:blur(4px);filter:blur(4px);transform:scale(1.03)}
 html.wbg-on.season-spring #sbg-bg,html.wbg-on.season-spring #sbg-fx{display:block}
 html.season-spring #wbg,html.season-spring #wbg-base,html.season-summer #wbg,html.season-summer #wbg-base,html.season-autumn #wbg,html.season-autumn #wbg-base{display:none!important}
 .ssn-chips{display:flex;gap:6px}
 .ssn-chips button{border:1px solid #d5dbe6;background:#fff;color:#3a4a66;border-radius:999px;padding:6px 16px;font:inherit;font-size:13.5px;font-weight:700}
-html:not(.season-spring):not(.season-summer):not(.season-autumn) .ssn-chips [data-s="winter"],html.season-autumn .ssn-chips [data-s="autumn"],html.season-spring .ssn-chips [data-s="spring"],html.season-summer .ssn-chips [data-s="summer"]{background:#2f6fd6;border-color:#2f6fd6;color:#fff}
+html:not(.season-spring):not(.season-summer):not(.season-autumn):not(.season-heart) .ssn-chips [data-s="winter"],html.season-autumn .ssn-chips [data-s="autumn"],html.season-spring .ssn-chips [data-s="spring"],html.season-summer .ssn-chips [data-s="summer"]{background:#2f6fd6;border-color:#2f6fd6;color:#fff}
 html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar .lc-d,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar .lc-w,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar .lc-hour,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar .lc-colon,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar .lc-minute,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar .lc-g,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar b,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .top-bar i,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body #main-container .page-view>.sch-title,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .page-view .sch-title,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .page-view .sch-note,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .page-view>h1,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .page-view>h2,html.theme-day:not(#s1):not(#s2):not(#s3):not(#s4) body .page-view>.sch-eyebrow{color:#3a2a3f!important;text-shadow:none!important;-webkit-text-fill-color:#3a2a3f!important}
 html.spring-day:not(#s1):not(#s2):not(#s3):not(#s4) body .page-view :is(.sch-head,.group-head,[class*="-head"])::before{color:#c2185b!important;opacity:.85!important;text-shadow:none!important}
 html.theme-day:not(.spring-day):not(#s1):not(#s2):not(#s3):not(#s4) body .page-view :is(.sch-head,.group-head,[class*="-head"])::before{color:#4a5f86!important;opacity:.85!important;text-shadow:none!important}
@@ -31951,19 +31951,20 @@ html.theme-day:not(.spring-day):not(#s1):not(#s2):not(#s3):not(#s4) body .page-v
 </style>
 <script id="spring-js">(function () {
 var h = document.documentElement, KEY = 'rs_season';
-function season() { try { var v = localStorage.getItem(KEY); return v === 'spring' || v === 'summer' || v === 'autumn' ? v : 'winter'; } catch (e) { return 'winter'; } }
+function season() { try { var v = localStorage.getItem(KEY); return v === 'spring' || v === 'summer' || v === 'autumn' || v === 'heart' ? v : 'winter'; } catch (e) { return 'winter'; } }
 function mark() {
 var sp = season() === 'spring', night = h.classList.contains('wbg-night');
 if (h.classList.contains('season-spring') !== sp) h.classList.toggle('season-spring', sp);
 var sm = season() === 'summer'; if (h.classList.contains('season-summer') !== sm) h.classList.toggle('season-summer', sm);
 var au = season() === 'autumn'; if (h.classList.contains('season-autumn') !== au) h.classList.toggle('season-autumn', au);
+var ht = season() === 'heart'; if (h.classList.contains('season-heart') !== ht) h.classList.toggle('season-heart', ht);
 var on = h.classList.contains('wbg-on'), sd = sp && on && !night, td = on && !night;
 if (h.classList.contains('spring-day') !== sd) h.classList.toggle('spring-day', sd);
 if (h.classList.contains('theme-day') !== td) h.classList.toggle('theme-day', td);   /* 기본테마 제외 모든 테마: 일출~일몰 = 밝은 유리 / 일몰~일출 = 짙은 남색 유리 */
 }
-window.seasonName = function () { var q = season(); return q === 'spring' ? '봄' : q === 'summer' ? '여름' : q === 'autumn' ? '가을' : '겨울'; };
+window.seasonName = function () { var q = season(); return q === 'spring' ? '봄' : q === 'summer' ? '여름' : q === 'autumn' ? '가을' : q === 'heart' ? '하트' : '겨울'; };
 window.seasonSet = function (s) {
-try { localStorage.setItem(KEY, s === 'spring' || s === 'summer' || s === 'autumn' ? s : 'winter'); } catch (e) {}
+try { localStorage.setItem(KEY, s === 'spring' || s === 'summer' || s === 'autumn' || s === 'heart' ? s : 'winter'); } catch (e) {}
 mark(); labels();
 try { if (typeof wbgOn === 'function' && !wbgOn()) wbgSet(true); } catch (e) {}
 try { showToast(seasonName() + ' 테마로 바꿨어요.'); } catch (e) {}
@@ -31972,7 +31973,7 @@ try { autoTxApply(); } catch (e) {}
 function labels() {
 var t = document.getElementById('an-wbg-t'), d = document.getElementById('an-wbg-d'), sp = season() === 'spring';
 if (t) t.textContent = '테마 효과';
-if (d) d.textContent = sp ? '흩날리는 벚꽃잎과 천천히 들어오는 열차' : (season() === 'summer' ? '낮엔 부산 바다, 밤엔 광안대교 야경과 불꽃놀이' : season() === 'autumn' ? '흩날리는 단풍잎, 밤엔 전구가 반짝이는 단풍나무' : '반짝이는 크리스마스 트리와 내리는 하얀 눈');
+if (d) d.textContent = sp ? '흩날리는 벚꽃잎과 천천히 들어오는 열차' : (season() === 'heart' ? '낮엔 심전도에 맞춰 두근거리는 하트, 밤엔 하트 폭죽' : season() === 'summer' ? '낮엔 부산 바다, 밤엔 광안대교 야경과 불꽃놀이' : season() === 'autumn' ? '흩날리는 단풍잎, 밤엔 전구가 반짝이는 단풍나무' : '반짝이는 크리스마스 트리와 내리는 하얀 눈');
 }
 mark(); labels();
 new MutationObserver(function () { mark(); }).observe(h, { attributes: true, attributeFilter: ['class'] });
@@ -32213,6 +32214,99 @@ if (p.y > H + 16) { p.y = -16; p.x = Math.random() * W * 1.1; p.s = (2.5 + Math.
 leaf(x, p.x, p.y, p.s, p.rot, LC[p.c], night ? .85 : .95);
 });
 x.globalAlpha = 1;
+}
+requestAnimationFrame(frame);
+})();
+</script>
+<style id="heart-css">#hrt-bg,#hrt-fx{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;display:none;z-index:-1}
+html.wbg-on.season-heart #hrt-bg,html.wbg-on.season-heart #hrt-fx{display:block}
+html.season-heart #wbg,html.season-heart #wbg-base{display:none!important}
+html.season-heart .ssn-chips [data-s="heart"]{background:#2f6fd6;border-color:#2f6fd6;color:#fff}
+html body #an-season .ssn-chips{grid-template-columns:repeat(5,44px)!important;gap:5px!important}html body #an-season .ssn-chips button{width:44px!important}
+</style>
+<script id="heart-js">(function () {
+/* 하트 테마: 낮 = 심전도가 튈 때마다 가운데 하트가 쿵쿵 뛰며 하트가 분수처럼 솟았다 떨어짐 · 밤 = 쿵쿵 뛸 때 하트 3발이 부채꼴로 올라가 하트 폭죽으로 터짐 */
+var h = document.documentElement, bg = document.getElementById('hrt-bg'), fx = document.getElementById('hrt-fx'); if (!bg || !fx) return;
+var bx = bg.getContext('2d'), x = fx.getContext('2d'), W = 0, H = 0, DPR = 1, night = false, key = '', last = 0, ps = [], stars = [], cyc = -1, MAXP = 160;
+var T = 1.3, DAY = ['#ff4f7e', '#ff7fa3', '#ffa8c2', '#6fa8ff'], NIGHT = [['#ff5c8a', '#ffc2d6'], ['#ffd166', '#fff1c2'], ['#8ec9ff', '#e2f1ff']];
+function R(s) { return function () { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
+function rgb(hex) { var n = parseInt(hex.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+function blob(c, px, py, r, hex, a) { var k = rgb(hex), g = c.createRadialGradient(px, py, 0, px, py, r); g.addColorStop(0, 'rgba(' + k + ',' + a + ')'); g.addColorStop(1, 'rgba(' + k + ',0)'); c.fillStyle = g; c.beginPath(); c.arc(px, py, r, 0, 6.2832); c.fill(); }
+function hp(c, s) { c.beginPath(); c.moveTo(0, 6 * s); c.bezierCurveTo(-10 * s, -1 * s, -6 * s, -10 * s, 0, -4 * s); c.bezierCurveTo(6 * s, -10 * s, 10 * s, -1 * s, 0, 6 * s); c.closePath(); }
+function heart(c, px, py, sz, col, a, rot) { if (a <= 0) return; c.save(); c.translate(px, py); if (rot) c.rotate(rot); c.globalAlpha = Math.min(1, a); hp(c, sz / 14); c.fillStyle = col; c.fill(); c.restore(); }
+function K() { return Math.max(1, Math.min(W, H * .7) / 360); }
+function cx() { return W / 2; }
+var AY = 0;
+function vis(e) { if (!e || !e.offsetParent) return null; var q = e.getBoundingClientRect(); return q.height ? q : null; }
+function anchor() {   /* 메뉴 타일에 가리지 않는 빈 칸에 하트를 둠: 낮 = 인사말과 탭 사이, 밤 = 메뉴 타일과 오늘 카드 사이 (스크롤해도 따라감) */
+var m = document.getElementById('main-section');
+if (m && m.classList.contains('active')) {
+if (!night) { var tb = vis(m.querySelector('.mm-tabs')), gr = vis(m.querySelector('.lc-g')); if (tb && tb.top > 60) { var top = gr && gr.bottom < tb.top ? gr.bottom : tb.top - 44; return (top + tb.top) / 2; } }
+else { var gd = vis(m.querySelector('.menu-grid')), cv = vis(m.querySelector('.mm-cv')); if (gd) { var y = cv && cv.top > gd.bottom ? (gd.bottom + cv.top) / 2 : gd.bottom + 22; if (y > H * .45 && y < H - 24) return y; } }
+}
+return H * (night ? .74 : .5);
+}
+function cy() { return AY || H * (night ? .74 : .5); }
+function drawBg() {
+var c = bx, n = night, r = R(31); c.clearRect(0, 0, W, H);
+var g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, n ? '#0b1230' : '#fde6ef'); g.addColorStop(.55, n ? '#1d1a45' : '#fff3f7'); g.addColorStop(1, n ? '#2c1c48' : '#eef5ff'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+for (var i = 0; i < 14; i++) blob(c, r() * W, r() * H, W * (.12 + r() * .18), n ? (i % 2 ? '#5b3f8f' : '#7a3566') : (i % 2 ? '#ffd0df' : '#dbe9ff'), n ? .22 : .5);
+for (var j = 0; j < 9; j++) heart(c, r() * W, r() * H, (18 + r() * 34) * K(), n ? '#8a5fb8' : '#ffc4d6', n ? .12 : .28, (r() - .5) * .6);
+}
+function size() {
+var vv = window.visualViewport, w = Math.max(1, Math.round(vv ? vv.width : h.clientWidth || innerWidth)), hh = Math.max(1, Math.round(vv ? vv.height : h.clientHeight || innerHeight)), d = Math.min(2, window.devicePixelRatio || 1);
+night = h.classList.contains('wbg-night');
+var k = w + 'x' + hh + '@' + d + (night ? 'n' : 'd'); if (k === key) return; key = k; W = w; H = hh; DPR = d; ps = [];
+[bg, fx].forEach(function (cv) { cv.width = W * DPR; cv.height = H * DPR; });
+bx.setTransform(DPR, 0, 0, DPR, 0, 0); x.setTransform(DPR, 0, 0, DPR, 0, 0);
+drawBg(); var r = R(53); stars = []; for (var i = 0; i < 46; i++) stars.push([r() * W, r() * H * .6, r() * 6.28]);
+}
+function add(o) { if (ps.length < MAXP) ps.push(o); }
+function P(o) { var b = { x: cx(), y: cy(), vx: 0, vy: 0, g: 0, dr: 1, l: 0, m: 1.5, sz: 8, c: '#ff5c8a', r: 0, vr: 0, sp: 0, k: 'h', tr: null }; for (var q in o) b[q] = o[q]; return b; }
+function beat(t) { var p = t % T; return 1 + .2 * Math.exp(-Math.pow((p - .05) / .05, 2)) + .12 * Math.exp(-Math.pow((p - .3) / .05, 2)); }
+function dayEmit() { var k = K(); for (var i = 0; i < 16; i++) { var a = -Math.PI / 2 + (Math.random() - .5) * 2.6, v = (80 + Math.random() * 40) * k * 1.6; add(P({ vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 150 * k * 1.6, m: 1.9, vr: (Math.random() - .5) * 8, sz: (6 + Math.random() * 4) * k * 1.4, c: DAY[i % DAY.length], y: cy() - 6 * k })); } }
+function nightEmit() {
+var k = K();
+[[-.4, .29], [0, .09], [.4, .29]].forEach(function (q, i) {
+var col = NIGHT[(cyc + i) % 3], ty = Math.min(H * q[1], cy() - 140 * k), vy = -(cy() - ty) / .85;
+add(P({ k: 'rk', vx: Math.tan(q[0]) * -vy, vy: vy, ty: ty, m: 9, sz: 8 * k * 1.2, c: col[0], tr: [], cl: col }));
+});
+}
+function burst(p) {
+var k = K(), n = 14, off = Math.random() * 6.28;
+for (var i = 0; i < n; i++) { var a = i / n * 6.2832 + off, v = 52 * k * 1.5; add(P({ x: p.x, y: p.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 22 * k, dr: .4, m: 1.4, sz: 5.5 * k * 1.3, c: i % 3 ? p.cl[0] : p.cl[1], r: a + Math.PI / 2 })); }
+add(P({ x: p.x, y: p.y, k: 'f', m: .35, sz: 26 * k, c: p.cl[1] }));
+}
+function ecg(b) {
+var k = K(), a = (b - 1) * 130 * k, y = cy(), c0 = cx(), hw = 20 * k;
+x.strokeStyle = 'rgba(111,168,255,.75)'; x.lineWidth = 2; x.lineJoin = 'round'; x.beginPath();
+x.moveTo(0, y); x.lineTo(c0 - hw - 44 * k, y); x.lineTo(c0 - hw - 32 * k, y + a * .25); x.lineTo(c0 - hw - 20 * k, y - a); x.lineTo(c0 - hw - 9 * k, y + a * .6); x.lineTo(c0 - hw, y);
+x.moveTo(c0 + hw, y); x.lineTo(W, y); x.stroke();
+}
+function frame(now) {
+requestAnimationFrame(frame);
+var on = h.classList.contains('season-heart') && h.classList.contains('wbg-on') && !document.hidden;
+if (!on) { if (W) x.clearRect(0, 0, W, H); ps = []; return; }
+if (now - last < 33) return; var dt = Math.min(.1, (now - last) / 1000); last = now;
+size(); AY = anchor(); x.clearRect(0, 0, W, H);
+var t = now / 1000, b = beat(t), c = Math.floor((t - .05) / T), k = K();
+if (c !== cyc) { cyc = c; night ? nightEmit() : dayEmit(); }
+if (night) stars.forEach(function (s) { x.fillStyle = 'rgba(255,255,255,' + (.2 + .7 * Math.abs(Math.sin(t * 1.4 + s[2]))) + ')'; x.fillRect(s[0], s[1], 1.6, 1.6); });
+else ecg(b);
+for (var i = ps.length - 1; i >= 0; i--) {
+var p = ps[i]; p.l += dt;
+var f = Math.pow(p.dr, dt); p.vx *= f; p.vy *= f; p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.r += p.vr * dt;
+if (p.tr) { p.tr.push([p.x, p.y]); if (p.tr.length > 9) p.tr.shift(); }
+if (p.l > p.m || (p.k === 'rk' && p.y <= p.ty) || p.y > H + 30) { ps.splice(i, 1); if (p.k === 'rk') burst(p); continue; }
+var a = p.k === 'rk' ? 1 : 1 - Math.pow(p.l / p.m, 1.6);
+if (p.tr) for (var j = 0; j < p.tr.length; j++) { x.globalAlpha = j / p.tr.length * .7; x.fillStyle = p.cl[1]; x.beginPath(); x.arc(p.tr[j][0], p.tr[j][1], 1.6, 0, 6.2832); x.fill(); }
+x.globalAlpha = 1;
+if (p.k === 'f') { blob(x, p.x, p.y, p.sz * (1 + p.l * 3), p.c, .5 * a); continue; }
+heart(x, p.x, p.y, p.sz, p.c, a * (night ? 1 : .9), p.k === 'rk' ? 0 : p.r);
+}
+x.globalAlpha = 1;
+blob(x, cx(), cy(), 40 * k * b, night ? '#ff5c8a' : '#ffffff', night ? .18 : .6);
+heart(x, cx(), cy(), (night ? 27 : 30) * k * b, night ? '#ff5c8a' : '#ff4f7e', night ? .95 : .9);
 }
 requestAnimationFrame(frame);
 })();
