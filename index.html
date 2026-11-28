@@ -9,6 +9,7 @@ function sh(rise){var n=Math.floor((Date.UTC(Y,Mo-1,Dd)-Date.UTC(Y,0,1))/864e5)+
 var a=sh(true),b=sh(false);if(a!=null&&b!=null){var mn=K.getUTCHours()*60+K.getUTCMinutes();night=mn<((a+9)%24)*60||mn>=((b+9)%24)*60}}catch(e){}return night};night=window.rsIsNight();
 var dark=m==='dark'||(m==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)||(m==='night'&&night);
 var wb=localStorage.getItem('rs_wbg')!=='0';
+h.classList.toggle('theme-day', wb&&!dark&&!night); /* v125: 낮 테마는 배경테마 ON + 다크 아님 + 낮일 때만 (spring-js mark()와 같은 조건) */
 if(dark||(wb&&night)){h.classList.add('rs-early-dark');h.style.background='#0b1220';
 var iv=setInterval(function(){var sp=document.getElementById('app-splash');if(document.readyState!=='loading'&&(!sp||sp.classList.contains('sp-hide'))){clearInterval(iv);setTimeout(function(){h.classList.remove('rs-early-dark');h.style.background=''},700)}},300);setTimeout(function(){clearInterval(iv)},60000);}}catch(e){}})();
 </script>
@@ -23,7 +24,9 @@ noto: { name: '본고딕 (Noto Sans)', fam: "'Noto Sans KR'", href: ['https://fo
 nanum: { name: '나눔고딕', fam: "'Nanum Gothic'", href: ['https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap', 'https://cdn.jsdelivr.net/npm/@fontsource/nanum-gothic@5/index.css', 'https://cdn.jsdelivr.net/npm/@fontsource/nanum-gothic@5/700.css'] },
 gowun: { name: '고운돋움', fam: "'Gowun Dodum'", href: ['https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap', 'https://cdn.jsdelivr.net/npm/@fontsource/gowun-dodum@5/index.css'] }
 };
-function uiGet() { var o = {}; try { o = JSON.parse(localStorage.getItem('rs_ui') || '{}') || {}; } catch (e) {} return { size: +o.size || 1, font: UI_FONTS[o.font] ? o.font : 'sys', mode: /^(light|dark|system|night)$/.test(o.mode || '') ? o.mode : 'light', warm: [0, 1, 2].indexOf(+o.warm) >= 0 ? +o.warm : 0 }; }
+function uiGet() { var o = {}; try { o = JSON.parse(localStorage.getItem('rs_ui') || '{}') || {}; } catch (e) {} var size = Number(o.size);
+var validSizes = [0.9, 1, 1.1, 1.2];
+return { size: validSizes.indexOf(size) >= 0 ? size : 1, font: UI_FONTS[o.font] ? o.font : 'sys', mode: /^(light|dark|system|night)$/.test(o.mode || '') ? o.mode : 'light', warm: [0, 1, 2].indexOf(+o.warm) >= 0 ? +o.warm : 0 }; }
 function uiFontFam() { var f = UI_FONTS[uiGet().font]; return f && f.fam ? f.fam : ''; }
 function uiSave(o) { try { localStorage.setItem('rs_ui', JSON.stringify(o)); } catch (e) {} }
 function uiLoadFont(k) {
@@ -1012,6 +1015,17 @@ background-color:rgba(50,55,65,.30)!important;
 border-radius:14px!important;
 outline:none!important;
 }
+</style>
+<style id="contrast-audit-fix">/* 2026-11-28 대비 감사 수정 (글자 영역 전체 대비 측정 결과)
+① 낮 테마 월 이동 ◀ ▶ : 기존 남색 보정(day-theme-contrast-fix)이 흰색 규칙(wbg-ui, :not(#..)×2)에 져서 밝은 배경에 흰 화살표 → 우선순위만 한 단계 높여 기존 남색 적용 */
+html.wbg-on.theme-day:not(#ca1):not(#ca2):not(#ca3) body .sch-head .sch-nav,html.wbg-on.theme-day:not(#ca1):not(#ca2):not(#ca3) body .page-view .sch-head .sch-nav{color:rgb(23,50,87)!important;-webkit-text-fill-color:rgb(23,50,87)!important}
+/* ② 다크 + 테마효과: 다크 자동 생성 규칙이 검색 아이콘을 #333(어두운 배경과 같은 색)으로 덮음 → 기존 dark-glass 의도(흰색) 복원. 테마효과 끔 다크는 회색 대비 보강 */
+html.ui-dark.wbg-on:not(.theme-day):not(#cb1):not(#cb2):not(#cb3):not(#cb4):not(#cb5):not(#cb6):not(#cb7):not(#cb8):not(#cb9):not(#cb10):not(#cb11) body #settings-section .set-sbar svg,html.ui-dark.wbg-on:not(.theme-day):not(#cb1):not(#cb2):not(#cb3):not(#cb4):not(#cb5):not(#cb6):not(#cb7):not(#cb8):not(#cb9):not(#cb10):not(#cb11) body #crewboard-section .cb-find svg{stroke:rgb(255,255,255)!important}
+html.ui-dark:not(.wbg-on) body #settings-section .set-sbar svg,html.ui-dark:not(.wbg-on) body #crewboard-section .cb-find svg{stroke:#a3adbb!important}
+/* ③ 휴가관리 안내문: 회청색이 낮 테마(단풍 · 밝은 유리)에 묻힘 → 낮 테마에서만 남색 */
+html.theme-day body #vacation-management-section .vac-hint{color:#3d5274!important;-webkit-text-fill-color:#3d5274!important}
+/* ④ 낮 테마 로그인 [회원가입]: 투명 배경 위 진한 파랑 대비 보강 (밤·다크는 v125 fix-v90 규칙) */
+html.wbg-on.theme-day body #login-section .signup-link-btn.wbg-clear,html.wbg-on.theme-day body #signup-section .signup-link-btn.wbg-clear{color:#1d4a96!important;-webkit-text-fill-color:#1d4a96!important}
 </style>
 </head>
 <body>
@@ -4040,6 +4054,32 @@ if (days.indexOf(WD_ORDER[i]) >= 0) out.push(WD_NAMES[WD_ORDER[i]]);
 }
 return out.join('·');
 }
+/* 순서표 데이터 진단 (읽기 전용 · 계산 결과에 영향 없음)
+근무 순환은 정렬된 순서표의 '줄 위치'로 계산되므로, 순서 번호가 비거나 중복되면 주기 길이가 달라져 날짜가 밀릴 수 있음.
+실제 운영 주기를 확인하기 위한 점검용: 브라우저 콘솔에서 rsRotAudit() 실행 → 번호 누락 · 중복 · 비정상 번호 목록 */
+function rsRotAudit(list) {
+var src = list || ((snapshot && snapshot.raw && snapshot.raw.dia) || []);
+var rot = rotationOf(src), seen = {}, nums = [], dup = [], bad = [];
+for (var i = 0; i < src.length; i++) {
+var raw = String(src[i] && src[i].seq != null ? src[i].seq : '').trim();
+if (raw && !/^\d+$/.test(raw)) bad.push({ dia: src[i].dia, seq: raw });
+}
+for (var j = 0; j < rot.length; j++) {
+var n = parseInt(String(rot[j].seq), 10);
+if (seen[n]) dup.push({ seq: n, dia: rot[j].dia }); else { seen[n] = 1; nums.push(n); }
+}
+nums.sort(function (a, b) { return a - b; });
+var missing = [];
+for (var k = nums.length ? nums[0] : 1; k <= (nums.length ? nums[nums.length - 1] : 0); k++) if (!seen[k]) missing.push(k);
+/* 부기관사조는 코드에 정해진 최대 순서(ROTATION_MAX_SEQ)와도 비교. 다른 조는 끝 번호 누락을 데이터만으로 알 수 없음 → 운영 주기 확인 필요 */
+var codeMax = curTeam() === '부기관사조' ? ROTATION_MAX_SEQ : null;
+var mx = nums[nums.length - 1] || 0, tailMissing = [];
+if (codeMax) for (var t = mx + 1; t <= codeMax; t++) tailMissing.push(t);
+return { team: curTeam(), rows: rot.length, minSeq: nums[0] || null, maxSeq: mx || null, codeMaxSeq: codeMax,
+cycleUsed: rot.length, missing: missing, tailMissingVsCodeMax: tailMissing, duplicates: dup, nonInteger: bad,
+ok: !missing.length && !tailMissing.length && !dup.length && !bad.length && (nums[0] || 1) === 1,
+note: codeMax ? '' : '끝 번호 누락은 운영 주기(실제 순번 수)와 대조해야 확인 가능' };
+}
 function snapBaseDay(dateKey, seq, anchor, dia, name) {
 if (!seq || !anchor || !dia.length) return snapEmptyDay();
 var rot = rotationFor(dia, name);
@@ -4299,12 +4339,23 @@ var d = snapBuildDay(dateKey, mb.seq, mb.anchor, dia, ov0, mb.name);
 return snapApplyNightCarry(d, dateKey, mb.seq, mb.anchor, mb.name, dia,
 ovMap[mb.employeeId + '|' + snapShiftKey(dateKey, -1)]);
 }
+/* 로컬 변경(이 폰에 저장된 근무변경)을 덮어 그릴 때도 snapDayWithAuto와 같은 기준 적용:
+전날이 더 이상 야간이 아닌데 남아 있는 자동 비번(·휴)은 무시 → 메인화면 · 근무표 달력 · 위젯 · 근무그룹이 같은 근무를 표시
+localMap: { 'YYYY-MM-DD': override } (같은 사람의 로컬 변경) */
+function snapLocalAutoOk(empId, key, ov, seq, anchor, name, dia, localMap) {
+if (!ov || ov.type !== 'auto-status') return true;
+var m = {}, pk = snapShiftKey(key, -1);
+var po = (localMap && localMap[pk]) || (snapshotUsable() && snapshot.ovMap ? snapshot.ovMap[empId + '|' + pk] : null);
+if (po) m[empId + '|' + pk] = po;
+m[empId + '|' + key] = ov;
+return snapAutoValid(ov, key, { employeeId: empId, seq: seq, anchor: anchor, name: name }, dia || [], m);
+}
 /* 한 해 휴가 사용일 수 계산
 - 야간+비번 휴가 = 1일
 - 야간 휴가 + 비번 다음 날 주간이 같은 종류 휴가 = 야간·비번·주간 합쳐 3일
 - 종류가 다르면 각각 1일 */
 function computeLeaveUsage(year) {
-var res = { counts: {}, total: 0 };
+var res = { counts: {}, total: 0, others: {} };   /* others: 휴가 종류가 아닌 근무상태(휴무 · 비번 등) — 휴가 총계에서 제외 */
 if (!snapshotUsable()) return res;
 var raw = snapshot.raw;
 var dia = raw.dia || [];
@@ -4335,7 +4386,8 @@ var days = 1;
 if (baseType(k) === '야') {
 var k1 = snapShiftKey(k, 1);
 var k2 = snapShiftKey(k, 2);
-if (!snapshot.ovMap[myId + '|' + k1] && baseType(k1) === '비') {
+/* 비번 날에 변경이 없거나, 야간과 같은 종류의 휴가를 비번에도 직접 넣은 경우 = 야간+비번 1일로 묶음 (중복 차감 방지) */
+if ((!snapshot.ovMap[myId + '|' + k1] || ownStatus(k1) === st) && baseType(k1) === '비') {
 consumed[k1] = true;
 if (ownStatus(k2) === st && baseType(k2) === '주') {
 consumed[k2] = true;
@@ -4344,8 +4396,12 @@ days = 3;
 }
 }
 if (k >= startKey) {
+if (vacKeyNorm(st)) {
 res.counts[st] = (res.counts[st] || 0) + days;
 res.total += days;
+} else {
+res.others[st] = (res.others[st] || 0) + days;
+}
 }
 }
 return res;
@@ -4919,6 +4975,7 @@ partnerId: r[5] || '', partnerName: r[6] || '', dutyStatus: r[7] || ''
 Object.keys(monthDays).forEach(function (key) {
 if (localOvMap[key]) {
 var lSeq = localMine.seq || mySettings.seq, lAnchor = localMine.anchor || mySettings.anchor;
+if (!snapLocalAutoOk(user.employeeId, key, localOvMap[key], lSeq, lAnchor, me.name, diaList, localOvMap)) return;   /* 무효 자동 비번: 스냅샷 계산값 유지 */
 var localDay = snapBuildDay(key, lSeq, lAnchor, diaList, localOvMap[key], me.name);
 var prevOvKey = snapShiftKey(key, -1);
 var prevOv = localOvMap[prevOvKey] ||
@@ -5267,6 +5324,7 @@ if (o && o.length >= 4) ov[o[0]] = { type: o[1], dia: o[2], status: o[3], update
 });
 Object.keys(days).forEach(function (k) {
 if (!ov[k]) return;
+if (!snapLocalAutoOk(user.employeeId, k, ov[k], seq, anchor, me.name, diaList, ov)) return;   /* 무효 자동 비번: 스냅샷 계산값 유지 */
 var d0 = snapBuildDay(k, seq, anchor, diaList, ov[k], me.name);
 var pk = snapShiftKey(k, -1);
 var po = ov[pk] || (snapshotUsable() && snapshot.ovMap ? snapshot.ovMap[user.employeeId + '|' + pk] : null);
@@ -8198,10 +8256,11 @@ var localDay = rsDayInfo(days[di].key);
 if (!localDay) {
 var localRow = localOverrideMap[days[di].key];
 if (!localRow) continue;
-localDay = snapBuildDay(days[di].key, localMine.seq, localMine.anchor, diaList, {
-type: localRow[1], dia: localRow[2], status: localRow[3], updatedAt: localRow[4],
-partnerId: localRow[5] || '', partnerName: localRow[6] || '', dutyStatus: localRow[7] || ''
-}, members[mi].name);
+var rowOv = function (r) { return r ? { type: r[1], dia: r[2], status: r[3], updatedAt: r[4], partnerId: r[5] || '', partnerName: r[6] || '', dutyStatus: r[7] || '' } : null; };
+var lov = rowOv(localRow), lpk = snapShiftKey(days[di].key, -1), lmap = {};
+if (localOverrideMap[lpk]) lmap[lpk] = rowOv(localOverrideMap[lpk]);
+if (!snapLocalAutoOk(localUser.employeeId, days[di].key, lov, localMine.seq, localMine.anchor, members[mi].name, diaList, lmap)) continue;   /* 무효 자동 비번 표시 안 함 */
+localDay = snapBuildDay(days[di].key, localMine.seq, localMine.anchor, diaList, lov, members[mi].name);
 }
 members[mi].days[days[di].key] = localDay;
 }
@@ -17352,7 +17411,11 @@ if (typeof ack === 'string') {
   var ackText = ack.trim();
   if (ackText.charAt(0) === '{') {
     var aj = null; try { aj = JSON.parse(ackText); } catch (e3) {}
-    if (aj && aj.ok === false) throw new Error('setAlarms rejected');
+    if (aj && aj.ok === false) {
+      /* 폰 예약 상태를 확신할 수 없음(복원 실패 · 예외) → 앞으로의 예약 이력을 비워 웹 알람이 대신 울리게 함 (이미 울린 기록은 rsSchedPut이 보존) */
+      if (aj.error === 'schedule_failed_restore_failed' || aj.error === 'schedule_failed') rsSchedPut([]);
+      throw new Error('setAlarms rejected');
+    }
   }
 }
 rsAppAlarmSig = sig; rsSchedPut(list);
@@ -26490,6 +26553,7 @@ html body #schedule-section #calendar-card.sch-card{background:#fff!important;bo
 html body #schedule-section .sch-weekdays .wd{font-size:10.5px!important;font-weight:800!important;letter-spacing:1px!important;color:#8aa0bd!important}
 html body #schedule-section .sch-weekdays .wd.sun{color:#e5484d!important}
 html body #schedule-section .sch-weekdays .wd.sat{color:#3c82d8!important}
+html.theme-day body #group-section #group-schedule-table thead th.name-col{color:#3d5274!important}
 html body #schedule-section .sch-table-wrap{background:#fff;border-radius:22px;box-shadow:0 8px 22px rgba(50,110,180,.12);padding:8px 6px;overflow:hidden}
 html body #schedule-section .sch-tools button{background:rgba(255,255,255,.75)!important;border:0!important;border-radius:999px!important;color:#3c6ea8!important;box-shadow:0 2px 6px rgba(50,110,180,.08)!important}
 html body #schedule-section #day-detail,html body #schedule-section .day-detail{border-radius:22px!important;border:0!important;box-shadow:0 8px 22px rgba(50,110,180,.12)!important}
@@ -30130,6 +30194,7 @@ var H = ((rise ? 360 - Math.acos(cosH) / rad : Math.acos(cosH) / rad) / 15);
 return (H + RA - 0.06571 * t - 6.622 - lngHour + 24) % 24;
 }
 function isNight() {
+if (document.documentElement.classList.contains('ui-dark')) return true;   /* v125: 다크 모드에서는 배경테마도 밤 장면·남색 유리 (낮 밝은 유리에 흰 글씨가 겹치던 문제) */
 var p = kstParts(Date.now()), key = p.y + '-' + p.m + '-' + p.day;
 if (solarCache.key !== key) {
 var sr = solarHourUTC(p.y, p.m, p.day, true), ss = solarHourUTC(p.y, p.m, p.day, false);
@@ -30228,6 +30293,8 @@ if (key === baseKey) return; baseKey = key; W = w; H = h; DPR = d; SPR = {};
 cv.width = W * DPR; cv.height = H * DPR; x.setTransform(DPR, 0, 0, DPR, 0, 0);
 if (bgCv && bx) { bgCv.width = W * DPR; bgCv.height = H * DPR; bx.setTransform(DPR, 0, 0, DPR, 0, 0); }
 document.documentElement.classList.toggle('wbg-night', night);
+/* 낮/밤 상태를 CSS 테마에도 동기화한다. 기존 CSS의 :not(.theme-day)는 낮에 밝은 글자/아이콘을 강제하므로 반드시 토글해야 한다. */
+document.documentElement.classList.toggle('theme-day', !night && onMain());
 bake();
 }
 function onMain() { return wbgOn(); }   /* 모든 화면 (환경설정 › 애니메이션 효과에서 켜고 끔) */
@@ -30794,6 +30861,7 @@ var u = null; try { u = computeLeaveUsage(y); } catch (e) {}
 if (!u) return ['연차 정보를 아직 불러오지 못했어요. 잠시 뒤 다시 물어봐 주세요.', stamp()];
 var keys = Object.keys(u.counts || {}), lines = [y + '년 휴가 사용: 총 ' + u.total + '일'];
 keys.forEach(function (k) { lines.push('· ' + k + ' ' + u.counts[k] + '일'); });
+Object.keys(u.others || {}).forEach(function (k) { lines.push('· ' + k + ' ' + u.others[k] + '일 (휴가 아님 · 총계 제외)'); });
 return [lines.join('\n'), stamp()];
 }
 var VAC_WORDS = [['병가', '병가'], ['공가', '공가'], ['육아', '육아휴직'], ['출산', '출산휴가'], ['돌봄', '돌봄'], ['휴무', '휴무'], ['연차', '연차'], ['휴가', '연차'], ['쉬', '연차']];
@@ -31419,6 +31487,38 @@ html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(
 html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13) body .bottom-nav{background-color:rgba(255,255,255,.68)!important}
 html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13) body #calendar-card.sch-card,html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13) body #vac-calendar-card.sch-card{background-color:rgba(255,255,255,.6)!important}
 html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13) body .wbg-pop{background:rgba(255,255,255,.62)!important}
+</style>
+<style id="day-theme-contrast-fix">
+/* 낮·밝은 배경에서는 흰 글자/흰 아이콘을 강제하지 않는다. 기존의 색상별 업무 표시는 유지한다. */
+html.wbg-on.theme-day body #main-container > .top-bar,
+html.wbg-on.theme-day body #main-container > .top-bar #liveClock,
+html.wbg-on.theme-day body #main-container > .top-bar #liveClock *,
+html.wbg-on.theme-day body .page-view > h1,
+html.wbg-on.theme-day body .page-view > h1 span,
+html.wbg-on.theme-day body .page-view > h2,
+html.wbg-on.theme-day body .settings-category-title,
+html.wbg-on.theme-day body .page-view > p,
+html.wbg-on.theme-day body .sch-head,
+html.wbg-on.theme-day body .sch-head .sch-title,
+html.wbg-on.theme-day body .sch-head .sch-nav,
+html.wbg-on.theme-day body .sch-note,
+html.wbg-on.theme-day body .board-page .board-page-header h1,
+html.wbg-on.theme-day body .board-page > .board-page-inner > .dia-dialog-note {
+  color:#173257!important; -webkit-text-fill-color:#173257!important; text-shadow:none!important;
+}
+html.wbg-on.theme-day body .page-view > h1 img { filter:none!important; }
+html.wbg-on.theme-day body .settings-category-mark { filter:none!important; }
+html.wbg-on.theme-day body .board-page .board-title-art { filter:none!important; }
+html.wbg-on.theme-day body .sch-head::before { color:#173257!important; text-shadow:none!important; }
+html.wbg-on.theme-day body .page-view .sch-head .sch-nav { color:#173257!important; -webkit-text-fill-color:#173257!important; border-color:rgba(23,50,87,.25)!important; }
+html.wbg-on.theme-day body #main-section .menu-btn span,
+html.wbg-on.theme-day body #vacation-section .menu-btn span { color:#173257!important; -webkit-text-fill-color:#173257!important; }
+html.wbg-on.theme-day body .bottom-nav .bn-btn:not(.active),
+html.wbg-on.theme-day body .bottom-nav .bn-btn:not(.active) * { color:#173257!important; -webkit-text-fill-color:#173257!important; }
+/* v125: 낮 테마 선택 탭은 파란 강조 유지 · 달 이동 화살표(흰색) · 평일 요일(연회색) 대비 */
+html.wbg-on.theme-day:not(#zt1):not(#zt2):not(#zt3):not(#zt4):not(#zt5):not(#zt6):not(#zt7):not(#zt8):not(#zt9):not(#zt10):not(#zt11):not(#zt12):not(#zt13):not(#zt14):not(#zt15):not(#zt16):not(#zt17):not(#zt18):not(#zt19):not(#zt20):not(#zt21):not(#zt22):not(#zt23):not(#zt24):not(#zt25):not(#zt26):not(#zt27):not(#zt28):not(#zt29):not(#zt30) body .bottom-nav .bn-btn.active,html.wbg-on.theme-day:not(#zt1):not(#zt2):not(#zt3):not(#zt4):not(#zt5):not(#zt6):not(#zt7):not(#zt8):not(#zt9):not(#zt10):not(#zt11):not(#zt12):not(#zt13):not(#zt14):not(#zt15):not(#zt16):not(#zt17):not(#zt18):not(#zt19):not(#zt20):not(#zt21):not(#zt22):not(#zt23):not(#zt24):not(#zt25):not(#zt26):not(#zt27):not(#zt28):not(#zt29):not(#zt30) body .bottom-nav .bn-btn.active *{color:#1a73e8!important;-webkit-text-fill-color:#1a73e8!important}
+html.wbg-on.theme-day:not(#zt1):not(#zt2):not(#zt3):not(#zt4):not(#zt5):not(#zt6):not(#zt7):not(#zt8):not(#zt9):not(#zt10):not(#zt11):not(#zt12):not(#zt13):not(#zt14):not(#zt15):not(#zt16):not(#zt17):not(#zt18):not(#zt19):not(#zt20):not(#zt21):not(#zt22):not(#zt23):not(#zt24):not(#zt25):not(#zt26):not(#zt27):not(#zt28):not(#zt29):not(#zt30) body .page-view .sch-nav{color:#173257!important;-webkit-text-fill-color:#173257!important;text-shadow:none!important}
+html.wbg-on.theme-day:not(#zt1):not(#zt2):not(#zt3):not(#zt4):not(#zt5):not(#zt6):not(#zt7):not(#zt8):not(#zt9):not(#zt10):not(#zt11):not(#zt12):not(#zt13):not(#zt14):not(#zt15):not(#zt16):not(#zt17):not(#zt18):not(#zt19):not(#zt20):not(#zt21):not(#zt22):not(#zt23):not(#zt24):not(#zt25):not(#zt26):not(#zt27):not(#zt28):not(#zt29):not(#zt30) body .page-view .wd:not(.sat):not(.sun){color:#4a5f86!important;-webkit-text-fill-color:#4a5f86!important}
 </style>
 <style id="tbl-glass">html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body #schedule-section #sch-table-wrap .sch-tbl{background:transparent!important;box-shadow:none!important}
 html.wbg-on:not(.theme-day):not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14) body #schedule-section #sch-table-wrap{background:transparent!important;box-shadow:none!important}
@@ -32117,5 +32217,56 @@ html.wbg-night:not(#zb1):not(#zb2):not(#zb3):not(#zb4):not(#zb5):not(#zb6):not(#
   setTimeout(scan, 1500);
 })();
 </script>
+<style id="fix-v88">
+/* 밤·다크 반투명 통일: 모든 팝업을 밤 테마 기본 반투명(대부분 팝업이 이미 쓰는 값)으로 */
+html.wbg-night:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body .dia-modal .dia-dialog,html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body .dia-modal .dia-dialog,html.wbg-night:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body .dia-modal > .dnm,html.wbg-night:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body .dia-modal > .swap-dialog,html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body .dia-modal > .dnm,html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body .dia-modal > .swap-dialog,html.wbg-night:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body .dia-modal > .group-swap-select-dialog,html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body .dia-modal > .group-swap-select-dialog{background:rgba(10,18,34,.6)!important;background-image:none!important;-webkit-backdrop-filter:blur(16px) saturate(1.25)!important;backdrop-filter:blur(16px) saturate(1.25)!important;border-color:rgba(255,255,255,.14)!important;color:#fff!important}
+/* 안 보이던 글씨 (명암 검사로 확인) */
+html.wbg-night:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body .dia-modal .dia-dialog-title,html.wbg-night:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body .dia-modal .pp-title,html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body .dia-modal .dia-dialog-title,html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body .dia-modal .pp-title{color:#fff!important;-webkit-text-fill-color:#fff!important}
+html.wbg-night:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body .dia-modal .pp-kicker,html.wbg-night:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body .dia-modal .dia-dialog-note,html.wbg-night:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #pass-pop-panel .pp-sec > span,html.wbg-night:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #pass-pop-panel .pp-sec-t,html.wbg-night:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #nx-ring-panel .pp-sec > span,html.wbg-night:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #nx-ring-panel .pp-sec-t,html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body .dia-modal .pp-kicker,html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body .dia-modal .dia-dialog-note,html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #pass-pop-panel .pp-sec > span,html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #pass-pop-panel .pp-sec-t,html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #nx-ring-panel .pp-sec > span,html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #nx-ring-panel .pp-sec-t{color:rgba(255,255,255,.78)!important;-webkit-text-fill-color:rgba(255,255,255,.78)!important}
+html.wbg-night:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #ui-sample,html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #ui-sample{color:#fff!important;-webkit-text-fill-color:#fff!important}
+html.wbg-night:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #rp-guide li,html.wbg-night:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #rp-guide li *,html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #rp-guide li,html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #rp-guide li *{color:rgba(255,255,255,.86)!important;-webkit-text-fill-color:rgba(255,255,255,.86)!important}
+/* 팝업 안쪽 흰 칸: 다크를 밤과 같게, 운행 정보 칸은 둘 다 반투명 (흰 바탕+흰 글씨로 안 보이던 것) */
+html.wbg-night:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #pass-pop-panel #pp-info,html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #pass-pop-panel #pp-info{background:rgba(255,255,255,.08)!important;background-image:none!important;border-color:rgba(255,255,255,.18)!important;color:#fff!important}
+html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #pass-pop-panel #pp-track,html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #rp-guide #rpg-stage{background:transparent!important;background-image:none!important;border-color:rgba(255,255,255,.18)!important}
+html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #pass-pop-panel button.pp-b.pp-b-tt,html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #pass-pop-panel button.pp-b.pp-b-x{background:rgba(255,255,255,.12)!important;color:#f3f5ff!important;-webkit-text-fill-color:#f3f5ff!important;border-color:rgba(255,255,255,.35)!important}
+html.ui-dark:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24) body #nx-ring-panel #nx-ring-badge{background:transparent!important;color:#ff6b75!important;-webkit-text-fill-color:#ff6b75!important;border-color:#ff6b75!important}
+</style>
+<style id="fix-v89">/* v124: 낮(일출~일몰) 반투명 테마 투명도·흐림을 나이트와 동일하게 (색은 흰색 유지) */
+html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) body :is(.wbg-glass, #vacation-section .menu-btn, #settings-section .setting-grid, #settings-section #set-flat > button.set-tile, #notice-list, #suggestion-list, .board-page .nt-tab, .bottom-nav, .group-swap-open-btn, .sch-viewseg, .sch-png-btn, .sch-tool-sm, .mm-tabs){background-color:rgba(255,255,255,.38)!important;background-image:none!important;-webkit-backdrop-filter:blur(10px) saturate(120%)!important;backdrop-filter:blur(10px) saturate(120%)!important}
+html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(.menu-list):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) body :is(#main-section .menu-grid > button.menu-btn){background-color:rgba(255,255,255,.38)!important;background-image:none!important;-webkit-backdrop-filter:blur(10px) saturate(120%)!important;backdrop-filter:blur(10px) saturate(120%)!important}
+html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10).menu-list:not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) body :is(#main-section .menu-grid.mm-grid){background-color:rgba(255,255,255,.38)!important;background-image:none!important;-webkit-backdrop-filter:blur(10px) saturate(120%)!important;backdrop-filter:blur(10px) saturate(120%)!important}
+html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) body #settings-section .set-sbar{background-color:rgba(255,255,255,.38)!important;background-image:none!important;-webkit-backdrop-filter:blur(10px) saturate(120%)!important;backdrop-filter:blur(10px) saturate(120%)!important}
+html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) body .wbg-pop{background-color:rgba(255,255,255,.6)!important;background-image:none!important;-webkit-backdrop-filter:blur(16px) saturate(125%)!important;backdrop-filter:blur(16px) saturate(125%)!important}
+html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) body #schedule-section #sch-table-wrap{background-color:rgba(255,255,255,.38)!important;background-image:none!important;-webkit-backdrop-filter:blur(10px) saturate(120%)!important;backdrop-filter:blur(10px) saturate(120%)!important}
+html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) body #crewboard-section .cb-find{background-color:rgba(255,255,255,.38)!important;background-image:none!important;-webkit-backdrop-filter:blur(10px)!important;backdrop-filter:blur(10px)!important}
+html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) body #crewboard-section .cb-status{background-color:rgba(255,255,255,.38)!important;background-image:none!important;}
+html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) body #crewboard-section .cb-wrap{background-color:rgba(255,255,255,.38)!important;background-image:none!important;-webkit-backdrop-filter:blur(10px) saturate(120%)!important;backdrop-filter:blur(10px) saturate(120%)!important}
+html.wbg-on.theme-day:not(#d1):not(#d2):not(#d3):not(#d4):not(#d5):not(#d6):not(#d7):not(#d8):not(#d9):not(#d10):not(#d11):not(#d12):not(#d13):not(#d14):not(#d15):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) body #vac-dates{background-color:rgba(255,255,255,.38)!important;background-image:none!important;}
+html.wbg-on.theme-day:not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#e8):not(#e9):not(#e10):not(#e11):not(#e12):not(#e13):not(#e14):not(#e15):not(#e16):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) body :is(#vac-dates, #vacation-management-section .vac-chipbtn:not(.on)){background-color:rgba(255,255,255,.38)!important;background-image:none!important;-webkit-backdrop-filter:blur(10px) saturate(1.2)!important;backdrop-filter:blur(10px) saturate(1.2)!important}
+html.wbg-on.theme-day:not(#e1):not(#e2):not(#e3):not(#e4):not(#e5):not(#e6):not(#e7):not(#e8):not(#e9):not(#e10):not(#e11):not(#e12):not(#e13):not(#e14):not(#e15):not(#e16):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) body #vacation-section #mp-grp{background-color:rgba(255,255,255,.38)!important;background-image:none!important;-webkit-backdrop-filter:blur(10px) saturate(1.2)!important;backdrop-filter:blur(10px) saturate(1.2)!important}
+html.wbg-on.theme-day:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) .dbs-card{background-color:rgba(255,255,255,.6)!important;background-image:none!important;-webkit-backdrop-filter:blur(16px) saturate(125%)!important;backdrop-filter:blur(16px) saturate(125%)!important}
+html.wbg-on.theme-day:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) .lg-card,html.wbg-on.theme-day:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6):not(#q7):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) .onb-card{background-color:rgba(255,255,255,.6)!important;background-image:none!important;-webkit-backdrop-filter:blur(16px) saturate(125%)!important;backdrop-filter:blur(16px) saturate(125%)!important}
+html.wbg-on.theme-day:not(#cp1):not(#cp2):not(#cp3):not(#cp4):not(#cp5):not(#cp6):not(#cp7):not(#cp8):not(#cp9):not(#cp10):not(#cp11):not(#cp12):not(#cp13):not(#cp14):not(#cp15):not(#cp16):not(#cp17):not(#cp18):not(#cp19):not(#cp20):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) #group-swap-select-panel .sx-drop{background-color:rgba(255,255,255,.6)!important;background-image:none!important;-webkit-backdrop-filter:blur(16px)!important;backdrop-filter:blur(16px)!important}
+html.wbg-on.theme-day:not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) #ai-set-pop .ais-box{background-color:rgba(255,255,255,.62)!important;background-image:none!important;-webkit-backdrop-filter:blur(14px)!important;backdrop-filter:blur(14px)!important}
+html.wbg-on.theme-day:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) body .dia-modal .dia-dialog,html.wbg-on.theme-day:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) body .dia-modal > .dnm,html.wbg-on.theme-day:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) body .dia-modal > .swap-dialog,html.wbg-on.theme-day:not(#zg1):not(#zg2):not(#zg3):not(#zg4):not(#zg5):not(#zg6):not(#zg7):not(#zg8):not(#zg9):not(#zg10):not(#zg11):not(#zg12):not(#zg13):not(#zg14):not(#zg15):not(#zg16):not(#zg17):not(#zg18):not(#zg19):not(#zg20):not(#zg21):not(#zg22):not(#zg23):not(#zg24):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) body .dia-modal > .group-swap-select-dialog{background-color:rgba(255,255,255,.6)!important;background-image:none!important;-webkit-backdrop-filter:blur(16px) saturate(1.25)!important;backdrop-filter:blur(16px) saturate(1.25)!important}
+html.wbg-on.theme-day:not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) body #schedule-section .sch-viewseg{background-color:rgba(255,255,255,.16)!important}
+
+/* 하단 메뉴바: 뒤 카드가 어두울 때 글씨가 묻혀 팝업과 같은 .6 */
+html.wbg-on.theme-day:not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26):not(#zd1):not(#zd2):not(#zd3):not(#zd4):not(#zd5):not(#zd6):not(#zd7):not(#zd8):not(#zd9):not(#zd10):not(#zd11):not(#zd12):not(#zd13):not(#zd14):not(#zd15):not(#zd16):not(#zd17):not(#zd18):not(#zd19):not(#zd20):not(#zd21):not(#zd22):not(#zd23):not(#zd24):not(#zd25):not(#zd26) body .bottom-nav{background-color:rgba(255,255,255,.6)!important}
+</style>
+<style id="fix-v90">/* v125: 어두운 바탕(다크·밤)에서 회색·파란 글씨가 묻히던 곳 */
+html:is(.ui-dark,.wbg-night):not(#zu1):not(#zu2):not(#zu3):not(#zu4):not(#zu5):not(#zu6):not(#zu7):not(#zu8):not(#zu9):not(#zu10):not(#zu11):not(#zu12):not(#zu13):not(#zu14):not(#zu15):not(#zu16):not(#zu17):not(#zu18):not(#zu19):not(#zu20):not(#zu21):not(#zu22):not(#zu23):not(#zu24):not(#zu25):not(#zu26):not(#zu27):not(#zu28):not(#zu29):not(#zu30) body .ico-lab{color:#c9d4e3!important;-webkit-text-fill-color:#c9d4e3!important}
+html:is(.ui-dark,.wbg-night):not(#zu1):not(#zu2):not(#zu3):not(#zu4):not(#zu5):not(#zu6):not(#zu7):not(#zu8):not(#zu9):not(#zu10):not(#zu11):not(#zu12):not(#zu13):not(#zu14):not(#zu15):not(#zu16):not(#zu17):not(#zu18):not(#zu19):not(#zu20):not(#zu21):not(#zu22):not(#zu23):not(#zu24):not(#zu25):not(#zu26):not(#zu27):not(#zu28):not(#zu29):not(#zu30) body .signup-link-btn{color:#8fc0ff!important;-webkit-text-fill-color:#8fc0ff!important}
+html:is(.ui-dark,.wbg-night):not(#zu1):not(#zu2):not(#zu3):not(#zu4):not(#zu5):not(#zu6):not(#zu7):not(#zu8):not(#zu9):not(#zu10):not(#zu11):not(#zu12):not(#zu13):not(#zu14):not(#zu15):not(#zu16):not(#zu17):not(#zu18):not(#zu19):not(#zu20):not(#zu21):not(#zu22):not(#zu23):not(#zu24):not(#zu25):not(#zu26):not(#zu27):not(#zu28):not(#zu29):not(#zu30) body .current-dia-label{color:rgba(255,255,255,.78)!important;-webkit-text-fill-color:rgba(255,255,255,.78)!important}
+html.ui-dark:not(#zu1):not(#zu2):not(#zu3):not(#zu4):not(#zu5):not(#zu6):not(#zu7):not(#zu8):not(#zu9):not(#zu10):not(#zu11):not(#zu12):not(#zu13):not(#zu14):not(#zu15):not(#zu16):not(#zu17):not(#zu18):not(#zu19):not(#zu20):not(#zu21):not(#zu22):not(#zu23):not(#zu24):not(#zu25):not(#zu26):not(#zu27):not(#zu28):not(#zu29):not(#zu30) body .group-swap-open-btn,html.ui-dark:not(#zu1):not(#zu2):not(#zu3):not(#zu4):not(#zu5):not(#zu6):not(#zu7):not(#zu8):not(#zu9):not(#zu10):not(#zu11):not(#zu12):not(#zu13):not(#zu14):not(#zu15):not(#zu16):not(#zu17):not(#zu18):not(#zu19):not(#zu20):not(#zu21):not(#zu22):not(#zu23):not(#zu24):not(#zu25):not(#zu26):not(#zu27):not(#zu28):not(#zu29):not(#zu30) body .group-swap-open-btn span{color:#e3ecf8!important;-webkit-text-fill-color:#e3ecf8!important}
+/* 밤: 흰 버튼에 흰 글씨 → 하늘색 버튼 (불러오기 · 열차운휴 확인) */
+html.wbg-night:not(#zu1):not(#zu2):not(#zu3):not(#zu4):not(#zu5):not(#zu6):not(#zu7):not(#zu8):not(#zu9):not(#zu10):not(#zu11):not(#zu12):not(#zu13):not(#zu14):not(#zu15):not(#zu16):not(#zu17):not(#zu18):not(#zu19):not(#zu20):not(#zu21):not(#zu22):not(#zu23):not(#zu24):not(#zu25):not(#zu26):not(#zu27):not(#zu28):not(#zu29):not(#zu30) body #backup-download-btn,html.wbg-night:not(#zu1):not(#zu2):not(#zu3):not(#zu4):not(#zu5):not(#zu6):not(#zu7):not(#zu8):not(#zu9):not(#zu10):not(#zu11):not(#zu12):not(#zu13):not(#zu14):not(#zu15):not(#zu16):not(#zu17):not(#zu18):not(#zu19):not(#zu20):not(#zu21):not(#zu22):not(#zu23):not(#zu24):not(#zu25):not(#zu26):not(#zu27):not(#zu28):not(#zu29):not(#zu30) body .nxr-dialog .dia-text-btn.pass-save.is-primary{background:#2f8cf0!important;background-image:none!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border-color:#2f8cf0!important}
+html.wbg-night:not(#zu1):not(#zu2):not(#zu3):not(#zu4):not(#zu5):not(#zu6):not(#zu7):not(#zu8):not(#zu9):not(#zu10):not(#zu11):not(#zu12):not(#zu13):not(#zu14):not(#zu15):not(#zu16):not(#zu17):not(#zu18):not(#zu19):not(#zu20):not(#zu21):not(#zu22):not(#zu23):not(#zu24):not(#zu25):not(#zu26):not(#zu27):not(#zu28):not(#zu29):not(#zu30) body #nx-ring-badge{color:#ff6b75!important;-webkit-text-fill-color:#ff6b75!important;border-color:#ff6b75!important;background:transparent!important}
+html:is(.ui-dark,.wbg-night):not(#zu1):not(#zu2):not(#zu3):not(#zu4):not(#zu5):not(#zu6):not(#zu7):not(#zu8):not(#zu9):not(#zu10):not(#zu11):not(#zu12):not(#zu13):not(#zu14):not(#zu15):not(#zu16):not(#zu17):not(#zu18):not(#zu19):not(#zu20):not(#zu21):not(#zu22):not(#zu23):not(#zu24):not(#zu25):not(#zu26):not(#zu27):not(#zu28):not(#zu29):not(#zu30) body :is(.dnd-state,.nm-web){color:rgba(255,255,255,.72)!important;-webkit-text-fill-color:rgba(255,255,255,.72)!important}
+html:is(.ui-dark,.wbg-night):not(#zu1):not(#zu2):not(#zu3):not(#zu4):not(#zu5):not(#zu6):not(#zu7):not(#zu8):not(#zu9):not(#zu10):not(#zu11):not(#zu12):not(#zu13):not(#zu14):not(#zu15):not(#zu16):not(#zu17):not(#zu18):not(#zu19):not(#zu20):not(#zu21):not(#zu22):not(#zu23):not(#zu24):not(#zu25):not(#zu26):not(#zu27):not(#zu28):not(#zu29):not(#zu30) body :is(.pp-track-caption,.pp-details-heading) span{color:rgba(255,255,255,.78)!important;-webkit-text-fill-color:rgba(255,255,255,.78)!important}
+/* 낮 테마: 연회색 보조글씨 진하게 */
+html.wbg-on.theme-day:not(#zu1):not(#zu2):not(#zu3):not(#zu4):not(#zu5):not(#zu6):not(#zu7):not(#zu8):not(#zu9):not(#zu10):not(#zu11):not(#zu12):not(#zu13):not(#zu14):not(#zu15):not(#zu16):not(#zu17):not(#zu18):not(#zu19):not(#zu20):not(#zu21):not(#zu22):not(#zu23):not(#zu24):not(#zu25):not(#zu26):not(#zu27):not(#zu28):not(#zu29):not(#zu30) body :is(.rp-head span,.pv2-tools > summary,.an-note,.an-note b,.nxv-note){color:#5b6b82!important;-webkit-text-fill-color:#5b6b82!important}
+html:not(.ui-dark):not(.wbg-night):not(#zu1):not(#zu2):not(#zu3):not(#zu4):not(#zu5):not(#zu6):not(#zu7):not(#zu8):not(#zu9):not(#zu10):not(#zu11):not(#zu12):not(#zu13):not(#zu14):not(#zu15):not(#zu16):not(#zu17):not(#zu18):not(#zu19):not(#zu20):not(#zu21):not(#zu22):not(#zu23):not(#zu24):not(#zu25):not(#zu26):not(#zu27):not(#zu28):not(#zu29):not(#zu30) body .gl-row > i{color:#8a96ab!important}
+</style>
 </body>
 </html>
