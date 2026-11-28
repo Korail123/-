@@ -3607,6 +3607,10 @@ function fixDiaTypes(list) {
 for (var i = 0; i < list.length; i++) {
 var k = String(list[i].dia || '').trim().toUpperCase();
 if (DIA_TYPE_FIX[k]) list[i].type = DIA_TYPE_FIX[k];
+/* 팀장조: 근무구분이 운주 · 상주 · 운야 · 상야로 적혀 있어도 계산은 주/야로 (화면 글자는 다이아로 운주 등 표시) */
+var tp = String(list[i].type || '').replace(/\s+/g, '');
+if (/^(운주|상주|운용주간|상황실주간)$/.test(tp)) list[i].type = '주';
+else if (/^(운야|상야|운용야간|상황실야간)$/.test(tp)) list[i].type = '야';
 }
 }
 function buildSnapIndex() {
@@ -3890,7 +3894,8 @@ function snapEmptyDay() {
 return { dia: '', type: '', start: '', end: '', train1: '', train2: '', train3: '' };
 }
 var ROTATION_MAX_SEQ = 24;
-function rotMaxSeq() { return (rsRulesTeamOverride || curTeam()) === '부기관사조' ? ROTATION_MAX_SEQ : 99; }
+var LEADER_ROTATION_MAX_SEQ = 9;   /* 팀장조 순서표는 1~9번만 순환 (10번 이후 다이아는 순환에 넣지 않고 다이아 정보로만 씀) */
+function rotMaxSeq() { var t = rsRulesTeamOverride || curTeam(); return t === '부기관사조' ? ROTATION_MAX_SEQ : t === '팀장조' ? LEADER_ROTATION_MAX_SEQ : 99; }
 /* 여자 사용자는 순서 16번이 12551(남자) 대신 12937(대기근무, 07:00~18:00)
 - 아래 목록은 기본값이며, Supabase seq_rules 표에 저장된 규칙이 있으면 그것도 함께 적용 */
 var SPECIAL_SEQ_USERS = ['민현주', '박유진', '워니', '이주원', '이보아', '임다빈'];
