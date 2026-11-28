@@ -12968,6 +12968,25 @@ function midToggleDetail() {
 if (!$('mid-on').checked) { showToast('중간출무 알람을 켜면 시간 조절을 펼칠 수 있습니다.'); return; }
 midDetailOpen = !midDetailOpen; midUiUpdate();
 }
+/* 이미 끝난 중간출무도 시간만 보여주기 (알람은 걸지 않음)
+   XROIS 출무현황 상태 코드: 1 출무전 · 2 도중출무(대기) = 알람 대상 / 3 도중출무완료 · 4 미출무 · 그 밖 = 표시만 */
+function midDoneItems() {
+var c = (typeof xrGet === 'function') ? xrGet('midCheck', null) : null;
+var rows = c && Array.isArray(c.check) ? c.check : [];
+var t = todayKST(), today = getDateKey(t.y, t.m, t.d), seen = {};
+var NM = { '3': '완료', '4': '미출무', '5': '적합성 미완료', '6': '적합성 완료' };
+return rows.filter(function (r) {
+if (!r || r.mid !== true || !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(String(r.at || ''))) return false;
+var g = String(r.gubunCd || '');
+if (g === '1' || g === '2') return false;                        /* 아직 안 한 중간출무는 위 알람 목록에 있음 */
+if (String(r.at).slice(0, 10) < today) return false;            /* 지난 날은 빼기 */
+var k = r.at + '|' + (r.trnNo || ''); if (seen[k]) return false; seen[k] = 1;
+return true;
+}).map(function (r) {
+var g = String(r.gubunCd || '');
+return { at: r.at, train: String(r.trnNo || '').trim(), state: NM[g] || (r.states && r.states[0]) || '완료' };
+}).sort(function (a, b) { return a.at < b.at ? -1 : 1; });
+}
 function midUiUpdate() {
 var rng = $('mid-range'); if (!rng) return;
 var min = midUiMin(), on = $('mid-on').checked;
@@ -12985,8 +13004,8 @@ if (sum) {
 if (!on) sum.textContent = '꺼짐 · XROIS 출무현황의 중간출무 예정일시 기준';
 else if (!pw) sum.textContent = 'CREW 연동(마이페이지)을 해야 중간출무를 가져올 수 있어요';
 else {
-var preCount = items.length;
-sum.textContent = alarmMinText(min) + ' · ' + (preCount ? '예정 중간출무 ' + preCount + '건' : '예정된 중간출무 없음');
+var preCount = items.length, doneCount = midDoneItems().length;
+sum.textContent = alarmMinText(min) + ' · ' + (preCount ? '예정 중간출무 ' + preCount + '건' : '예정된 중간출무 없음') + (doneCount ? ' · 끝난 중간출무 ' + doneCount + '건' : '');
 }
 }
 var lst = $('mid-list');
@@ -12996,6 +13015,11 @@ var h = items.slice(0, 5).map(function (it) {
 var p = it.at.split(' '), d = p[0].split('-');
 return '· ' + (+d[1]) + '/' + (+d[2]) + ' <b>' + p[1] + '</b> ' + '중간출무' + (it.info ? ' (' + esc(it.info) + ')' : '') + ' → 알람 ' + alarmClockText(+p[1].slice(0, 2) * 60 + +p[1].slice(3) - min);
 }).join('<br>');
+var hd = midDoneItems().slice(0, 5).map(function (it) {
+var p = it.at.split(' '), d = p[0].split('-');
+return '<span class="mid-done">· ' + (+d[1]) + '/' + (+d[2]) + ' <b>' + p[1] + '</b> 중간출무' + (it.train ? ' (' + esc(it.train) + ')' : '') + ' · ' + esc(it.state) + ' (알람 없음)</span>';
+}).join('<br>');
+if (hd) h = h ? h + '<br>' + hd : hd;
 var dg = $('mid-diag'); if (dg) dg.hidden = !(meta.err || xrGet('midCheck', null) || (!items.length && xrGet('midWhy', null)));   /* 성공해도 판별 근거를 보낼 수 있게 */
 lst.innerHTML = (h || '<span class="mid-none">가져온 중간출무 예정이 없어요.</span>') +
 (meta.stamp ? '<br><span class="mid-none">XROIS 확인 ' + esc(meta.stamp) + (meta.err ? ' · ' + esc(meta.err) : '') + ' · 로그인할 때 확인</span>' : '');
@@ -27673,6 +27697,7 @@ return r;
     <button type="button" class="lg-later" onclick="leaderGuideClose()">나중에</button>
   </div>
 </div>
+<style id="mid-done-ui">.mid-done{color:#5b6678}.mid-done b{color:#2f6fd6}html.ui-dark .mid-done,html.wbg-on:not(.theme-day) .mid-done{color:#c9d3e0}html.ui-dark .mid-done b,html.wbg-on:not(.theme-day) .mid-done b{color:#8fb6ff}</style>
 <style id="leader-label-ui">.ls-leader-note{margin:10px 4px 0;font-size:12.5px;color:#4a5872;line-height:1.5;word-break:keep-all}html.ui-dark .ls-leader-note{color:#c9d3e0}</style>
 <style id="leader-guide-ui">.lg-pop{display:none;position:fixed;inset:0;z-index:11500;align-items:center;justify-content:center;padding:20px;background:rgba(15,29,50,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 .lg-pop.active{display:flex}
