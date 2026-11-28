@@ -2505,9 +2505,10 @@ JavaScript가 꺼져 있어 동작하지 않습니다. 브라우저/WebView의 J
     <div class="dia-dialog">
       <div class="dia-dialog-title ico-title"><img class="title-ico" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-icon="근무설정" alt="" aria-hidden="true">근무 설정</div>
       <div class="dia-dialog-note">
-        ※ 오늘의 DIA를 선택해주세요.<br>
-        ※ 오늘을 기준으로 이후 근무가 자동 계산됩니다.
+        ※ 적용 시작일과 그날의 DIA를 고르세요.<br>
+        ※ 시작일부터 자동 계산되고, 그 전은 그대로예요.
       </div>
+      <div class="dia-start-row"><label for="dia-start">적용 시작일</label><input type="date" id="dia-start" onchange="diaStartChanged()"><button type="button" class="dia-start-today" onclick="diaStartToday()">오늘</button></div>
       <div id="dia-warning" class="status-message"></div>
       <div id="dia-list" class="dia-list">
         <div class="dia-empty">근무 순서를 불러오는 중...</div>
@@ -4318,6 +4319,7 @@ break;
 }
 }
 if (!wasNight && autoOff) wasNight = true;
+if (!wasNight && d.frozen) wasNight = true;   /* 근무설정 바꾸기 전 고정된 비번 = 원래 야간 다음 날 */
 if (!wasNight) return d;
 var c = snapEmptyDay();
 c.type = carry;
@@ -4384,6 +4386,12 @@ if (!o) return '';
 return vacKeyOfOv(o) || (o.type === 'status' ? o.status : '');
 }
 function baseType(k) {
+var o = snapshot.ovMap[myId + '|' + k];
+if (o) {   /* 근무설정을 바꾸기 전 근무: 고정 기록 · 휴가 날 적어 둔 다이아 기준 (바꾼 뒤에도 휴가 일수가 그대로) */
+var fz = o.type === 'auto-dia' && typeof rsFrozenParse === 'function' ? rsFrozenParse(o.status) : null;
+if (fz && fz.type) return String(fz.type).trim();
+if (o.type === 'status' && String(o.dia || '').trim()) { var od = findDiaIn(dia, o.dia); if (od && od.type) return String(od.type).trim(); }
+}
 return String(snapBaseDay(k, mb.seq, mb.anchor, dia, mb.name).type || '').trim();
 }
 for (var n = 0; n < keys.length; n++) {
@@ -12110,11 +12118,31 @@ if (typeof renderNxSub === 'function') renderNxSub();
 if (typeof briefRenderBadge === 'function') briefRenderBadge();
 loadMeta(function () {});
 }
+/* 근무설정 적용 시작일 (어느 조든): 고른 날부터 새 순서표, 그 전 근무는 그대로 */
+function diaTodayKey() { var t = todayKST(); return getDateKey(t.y, t.m, t.d); }
+function diaStartKey() {
+var el = $('dia-start'), v = el ? String(el.value || '') : '';
+var min = getDateKey(RS_START.y, RS_START.m, RS_START.d);
+return /^\d{4}-\d{2}-\d{2}$/.test(v) && v >= min ? v : diaTodayKey();
+}
+function diaStartPreselect() {
+var idx = -1; try { idx = patternIndexFor(diaStartKey()); } catch (e) {}
+var rl = rotList();
+tempSeq = idx >= 0 && rl[idx] ? String(rl[idx].seq) : '';
+}
+function diaStartNote() {
+var w = $('dia-warning'); if (!w) return;
+var k = diaStartKey(), p = k.split('-');
+w.style.color = '#1a73e8';
+w.textContent = k === diaTodayKey() ? '' : (+p[1]) + '월 ' + (+p[2]) + '일 근무를 골라주세요. 그날부터 근무표가 바뀌어요.';
+}
+function diaStartChanged() { diaStartPreselect(); diaStartNote(); renderDiaSelector(); }
+function diaStartToday() { var el = $('dia-start'); if (el) el.value = diaTodayKey(); diaStartChanged(); }
 function openDiaSelector() {
 var panel = $('dia-panel');
-var t = todayKST();
-var idx = patternIndexFor(getDateKey(t.y, t.m, t.d));
-tempSeq = idx >= 0 ? String(rotList()[idx].seq) : '';
+var ds = $('dia-start');
+if (ds) { ds.value = diaTodayKey(); ds.min = getDateKey(RS_START.y, RS_START.m, RS_START.d); }
+diaStartPreselect();
 $('dia-warning').textContent = '';
 $('dia-warning').style.color = ''; $('dia-warning').style.whiteSpace = '';
 renderDiaSelector();
@@ -12190,12 +12218,17 @@ if (!oSeq || !oAnc) return 0;                       /* 처음 설정하는 사�
 var raw = snapshot && snapshot.raw, list = (raw && raw.dia) || diaList || [];
 if (!list.length) return 0;
 var name = (getCurrentUser() || {}).name || '';
-var have = {}; (loc.overrides || []).forEach(function (r) { have[r[0]] = 1; });
+var have = {}, ownSt = {}; (loc.overrides || []).forEach(function (r) { have[r[0]] = 1; if (r && r[1] === 'status' && !String(r[2] || '').trim()) ownSt[r[0]] = r; });
 try { ((raw && raw.overrides) || []).forEach(function (r) { if (String(r[0]) === String(empId)) have[r[1]] = 1; }); } catch (e) {}
 var start = getDateKey(RS_START.y, RS_START.m, RS_START.d), n = 0, k = start, stamp = stampNow();
-var fs = rsFirstSetKey(empId);
-if (fs) { var fp = fs.split('-').map(Number), nx = fp[1] === 12 ? getDateKey(fp[0] + 1, 0, 1) : getDateKey(fp[0], fp[1], 1); if (nx > start) start = k = nx; }
+/* 근무 시작일(없으면 처음 설정한 날) 전은 원래 비어 있으므로 그 날부터 고정 — 처음 설정한 달도 빠뜨리지 않음 */
+var fs = (typeof rsLocalWorkStart === 'function' && rsLocalWorkStart()) || rsFirstSetKey(empId);
+if (fs && /^\d{4}-\d{2}-\d{2}$/.test(fs) && fs > start) start = k = fs;
 while (k < todayKey) {
+if (ownSt[k]) {                                           /* 휴가 넣은 날: 바꾸기 전 다이아를 적어 둠 (화면은 그대로 휴가) */
+var ob = snapBaseDay(k, oSeq, oAnc, list, name);
+if (ob && String(ob.dia || '').trim()) { ownSt[k][2] = String(ob.dia).trim(); n++; }
+}
 if (!have[k]) {
 var b = snapBaseDay(k, oSeq, oAnc, list, name);
 var ty = String(b.type || '').trim();
@@ -12218,12 +12251,21 @@ warn.textContent = '오늘의 DIA를 선택해주세요.';
 return;
 }
 var user = getCurrentUser();
-var t = todayKST();
-var anchorKey = getDateKey(t.y, t.m, t.d);
+var anchorKey = diaStartKey();
+if (anchorKey !== diaTodayKey()) {
+var ap = anchorKey.split('-');
+if (!confirm((+ap[1]) + '월 ' + (+ap[2]) + '일부터 ' + tempSeq + '번 순서로 근무표를 바꿀까요?\n\n· 그 전 근무는 그대로 남아요.\n· 직접 바꾼 근무 · 근무교환 · 휴가는 그대로예요.')) return;
+}
 var hadSet = !!(mySettings && mySettings.seq && mySettings.anchor) || !!(ensureLocal(user.employeeId).seq);
 if (!hadSet && !rsFirstSetKey(user.employeeId)) { try { localStorage.setItem('rs_first_set_' + user.employeeId, anchorKey); } catch (e) {} }
 if (!hadSet) { try { rsWorkStartFirst(anchorKey); } catch (e) {} }   /* 신규 회원: 근무설정한 날부터 근무표 펼침 */
 try { rsFreezePast(user.employeeId, anchorKey, tempSeq); } catch (e) {}
+/* 시작일 이후에 남아 있던 '예전 순서 고정' 기록은 지움 → 새 순서표가 보이게 (직접 바꾼 근무는 그대로) */
+try {
+var locA = ensureLocal(user.employeeId), nA = locA.overrides.length;
+locA.overrides = locA.overrides.filter(function (r) { return !(r && r[0] >= anchorKey && r[1] === 'auto-dia' && /^고정:/.test(String(r[3] || ''))); });
+if (locA.overrides.length !== nA) writeLocal(user.employeeId, locA);
+} catch (e) {}
 mySettings = { seq: tempSeq, anchor: anchorKey };
 myMonth = null;
 snapSetSettings(user.employeeId, tempSeq, anchorKey);
@@ -27725,6 +27767,14 @@ return r;
     <button type="button" class="lg-later" onclick="leaderGuideClose()">나중에</button>
   </div>
 </div>
+<style id="dia-start-ui">.dia-start-row{display:flex;align-items:center;gap:8px;margin:-6px 4px 10px;padding:8px 10px;border-radius:14px;background:#eef5ff}
+.dia-start-row label{font-size:13px;font-weight:800;color:#173257;white-space:nowrap}
+.dia-start-row input{flex:1;min-width:0;height:34px;border:1px solid #c9d8ef;border-radius:10px;padding:0 8px;font:inherit;font-size:14px;font-weight:700;color:#173257;background:#fff}
+.dia-start-today{height:34px;padding:0 12px;border:0;border-radius:10px;background:#cfe3ff;color:#1a5fc4;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+html.ui-dark .dia-start-row,html.wbg-on:not(.theme-day) .dia-start-row{background:rgba(120,160,230,.16)}
+html.ui-dark .dia-start-row label,html.wbg-on:not(.theme-day) .dia-start-row label{color:#e6ecf5}
+html.ui-dark .dia-start-row input,html.wbg-on:not(.theme-day) .dia-start-row input{background:rgba(15,25,45,.55);border-color:rgba(160,190,240,.35);color:#e6ecf5;color-scheme:dark}
+html.ui-dark .dia-start-today,html.wbg-on:not(.theme-day) .dia-start-today{background:rgba(111,157,255,.28);color:#cfe0ff}</style>
 <style id="mid-done-ui">.mid-done{color:#5b6678}.mid-done b{color:#2f6fd6}html.ui-dark .mid-done,html.wbg-on:not(.theme-day) .mid-done{color:#c9d3e0}html.ui-dark .mid-done b,html.wbg-on:not(.theme-day) .mid-done b{color:#8fb6ff}</style>
 <style id="leader-label-ui">.ls-leader-row{flex-wrap:wrap;row-gap:6px}.ls-leader-note{margin:10px 4px 0;font-size:12.5px;color:#4a5872;line-height:1.5;word-break:keep-all}html.ui-dark .ls-leader-note{color:#c9d3e0}</style>
 <style id="leader-guide-ui">.lg-pop{display:none;position:fixed;inset:0;z-index:11500;align-items:center;justify-content:center;padding:20px;background:rgba(15,29,50,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
