@@ -3609,8 +3609,8 @@ var k = String(list[i].dia || '').trim().toUpperCase();
 if (DIA_TYPE_FIX[k]) list[i].type = DIA_TYPE_FIX[k];
 /* 팀장조: 근무구분이 운주 · 상주 · 운야 · 상야로 적혀 있어도 계산은 주/야로 (화면 글자는 다이아로 운주 등 표시) */
 var tp = String(list[i].type || '').replace(/\s+/g, '');
-if (/^(운주|상주|운용주간|상황실주간)$/.test(tp)) list[i].type = '주';
-else if (/^(운야|상야|운용야간|상황실야간)$/.test(tp)) list[i].type = '야';
+if (/^(운주|상주|운용주간|상황실주간)$/.test(tp)) { list[i].typeName = tp; list[i].type = '주'; }   /* 화면에는 Supabase type 그대로(typeName) */
+else if (/^(운야|상야|운용야간|상황실야간)$/.test(tp)) { list[i].typeName = tp; list[i].type = '야'; }
 }
 }
 function buildSnapIndex() {
@@ -6359,8 +6359,20 @@ function rsLeaderPost(dia) {
 var m = /(?:12|K9)U0([1378])(?![0-9])/.exec(String(dia || '').toUpperCase());
 return m ? (m[1] === '1' || m[1] === '3' ? '운' : '상') : '';
 }
-function rsLeaderShort(d, dia) { if (d !== '주' && d !== '야') return ''; var p = rsLeaderPost(dia); return p ? p + d : ''; }
-function rsLeaderFull(d, dia) { var p = rsLeaderShort(d, dia); return p ? (p.charAt(0) === '운' ? '운용' : '상황실') + (d === '주' ? '주간' : '야간') : ''; }
+var RS_LEADER_SHORT = { '운용주간': '운주', '운용야간': '운야', '상황실주간': '상주', '상황실야간': '상야' };
+function rsLeaderTypeName(dia) {   /* Supabase 순서표(dia_teamjang)의 type 칸 글자 그대로 (운주 · 운야 · 상주 · 상야) */
+try { var m = typeof diaByNumber === 'function' ? diaByNumber(String(dia || '').replace(/~$/, '').trim()) : null; return m && m.typeName ? String(m.typeName) : ''; } catch (e) { return ''; }
+}
+function rsLeaderShort(d, dia) {
+if (d !== '주' && d !== '야') return '';
+var tn = rsLeaderTypeName(dia);
+if (tn) return RS_LEADER_SHORT[tn] || tn;
+var p = rsLeaderPost(dia); return p ? p + d : '';
+}
+function rsLeaderFull(d, dia) {
+var p = rsLeaderShort(d, dia); if (!p) return '';
+return { '운주': '운용주간', '운야': '운용야간', '상주': '상황실주간', '상야': '상황실야간' }[p] || p;
+}
 function rsLabelStyled(d, info) {
 var ld = info && info.overrideType !== 'status' ? rsLeaderShort(d, info.dia) : '';
 if (ld) return ld;
