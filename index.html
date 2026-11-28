@@ -4850,7 +4850,21 @@ if (!wanted) return null;
 for (var i = 0; i < diaList.length; i++) {
 if (String(diaList[i].dia == null ? '' : diaList[i].dia).trim().toUpperCase() === wanted) return diaList[i];
 }
+var alt = /^(12|K9)(U0[1378])$/.exec(wanted);   /* 팀장조: XROIS가 K9U01로 줘도 순서표 12U01을 찾음 (반대도) */
+if (alt) {
+var w2 = (alt[1] === '12' ? 'K9' : '12') + alt[2];
+for (var j = 0; j < diaList.length; j++) {
+if (String(diaList[j].dia == null ? '' : diaList[j].dia).trim().toUpperCase() === w2) return diaList[j];
+}
+}
 return DIA_FALLBACK[wanted] || null;
+}
+function rsDiaSame(a, b) {
+var x = String(a || '').replace(/\s+/g, '').toUpperCase(), y = String(b || '').replace(/\s+/g, '').toUpperCase();
+if (!x || !y) return false;
+if (x === y) return true;
+var ma = /(?:12|K9)(U0[1378])(?![0-9])/.exec(x), mb = /(?:12|K9)(U0[1378])(?![0-9])/.exec(y);
+return !!(ma && mb && ma[1] === mb[1]);
 }
 function patternIndexFor(dateKey) {
 var idx0 = diaIndexBySeq(mySettings.seq);
@@ -5018,7 +5032,7 @@ todayInfo.label = todayInfo.overrideType === 'status' ? (todayInfo.status || '�
 });
 }
 myMonth = { y: y, m: m, days: monthDays };
-st.textContent = (rsIsLeaderTeam() || (me && me.settings.seq && me.settings.anchor))
+st.textContent = (rsLeaderXrOnly() || (me && me.settings.seq && me.settings.anchor))
 ? ''
 : '환경설정에서 근무를 먼저 설정하세요.';
 renderCalendar();
@@ -5077,7 +5091,7 @@ var info = rsAdjacentInfo(y, m, d);
 if (info && (info.label || info.type || info.status || info.dutyStatus)) {
 var duty = rsCalDuty(info, getDateKey(y, m, d), rsMySeqCtx());
 if (duty) {
-var shortDuty = rsLabelStyled(rsDutyShort(duty));
+var shortDuty = rsLabelStyled(rsDutyShort(duty), info);
 html += '<div class="cell-lbl' + rsDutyCls(duty, 't') + (shortDuty.length >= 2 ? ' rs-duty2' : '') + '">' + (info.manual ? '*' : '') + esc(shortDuty) + '</div>';
 }
 }
@@ -5124,7 +5138,7 @@ var calendarDuty = rsCalDuty(info, getDateKey(calendarYear, calendarMonth, d), r
 if (calendarDuty) {
 var tone = toneOf(calendarDuty);
 var cls = rsDutyCls(calendarDuty, 't');   /* 근무그룹 표와 같은 색 규칙 */
-var shortDuty = rsLabelStyled(rsDutyShort(calendarDuty));
+var shortDuty = rsLabelStyled(rsDutyShort(calendarDuty), info);
 labelHtml = '<div class="cell-lbl' + cls + (shortDuty.length >= 2 ? ' rs-duty2' : '') + '">' + (info.manual ? '*' : '') + esc(shortDuty) + '</div>';
 }
 }
@@ -5339,6 +5353,7 @@ var label = '', tone = '';
 if (info && info.label && info.label !== '대기충당' && info.label !== '운휴충당' && info.label !== '휴무충당') {
 label = (info.manual ? '*' : '') + info.label;
 tone = info.overrideType === 'status' ? 'status' : toneOf(info.label);
+if (info.overrideType !== 'status') { var lsw = rsLeaderShort(info.label, info.dia); if (lsw) label = (info.manual ? '*' : '') + lsw; }
 }
 var swap = info && (info.swapPartnerName || info.swapPartnerId) ? 1 : 0;
 var hn = holidayName(y, m, d) || '';
@@ -6329,7 +6344,16 @@ var RS_LABEL_STYLES = [
 ];
 function rsLabelStyleKey() { return 'rs_label_style_' + ((getCurrentUser() || {}).employeeId || ''); }
 function rsLabelStyle() { try { var v = localStorage.getItem(rsLabelStyleKey()); return v === 'work' ? 'work' : 'basic'; } catch (e) { return 'basic'; } }
-function rsLabelStyled(d) {
+/* 팀장조 근무구분: 다이아(12U01 · K9U01 등)로 운용 · 상황실을 구분해 화면 글자만 운주 · 운야 · 상주 · 상야로 (내부 계산 · 색 · 알람은 주/야 그대로) */
+function rsLeaderPost(dia) {
+var m = /(?:12|K9)U0([1378])(?![0-9])/.exec(String(dia || '').toUpperCase());
+return m ? (m[1] === '1' || m[1] === '3' ? '운' : '상') : '';
+}
+function rsLeaderShort(d, dia) { if (d !== '주' && d !== '야') return ''; var p = rsLeaderPost(dia); return p ? p + d : ''; }
+function rsLeaderFull(d, dia) { var p = rsLeaderShort(d, dia); return p ? (p.charAt(0) === '운' ? '운용' : '상황실') + (d === '주' ? '주간' : '야간') : ''; }
+function rsLabelStyled(d, info) {
+var ld = info && info.overrideType !== 'status' ? rsLeaderShort(d, info.dia) : '';
+if (ld) return ld;
 var st = RS_LABEL_STYLES.filter(function (x) { return x.k === rsLabelStyle(); })[0];
 return st && st.map && st.map[d] ? st.map[d] : d;
 }
@@ -7433,7 +7457,7 @@ var tday = todayKST(), isToday = tday.y === selDate.y && tday.m === selDate.m &&
 var lbTxt = String(info.label || '') + ' ' + String(workType || '') + ' ' + String(info.status || '');
 var ctone = /휴/.test(lbTxt) || (isStatus && !/가일|박/.test(lbTxt)) ? 'off'
 : (info.label === '야' || info.label === '비' || info.label === 'X' || /야간|비번|가일|박/.test(lbTxt) || info.nightCarryover) ? 'night' : 'day';
-var kindTxt = workType || ({ '주': '주간', '야': '야간', '비': '비번', '휴': '휴무' }[info.label] || (isStatus ? String(info.status || info.label) : info.label));
+var kindTxt = workType || (!isStatus && rsLeaderFull(info.label, diaNo)) || ({ '주': '주간', '야': '야간', '비': '비번', '휴': '휴무' }[info.label] || (isStatus ? String(info.status || info.label) : info.label));
 var cv = '<div class="dd-cover c-' + ctone + '"><div class="k"><span class="dd-top-meta">' + (selDate.m + 1) + '.' + selDate.d + ' ' + WD[wdi] + (info.swapPartnerName || info.swapPartnerId ? '<span class="dd-swap-mark" aria-label="교환 상대"><span class="dd-swap-icon" aria-hidden="true">⇄</span>' + esc(String(info.swapPartnerName || info.swapPartnerId).trim()) + '</span>' : (info.manual ? '<span>변경</span>' : '')) + '</span>' + (workDur ? '<span class="kd">구속 ' + esc(workDur) + '</span>' : '') + '</div>' +
 '<div class="big">' + ((!isStatus && diaNo) ? 'DIA ' + esc(diaNo) : esc(info.label)) + '<small>' + esc(kindTxt) + '</small></div>';
 if (startTime || endTime || ddCoverTrains) cv += '<div class="row">' + (startTime ? '<div><small>출근' + (rsStartEstimated ? ' (예상)' : '') + '</small><b>' + esc(startTime) + '</b>' + (userStart ? '<span class="dd-cover-start">(설정 ' + esc(userStart.time) + ')</span>' : '') + '</div>' : '') +
@@ -8147,7 +8171,7 @@ if (!info || !(info.label || info.type || info.status)) return '';
 var ctx = null;
 try { var me = getCurrentUser(); if (mem && me && String(mem.employeeId) === String(me.employeeId)) ctx = rsMySeqCtx(); else if (mem && (mem.seq || (mem.settings && mem.settings.seq))) ctx = { seq: mem.seq || mem.settings.seq, anchor: mem.anchor || mem.settings.anchor, name: mem.name || '' }; } catch (e) {}
 var label = rsCalDuty(info, dateKey, ctx);
-return label ? (info.manual ? '*' : '') + rsLabelStyled(rsDutyShort(label)) : '-';
+return label ? (info.manual ? '*' : '') + rsLabelStyled(rsDutyShort(label), info) : '-';
 }
 function isLeaveInfo(info) {
 return !!(info && info.label && (info.overrideType === 'status' || info.label === '휴' || info.label === 'X'));
@@ -8655,7 +8679,7 @@ var end = String(info.end || (meta && meta.end) || '').slice(0, 5);
 var trains = [info.train1 || (meta && meta.train1), info.train2 || (meta && meta.train2), info.train3 || (meta && meta.train3)]
 .map(function (x) { return String(x || '').trim(); }).filter(function (x) { return x; });
 var nextDay = !isNaN(parseHM(start)) && !isNaN(parseHM(end)) && parseHM(end) <= parseHM(start);
-return { off: false, dia: diaNo, kind: kindMap[type] || type, start: start, end: end, nextDay: nextDay, trains: trains };
+return { off: false, dia: diaNo, kind: rsLeaderFull(type, diaNo) || kindMap[type] || type, start: start, end: end, nextDay: nextDay, trains: trains };
 }
 /* 오늘의 브리핑: 내 출근 · 퇴근 시각 앞뒤 30분 안에 출근하거나 퇴근하는 그룹원
 - 어제 야간 근무자의 오늘 아침 퇴근, 오늘 밤 퇴근 시각 근처의 내일 새벽 출근까지 포함 */
@@ -10568,7 +10592,7 @@ infoFromNight = true;
 var type = String(it.type || '').trim();
 var diaNo = String(it.dia || '').trim();
 var kindMap = { '주': '주간', '야': '야간', '비': '비번', '휴': '휴무' };
-var kind = kindMap[type] || type || '-';
+var kind = rsLeaderFull(type, diaNo) || kindMap[type] || type || '-';
 var tone = toneOf(type);
 var color = tone === 'day' ? '#e5a800' : tone === 'off' ? '#e53935' : '#1a73e8';
 var start = String(it.start || '').trim();
@@ -17256,7 +17280,7 @@ if (p) p.classList.remove('active');
 /* 근무설정(오늘의 본 근무)이 아직 없는 사용자는 메인화면에서 근무설정 팝업을 띄움
 서버(회원 정보)와 이 폰 모두에 설정이 없을 때만 = 회원가입 후 처음 들어온 사람 */
 function myWorkSettingMissing() {
-if (rsIsLeaderTeam()) return false;   /* 팀장조는 근무설정 없이 XROIS 근무로 */
+if (rsLeaderXrOnly()) return false;   /* (예전 방식) 팀장조는 근무설정 없이 XROIS 근무로 */
 var u = getCurrentUser();
 var loc = ensureLocal(u.employeeId);
 if (loc.seq && loc.anchor) return false;
@@ -22640,7 +22664,7 @@ if (!/^[0-9A-Z]{3,8}$/.test(dia)) return;                       /* 휴무·비�
 var prev = seen[k]; seen[k] = dia;
 if (k < today) return;                                           /* 지난 날은 바꾸지 않음 */
 var my = mine[k] || {}, myDia = xrNorm(my.dia || '');
-if (myDia === dia || rsIsLeaderTeam()) return;                 /* 팀장조: XROIS가 곧 근무표라 묻지 않음 */
+if (myDia === dia || rsDiaSame(myDia, dia) || rsLeaderXrOnly()) return;   /* 같은 다이아(팀장조 12U0x = K9U0x 포함)면 알리지 않음 */
 if (kept[k] && kept[k] === dia) return;
 var ov = xrMyOverride(emp, k);
 var myTr = [my.train1, my.train2, my.train3].map(function (v) { return String(v || '').trim(); }).filter(function (v) { return v && v !== '-'; });
@@ -23148,7 +23172,7 @@ var t = String((info.overrideType === 'status' ? (info.status || info.label) : (
 if (t === '비번') t = '비';
 if (t === '휴무') t = '휴';
 var c = t === '주' ? 'l-d' : t === '야' ? 'l-n' : t === '비' ? 'l-o' : t === '휴' ? 'l-r' : t === 'X' ? 'l-x' : 'l-v';
-if (typeof rsLabelStyled === 'function') t = rsLabelStyled(t);          /* 근무표 '표현 방식'과 같게 (일근 · 박 · 가일 · S) */
+if (typeof rsLabelStyled === 'function') t = rsLabelStyled(t, info);          /* 근무표 '표현 방식'과 같게 (일근 · 박 · 가일 · S) */
 return { t: t.length > 3 ? t.slice(0, 3) : t, c: c };
 }
 function schWeekRender() {
@@ -25478,7 +25502,7 @@ if (!info || !(info.label || info.type || info.status)) return o;
 try {
 var duty = rsCalDuty(info, key, rsMySeqCtx());
 if (duty) {
-o.duty = rsLabelStyled(rsDutyShort(duty));
+o.duty = rsLabelStyled(rsDutyShort(duty), info);
 o.cls = rsDutyCls(duty, 't') || (toneOf(duty) === 'night' ? ' t-night' : '');
 }
 } catch (e) { o.duty = String(info.label || ''); }
@@ -27400,7 +27424,7 @@ else if (tp === 'X') { g = 'x'; lab = 'X'; }
 else lab = tp;
 }
 try { var xs = typeof xrGet === 'function' ? xrGet('spec', {})[key] : null; if (xs && +xs.tot > 0) { min = Math.round(+xs.tot); restKnown = true; rest = +xs.rest || 0; } } catch (e) {}
-if (typeof rsLabelStyled === 'function' && /^(주|야|비|휴)$/.test(lab)) lab = rsLabelStyled(lab);
+if (typeof rsLabelStyled === 'function' && /^(주|야|비|휴)$/.test(lab)) lab = rsLabelStyled(lab, info);
 return { g: g, lab: lab.length > 3 ? lab.slice(0, 3) : lab, min: min, rest: rest, restKnown: restKnown };
 }
 var ST27_COL = { day: '#f5a623', night: '#2f6fd6', off: '#2f6fd6', x: '#2f6fd6', rest: '#e5484d', leave: '#e5484d' };   /* 주간·일근 = 노랑 · 야간·비번·가일·박·X = 파랑 · 휴무·휴가 = 빨강 */
@@ -27576,6 +27600,10 @@ html.ui-dark body #pattern-section #pattern-list > .dia-item:not(.selected){back
 XROIS 다이아 칸: 숫자·영문 다이아 → 주/야 (다이아 표에 있으면 그 구분, 없으면 퇴근이 출근보다 빠르면 야간)
 'S' 휴무 · '~' 비번 · 'X' X · 그 밖의 글자(연차 등)는 그대로 */
 function rsIsLeaderTeam() { try { return (typeof curTeam === 'function' ? curTeam() : myTeam()) === '팀장조'; } catch (e) { return false; } }
+/* 2026-11-28: 팀장조도 다른 조처럼 순서표(dia_teamjang)로 근무표를 만들고, XROIS는 바뀐 근무 알림에만 씀.
+   예전 방식(XROIS만으로 근무표)으로 되돌리려면 아래 값을 true 로 */
+var RS_LEADER_XROIS_ONLY = false;
+function rsLeaderXrOnly() { return RS_LEADER_XROIS_ONLY && rsIsLeaderTeam(); }
 function rsLeaderDay(dateKey) {
 var x = null; try { x = xrGet('info', {})[dateKey]; } catch (e) {}
 var d = snapEmptyDay();
@@ -27601,7 +27629,7 @@ return d;
 (function () {
 var o = window.snapBaseDay;
 if (typeof o === 'function') window.snapBaseDay = snapBaseDay = function (dateKey, seq, anchor, dia, name) {
-if (rsIsLeaderTeam()) {
+if (rsLeaderXrOnly()) {
 var me = getCurrentUser() || {};
 if (!name || name === me.name) return rsLeaderDay(dateKey);   /* 내 근무: XROIS */
 return snapEmptyDay();                                         /* 다른 팀장 근무는 그 사람 XROIS가 없어 비워 둠 */
@@ -27611,7 +27639,7 @@ return o.apply(this, arguments);
 var ox = window.xrApply;
 if (typeof ox === 'function') window.xrApply = xrApply = function () {
 var r = ox.apply(this, arguments);
-if (rsIsLeaderTeam()) setTimeout(function () { try { loadMyMonth(); } catch (e) {} try { renderCalendar(); renderDayDetail(); } catch (e) {} try { mmcnRender(); } catch (e) {} }, 400);
+if (rsLeaderXrOnly()) setTimeout(function () { try { loadMyMonth(); } catch (e) {} try { renderCalendar(); renderDayDetail(); } catch (e) {} try { mmcnRender(); } catch (e) {} }, 400);
 return r;
 };
 })();
@@ -27656,7 +27684,7 @@ try {
 var u = getCurrentUser() || {};
 if (!u.employeeId || u.employeeId === 'guest' || !u.token) return;
 if (shown === u.employeeId) return;
-if (!rsIsLeaderTeam() || crewLinked()) return;
+if (!rsLeaderXrOnly() || crewLinked()) return;
 shown = u.employeeId;
 var p = document.getElementById('leader-guide'); if (p) p.classList.add('active');
 } catch (e) {}
@@ -27962,7 +27990,7 @@ html.ui-dark .onb-pw input{background:#141b26;border-color:#33405a;color:#e6ecf5
 function onbKey() { return 'rs_onb_done_' + ((getCurrentUser() || {}).employeeId || ''); }
 function onbState(k) { if (k === 'anim') { try { return !!getAnimPrefs().on; } catch (e) { return false; } } return qsState(k); }
 function onbRender() {
-var leader = rsIsLeaderTeam(), team = curTeam();
+var leader = rsLeaderXrOnly(), team = curTeam();
 $('onb-team').textContent = team || '';
 var s1 = $('onb-s1'), set = !myWorkSettingMissing() && !leader;
 if (leader) {
@@ -28032,7 +28060,7 @@ var u = getCurrentUser() || {};
 if (!u.employeeId || u.employeeId === 'guest' || !u.token || shown === u.employeeId) return;
 if (!snapshotUsable() || !findMyMember()) { onbWait = (onbWait || 0) + 1; if (onbWait > 14) { onbDecided = u.employeeId; onbFlushNotice(); } return; }
 if (localStorage.getItem(onbKey())) { shown = u.employeeId; onbDecided = u.employeeId; onbFlushNotice(); return; }
-var need = myWorkSettingMissing() || (rsIsLeaderTeam() && !crewLinked());
+var need = myWorkSettingMissing() || (rsLeaderXrOnly() && !crewLinked());
 shown = u.employeeId; onbDecided = u.employeeId;
 if (!need) { localStorage.setItem(onbKey(), '1'); onbFlushNotice(); return; }   /* 이미 설정한 회원은 띄우지 않음 */
 var lg = $('leader-guide'); if (lg) lg.classList.remove('active');
@@ -28077,7 +28105,7 @@ var cur = ptTeam || ptMine();
 $('pt-team-name').textContent = teamLabel(cur);
 $('pt-team-mine').hidden = cur !== ptMine();
 var n = 0; try { n = rotList().length; } catch (e) {}
-$('pt-team-cyc').textContent = cur === '팀장조' ? 'XROIS 근무표' : (n ? n + '일 순환' : '');
+$('pt-team-cyc').textContent = (cur === '팀장조' && RS_LEADER_XROIS_ONLY) ? 'XROIS 근무표' : (n ? n + '일 순환' : '');
 }
 function ptPick(t) {
 $('pt-team-menu').classList.remove('open');
@@ -28111,7 +28139,7 @@ try {
 oRender.apply(this, arguments);
 if (ptOther()) {
 $('pattern-status').textContent = '';
-if (ptTeam === '팀장조' || !rotList().length) $('pattern-list').innerHTML = '<div class="dia-empty">' + (ptTeam === '팀장조' ? '팀장조는 순서표 없이 XROIS 근무표로 채워져요.' : '이 조의 순서표가 아직 없어요.') + '</div>';
+if ((ptTeam === '팀장조' && RS_LEADER_XROIS_ONLY) || !rotList().length) $('pattern-list').innerHTML = '<div class="dia-empty">' + ((ptTeam === '팀장조' && RS_LEADER_XROIS_ONLY) ? '팀장조는 순서표 없이 XROIS 근무표로 채워져요.' : '이 조의 순서표가 아직 없어요.') + '</div>';
 }
 ptHead();
 } finally { ptActive = false; }
