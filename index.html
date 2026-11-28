@@ -6344,6 +6344,11 @@ var RS_LABEL_STYLES = [
 ];
 function rsLabelStyleKey() { return 'rs_label_style_' + ((getCurrentUser() || {}).employeeId || ''); }
 function rsLabelStyle() { try { var v = localStorage.getItem(rsLabelStyleKey()); return v === 'work' ? 'work' : 'basic'; } catch (e) { return 'basic'; } }
+/* 2026-11-28: 팀장조도 다른 조처럼 순서표(dia_teamjang)로 근무표를 만들고, XROIS는 바뀐 근무 알림에만 씀.
+   예전 방식(XROIS만으로 근무표)으로 되돌리려면 아래 값을 true 로. (페이지 시작 중에도 쓰이므로 메인 스크립트에 둠) */
+var RS_LEADER_XROIS_ONLY = false;
+function rsIsLeaderTeam() { try { return (typeof curTeam === 'function' ? curTeam() : myTeam()) === '팀장조'; } catch (e) { return false; } }
+function rsLeaderXrOnly() { return RS_LEADER_XROIS_ONLY && rsIsLeaderTeam(); }
 /* 팀장조 근무구분: 다이아(12U01 · K9U01 등)로 운용 · 상황실을 구분해 화면 글자만 운주 · 운야 · 상주 · 상야로 (내부 계산 · 색 · 알람은 주/야 그대로) */
 function rsLeaderPost(dia) {
 var m = /(?:12|K9)U0([1378])(?![0-9])/.exec(String(dia || '').toUpperCase());
@@ -6354,10 +6359,21 @@ function rsLeaderFull(d, dia) { var p = rsLeaderShort(d, dia); return p ? (p.cha
 function rsLabelStyled(d, info) {
 var ld = info && info.overrideType !== 'status' ? rsLeaderShort(d, info.dia) : '';
 if (ld) return ld;
+if (typeof rsIsLeaderTeam === 'function' && rsIsLeaderTeam()) return d;   /* 팀장조: 비 · 휴는 그대로 (일근 · 박 표현 방식 안 씀) */
 var st = RS_LABEL_STYLES.filter(function (x) { return x.k === rsLabelStyle(); })[0];
 return st && st.map && st.map[d] ? st.map[d] : d;
 }
 function openLabelStyle() {
+if (typeof rsIsLeaderTeam === 'function' && rsIsLeaderTeam()) {
+var lcells = [['운주', 'day'], ['운야', 'night'], ['비', 'bi'], ['휴', 'off'], ['상주', 'day'], ['상야', 'night']].map(function (c) {
+var tn = c[1] === 'day' ? 't-day' : c[1] === 'bi' ? 't-bi' : c[1] === 'off' ? 't-off' : 't-night';
+return '<span class="ls-cell ' + tn + (c[0].length >= 2 ? ' two' : '') + '">' + esc(c[0]) + '</span>';
+}).join('');
+$('label-style-list').innerHTML = '<button type="button" class="ls-opt on"><b>운주 · 운야 · 상주 · 상야 · 비 · 휴</b><span class="ls-row">' + lcells + '</span><i class="ic-ck" aria-hidden="true"></i></button>' +
+'<p class="ls-leader-note">팀장조는 근무지(운용 · 상황실)와 주간 · 야간을 함께 표시해요.</p>';
+$('label-style-panel').classList.add('active');
+return;
+}
 var cur = rsLabelStyle(), sample = ['주', '주', '야', '비', '휴', '휴'];
 $('label-style-list').innerHTML = RS_LABEL_STYLES.map(function (st) {
 var cells = sample.map(function (d) {
@@ -10508,6 +10524,8 @@ renderPattern();
 }
 function diaTrainMarkup(it, list, index, hideTrains) {
 var dia = String(it && it.dia || '').trim().toUpperCase();
+var ldl = typeof rsLeaderShort === 'function' ? rsLeaderShort(String(it && it.type || '').trim(), dia) : '';
+if (ldl && !String(it.train1 || '').trim() && !String(it.train2 || '').trim()) return '<span class="dia-train-numbers"><span>' + esc(ldl) + '</span></span>';
 if (dia === '12941' || dia === '12942') {
 return '<span class="dia-train-numbers"><span>대기</span></span>';
 }
@@ -27600,10 +27618,7 @@ html.ui-dark body #pattern-section #pattern-list > .dia-item:not(.selected){back
 XROIS 다이아 칸: 숫자·영문 다이아 → 주/야 (다이아 표에 있으면 그 구분, 없으면 퇴근이 출근보다 빠르면 야간)
 'S' 휴무 · '~' 비번 · 'X' X · 그 밖의 글자(연차 등)는 그대로 */
 function rsIsLeaderTeam() { try { return (typeof curTeam === 'function' ? curTeam() : myTeam()) === '팀장조'; } catch (e) { return false; } }
-/* 2026-11-28: 팀장조도 다른 조처럼 순서표(dia_teamjang)로 근무표를 만들고, XROIS는 바뀐 근무 알림에만 씀.
-   예전 방식(XROIS만으로 근무표)으로 되돌리려면 아래 값을 true 로 */
-var RS_LEADER_XROIS_ONLY = false;
-function rsLeaderXrOnly() { return RS_LEADER_XROIS_ONLY && rsIsLeaderTeam(); }
+/* 팀장조 방식 플래그(RS_LEADER_XROIS_ONLY) · rsLeaderXrOnly()는 메인 스크립트(근무구분 글자 함수 옆)에 있음 */
 function rsLeaderDay(dateKey) {
 var x = null; try { x = xrGet('info', {})[dateKey]; } catch (e) {}
 var d = snapEmptyDay();
@@ -27653,6 +27668,7 @@ return r;
     <button type="button" class="lg-later" onclick="leaderGuideClose()">나중에</button>
   </div>
 </div>
+<style id="leader-label-ui">.ls-leader-note{margin:10px 4px 0;font-size:12.5px;color:#4a5872;line-height:1.5;word-break:keep-all}html.ui-dark .ls-leader-note{color:#c9d3e0}</style>
 <style id="leader-guide-ui">.lg-pop{display:none;position:fixed;inset:0;z-index:11500;align-items:center;justify-content:center;padding:20px;background:rgba(15,29,50,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 .lg-pop.active{display:flex}
 .lg-card{width:min(360px,100%);background:#fff;border-radius:22px;padding:22px 20px 16px;text-align:center;box-shadow:0 18px 50px rgba(10,30,60,.3)}
